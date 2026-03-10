@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Page } from '@/types/page';
 import type { Block } from '@/types/blocks';
-import type { DeviceMode, ViewportState, InteractionState } from '@/types/editor';
+import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
 import { blockRegistry } from '@/lib/block-registry';
 import { generateId } from '@/lib/block-factory';
 
@@ -53,11 +53,13 @@ interface EditorState {
   viewportState: ViewportState;
   interactionState: InteractionState;
 
-  // Drag & drop
+  // Drag & drop (pointer-event based)
+  dragPending: { source: DragSource; origin: { x: number; y: number } } | null;
   isDragging: boolean;
-  draggedIndex: number | null;
-  dragOverIndex: number | null;
+  dragSource: DragSource | null;
+  dragPosition: { x: number; y: number };
   canvasDropIndex: number | null;
+  layerDropIndex: number | null;
 }
 
 interface EditorActions {
@@ -91,13 +93,14 @@ interface EditorActions {
   zoomIn: () => void;
   zoomOut: () => void;
 
-  // Drag & drop
-  setDraggedIndex: (index: number | null) => void;
-  setDragOverIndex: (index: number | null) => void;
+  // Drag & drop (pointer-event based)
+  initDrag: (source: DragSource, origin: { x: number; y: number }) => void;
+  activateDrag: (position: { x: number; y: number }) => void;
+  updateDragPosition: (position: { x: number; y: number }) => void;
   setCanvasDropIndex: (index: number | null) => void;
-  onDragStartGlobal: (index?: number | null) => void;
-  onDragEndGlobal: () => void;
-  performDrop: (action: string, type: string, label: string, sourceIndex: number | null, targetIndex: number) => void;
+  setLayerDropIndex: (index: number | null) => void;
+  performDrop: () => void;
+  cancelDrag: () => void;
 }
 
 export type EditorStore = EditorState & EditorActions;
@@ -118,10 +121,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isSaved: false,
   viewportState: { zoom: 1, x: 0, y: 0 },
   interactionState: { isPanning: false, isSpacePressed: false, isMiddleClickPanning: false },
+  dragPending: null,
   isDragging: false,
-  draggedIndex: null,
-  dragOverIndex: null,
+  dragSource: null,
+  dragPosition: { x: 0, y: 0 },
   canvasDropIndex: null,
+  layerDropIndex: null,
 
   // --- Page mutations with history ---
   setPageWithHistory: (updater) => {
@@ -171,7 +176,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
           remainingBlocks.length > 0
             ? (remainingBlocks[removedIndex] || remainingBlocks[removedIndex - 1]).id
             : null;
-        // We schedule this after the page update
         setTimeout(() => set({ selectedBlockId: nextSelected }), 0);
       }
       return { ...prev, blocks: remainingBlocks };
@@ -300,27 +304,68 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       },
     })),
 
-  // --- Drag & drop ---
-  setDraggedIndex: (index) => set({ draggedIndex: index }),
-  setDragOverIndex: (index) => set({ dragOverIndex: index }),
+  // --- Drag & drop (pointer-event based) ---
+  initDrag: (source, origin) => {
+    set({ dragPending: { source, origin } });
+  },
+
+  activateDrag: (position) => {
+    const { dragPending } = get();
+    if (!dragPending) return;
+    set({
+      isDragging: true,
+      dragSource: dragPending.source,
+      dragPosition: position,
+      dragPending: null,
+    });
+  },
+
+  updateDragPosition: (position) => {
+    set({ dragPosition: position });
+  },
+
   setCanvasDropIndex: (index) => set({ canvasDropIndex: index }),
-  onDragStartGlobal: (index = null) => set({ isDragging: true, draggedIndex: index }),
-  onDragEndGlobal: () => set({ isDragging: false, draggedIndex: null, canvasDropIndex: null, dragOverIndex: null }),
-  performDrop: (action, type, label, sourceIndex, targetIndex) => {
-    const { onDragEndGlobal } = get();
-    if (action === 'reorder' && sourceIndex !== null) {
-      if (sourceIndex === targetIndex) return;
-      get().setPageWithHistory((prev) => {
-        const newBlocks = [...prev.blocks];
-        const [draggedItem] = newBlocks.splice(sourceIndex, 1);
-        let finalIndex = targetIndex;
-        if (sourceIndex < targetIndex) finalIndex--;
-        newBlocks.splice(finalIndex, 0, draggedItem);
-        return { ...prev, blocks: newBlocks };
-      });
-    } else if (action === 'add') {
-      get().addBlock(type, label, targetIndex);
+  setLayerDropIndex: (index) => set({ layerDropIndex: index }),
+
+  performDrop: () => {
+    const { dragSource, canvasDropIndex, layerDropIndex } = get();
+    if (!dragSource) {
+      get().cancelDrag();
+      return;
     }
-    onDragEndGlobal();
+
+    const targetIndex = canvasDropIndex ?? layerDropIndex;
+    if (targetIndex === null) {
+      get().cancelDrag();
+      return;
+    }
+
+    if (dragSource.action === 'reorder' && dragSource.sourceIndex !== null) {
+      if (dragSource.sourceIndex !== targetIndex) {
+        get().setPageWithHistory((prev) => {
+          const newBlocks = [...prev.blocks];
+          const [draggedItem] = newBlocks.splice(dragSource.sourceIndex!, 1);
+          let finalIndex = targetIndex;
+          if (dragSource.sourceIndex! < targetIndex) finalIndex--;
+          newBlocks.splice(finalIndex, 0, draggedItem);
+          return { ...prev, blocks: newBlocks };
+        });
+      }
+    } else if (dragSource.action === 'add') {
+      get().addBlock(dragSource.type, dragSource.label, targetIndex);
+    }
+
+    get().cancelDrag();
+  },
+
+  cancelDrag: () => {
+    set({
+      dragPending: null,
+      isDragging: false,
+      dragSource: null,
+      dragPosition: { x: 0, y: 0 },
+      canvasDropIndex: null,
+      layerDropIndex: null,
+    });
   },
 }));

@@ -1,10 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useCallback } from 'react';
-import { Plus, Layers } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry } from '@/lib/block-registry';
-import { useAutoScroll } from '@/hooks/useAutoScroll';
 import BrowserFrame from './BrowserFrame';
 import BlockWrapper from './BlockWrapper';
 import FloatingViewportControls from './FloatingViewportControls';
@@ -22,22 +21,14 @@ export default function CanvasViewport() {
   const viewportState = useEditorStore((s) => s.viewportState);
   const interactionState = useEditorStore((s) => s.interactionState);
   const canvasDropIndex = useEditorStore((s) => s.canvasDropIndex);
+  const isDragging = useEditorStore((s) => s.isDragging);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const setViewportState = useEditorStore((s) => s.setViewportState);
   const setInteractionState = useEditorStore((s) => s.setInteractionState);
-  const setCanvasDropIndex = useEditorStore((s) => s.setCanvasDropIndex);
-  const performDrop = useEditorStore((s) => s.performDrop);
-  const isDragging = useEditorStore((s) => s.isDragging);
-  const draggedIndex = useEditorStore((s) => s.draggedIndex);
-  const onDragEndGlobal = useEditorStore((s) => s.onDragEndGlobal);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const browserFrameRef = useRef<HTMLDivElement>(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
-
-  const { handleAutoScroll, stopAutoScroll } = useAutoScroll((deltaY: number) => {
-    setViewportState((prev) => ({ ...prev, y: prev.y + deltaY }));
-  });
 
   // --- Center canvas ---
   const handleCenterCanvas = useCallback(() => {
@@ -77,7 +68,7 @@ export default function CanvasViewport() {
     };
   }, [setInteractionState]);
 
-  // --- Wheel zoom & pan (capture: true) ---
+  // --- Wheel zoom & pan ---
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       const viewport = viewportRef.current;
@@ -87,7 +78,7 @@ export default function CanvasViewport() {
         e.clientX >= rect.left && e.clientX <= rect.right &&
         e.clientY >= rect.top && e.clientY <= rect.bottom;
 
-      if (isOverViewport || useEditorStore.getState().isDragging) {
+      if (isOverViewport) {
         e.preventDefault();
         if (e.ctrlKey || e.metaKey) {
           const cx = e.clientX - rect.left;
@@ -136,20 +127,6 @@ export default function CanvasViewport() {
     }
   };
 
-  // --- Canvas drop ---
-  const handleCanvasDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const targetIndex = canvasDropIndex !== null ? canvasDropIndex : page.blocks.length;
-    performDrop(
-      e.dataTransfer.getData('action'),
-      e.dataTransfer.getData('type'),
-      e.dataTransfer.getData('label'),
-      draggedIndex,
-      targetIndex
-    );
-  };
-
   let cursorClass = '';
   if (interactionState.isPanning) cursorClass = 'cursor-grabbing';
   else if (interactionState.isSpacePressed) cursorClass = 'cursor-grab';
@@ -157,6 +134,7 @@ export default function CanvasViewport() {
   return (
     <div
       ref={viewportRef}
+      data-canvas-viewport
       className={`flex-1 overflow-hidden relative bg-zinc-950 ${cursorClass}`}
       style={{
         backgroundImage: 'radial-gradient(#27272a 1px, transparent 1px)',
@@ -168,30 +146,8 @@ export default function CanvasViewport() {
       onMouseUp={handlePanEnd}
       onMouseLeave={handlePanEnd}
       onClick={() => {
-        if (!interactionState.isPanning) selectBlock(null);
+        if (!interactionState.isPanning && !isDragging) selectBlock(null);
       }}
-      onDragOver={
-        !isPreviewMode
-          ? (e) => {
-              e.preventDefault();
-              handleAutoScroll(e, viewportRef, true);
-              if (page.blocks.length === 0) setCanvasDropIndex(0);
-              else if (e.target === e.currentTarget && canvasDropIndex === null)
-                setCanvasDropIndex(page.blocks.length);
-            }
-          : undefined
-      }
-      onDragLeave={
-        !isPreviewMode
-          ? (e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setCanvasDropIndex(null);
-                stopAutoScroll();
-              }
-            }
-          : undefined
-      }
-      onDrop={!isPreviewMode ? (e) => { handleCanvasDrop(e); stopAutoScroll(); } : undefined}
     >
       <div
         className="absolute origin-top-left"
@@ -232,19 +188,17 @@ export default function CanvasViewport() {
               </p>
             </div>
           )}
+
+          {/* Canvas-level drop indicator when dropping at end */}
+          {canvasDropIndex === page.blocks.length && page.blocks.length > 0 && (
+            <div className="h-[2px] bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)] relative">
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,1)]" />
+            </div>
+          )}
         </BrowserFrame>
       </div>
 
       <FloatingViewportControls onCenterCanvas={handleCenterCanvas} />
-
-      {/* Drag ghost */}
-      <div
-        id="drag-ghost"
-        className="fixed -top-[1000px] -left-[1000px] bg-indigo-600 text-white px-4 py-2 rounded-full shadow-2xl text-[12px] font-medium flex items-center gap-2 pointer-events-none z-[-1]"
-      >
-        <Layers className="w-4 h-4 opacity-70" />
-        <span id="drag-ghost-text">Moviendo bloque</span>
-      </div>
     </div>
   );
 }

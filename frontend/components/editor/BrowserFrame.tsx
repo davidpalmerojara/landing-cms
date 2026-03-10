@@ -50,9 +50,9 @@ const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
         {/* Chrome bar */}
         <div className="h-10 bg-zinc-950/95 border-b border-zinc-800/50 flex items-center px-4 gap-4 w-full shrink-0">
           <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-zinc-700/50 hover:bg-red-500 transition-colors" />
-            <div className="w-3 h-3 rounded-full bg-zinc-700/50 hover:bg-amber-500 transition-colors" />
-            <div className="w-3 h-3 rounded-full bg-zinc-700/50 hover:bg-green-500 transition-colors" />
+            <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors" />
+            <div className="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-500 transition-colors" />
+            <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors" />
           </div>
           <div className="mx-auto bg-zinc-900/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-zinc-500 border border-zinc-800/50 shadow-inner">
             <LockIcon className="w-3 h-3 mr-2 opacity-50" /> tu-proyecto.dev

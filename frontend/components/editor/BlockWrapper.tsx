@@ -1,6 +1,6 @@
 'use client';
 
-import { GripVertical, Copy, Trash2, Layers } from 'lucide-react';
+import { GripVertical, Copy, Trash2 } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import type { Block } from '@/types/blocks';
 
@@ -16,14 +16,12 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
   const interactionState = useEditorStore((s) => s.interactionState);
   const blocksLength = useEditorStore((s) => s.page.blocks.length);
+  const isDragging = useEditorStore((s) => s.isDragging);
+  const dragSource = useEditorStore((s) => s.dragSource);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const deleteBlock = useEditorStore((s) => s.deleteBlock);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
-  const onDragStartGlobal = useEditorStore((s) => s.onDragStartGlobal);
-  const onDragEndGlobal = useEditorStore((s) => s.onDragEndGlobal);
-  const setCanvasDropIndex = useEditorStore((s) => s.setCanvasDropIndex);
-  const performDrop = useEditorStore((s) => s.performDrop);
-  const draggedIndex = useEditorStore((s) => s.draggedIndex);
+  const initDrag = useEditorStore((s) => s.initDrag);
 
   if (isPreviewMode) {
     return (
@@ -34,36 +32,25 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
   }
 
   const isSelected = selectedBlockId === block.id;
+  const isBeingDragged =
+    isDragging &&
+    dragSource?.action === 'reorder' &&
+    dragSource.sourceIndex === index;
 
-  const handleBlockDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    // Don't stopPropagation — let the event bubble to CanvasViewport
-    // so handleAutoScroll runs. The viewport's onDragOver already guards
-    // drop-index logic with e.target === e.currentTarget.
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height / 2) setCanvasDropIndex(index);
-    else setCanvasDropIndex(index + 1);
-  };
-
-  const handleCanvasDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const targetIndex = canvasDropIndex !== null ? canvasDropIndex : blocksLength;
-    performDrop(
-      e.dataTransfer.getData('action'),
-      e.dataTransfer.getData('type'),
-      e.dataTransfer.getData('label'),
-      draggedIndex,
-      targetIndex
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (interactionState.isSpacePressed) return;
+    if (e.button !== 0) return; // left click only
+    initDrag(
+      { action: 'reorder', type: block.type, label: block.name, sourceIndex: index },
+      { x: e.clientX, y: e.clientY }
     );
   };
 
   return (
     <div
       id={`block-wrapper-${block.id}`}
+      data-block-index={index}
       className="relative w-full"
-      onDragOver={handleBlockDragOver}
-      onDrop={handleCanvasDrop}
     >
       {/* Drop indicator top */}
       {canvasDropIndex === index && (
@@ -84,34 +71,21 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
             ? 'outline-indigo-500 z-10'
             : 'outline-transparent hover:outline-indigo-400/40 hover:z-0'
         } ${interactionState.isSpacePressed ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
-        draggable={!interactionState.isSpacePressed}
-        onDragStart={(e) => {
-          if (interactionState.isSpacePressed) {
-            e.preventDefault();
-            return;
-          }
-          e.dataTransfer.setData('action', 'reorder');
-          onDragStartGlobal(index);
-
-          const ghost = document.getElementById('drag-ghost');
-          const ghostText = document.getElementById('drag-ghost-text');
-          if (ghost && ghostText) {
-            ghostText.textContent = `Moviendo ${block.name}`;
-            e.dataTransfer.setDragImage(ghost, 20, 20);
-          }
-        }}
-        onDragEnd={() => onDragEndGlobal()}
+        style={{ opacity: isBeingDragged ? 0.3 : 1 }}
+        onPointerDown={handlePointerDown}
         onClick={(e) => {
           e.stopPropagation();
-          if (!interactionState.isSpacePressed) selectBlock(block.id);
+          if (!interactionState.isSpacePressed && !isDragging) selectBlock(block.id);
         }}
       >
         {/* Floating tooltip */}
         <div
           className={`absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 bg-indigo-600 text-white text-[11px] font-medium rounded-full shadow-lg z-30 flex items-center transition-all duration-200 ${
-            isSelected && !interactionState.isSpacePressed
+            isSelected && !interactionState.isSpacePressed && !isDragging
               ? 'opacity-100 scale-100'
-              : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
+              : isDragging
+                ? 'opacity-0 scale-95 pointer-events-none'
+                : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
           }`}
         >
           <div className="px-3 h-full flex items-center gap-1.5 hover:bg-indigo-700 rounded-l-full transition-colors cursor-grab active:cursor-grabbing">

@@ -98,7 +98,7 @@ export default function Inspector() {
                       <FieldRenderer
                         key={field.key}
                         field={field}
-                        value={(selectedBlock.data[field.key] as string) || ''}
+                        value={selectedBlock.data[field.key]}
                         onChange={(value) => updateBlock(selectedBlock.id, field.key, value)}
                       />
                     ))}

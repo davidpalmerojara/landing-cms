@@ -1,37 +1,44 @@
 'use client';
 
-import { useRef } from 'react';
 import { BoxSelect, Layers, GripVertical, Layout } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
-import { useAutoScroll } from '@/hooks/useAutoScroll';
 
 export default function LeftSidebar() {
   const leftTab = useEditorStore((s) => s.leftTab);
   const setLeftTab = useEditorStore((s) => s.setLeftTab);
   const page = useEditorStore((s) => s.page);
-  const dragOverIndex = useEditorStore((s) => s.dragOverIndex);
+  const layerDropIndex = useEditorStore((s) => s.layerDropIndex);
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
+  const isDragging = useEditorStore((s) => s.isDragging);
+  const dragSource = useEditorStore((s) => s.dragSource);
   const addBlock = useEditorStore((s) => s.addBlock);
   const selectBlock = useEditorStore((s) => s.selectBlock);
-  const onDragStartGlobal = useEditorStore((s) => s.onDragStartGlobal);
-  const onDragEndGlobal = useEditorStore((s) => s.onDragEndGlobal);
-  const setDragOverIndex = useEditorStore((s) => s.setDragOverIndex);
-  const performDrop = useEditorStore((s) => s.performDrop);
-  const draggedIndex = useEditorStore((s) => s.draggedIndex);
+  const initDrag = useEditorStore((s) => s.initDrag);
 
-  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const availableBlocks = getAvailableBlocks();
-  const { handleAutoScroll, stopAutoScroll } = useAutoScroll();
 
-  const handleLayerDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    performDrop(
-      e.dataTransfer.getData('action'),
-      e.dataTransfer.getData('type'),
-      e.dataTransfer.getData('label'),
-      draggedIndex,
-      dropIndex
+  const handleComponentPointerDown = (
+    e: React.PointerEvent,
+    type: string,
+    label: string
+  ) => {
+    if (e.button !== 0) return;
+    initDrag(
+      { action: 'add', type, label, sourceIndex: null },
+      { x: e.clientX, y: e.clientY }
+    );
+  };
+
+  const handleLayerPointerDown = (
+    e: React.PointerEvent,
+    index: number,
+    block: { type: string; name: string }
+  ) => {
+    if (e.button !== 0) return;
+    initDrag(
+      { action: 'reorder', type: block.type, label: block.name, sourceIndex: index },
+      { x: e.clientX, y: e.clientY }
     );
   };
 
@@ -63,18 +70,8 @@ export default function LeftSidebar() {
       </div>
 
       <div
-        ref={sidebarScrollRef}
+        data-layers-scroll
         className="flex-1 overflow-y-auto custom-scrollbar p-5"
-        onDragOver={(e) => {
-          e.preventDefault();
-          handleAutoScroll(e, sidebarScrollRef);
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setDragOverIndex(null);
-            stopAutoScroll();
-          }
-        }}
       >
         {leftTab === 'components' && (
           <div className="animate-in fade-in duration-200">
@@ -87,14 +84,7 @@ export default function LeftSidebar() {
                 return (
                   <button
                     key={b.type}
-                    draggable
-                    onDragStart={(e) => {
-                      onDragStartGlobal();
-                      e.dataTransfer.setData('action', 'add');
-                      e.dataTransfer.setData('type', b.type);
-                      e.dataTransfer.setData('label', b.label);
-                    }}
-                    onDragEnd={() => { onDragEndGlobal(); stopAutoScroll(); }}
+                    onPointerDown={(e) => handleComponentPointerDown(e, b.type, b.label)}
                     onClick={() => addBlock(b.type, b.label)}
                     className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800/50 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 transition-all group text-left cursor-grab active:cursor-grabbing"
                   >
@@ -113,38 +103,29 @@ export default function LeftSidebar() {
         )}
 
         {leftTab === 'layers' && (
-          <div className="space-y-0.5 animate-in fade-in duration-200">
+          <div data-layers-container className="space-y-0.5 animate-in fade-in duration-200">
             {page.blocks.map((block, index) => {
-              const isDragOver = dragOverIndex === index;
+              const isLayerDragOver = layerDropIndex === index;
               const BlockIcon = blockRegistry[block.type]?.icon || Layout;
+              const isBeingDragged =
+                isDragging &&
+                dragSource?.action === 'reorder' &&
+                dragSource.sourceIndex === index;
+
               return (
                 <div
                   key={block.id}
-                  draggable
-                  onDragStart={(e) => {
-                    onDragStartGlobal(index);
-                    e.dataTransfer.setData('action', 'reorder');
-                    setTimeout(() => {
-                      (e.target as HTMLElement).style.opacity = '0.3';
-                    }, 0);
+                  data-layer-index={index}
+                  onPointerDown={(e) => handleLayerPointerDown(e, index, block)}
+                  onClick={() => {
+                    if (!isDragging) selectBlock(block.id);
                   }}
-                  onDragEnd={(e) => {
-                    onDragEndGlobal();
-                    stopAutoScroll();
-                    (e.target as HTMLElement).style.opacity = '1';
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOverIndex(index);
-                  }}
-                  onDragLeave={() => setDragOverIndex(null)}
-                  onDrop={(e) => handleLayerDrop(e, index)}
-                  onClick={() => selectBlock(block.id)}
-                  className={`flex items-center gap-2.5 p-2 rounded-md cursor-grab active:cursor-grabbing text-sm border transition-all ${
+                  style={{ opacity: isBeingDragged ? 0.3 : 1 }}
+                  className={`flex items-center gap-2.5 p-2 rounded-md cursor-grab active:cursor-grabbing text-sm border transition-all select-none ${
                     selectedBlockId === block.id
                       ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
                       : 'border-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                  } ${isDragOver ? 'border-t-indigo-500 bg-indigo-500/5' : ''}`}
+                  } ${isLayerDragOver ? 'border-t-indigo-500 bg-indigo-500/5' : ''}`}
                 >
                   <GripVertical
                     className={`w-3.5 h-3.5 ${
@@ -160,17 +141,12 @@ export default function LeftSidebar() {
             })}
             {page.blocks.length > 0 && (
               <div
+                data-layer-index={page.blocks.length}
                 className={`h-4 rounded-md transition-colors border-2 border-dashed mt-2 ${
-                  dragOverIndex === page.blocks.length
+                  layerDropIndex === page.blocks.length
                     ? 'border-indigo-500 bg-indigo-500/10'
                     : 'border-transparent'
                 }`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOverIndex(page.blocks.length);
-                }}
-                onDragLeave={() => setDragOverIndex(null)}
-                onDrop={(e) => handleLayerDrop(e, page.blocks.length)}
               />
             )}
           </div>

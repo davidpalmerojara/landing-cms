@@ -11,3 +11,10 @@ export interface InteractionState {
   isSpacePressed: boolean;
   isMiddleClickPanning: boolean;
 }
+
+export interface DragSource {
+  action: 'add' | 'reorder';
+  type: string;
+  label: string;
+  sourceIndex: number | null;
+}

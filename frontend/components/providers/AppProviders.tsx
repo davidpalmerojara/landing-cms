@@ -1,7 +1,6 @@
 'use client';
 
 import GoogleOAuthWrapper from '@/components/GoogleOAuthWrapper';
-import PreferencesDock from '@/components/ui/PreferencesDock';
 import type { AppLocale } from '@/lib/i18n';
 import AppIntlProvider from './AppIntlProvider';
 
@@ -14,7 +13,6 @@ export default function AppProviders({ children, initialLocale }: AppProvidersPr
   return (
     <GoogleOAuthWrapper>
       <AppIntlProvider initialLocale={initialLocale}>
-        <PreferencesDock />
         {children}
       </AppIntlProvider>
     </GoogleOAuthWrapper>

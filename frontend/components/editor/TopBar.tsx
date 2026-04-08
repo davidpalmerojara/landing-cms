@@ -13,6 +13,8 @@ import ShareModal from './ShareModal';
 import { useEditorStore, getUserColor } from '@/store/editor-store';
 import type { CollabUser } from '@/store/editor-store';
 import ThemeSelector from './ThemeSelector';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import { api } from '@/lib/api';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics';
@@ -362,6 +364,10 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
           )}
           <span className="hidden xl:inline">{isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}</span>
         </button>
+        <div className="hidden xl:flex items-center gap-1">
+          <ThemeToggle />
+          <LocaleSwitcher />
+        </div>
         <button
           onClick={handlePublish}
           disabled={isPublishing}

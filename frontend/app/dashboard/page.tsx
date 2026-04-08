@@ -18,6 +18,8 @@ import { pageTemplates, instantiateTemplate } from '@/lib/templates';
 import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
 import AIGenerateModal from '@/components/dashboard/AIGenerateModal';
 import PagePreviewThumbnail from '@/components/dashboard/PagePreviewThumbnail';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 
 export default function DashboardPage() {
   const t = useTranslations();
@@ -289,6 +291,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-1">
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </div>
           <button
             className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
             aria-label={t('dashboard.notifications')}

@@ -1,15 +1,17 @@
 interface ToggleFieldProps {
+  id?: string;
   value: boolean;
   onChange: (value: boolean) => void;
 }
 
-export default function ToggleField({ value, onChange }: ToggleFieldProps) {
+export default function ToggleField({ id, value, onChange }: ToggleFieldProps) {
   return (
     <button
+      id={id}
       type="button"
       onClick={() => onChange(!value)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        value ? 'bg-indigo-500' : 'bg-zinc-700'
+        value ? 'bg-primary' : 'bg-default'
       }`}
     >
       <span

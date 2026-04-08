@@ -21,6 +21,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # env files
+.env
+.env.local
+.env.production
+*.env
 .env*
 
 # vercel
@@ -32,3 +36,12 @@ next-env.d.ts
 
 # testing
 coverage/
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*.egg-info/
+db.sqlite3
+media/
+*.log
+venv/

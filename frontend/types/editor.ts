@@ -17,4 +17,5 @@ export interface DragSource {
   type: string;
   label: string;
   sourceIndex: number | null;
+  initialData?: Record<string, unknown>;
 }

@@ -26,7 +26,7 @@ function LockIcon(props: React.SVGProps<SVGSVGElement>) {
 function getCanvasWidthClass(deviceMode: string) {
   switch (deviceMode) {
     case 'mobile':
-      return 'w-[375px] min-w-[375px]';
+      return 'max-w-[375px] w-full';
     case 'tablet':
       return 'w-[768px] min-w-[768px]';
     default:
@@ -45,16 +45,16 @@ const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
     return (
       <div
         ref={ref}
-        className={`${getCanvasWidthClass(deviceMode)} bg-white min-h-[800px] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-zinc-800/50 flex flex-col mb-20 overflow-hidden`}
+        className={`${getCanvasWidthClass(deviceMode)} bg-white min-h-[800px] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-default/15 flex flex-col mb-20 overflow-hidden`}
       >
         {/* Chrome bar */}
-        <div className="h-10 bg-zinc-950/95 border-b border-zinc-800/50 flex items-center px-4 gap-4 w-full shrink-0">
+        <div className="h-10 bg-surface-elevated/95 border-b border-default/15 flex items-center px-4 gap-4 w-full shrink-0">
           <div className="flex gap-2">
             <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors" />
             <div className="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-500 transition-colors" />
             <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors" />
           </div>
-          <div className="mx-auto bg-zinc-900/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-zinc-500 border border-zinc-800/50 shadow-inner">
+          <div className="mx-auto bg-surface-card\/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-muted border border-default/10 shadow-inner">
             <LockIcon className="w-3 h-3 mr-2 opacity-50" /> tu-proyecto.dev
           </div>
           <div className="w-[52px]" />

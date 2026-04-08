@@ -1,30 +1,60 @@
-import type { BlockProps } from '@/types/blocks';
+'use client';
 
-export default function CtaBlock({ data, isMobile, isPreviewMode }: BlockProps) {
+import { useTranslations } from 'next-intl';
+import type { BlockProps } from '@/types/blocks';
+import EditableText from './EditableText';
+
+export default function CtaBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+  const t = useTranslations('blocks');
+  const subtitle = data.subtitle as string;
+
   return (
-    <div
-      className={`bg-indigo-600 text-center transition-all ${
+    <section
+      aria-label={t('ctaAria')}
+      className={`text-center transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      style={{ backgroundColor: 'var(--theme-primary)' }}
     >
       <div className="max-w-3xl mx-auto">
-        <h2
-          className={`font-bold text-white mb-8 leading-tight transition-all ${
+        <EditableText
+          blockId={blockId}
+          fieldKey="title"
+          value={data.title as string}
+          as="h2"
+          className={`text-white mb-4 leading-tight transition-all ${
             isMobile ? 'text-3xl' : 'text-4xl md:text-5xl'
           }`}
-        >
-          {data.title as string}
-        </h2>
-        <button
-          className={`bg-white text-indigo-600 rounded-full font-bold shadow-xl shadow-black/10 transition-transform ${
-            isMobile
-              ? 'w-full py-4 text-base'
-              : 'px-10 py-4 text-lg hover:scale-105'
-          }`}
-        >
-          {data.buttonText as string}
-        </button>
+          style={{
+            fontFamily: 'var(--bp-font-heading)',
+            fontWeight: 'var(--bp-font-weight-heading)' as unknown as number,
+          }}
+        />
+        {subtitle && (
+          <EditableText
+            blockId={blockId}
+            fieldKey="subtitle"
+            value={subtitle}
+            as="p"
+            multiline
+            className={`text-white/80 mb-8 leading-relaxed mx-auto max-w-xl ${
+              isMobile ? 'text-base' : 'text-xl'
+            }`}
+          />
+        )}
+        <div className={subtitle ? '' : 'mt-8'}>
+          <button
+            className={`rounded-full font-bold shadow-xl shadow-black/10 transition-transform ${
+              isMobile
+                ? 'w-full py-4 text-base'
+                : 'px-10 py-4 text-lg hover:scale-105'
+            }`}
+            style={{ backgroundColor: 'var(--theme-bg)', color: 'var(--theme-primary)' }}
+          >
+            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

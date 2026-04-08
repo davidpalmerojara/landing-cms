@@ -1,9 +1,11 @@
 'use client';
 
 import { Layers } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 
 export default function DragOverlay() {
+  const t = useTranslations('editor');
   const isDragging = useEditorStore((s) => s.isDragging);
   const dragSource = useEditorStore((s) => s.dragSource);
   const dragPosition = useEditorStore((s) => s.dragPosition);
@@ -18,11 +20,11 @@ export default function DragOverlay() {
         top: dragPosition.y + 16,
       }}
     >
-      <div className="bg-indigo-600 text-white px-4 py-2 rounded-full shadow-2xl text-[12px] font-medium flex items-center gap-2 whitespace-nowrap">
+      <div className="text-white font-bold px-4 py-2 rounded-full shadow-2xl text-[12px] flex items-center gap-2 whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}>
         <Layers className="w-4 h-4 opacity-70" />
         <span>
           {dragSource.action === 'reorder'
-            ? `Moviendo ${dragSource.label}`
+            ? t('movingBlock', { name: dragSource.label })
             : dragSource.label}
         </span>
       </div>

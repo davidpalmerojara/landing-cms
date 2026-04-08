@@ -4,6 +4,7 @@ import TextAreaField from './TextAreaField';
 import SelectField from './SelectField';
 import ColorField from './ColorField';
 import ToggleField from './ToggleField';
+import ImageField from './ImageField';
 
 interface FieldRendererProps {
   field: FieldDefinition;
@@ -12,30 +13,35 @@ interface FieldRendererProps {
 }
 
 export default function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
+  const fieldId = `field-${field.key}`;
+
   const renderField = () => {
     switch (field.type) {
       case 'textarea':
-        return <TextAreaField value={(value as string) || ''} onChange={onChange} />;
+        return <TextAreaField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
       case 'select':
         return (
           <SelectField
+            id={fieldId}
             value={(value as string) || ''}
             options={field.options || []}
             onChange={onChange}
           />
         );
       case 'color':
-        return <ColorField value={(value as string) || '#ffffff'} onChange={onChange} />;
+        return <ColorField id={fieldId} value={(value as string) || '#ffffff'} onChange={onChange} />;
       case 'toggle':
-        return <ToggleField value={!!value} onChange={onChange} />;
+        return <ToggleField id={fieldId} value={!!value} onChange={onChange} />;
+      case 'image':
+        return <ImageField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
       default:
-        return <TextField value={(value as string) || ''} onChange={onChange} />;
+        return <TextField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
     }
   };
 
   return (
     <div className={`${field.type === 'toggle' ? 'flex items-center justify-between' : 'space-y-2.5'}`}>
-      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+      <label htmlFor={fieldId} className="text-[10px] font-bold text-muted uppercase tracking-widest">
         {field.label}
       </label>
       {renderField()}

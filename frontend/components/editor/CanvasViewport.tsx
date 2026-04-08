@@ -1,9 +1,15 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
+import { Layout } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
-import { blockRegistry } from '@/lib/block-registry';
+import type { CursorPosition } from '@/store/editor-store';
+import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
+import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
+import { getThemeById } from '@/lib/themes';
+import { defaultDesignTokens, tokensToCssVars, tokensToThemeVars } from '@/lib/design-tokens';
 import BrowserFrame from './BrowserFrame';
 import BlockWrapper from './BlockWrapper';
 import FloatingViewportControls from './FloatingViewportControls';
@@ -14,7 +20,71 @@ function getCanvasWidthNumber(deviceMode: string) {
   return 1024;
 }
 
-export default function CanvasViewport() {
+const CURSOR_THROTTLE = 50; // ms between cursor sends
+
+function RemoteCursors({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const cursorPositions = useEditorStore((s) => s.cursorPositions);
+  const viewportState = useEditorStore((s) => s.viewportState);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const cursors = Object.values(cursorPositions).filter(
+    (c) => now - c.timestamp < 10_000 // Hide stale cursors (10s)
+  );
+
+  if (cursors.length === 0) return null;
+
+  return (
+    <>
+      {cursors.map((cursor) => {
+        // cursor.x/y are relative to the BrowserFrame content area
+        // Convert to viewport-space: apply zoom + pan
+        const screenX = cursor.x * viewportState.zoom + viewportState.x;
+        const screenY = cursor.y * viewportState.zoom + viewportState.y;
+
+        return (
+          <div
+            key={cursor.userId}
+            className="absolute pointer-events-none z-50 transition-all duration-100 ease-out"
+            style={{ left: screenX, top: screenY }}
+          >
+            {/* Cursor arrow SVG */}
+            <svg
+              width="16"
+              height="20"
+              viewBox="0 0 16 20"
+              fill="none"
+              style={{ filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.5))` }}
+            >
+              <path
+                d="M0.5 0.5L15.5 11.5L8 12.5L5 19.5L0.5 0.5Z"
+                fill={cursor.color}
+                stroke="white"
+                strokeWidth="1"
+              />
+            </svg>
+            {/* Username label */}
+            <div
+              className="absolute left-4 top-4 text-[10px] font-medium text-white px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-lg"
+              style={{ backgroundColor: cursor.color }}
+            >
+              {cursor.username}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: number, y: number) => void }) {
+  const t = useTranslations();
   const page = useEditorStore((s) => s.page);
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
@@ -23,12 +93,54 @@ export default function CanvasViewport() {
   const canvasDropIndex = useEditorStore((s) => s.canvasDropIndex);
   const isDragging = useEditorStore((s) => s.isDragging);
   const selectBlock = useEditorStore((s) => s.selectBlock);
+  const addBlock = useEditorStore((s) => s.addBlock);
   const setViewportState = useEditorStore((s) => s.setViewportState);
   const setInteractionState = useEditorStore((s) => s.setInteractionState);
+
+  const tokens = page.designTokens || defaultDesignTokens;
+  const theme = useMemo(() => getThemeById(page.themeId || 'default', page.customTheme), [page.themeId, page.customTheme]);
+  const themeVars = useMemo(() => {
+    // Design tokens generate both --bp-* vars and backward-compat --theme-* vars
+    const bpVars = tokensToCssVars(tokens);
+    const legacyVars = tokensToThemeVars(tokens);
+    // If no custom design tokens, fall back to the old theme system for legacy vars
+    const fallbackThemeVars = page.designTokens ? {} : {
+      '--theme-primary': theme.colors.primary,
+      '--theme-primary-hover': theme.colors.primaryHover,
+      '--theme-secondary': theme.colors.secondary,
+      '--theme-bg': theme.colors.background,
+      '--theme-surface': theme.colors.surface,
+      '--theme-text': theme.colors.text,
+      '--theme-text-muted': theme.colors.textMuted,
+      '--theme-border': theme.colors.border,
+      '--theme-accent': theme.colors.accent,
+    };
+    return {
+      ...bpVars,
+      ...(page.designTokens ? legacyVars : fallbackThemeVars),
+    } as React.CSSProperties;
+  }, [tokens, theme, page.designTokens]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const browserFrameRef = useRef<HTMLDivElement>(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
+  const lastCursorSendRef = useRef(0);
+
+  // Track mouse and send cursor position to collaborators
+  const handleCursorTracking = useCallback((e: React.MouseEvent) => {
+    if (!onCursorMove) return;
+    const now = Date.now();
+    if (now - lastCursorSendRef.current < CURSOR_THROTTLE) return;
+    lastCursorSendRef.current = now;
+
+    const vs = useEditorStore.getState().viewportState;
+    // Convert screen coords to canvas-relative coords (before zoom/pan)
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const canvasX = (e.clientX - rect.left - vs.x) / vs.zoom;
+    const canvasY = (e.clientY - rect.top - vs.y) / vs.zoom;
+    onCursorMove(canvasX, canvasY);
+  }, [onCursorMove]);
 
   // --- Center canvas ---
   const handleCenterCanvas = useCallback(() => {
@@ -135,14 +247,14 @@ export default function CanvasViewport() {
     <div
       ref={viewportRef}
       data-canvas-viewport
-      className={`flex-1 overflow-hidden relative bg-zinc-950 ${cursorClass}`}
+      className={`flex-1 overflow-hidden relative bg-surface ${cursorClass}`}
       style={{
-        backgroundImage: 'radial-gradient(#27272a 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)',
         backgroundSize: `${24 * viewportState.zoom}px ${24 * viewportState.zoom}px`,
         backgroundPosition: `${viewportState.x}px ${viewportState.y}px`,
       }}
       onMouseDown={handlePanStart}
-      onMouseMove={handlePanMove}
+      onMouseMove={(e) => { handlePanMove(e); handleCursorTracking(e); }}
       onMouseUp={handlePanEnd}
       onMouseLeave={handlePanEnd}
       onClick={() => {
@@ -159,45 +271,81 @@ export default function CanvasViewport() {
         }}
       >
         <BrowserFrame ref={browserFrameRef}>
+          <div style={themeVars}>
           {page.blocks.map((block, index) => {
             const BlockContentComponent = blockRegistry[block.type]?.component;
             if (!BlockContentComponent) return null;
 
+            const s = resolveStyles(block, deviceMode);
+            const blockStyle: React.CSSProperties = {
+              ...(s.paddingTop ? { paddingTop: s.paddingTop } : {}),
+              ...(s.paddingBottom ? { paddingBottom: s.paddingBottom } : {}),
+              ...(s.paddingLeft ? { paddingLeft: s.paddingLeft } : {}),
+              ...(s.paddingRight ? { paddingRight: s.paddingRight } : {}),
+              ...(s.marginTop ? { marginTop: s.marginTop } : {}),
+              ...(s.marginBottom ? { marginBottom: s.marginBottom } : {}),
+              ...(s.bgColor ? { backgroundColor: s.bgColor, '--theme-bg': s.bgColor } as React.CSSProperties : {}),
+              ...(s.borderRadius ? { borderRadius: s.borderRadius } : {}),
+              ...(block.type !== 'navbar' ? { overflow: 'hidden' } : {}),
+            };
+
             return (
               <BlockWrapper key={block.id} block={block} index={index}>
-                <BlockContentComponent
-                  data={block.data}
-                  isMobile={deviceMode === 'mobile'}
-                  isTablet={deviceMode === 'tablet'}
-                  isPreviewMode={isPreviewMode}
-                />
+                <div style={blockStyle}>
+                  <BlockContentComponent
+                    blockId={block.id}
+                    data={block.data}
+                    isMobile={deviceMode === 'mobile'}
+                    isTablet={deviceMode === 'tablet'}
+                    isPreviewMode={isPreviewMode}
+                  />
+                </div>
               </BlockWrapper>
             );
           })}
 
           {page.blocks.length === 0 && (
-            <div className="flex-1 flex flex-col items-center justify-center text-zinc-300 pointer-events-none mt-20">
-              <div className="w-20 h-20 rounded-3xl bg-zinc-100 flex items-center justify-center mb-6">
-                <Plus className="w-8 h-8 text-zinc-400" />
-              </div>
-              <p className="text-xl font-semibold text-zinc-800">Lienzo en blanco</p>
-              <p className="text-sm text-zinc-500 mt-2">
-                {isPreviewMode
-                  ? 'Desactiva el modo preview para editar.'
-                  : 'Arrastra componentes desde la izquierda'}
+            <div className="flex flex-col items-center justify-center py-32 pointer-events-auto">
+              <Layout className="w-12 h-12 text-muted mb-4" />
+              <p className="text-secondary font-medium mb-1">{t('mobile.emptyTitle')}</p>
+              <p className="text-muted text-sm mb-6 text-center max-w-xs">
+                {t('editor.dragHint')}
               </p>
+              {!isPreviewMode && (
+                <div className="flex gap-2">
+                  {(['hero', 'features', 'cta'] as const).map((type) => {
+                    const entry = getAvailableBlocks().find((b) => b.type === type);
+                    if (!entry) return null;
+                    const translatedLabel = getTranslatedBlockLabel(entry.type, t, entry.label);
+                    return (
+                      <button
+                        key={type}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addBlock(entry.type, translatedLabel, null, entry.initialData);
+                        }}
+                        className="bg-surface-card hover:bg-[#333] text-secondary text-xs px-3 py-1.5 rounded-full transition-colors"
+                      >
+                        {translatedLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* Canvas-level drop indicator when dropping at end */}
           {canvasDropIndex === page.blocks.length && page.blocks.length > 0 && (
-            <div className="h-[2px] bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)] relative">
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,1)]" />
+            <div className="h-[2px] bg-primary shadow-[0_0_12px_rgba(0,207,252,0.8)] relative">
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary rounded-full shadow-[0_0_10px_rgba(0,207,252,1)]" />
             </div>
           )}
+          </div>
         </BrowserFrame>
       </div>
 
+      <RemoteCursors containerRef={viewportRef} />
       <FloatingViewportControls onCenterCanvas={handleCenterCanvas} />
     </div>
   );

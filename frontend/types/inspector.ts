@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'textarea' | 'select' | 'color' | 'toggle';
+export type FieldType = 'text' | 'textarea' | 'select' | 'color' | 'toggle' | 'image';
 
 export interface FieldDefinition {
   key: string;

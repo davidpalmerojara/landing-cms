@@ -85,7 +85,7 @@ export function useDragManager() {
     sidebarContainer: null as HTMLElement | null,
   });
 
-  const scrollLoop = useCallback(() => {
+  const scrollLoop = useCallback(function scrollLoop() {
     const ss = scrollStateRef.current;
     let needsLoop = false;
 

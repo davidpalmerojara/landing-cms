@@ -1,5 +1,6 @@
 import { blockRegistry } from './block-registry';
 import type { Block } from '@/types/blocks';
+import { defaultBlockStyles } from '@/types/blocks';
 
 export function generateId(prefix = 'blk') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -15,5 +16,6 @@ export function createBlock(type: string): Block {
     type,
     name: config.label,
     data: { ...config.initialData },
+    styles: { ...defaultBlockStyles },
   };
 }

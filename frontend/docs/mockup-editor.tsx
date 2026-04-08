@@ -69,7 +69,7 @@ const TestimonialsBlock = ({ data, isMobile, isPreviewMode }) => (
         <div key={num} className={`bg-zinc-50 p-8 rounded-3xl border border-zinc-100 relative hover:shadow-md transition-shadow`}>
           <Quote className="w-8 h-8 text-indigo-200 mb-4" />
           <p className={`text-zinc-600 mb-8 leading-relaxed italic ${isMobile ? 'text-base' : 'text-lg'}`}>
-            "{data[`quote${num}`]}"
+            &quot;{data[`quote${num}`]}&quot;
           </p>
           <div className="flex items-center gap-4 mt-auto">
             <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl shrink-0">
@@ -615,7 +615,7 @@ export default function App() {
           const cy = e.clientY - rect.top;
           setViewportState(prev => {
             const delta = e.deltaY > 0 ? -0.1 : 0.1;
-            let newZoom = Math.min(Math.max(Math.round((prev.zoom + delta) * 10) / 10, 0.5), 2);
+            const newZoom = Math.min(Math.max(Math.round((prev.zoom + delta) * 10) / 10, 0.5), 2);
             if (newZoom === prev.zoom) return prev;
             const scaleRatio = newZoom / prev.zoom;
             const newX = cx - (cx - prev.x) * scaleRatio;
@@ -661,7 +661,7 @@ export default function App() {
         const parsed = JSON.parse(savedPage);
         if (parsed && parsed.blocks) return parsed;
       }
-    } catch (e) { console.error("Error", e); }
+    } catch {}
     return getDefaultPage();
   });
 
@@ -724,7 +724,7 @@ export default function App() {
       if (removedIndex === -1) return prev;
       const remainingBlocks = prev.blocks.filter(b => b.id !== id);
       
-      if (stateRef.current.selectedBlockId === id) {
+      if (selectedBlockId === id) {
         if (remainingBlocks.length > 0) {
            setSelectedBlockId((remainingBlocks[removedIndex] || remainingBlocks[removedIndex - 1]).id);
         } else {
@@ -733,7 +733,7 @@ export default function App() {
       }
       return { ...prev, blocks: remainingBlocks };
     });
-  }, [setPageWithHistory]);
+  }, [selectedBlockId, setPageWithHistory]);
 
   const handleDuplicateBlock = useCallback((id) => {
     const newId = generateId();
@@ -809,9 +809,6 @@ export default function App() {
   };
 
   // --- KEYBOARD SHORTCUTS INTERCEPTOR ---
-  const stateRef = useRef({ page, selectedBlockId });
-  useEffect(() => { stateRef.current = { page, selectedBlockId }; }, [page, selectedBlockId]);
-
   useEffect(() => {
     if (isPreviewMode) return;
     const handleGlobalKeyDown = (e) => {
@@ -852,9 +849,8 @@ export default function App() {
         }
         if (e.key.toLowerCase() === 'c') {
           e.preventDefault();
-          const { page: currPage, selectedBlockId: currSelId } = stateRef.current;
-          if (currSelId) {
-            const blockToCopy = currPage.blocks.find(b => b.id === currSelId);
+          if (selectedBlockId) {
+            const blockToCopy = page.blocks.find(b => b.id === selectedBlockId);
             if (blockToCopy) clipboardRef.current = JSON.parse(JSON.stringify(blockToCopy));
           }
           return;
@@ -864,12 +860,11 @@ export default function App() {
           if (!clipboardRef.current) return;
           const newId = generateId();
           setPageWithHistory(prev => {
-            const { selectedBlockId: currSelId } = stateRef.current;
             const newBlock = JSON.parse(JSON.stringify(clipboardRef.current));
             newBlock.id = newId;
             const newBlocks = [...prev.blocks];
-            if (currSelId) {
-              const index = newBlocks.findIndex(b => b.id === currSelId);
+            if (selectedBlockId) {
+              const index = newBlocks.findIndex(b => b.id === selectedBlockId);
               if (index !== -1) newBlocks.splice(index + 1, 0, newBlock);
               else newBlocks.push(newBlock);
             } else {
@@ -883,7 +878,7 @@ export default function App() {
       }
       
       if (!isTyping && (e.key === 'Delete' || e.key === 'Backspace')) {
-        const { selectedBlockId: currSelId } = stateRef.current;
+        const currSelId = selectedBlockId;
         if (currSelId) {
           e.preventDefault();
           handleRemoveBlock(currSelId);
@@ -893,7 +888,7 @@ export default function App() {
     
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isPreviewMode, handleRemoveBlock, setPageWithHistory]);
+  }, [isPreviewMode, handleRemoveBlock, page, selectedBlockId, setPageWithHistory]);
 
   const getCanvasWidthClass = () => {
     switch(deviceMode) {

@@ -1,51 +1,84 @@
-import { Send } from 'lucide-react';
-import type { BlockProps } from '@/types/blocks';
+'use client';
 
-export default function ContactBlock({ data, isMobile, isPreviewMode }: BlockProps) {
+import { Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import type { BlockProps } from '@/types/blocks';
+import EditableText from './EditableText';
+
+export default function ContactBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+  const t = useTranslations('blocks');
   return (
-    <div
-      className={`bg-zinc-50 transition-all ${
+    <section
+      aria-label={t('contactAria')}
+      className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      style={{ backgroundColor: 'var(--theme-surface)' }}
     >
       <div className="max-w-xl mx-auto">
-        <h2
-          className={`font-bold text-center text-zinc-900 mb-4 ${
+        <EditableText
+          blockId={blockId}
+          fieldKey="title"
+          value={data.title as string}
+          as="h2"
+          className={`text-center mb-4 ${
             isMobile ? 'text-3xl' : 'text-4xl'
           }`}
-        >
-          {data.title as string}
-        </h2>
-        <p className="text-zinc-500 text-center mb-10">
-          {data.subtitle as string}
-        </p>
+          style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
+        />
+        <EditableText
+          blockId={blockId}
+          fieldKey="subtitle"
+          value={data.subtitle as string}
+          as="p"
+          className="text-center mb-10"
+          style={{ color: 'var(--theme-text-muted)' }}
+        />
 
         <div className="space-y-4">
           <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-2 gap-4'}`}>
-            <input
-              type="text"
-              placeholder="Nombre"
+            <div>
+              <label htmlFor={`${blockId}-name`} className="sr-only">{t('contactName')}</label>
+              <input
+                id={`${blockId}-name`}
+                type="text"
+                placeholder={(data.namePlaceholder as string) || t('contactName')}
+                readOnly
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+              />
+            </div>
+            <div>
+              <label htmlFor={`${blockId}-email`} className="sr-only">{t('contactEmail')}</label>
+              <input
+                id={`${blockId}-email`}
+                type="email"
+                placeholder={(data.emailPlaceholder as string) || t('contactEmail')}
+                readOnly
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor={`${blockId}-message`} className="sr-only">{t('contactMessage')}</label>
+            <textarea
+              id={`${blockId}-message`}
+              placeholder={(data.messagePlaceholder as string) || t('contactMessagePlaceholder')}
               readOnly
-              className="w-full px-4 py-3 rounded-lg bg-white border border-zinc-200 text-zinc-900 placeholder-zinc-400 text-sm"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              readOnly
-              className="w-full px-4 py-3 rounded-lg bg-white border border-zinc-200 text-zinc-900 placeholder-zinc-400 text-sm"
+              className="w-full px-4 py-3 rounded-lg text-sm h-32 resize-none"
+              style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
             />
           </div>
-          <textarea
-            placeholder="Tu mensaje..."
-            readOnly
-            className="w-full px-4 py-3 rounded-lg bg-white border border-zinc-200 text-zinc-900 placeholder-zinc-400 text-sm h-32 resize-none"
-          />
-          <button className="w-full py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
+          <button
+            className="w-full py-3 text-white rounded-lg font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2"
+            style={{ backgroundColor: 'var(--theme-primary)' }}
+          >
             <Send className="w-4 h-4" />
-            {data.buttonText as string}
+            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

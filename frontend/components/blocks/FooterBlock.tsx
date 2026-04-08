@@ -1,12 +1,19 @@
-import { Sparkles } from 'lucide-react';
-import type { BlockProps } from '@/types/blocks';
+'use client';
 
-export default function FooterBlock({ data, isMobile, isPreviewMode }: BlockProps) {
+import { Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import type { BlockProps } from '@/types/blocks';
+import EditableText from './EditableText';
+
+export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+  const t = useTranslations('blocks');
   return (
     <footer
-      className={`bg-zinc-950 text-zinc-400 transition-all ${
+      aria-label={t('footerAria')}
+      className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } ${isMobile ? 'py-12 px-6' : 'py-16 px-8'}`}
+      style={{ backgroundColor: 'var(--theme-text)', color: 'var(--theme-text-muted)' }}
     >
       <div
         className={`max-w-5xl mx-auto flex transition-all ${
@@ -15,35 +22,61 @@ export default function FooterBlock({ data, isMobile, isPreviewMode }: BlockProp
       >
         <div className={isMobile ? 'w-full' : 'max-w-sm'}>
           <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-            <div className="w-6 h-6 rounded bg-indigo-500 flex items-center justify-center text-white">
+            <div
+              className="w-6 h-6 rounded flex items-center justify-center text-white"
+              style={{ backgroundColor: 'var(--theme-primary)' }}
+            >
               <Sparkles className="w-3 h-3" />
             </div>
-            <h3 className="text-xl font-bold text-white tracking-wide">
-              {data.brandName as string}
-            </h3>
+            <EditableText
+              blockId={blockId}
+              fieldKey="brandName"
+              value={data.brandName as string}
+              as="h3"
+              className="text-xl font-bold tracking-wide"
+              style={{ color: 'var(--theme-bg)' }}
+            />
           </div>
-          <p className="text-zinc-500 leading-relaxed text-sm">
-            {data.description as string}
-          </p>
+          <EditableText
+            blockId={blockId}
+            fieldKey="description"
+            value={data.description as string}
+            as="p"
+            multiline
+            className="leading-relaxed text-sm"
+            style={{ color: 'var(--theme-text-muted)' }}
+          />
         </div>
         <div
           className={`flex gap-6 ${
             isMobile ? 'justify-center w-full flex-wrap' : ''
           }`}
         >
-          <span className="hover:text-white cursor-pointer transition-colors text-sm font-medium">
-            {data.link1Label as string}
-          </span>
-          <span className="hover:text-white cursor-pointer transition-colors text-sm font-medium">
-            {data.link2Label as string}
-          </span>
-          <span className="hover:text-white cursor-pointer transition-colors text-sm font-medium">
-            {data.link3Label as string}
-          </span>
+          <EditableText
+            blockId={blockId}
+            fieldKey="link1Label"
+            value={data.link1Label as string}
+            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
+          />
+          <EditableText
+            blockId={blockId}
+            fieldKey="link2Label"
+            value={data.link2Label as string}
+            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
+          />
+          <EditableText
+            blockId={blockId}
+            fieldKey="link3Label"
+            value={data.link3Label as string}
+            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
+          />
         </div>
       </div>
-      <div className="max-w-5xl mx-auto pt-8 border-t border-zinc-800/50 text-sm text-center text-zinc-600">
-        {data.copyright as string}
+      <div
+        className="max-w-5xl mx-auto pt-8 border-t text-sm text-center"
+        style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}
+      >
+        <EditableText blockId={blockId} fieldKey="copyright" value={data.copyright as string} />
       </div>
     </footer>
   );

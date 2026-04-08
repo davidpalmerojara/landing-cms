@@ -51,7 +51,7 @@ export function useEditorShortcuts() {
         const { selectedBlockId } = useEditorStore.getState();
         if (selectedBlockId) {
           e.preventDefault();
-          useEditorStore.getState().deleteBlock(selectedBlockId);
+          useEditorStore.getState().requestDeleteBlock(selectedBlockId);
         }
       }
     };

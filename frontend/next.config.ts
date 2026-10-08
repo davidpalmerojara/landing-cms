@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The repo's own AGENTS.md (at the root) is the source of truth for agents;
+  // don't let `next dev` generate a second one in frontend/.
+  agentRules: false,
   async headers() {
     return [
       {

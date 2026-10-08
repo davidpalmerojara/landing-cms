@@ -30,7 +30,7 @@ def mock_plan():
 @pytest.mark.django_db
 class TestAIGenerationViews:
     @patch(GET_PLAN, return_value=mock_plan())
-    @patch(RESOLVE_PROVIDER, return_value=('anthropic', 'fake-key'))
+    @patch(RESOLVE_PROVIDER, return_value=('anthropic', 'fake-key', True))
     @patch(CALL_AI)
     def test_generate_page_creates_blocks(self, mock_ai, mock_provider, mock_plan_patch, auth_client, user):
         page = PageFactory(owner=user)
@@ -91,7 +91,7 @@ class TestAIGenerationViews:
         assert 'language' in resp.data['details']
 
     @patch(GET_PLAN, return_value=mock_plan())
-    @patch(RESOLVE_PROVIDER, return_value=('anthropic', 'fake-key'))
+    @patch(RESOLVE_PROVIDER, return_value=('anthropic', 'fake-key', True))
     @patch(CALL_AI)
     def test_edit_block_with_ai_updates_block(self, mock_ai, mock_provider, mock_plan_patch, auth_client, user):
         page = PageFactory(owner=user)
@@ -159,3 +159,62 @@ class TestAIGenerationViews:
         )
 
         assert resp.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+
+def free_plan():
+    return SimpleNamespace(**{**vars(mock_plan()), 'name': 'free', 'max_ai_generations_per_hour': 0})
+
+
+HERO_JSON = '[{"type":"hero","data":{"title":"Hola","subtitle":"Mundo","buttonText":"Empezar","backgroundImage":"","alignment":"center"}}]'
+
+
+@pytest.mark.django_db
+class TestOwnApiKey:
+    @patch(GET_PLAN, return_value=free_plan())
+    @patch(CALL_AI)
+    def test_own_key_works_on_a_plan_without_ai(self, mock_ai, _plan, auth_client, user, settings):
+        settings.GOOGLE_AI_KEY = ''
+        settings.ANTHROPIC_API_KEY = ''
+        page = PageFactory(owner=user)
+        mock_ai.return_value = SimpleNamespace(text=HERO_JSON, tokens_in=10, tokens_out=20)
+
+        resp = auth_client.post(f'/api/pages/{page.id}/generate/', {
+            'prompt': 'Cafetería', 'provider': 'gemini', 'api_key': 'user-own-key-123',
+        }, format='json')
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert mock_ai.call_args.args[2:] == ('gemini', 'user-own-key-123')
+        log = AIGenerationLog.objects.get(user=user)
+        assert log.used_own_key is True
+
+    @patch(GET_PLAN, return_value=free_plan())
+    @patch(CALL_AI)
+    def test_server_key_is_still_limited_by_the_plan(self, mock_ai, _plan, auth_client, user, settings):
+        settings.GOOGLE_AI_KEY = 'server-key'
+        page = PageFactory(owner=user)
+
+        resp = auth_client.post(f'/api/pages/{page.id}/generate/', {'prompt': 'Cafetería'}, format='json')
+
+        assert resp.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+        mock_ai.assert_not_called()
+
+    @patch(GET_PLAN, return_value=free_plan())
+    @patch(CALL_AI)
+    def test_own_key_is_never_stored(self, mock_ai, _plan, auth_client, user):
+        page = PageFactory(owner=user)
+        mock_ai.return_value = SimpleNamespace(text=HERO_JSON, tokens_in=1, tokens_out=1)
+
+        auth_client.post(f'/api/pages/{page.id}/generate/', {
+            'prompt': 'Cafetería', 'provider': 'anthropic', 'api_key': 'sk-secret-should-not-persist',
+        }, format='json')
+
+        from django.db import connection
+        with connection.cursor() as cursor:
+            for table in ('accounts_user', 'ai_generation_aigenerationlog'):
+                cursor.execute(f'SELECT * FROM {table}')
+                assert 'sk-secret-should-not-persist' not in repr(cursor.fetchall())
+
+    def test_api_key_requires_a_provider(self, auth_client, user):
+        page = PageFactory(owner=user)
+        resp = auth_client.post(f'/api/pages/{page.id}/generate/', {'prompt': 'x', 'api_key': 'k'}, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST

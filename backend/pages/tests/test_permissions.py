@@ -291,7 +291,7 @@ class TestAssetPermissions:
 @pytest.mark.django_db
 class TestAIPermissions:
     @patch(GET_PLAN, return_value=_mock_plan())
-    @patch(RESOLVE_PROVIDER, return_value=('gemini', 'fake-key'))
+    @patch(RESOLVE_PROVIDER, return_value=('gemini', 'fake-key', True))
     @patch(CALL_AI)
     def test_owner_can_generate_and_edit_block(self, mock_ai, mock_provider, mock_plan, auth_client, user):
         generated_page = PageFactory(owner=user)

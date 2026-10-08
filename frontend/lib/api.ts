@@ -250,16 +250,8 @@ export const api = {
   },
 
   ai: {
-    getSettings: () =>
-      request<{ ai_provider: string; ai_api_key: string; has_key: boolean }>('/auth/ai-settings/'),
-
-    saveSettings: (data: { ai_provider: string; ai_api_key: string }) =>
-      request<{ ai_provider: string; has_key: boolean; message: string }>('/auth/ai-settings/', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }),
-
-    generate: (pageId: string, data: { prompt: string; tone?: string; language?: 'es' | 'en' }) =>
+    /** provider/api_key: the user's own key, used for this request only (never stored). */
+    generate: (pageId: string, data: { prompt: string; tone?: string; language?: 'es' | 'en'; provider?: 'gemini' | 'anthropic'; api_key?: string }) =>
       request<{
         page_id: string;
         block_count: number;

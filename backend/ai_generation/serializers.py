@@ -14,7 +14,19 @@ LANGUAGE_CHOICES = (
 )
 
 
-class GeneratePageSerializer(serializers.Serializer):
+class OwnKeyMixin(serializers.Serializer):
+    """Optional user API key, used for this request only and never stored."""
+    provider = serializers.ChoiceField(choices=[('gemini', 'Gemini'), ('anthropic', 'Anthropic')], required=False)
+    api_key = serializers.CharField(required=False, allow_blank=True, max_length=255, trim_whitespace=True, write_only=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs.get('api_key') and not attrs.get('provider'):
+            raise serializers.ValidationError({'provider': 'Indica el proveedor de tu clave.'})
+        return attrs
+
+
+class GeneratePageSerializer(OwnKeyMixin, serializers.Serializer):
     prompt = serializers.CharField(max_length=2000, trim_whitespace=True)
     tone = serializers.ChoiceField(
         choices=TONE_CHOICES,
@@ -29,5 +41,5 @@ class GeneratePageSerializer(serializers.Serializer):
     )
 
 
-class EditBlockSerializer(serializers.Serializer):
+class EditBlockSerializer(OwnKeyMixin, serializers.Serializer):
     instruction = serializers.CharField(max_length=1000, trim_whitespace=True)

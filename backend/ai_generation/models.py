@@ -17,6 +17,8 @@ class AIGenerationLog(models.Model):
         on_delete=models.CASCADE,
         related_name='ai_generations',
     )
+    # Paid with a key sent by the user for that request (not counted against the plan)
+    used_own_key = models.BooleanField(default=False)
     page = models.ForeignKey(
         'pages.Page',
         on_delete=models.SET_NULL,

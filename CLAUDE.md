@@ -175,7 +175,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 
 ### Modelo de datos (Django)
 
-- **User** (AbstractUser): UUID pk, email unico, google_id, ai_provider, ai_api_key
+- **User** (AbstractUser): UUID pk, email unico, google_id. Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **Workspace**: owner FK, nombre
 - **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published), theme_id, custom_theme (JSON), design_tokens (JSON), SEO fields (seo_title, seo_description, og_*, noindex)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
@@ -253,7 +253,6 @@ Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en 
 | POST | `/magic/request/` | No | Enviar magic link |
 | POST | `/magic/verify/` | No | Verificar magic token |
 | GET | `/me/` | Si | Usuario actual |
-| GET | `/ai-settings/` | Si | Config de IA del usuario |
 
 ### Pages (`/api/pages/`)
 

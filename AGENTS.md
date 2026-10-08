@@ -156,7 +156,7 @@ Jerarquía principal:
 - `Block` -> pertenece a `Page`; guarda `type`, `order`, `data` y `styles` en JSON.
 
 Relaciones relevantes:
-- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar`, `google_id`, `ai_provider`, `ai_api_key`.
+- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan.
 - `Page.collaborators` permite edición compartida.
 - `PageVersion` guarda snapshots completos de bloques y metadata de página.
 - `Asset` representa media subida por usuario/workspace.
@@ -193,7 +193,7 @@ Públicos:
 - Billing público: `GET /api/billing/plans/`, `POST /api/billing/webhook/`
 
 Autenticados:
-- Auth: `GET /api/auth/me/`, `GET|PUT /api/auth/ai-settings/`
+- Auth: `GET /api/auth/me/`
 - Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`
 - Versions: `GET|POST /api/pages/{page_id}/versions/`, `GET|PATCH|DELETE /api/pages/{page_id}/versions/{id}/`, `POST /api/pages/{page_id}/versions/{id}/restore/`
 - Assets: `GET|POST /api/assets/`, `DELETE /api/assets/{id}/`

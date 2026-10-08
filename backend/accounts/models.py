@@ -14,15 +14,6 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     google_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
 
-    # AI generation settings — user provides their own API key
-    ai_provider = models.CharField(
-        max_length=20,
-        blank=True,
-        default='',
-        help_text='gemini or anthropic',
-    )
-    ai_api_key = models.CharField(max_length=255, blank=True, default='')
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

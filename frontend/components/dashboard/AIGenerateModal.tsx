@@ -27,11 +27,11 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
 
-  // AI key setup state
+  // The user's own key: kept in memory while the modal is open, sent with
+  // the request and never stored (neither here nor on the server)
   const [showKeySetup, setShowKeySetup] = useState(false);
-  const [aiProvider, setAiProvider] = useState('gemini');
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'anthropic'>('gemini');
   const [aiKey, setAiKey] = useState('');
-  const [isSavingKey, setIsSavingKey] = useState(false);
 
   const toneOptions = [
     { value: '', label: t('ai.defaultTone') },
@@ -48,6 +48,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
     setStatusMsg(null);
     setNeedsKey(false);
     setShowKeySetup(false);
+    setAiKey('');
   }, [open]);
 
   const handleGenerate = async () => {
@@ -63,7 +64,13 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
       setStatusMsg(t('ai.generatingContent'));
 
       // Then generate blocks
-      const result = await api.ai.generate(page.id, { prompt: prompt.trim(), tone, language });
+      const ownKey = aiKey.trim();
+      const result = await api.ai.generate(page.id, {
+        prompt: prompt.trim(),
+        tone,
+        language,
+        ...(ownKey ? { provider: aiProvider, api_key: ownKey } : {}),
+      });
       setStatusMsg(t('ai.generatedBlocks', { count: result.block_count }));
 
       // Navigate to editor
@@ -77,8 +84,8 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         if (match) {
           const parsed = JSON.parse(match[1]);
           friendlyError = parsed.error || msg;
-          // Check if it's a missing key error
-          if (friendlyError.includes('API key') || friendlyError.includes('clave')) {
+          // No server key, or the plan doesn't include AI: the user's own key works
+          if (/clave|API key|plan Pro/i.test(friendlyError)) {
             setNeedsKey(true);
           }
         }
@@ -89,22 +96,6 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
       setStatusMsg(null);
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const handleSaveKey = async () => {
-    if (!aiKey.trim()) return;
-    setIsSavingKey(true);
-    try {
-      await api.ai.saveSettings({ ai_provider: aiProvider, ai_api_key: aiKey.trim() });
-      setShowKeySetup(false);
-      setNeedsKey(false);
-      setError(null);
-      setAiKey('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('ai.saveKeyError'));
-    } finally {
-      setIsSavingKey(false);
     }
   };
 
@@ -196,7 +187,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+            <div className="flex items-start gap-2 text-error text-sm bg-error/10 border border-error/20 rounded-lg px-4 py-3" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
                 <p>{error}</p>
@@ -223,7 +214,8 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
               <div className="flex gap-2">
                 <select
                   value={aiProvider}
-                  onChange={(e) => setAiProvider(e.target.value)}
+                  onChange={(e) => setAiProvider(e.target.value as 'gemini' | 'anthropic')}
+                  aria-label={t('ai.providerLabel')}
                   className="bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary focus:outline-none"
                 >
                   <option value="gemini">{t('ai.providerGemini')}</option>
@@ -233,19 +225,13 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
                   type="password"
                   value={aiKey}
                   onChange={(e) => setAiKey(e.target.value)}
+                  aria-label={t('ai.keyLabel')}
+                  autoComplete="off"
                   placeholder={aiProvider === 'gemini' ? 'AIzaSy...' : 'sk-ant-...'}
                   className="flex-1 bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <button
-                  onClick={handleSaveKey}
-                  disabled={isSavingKey || !aiKey.trim()}
-                  className="text-white font-bold text-sm px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5"
-                  style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-                >
-                  {isSavingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-                  {t('common.save')}
-                </button>
               </div>
+              <p className="text-xs text-muted">{t('ai.keyNotStored')}</p>
             </div>
           )}
 

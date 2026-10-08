@@ -25,12 +25,14 @@ function LockIcon(props: React.SVGProps<SVGSVGElement>) {
 
 function getCanvasWidthClass(deviceMode: string) {
   switch (deviceMode) {
+    // Fixed widths: the canvas centers and fits itself from these numbers
+    // (CANVAS_WIDTHS in CanvasViewport), so they must not depend on content.
     case 'mobile':
-      return 'max-w-[375px] w-full';
+      return 'w-[375px]';
     case 'tablet':
-      return 'w-[768px] min-w-[768px]';
+      return 'w-[768px]';
     default:
-      return 'w-full min-w-[1024px] max-w-[1200px]';
+      return 'w-[1200px]';
   }
 }
 

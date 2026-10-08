@@ -6,8 +6,8 @@ import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
-import { getThemeById } from '@/lib/themes';
-import { apiToTokens, defaultDesignTokens, tokensToCssVars, tokensToThemeVars } from '@/lib/design-tokens';
+import { apiToTokens } from '@/lib/design-tokens';
+import { pageThemeVars } from '@/lib/page-theme';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
@@ -77,23 +77,12 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
   );
 
   const blocks = mapBlocks(page.blocks);
-  const themeId = page.theme_id || 'default';
-  const customColors = page.custom_theme as import('@/lib/themes').ThemeColors | undefined;
-  const theme = getThemeById(themeId, customColors || undefined);
-  const designTokens = apiToTokens(page.design_tokens as Record<string, unknown> | undefined) || defaultDesignTokens;
-  const bpVars = tokensToCssVars(designTokens);
-  const legacyVars = page.design_tokens ? tokensToThemeVars(designTokens) : {
-    '--theme-primary': theme.colors.primary,
-    '--theme-primary-hover': theme.colors.primaryHover,
-    '--theme-secondary': theme.colors.secondary,
-    '--theme-bg': theme.colors.background,
-    '--theme-surface': theme.colors.surface,
-    '--theme-text': theme.colors.text,
-    '--theme-text-muted': theme.colors.textMuted,
-    '--theme-border': theme.colors.border,
-    '--theme-accent': theme.colors.accent,
-  };
-  const themeVars = { ...bpVars, ...legacyVars } as React.CSSProperties;
+  // Convert first: the API sends {} for "no tokens", which is truthy.
+  const themeVars = pageThemeVars({
+    themeId: page.theme_id,
+    customTheme: page.custom_theme as import('@/lib/themes').ThemeColors | undefined,
+    designTokens: apiToTokens(page.design_tokens as Record<string, unknown> | undefined),
+  });
 
   if (!mounted) {
     return <div className="min-h-screen bg-white" style={themeVars} />;

@@ -1,3 +1,4 @@
+import logging
 import secrets
 import uuid
 
@@ -9,6 +10,7 @@ from google.oauth2 import id_token as google_id_token
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import MagicToken
@@ -20,25 +22,18 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
-from .cookies import set_auth_cookies, clear_auth_cookies
+from .cookies import REFRESH_COOKIE, set_auth_cookies, clear_auth_cookies
 from .throttles import AuthRateThrottle
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _auth_response(user, status_code=200):
-    """Build auth response with both JSON tokens and httpOnly cookies."""
+    """Auth response: tokens go only into httpOnly cookies, never the JSON body (ADR-008)."""
     refresh = RefreshToken.for_user(user)
-    access = str(refresh.access_token)
-    refresh_str = str(refresh)
-    response = Response({
-        'user': UserSerializer(user).data,
-        'tokens': {
-            'access': access,
-            'refresh': refresh_str,
-        },
-    }, status=status_code)
-    set_auth_cookies(response, access, refresh_str)
+    response = Response({'user': UserSerializer(user).data}, status=status_code)
+    set_auth_cookies(response, str(refresh.access_token), str(refresh))
     return response
 
 
@@ -229,10 +224,19 @@ class MagicLinkVerifyView(APIView):
 
 
 class LogoutView(APIView):
-    """POST /api/auth/logout/ — clear auth cookies."""
+    """POST /api/auth/logout/ — revoke the refresh token and clear the cookies."""
     permission_classes = [permissions.AllowAny]
+    # Logging out must work even with an expired or invalid access cookie
+    authentication_classes = []
 
     def post(self, request):
+        raw_refresh = request.COOKIES.get(REFRESH_COOKIE)
+        if raw_refresh:
+            try:
+                RefreshToken(raw_refresh).blacklist()
+            except TokenError:
+                # Already expired or revoked: there is nothing left to invalidate
+                logger.info('Logout with an invalid refresh token')
         response = Response({'message': 'Sesión cerrada.'})
         clear_auth_cookies(response)
         return response

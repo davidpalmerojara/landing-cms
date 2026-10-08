@@ -29,7 +29,8 @@ class TestGoogleOAuth:
         )
 
         assert resp.status_code == status.HTTP_200_OK
-        assert 'tokens' in resp.data
+        assert 'tokens' not in resp.data
+        assert 'bp_access' in resp.cookies
         user = User.objects.get(email='newuser@example.com')
         assert user.google_id == 'google-sub-123'
         assert user.avatar == 'https://example.com/avatar.png'

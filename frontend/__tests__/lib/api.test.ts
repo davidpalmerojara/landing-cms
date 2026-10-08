@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  getAccessToken,
-  getRefreshToken,
-  setTokens,
-  clearTokens,
-  api,
-} from '@/lib/api';
+import { api } from '@/lib/api';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -44,48 +38,15 @@ describe('api', () => {
     mockFetch.mockReset();
   });
 
-  // --- Token management ---
-  describe('token management', () => {
-    it('getAccessToken returns null when no token set', () => {
-      expect(getAccessToken()).toBeNull();
-    });
-
-    it('getRefreshToken returns null when no token set', () => {
-      expect(getRefreshToken()).toBeNull();
-    });
-
-    it('setTokens stores both tokens in localStorage', () => {
-      setTokens('access123', 'refresh456');
-      expect(getAccessToken()).toBe('access123');
-      expect(getRefreshToken()).toBe('refresh456');
-    });
-
-    it('clearTokens removes both tokens', () => {
-      setTokens('a', 'r');
-      clearTokens();
-      expect(getAccessToken()).toBeNull();
-      expect(getRefreshToken()).toBeNull();
-    });
-  });
-
-  // --- request behavior via api.auth.me (uses request internally) ---
+  // --- Session: cookies only (ADR-008) ---
   describe('request (via api methods)', () => {
-    it('adds Authorization header when token exists', async () => {
-      setTokens('mytoken', 'myrefresh');
+    it('sends the session cookies and never an Authorization header', async () => {
       mockFetch.mockReturnValue(jsonResponse({ id: '1', email: 'a@b.com', username: 'test', avatar: '', created_at: '' }));
 
       await api.auth.me();
 
       const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers['Authorization']).toBe('Bearer mytoken');
-    });
-
-    it('does NOT add Authorization header when no token', async () => {
-      mockFetch.mockReturnValue(jsonResponse({ id: '1', email: 'a@b.com', username: 'test', avatar: '', created_at: '' }));
-
-      await api.auth.me();
-
-      const [, options] = mockFetch.mock.calls[0];
+      expect(options.credentials).toBe('include');
       expect(options.headers['Authorization']).toBeUndefined();
     });
 
@@ -103,7 +64,6 @@ describe('api', () => {
     });
 
     it('handles 204 No Content via pages.delete', async () => {
-      setTokens('t', 'r');
       mockFetch.mockReturnValue(noContentResponse());
 
       const result = await api.pages.delete('some-id');
@@ -111,59 +71,62 @@ describe('api', () => {
     });
   });
 
-  // --- 401 refresh flow ---
-  describe('401 token refresh', () => {
-    it('refreshes token and retries on 401', async () => {
-      setTokens('old_access', 'valid_refresh');
-
-      // First call: 401
-      // Second call (refresh): success with new tokens
-      // Third call (retry): success
+  describe('401 session refresh', () => {
+    it('refreshes the session cookie once and retries', async () => {
       mockFetch
         .mockReturnValueOnce(errorResponse(401, 'Unauthorized'))
-        .mockReturnValueOnce(jsonResponse({ access: 'new_access', refresh: 'new_refresh' }))
+        .mockReturnValueOnce(jsonResponse({ message: 'Sesión renovada.' }))
         .mockReturnValueOnce(jsonResponse({ id: '1', email: 'a@b.com', username: 'test', avatar: '', created_at: '' }));
 
       const result = await api.auth.me();
+
       expect(result.username).toBe('test');
-      expect(getAccessToken()).toBe('new_access');
+      const [refreshUrl, refreshOptions] = mockFetch.mock.calls[1];
+      expect(refreshUrl).toContain('/auth/refresh/');
+      expect(refreshOptions).toMatchObject({ method: 'POST', credentials: 'include' });
+      expect(refreshOptions.body).toBeUndefined();
     });
 
-    it('clears tokens if refresh fails', async () => {
-      setTokens('old_access', 'old_refresh');
-
-      // First call: 401
-      // Second call (refresh): also fails
-      // After refresh fails, tokens cleared, then the final 401 response also clears
+    it('gives up with the original 401 when the refresh fails', async () => {
       mockFetch
         .mockReturnValueOnce(errorResponse(401, 'Unauthorized'))
         .mockReturnValueOnce(errorResponse(401, 'Refresh failed'));
 
       await expect(api.auth.me()).rejects.toThrow('API 401');
-      expect(getAccessToken()).toBeNull();
-      expect(getRefreshToken()).toBeNull();
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('shares one refresh request between concurrent 401s', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/auth/refresh/')) return jsonResponse({ message: 'ok' });
+        const calls = mockFetch.mock.calls.filter(([u]) => !String(u).includes('/auth/refresh/')).length;
+        return calls <= 2 ? errorResponse(401) : jsonResponse({ id: '1', email: 'a@b.com', username: 'test', avatar: '', created_at: '' });
+      });
+
+      await Promise.all([api.auth.me(), api.auth.me()]);
+
+      const refreshes = mockFetch.mock.calls.filter(([u]) => String(u).includes('/auth/refresh/'));
+      expect(refreshes).toHaveLength(1);
     });
   });
 
-  // --- api.auth.login ---
-  describe('api.auth.login', () => {
-    it('sets tokens on success', async () => {
-      mockFetch.mockReturnValue(jsonResponse({ access: 'acc', refresh: 'ref' }));
+  describe('api.auth', () => {
+    it('login stores nothing in localStorage', async () => {
+      mockFetch.mockReturnValue(jsonResponse({ message: 'Sesión iniciada.' }));
 
       await api.auth.login({ username: 'user', password: 'pass' });
 
-      expect(getAccessToken()).toBe('acc');
-      expect(getRefreshToken()).toBe('ref');
+      expect(localStorage.length).toBe(0);
     });
-  });
 
-  // --- api.auth.logout ---
-  describe('api.auth.logout', () => {
-    it('clears tokens', async () => {
-      setTokens('a', 'r');
+    it('logout calls the server so the refresh token is revoked', async () => {
+      mockFetch.mockReturnValue(jsonResponse({ message: 'Sesión cerrada.' }));
+
       await api.auth.logout();
-      expect(getAccessToken()).toBeNull();
-      expect(getRefreshToken()).toBeNull();
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/auth/logout/');
+      expect(options).toMatchObject({ method: 'POST', credentials: 'include' });
     });
   });
 

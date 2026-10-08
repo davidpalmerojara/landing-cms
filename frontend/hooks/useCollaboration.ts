@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore } from '@/store/editor-store';
-import { getAccessToken } from '@/lib/api';
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001';
 const LOCK_RENEW_INTERVAL = 10_000; // 10s
@@ -107,14 +106,8 @@ export function useCollaboration(
         const userId = msg.user_id as string;
         store.setBlockLock(blockId, userId);
         // Track our own locks for renewal
-        const token = getAccessToken();
-        if (token) {
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.user_id === userId) {
-              heldLocksRef.current.add(blockId);
-            }
-          } catch { /* ignore */ }
+        if (store.myUserId && store.myUserId === userId) {
+          heldLocksRef.current.add(blockId);
         }
         break;
       }
@@ -222,8 +215,7 @@ export function useCollaboration(
     let wasConnected = false;
 
     function connect() {
-      const token = getAccessToken();
-      if (!token || !pageId || pageId.startsWith('page_')) return;
+      if (!pageId || pageId.startsWith('page_')) return;
 
       if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
         logCollabWarning(
@@ -232,7 +224,8 @@ export function useCollaboration(
         return;
       }
 
-      const url = `${WS_BASE}/ws/pages/${pageId}/?token=${token}`;
+      // Authenticated by the httpOnly session cookie sent with the handshake
+      const url = `${WS_BASE}/ws/pages/${pageId}/`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 

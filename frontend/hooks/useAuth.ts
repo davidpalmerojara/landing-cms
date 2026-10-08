@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, getAccessToken, clearTokens } from '@/lib/api';
+import { api } from '@/lib/api';
 import type { ApiUser } from '@/lib/api';
 
 export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
@@ -13,13 +13,12 @@ export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
   useEffect(() => {
     async function checkAuth() {
       try {
-        // Cookie-first: always try /auth/me/ with credentials: 'include'.
-        // fetchWithRetry sends the httpOnly cookie automatically and falls
-        // back to the localStorage token if present (ADR-008).
+        // The httpOnly session cookie is sent automatically (ADR-008);
+        // an expired access token is refreshed once inside the API client.
         const me = await api.auth.me();
         setUser(me);
       } catch {
-        clearTokens();
+        // No valid session
         if (redirectTo) router.replace(redirectTo);
       } finally {
         setIsLoading(false);
@@ -28,8 +27,13 @@ export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
     checkAuth();
   }, [redirectTo, router]);
 
-  const logout = useCallback(() => {
-    api.auth.logout();
+  const logout = useCallback(async () => {
+    try {
+      await api.auth.logout();
+    } catch (e) {
+      // Still leave the app; the server-side session expires on its own
+      if (process.env.NODE_ENV === 'development') console.error('Logout request failed:', e);
+    }
     setUser(null);
     router.replace('/login');
   }, [router]);

@@ -69,12 +69,17 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
-## ADR-008: httpOnly cookies para JWT sobre localStorage
+## ADR-008: JWT solo en cookies httpOnly, con comprobación de Origin
 
-- **Fecha**: 2025 (inferido)
-- **Contexto**: Almacenar JWT en localStorage lo expone a XSS. Las cookies httpOnly no son accesibles desde JavaScript.
-- **Decisión**: Access token y refresh token en httpOnly cookies. Fallback a localStorage solo para compatibilidad temporal.
-- **Consecuencias**: Mayor seguridad contra XSS. CSRF requiere protección adicional (Django CSRF middleware). El frontend no lee el token directamente; `lib/api.ts` envía cookies automáticamente con `credentials: 'include'`.
+- **Fecha**: 2025 (inferido); reescrito el 2026-10-08 para reflejar el código
+- **Contexto**: Un token guardado donde JavaScript puede leerlo (localStorage) lo roba cualquier XSS. La versión anterior de este ADR decía que los tokens iban en cookies httpOnly y que Django protegía de CSRF, pero no era cierto: el login devolvía los tokens también en el JSON, el frontend los copiaba en localStorage y las vistas de DRF no pasan por el CSRF de Django.
+- **Decisión**:
+  - El access token (1 h) y el refresh token (7 días, con rotación y lista negra) viajan **solo** en cookies `httpOnly`, `SameSite=Lax` y `Secure` en producción. Ninguna respuesta los incluye en el cuerpo y el frontend no los guarda.
+  - El refresh lee solo la cookie. El logout añade el refresh token a la lista negra, así que una cookie robada deja de servir.
+  - El cliente reintenta una vez tras un 401, y las peticiones simultáneas comparten un único refresh.
+  - CSRF: `SameSite=Lax` ya evita que la mayoría de peticiones de otros sitios lleven las cookies. Además, `accounts.middleware.OriginCheckMiddleware` rechaza con 403 cualquier POST/PUT/PATCH/DELETE a `/api/` que lleve las cookies de sesión (o vaya a `/api/auth/`) si su `Origin` (o `Referer`) no está en `CSRF_TRUSTED_ORIGINS`. Si no hay ninguna de las dos cabeceras, la petición viene de un cliente que no es un navegador, y se permite.
+- **Alternativas**: Token CSRF de doble envío (cookie más cabecera), que exige más código en el cliente y no aporta más que la comprobación de Origin con navegadores actuales. Sesiones de Django en vez de JWT, que obligarían a rehacer la autenticación de WebSocket y de la API.
+- **Consecuencias**: Un XSS ya no puede robar los tokens, aunque sí puede hacer peticiones desde la página mientras esté abierta, así que sanear el contenido sigue siendo imprescindible. Tras el logout, el access token sigue siendo válido hasta que caduca (máximo 1 h), porque se valida sin estado. Para que las cookies funcionen, el frontend y la API deben ser el mismo sitio: en local lo son (localhost); en producción se servirá la API a través de un rewrite del frontend.
 
 ---
 
@@ -87,12 +92,12 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
-## ADR-010: JWT en query string para WebSocket (riesgo aceptado)
+## ADR-010: Autenticación del WebSocket con la cookie de sesión
 
-- **Fecha**: 2026-03-26
-- **Contexto**: El API de WebSocket del navegador no permite enviar headers custom (`Authorization`) durante el handshake. Las alternativas son: (1) token en query string, (2) cookie auth, (3) subprotocol header hack. Cookie auth requiere que Django Channels extraiga JWT de la cookie httpOnly, lo cual necesita middleware custom en ASGI. La opción de subprotocol es frágil y no estándar.
-- **Decisión**: Usar token JWT en query string (`?token=<jwt>`) para el handshake de WebSocket. Migrar a cookie auth en ASGI cuando el sistema de colaboración pase a producción completa.
-- **Consecuencias**: El token puede quedar en logs del servidor y en el historial del navegador. Se mitiga porque: (a) los access tokens tienen expiración corta (1h), (b) los logs del servidor deben configurarse para no registrar query strings en producción, (c) la colaboración está en desarrollo y no expuesta a usuarios finales aún. Queda documentado como deuda técnica a resolver antes del lanzamiento de colaboración.
+- **Fecha**: 2026-03-26; reescrito el 2026-10-08
+- **Contexto**: La primera versión enviaba el JWT en la query string (`?token=`), sacándolo de localStorage, con el riesgo de que acabara en logs y en el historial. Al pasar a cookies httpOnly (ADR-008), JavaScript ya no tiene el token.
+- **Decisión**: `collaboration.middleware.JWTAuthMiddleware` lee la cookie `bp_access` del handshake con el parser de cookies de Django. `channels.security.websocket.OriginValidator` rechaza handshakes cuyo `Origin` no esté en `CSRF_TRUSTED_ORIGINS`: como la cookie autentica el socket, sin esta comprobación otra web podría abrir uno con la sesión del usuario (*cross-site WebSocket hijacking*).
+- **Consecuencias**: Funciona cuando el WebSocket va al mismo sitio que la app, como en local. Si en producción el WebSocket va a otro dominio (Render) que el frontend (Vercel), el navegador no enviará la cookie; para ese caso está previsto un ticket de un solo uso que se pide por la API (con cookie) y se presenta al conectar.
 
 ---
 

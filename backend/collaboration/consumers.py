@@ -12,7 +12,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 
-from .locks import LockManager
+from .locks import InMemoryLockManager, LockManager, get_lock_manager
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +84,12 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         self.group_name: str = ''
         self.user = None
         self.user_info: dict = {}
-        self._lock_manager: LockManager | None = None
+        self._lock_manager: LockManager | InMemoryLockManager | None = None
 
     @property
-    def lock_manager(self) -> LockManager:
+    def lock_manager(self) -> LockManager | InMemoryLockManager:
         if self._lock_manager is None:
-            self._lock_manager = LockManager()
+            self._lock_manager = get_lock_manager()
         return self._lock_manager
 
     async def connect(self):

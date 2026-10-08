@@ -1,12 +1,19 @@
 """
-Redis-based pessimistic lock manager for block-level editing.
+Pessimistic lock manager for block-level editing.
+
+Two implementations with the same interface:
+- LockManager: Redis, shared by every server process (Lua for atomicity).
+- InMemoryLockManager: a dict in this process. Used when REDIS_URL is not
+  set, i.e. a single Daphne process (local development, free hosting).
 
 Each lock is a Redis key with format: lock:page:{page_id}:block:{block_id}
 Value is the user_id who holds the lock. TTL is 30 seconds — the frontend
 must renew periodically (every ~10s) to keep the lock alive.
 """
 
-import json
+import threading
+import time
+
 import redis
 from django.conf import settings
 
@@ -120,3 +127,69 @@ class LockManager:
         key = _lock_key(page_id, block_id)
         value = self._redis.get(key)
         return value.decode('utf-8') if value else None
+
+
+class InMemoryLockManager:
+    """Same contract as LockManager, kept in process memory with TTLs."""
+
+    def __init__(self):
+        self._locks: dict[tuple[str, str], tuple[str, float]] = {}
+        self._mutex = threading.Lock()
+
+    def _holder(self, page_id: str, block_id: str) -> str | None:
+        entry = self._locks.get((page_id, block_id))
+        if entry is None:
+            return None
+        user_id, expires_at = entry
+        if expires_at <= time.monotonic():
+            del self._locks[(page_id, block_id)]
+            return None
+        return user_id
+
+    def acquire(self, page_id: str, block_id: str, user_id: str) -> bool:
+        with self._mutex:
+            holder = self._holder(page_id, block_id)
+            if holder not in (None, user_id):
+                return False
+            self._locks[(page_id, block_id)] = (user_id, time.monotonic() + LOCK_TTL)
+            return True
+
+    def release(self, page_id: str, block_id: str, user_id: str) -> bool:
+        with self._mutex:
+            if self._holder(page_id, block_id) != user_id:
+                return False
+            del self._locks[(page_id, block_id)]
+            return True
+
+    def renew(self, page_id: str, block_id: str, user_id: str) -> bool:
+        with self._mutex:
+            if self._holder(page_id, block_id) != user_id:
+                return False
+            self._locks[(page_id, block_id)] = (user_id, time.monotonic() + LOCK_TTL)
+            return True
+
+    def get_locks(self, page_id: str) -> dict:
+        with self._mutex:
+            keys = [key for key in self._locks if key[0] == page_id]
+            return {block_id: holder for (_, block_id) in keys if (holder := self._holder(page_id, block_id))}
+
+    def release_all_for_user(self, page_id: str, user_id: str) -> list:
+        with self._mutex:
+            mine = [key for key, (holder, _) in self._locks.items() if key[0] == page_id and holder == user_id]
+            for key in mine:
+                del self._locks[key]
+            return [block_id for (_, block_id) in mine]
+
+    def get_lock_holder(self, page_id: str, block_id: str) -> str | None:
+        with self._mutex:
+            return self._holder(page_id, block_id)
+
+
+_in_memory_manager = InMemoryLockManager()
+
+
+def get_lock_manager():
+    """Redis when REDIS_URL is configured, otherwise the process-wide in-memory manager."""
+    if settings.REDIS_ENABLED:
+        return LockManager()
+    return _in_memory_manager

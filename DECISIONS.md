@@ -140,6 +140,21 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-015: Servidor ASGI con Daphne, whitenoise y modo sin Redis
+
+- **Fecha**: 2026-10-08
+- **Contexto**: El `Procfile` arrancaba gunicorn con WSGI, que no habla WebSocket: en producción la colaboración no habría funcionado. Además, el hosting gratuito previsto tiene disco efímero, ningún servidor de estáticos y no incluye Redis, del que dependían la capa de canales y los bloqueos por bloque.
+- **Decisión**:
+  - Un único proceso Daphne (ASGI) sirve HTTP y WebSocket (`daphne -b 0.0.0.0 -p $PORT config.asgi:application`); gunicorn sale de las dependencias.
+  - whitenoise sirve los estáticos de Django (el admin) desde la propia app, con nombres con hash en producción.
+  - Sin `REDIS_URL`, `REDIS_ENABLED` es falso: capa de canales en memoria e `InMemoryLockManager`, con la misma interfaz y TTL que la versión de Redis.
+  - Detrás del proxy del hosting, `SECURE_PROXY_SSL_HEADER`; sin `SECURE_SSL_REDIRECT`, porque la plataforma ya redirige y su chequeo de salud llega por HTTP.
+  - `DATABASE_URL` admite parámetros como `?sslmode=require`.
+  - `/healthz` responde sin consultar la base de datos, para que los pings no impidan que una base de datos serverless se duerma.
+- **Consecuencias**: Funciona con un solo proceso. Escalar a varios procesos exige definir `REDIS_URL`, y entonces todo pasa a Redis sin tocar código. Los bloqueos en memoria se pierden al reiniciar, lo cual es aceptable porque caducan a los 30 segundos.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

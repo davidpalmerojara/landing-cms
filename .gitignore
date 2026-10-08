@@ -46,3 +46,6 @@ db.sqlite3
 media/
 *.log
 venv/
+
+# Django collectstatic output
+staticfiles/

@@ -48,7 +48,8 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 - **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL)
 - **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth, Magic Links
 - **Storage**: Media files via Django FileField (upload_to `assets/%Y/%m/`)
-- **Realtime**: Django Channels (InMemoryChannelLayer dev, Redis produccion)
+- **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015)
+- **Realtime**: Django Channels. Sin `REDIS_URL`: capa de canales y bloqueos en memoria (un solo proceso); con `REDIS_URL`: Redis
 
 ---
 

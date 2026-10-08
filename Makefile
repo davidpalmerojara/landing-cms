@@ -1,36 +1,61 @@
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
-NODE_VERSION ?= 20.19.0
-
-.PHONY: dev backend frontend migrate test test-backend test-frontend lint typecheck lock lock-upgrade
+PYTHON ?= $(shell command -v python3.13 2>/dev/null || echo python3)
+VENV := $(BACKEND_DIR)/venv
+VENV_BIN := venv/bin
 
 UV_COMPILE := uv pip compile requirements.in -o requirements.txt --python-version 3.13 --universal --generate-hashes
+
+.PHONY: install env dev backend frontend migrate test test-backend test-frontend lint typecheck build check lock lock-upgrade
+
+# --- Setup ---
+
+install: env
+	test -d $(VENV) || $(PYTHON) -m venv $(VENV)
+	cd $(BACKEND_DIR) && $(VENV_BIN)/pip install --require-hashes -r requirements.txt
+	cd $(FRONTEND_DIR) && npm ci
+
+# Create local env files from the templates, never overwriting existing ones.
+env:
+	test -f $(BACKEND_DIR)/.env || cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env
+	test -f $(FRONTEND_DIR)/.env.local || cp $(FRONTEND_DIR)/.env.example $(FRONTEND_DIR)/.env.local
+
+# --- Run ---
 
 dev:
 	./start-dev.sh
 
 backend:
-	cd $(BACKEND_DIR) && . venv/bin/activate && python manage.py runserver 8001
-
-migrate:
-	cd $(BACKEND_DIR) && . venv/bin/activate && python manage.py migrate
+	cd $(BACKEND_DIR) && $(VENV_BIN)/python manage.py runserver 8001
 
 frontend:
-	zsh -lc 'source "$$HOME/.nvm/nvm.sh" && nvm use $(NODE_VERSION) >/dev/null && cd $(FRONTEND_DIR) && npm run dev'
+	cd $(FRONTEND_DIR) && npm run dev
+
+migrate:
+	cd $(BACKEND_DIR) && $(VENV_BIN)/python manage.py migrate
+
+# --- Quality (same steps as CI) ---
 
 test: test-backend test-frontend
 
 test-backend:
-	cd $(BACKEND_DIR) && . venv/bin/activate && pytest -q
+	cd $(BACKEND_DIR) && $(VENV_BIN)/pytest -q
 
 test-frontend:
-	zsh -lc 'source "$$HOME/.nvm/nvm.sh" && nvm use $(NODE_VERSION) >/dev/null && cd $(FRONTEND_DIR) && npx vitest run'
+	cd $(FRONTEND_DIR) && npm test
 
 lint:
-	zsh -lc 'source "$$HOME/.nvm/nvm.sh" && nvm use $(NODE_VERSION) >/dev/null && cd $(FRONTEND_DIR) && npm run lint -- --max-warnings 48'
+	cd $(FRONTEND_DIR) && npm run lint
 
 typecheck:
-	zsh -lc 'source "$$HOME/.nvm/nvm.sh" && nvm use $(NODE_VERSION) >/dev/null && cd $(FRONTEND_DIR) && npx tsc --noEmit'
+	cd $(FRONTEND_DIR) && npm run typecheck
+
+build:
+	cd $(FRONTEND_DIR) && npm run build
+
+check: test typecheck lint build
+
+# --- Python lockfile (requires uv) ---
 
 lock:
 	cd $(BACKEND_DIR) && $(UV_COMPILE)

@@ -16,7 +16,7 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 
 | Dependencia | Version | Proposito |
 |---|---|---|
-| Next.js | 16.1.6 | Framework (App Router) |
+| Next.js | 16.2.1 | Framework (App Router) |
 | React | 19.2.3 | UI |
 | TypeScript | ^5 | Tipado obligatorio |
 | Zustand | ^5.0.11 | Estado global del editor |
@@ -102,51 +102,40 @@ landing-cms/
 
 ## 3.1 Arranque rapido
 
-Flujo recomendado:
+Primera vez:
 
 ```bash
-./start-dev.sh
+make install   # backend/venv + dependencias (lockfile con hashes) + npm ci + copia los .env de ejemplo
+make migrate
 ```
 
-El script:
-- valida `backend/.env`, `frontend/.env.local`, `backend/venv` y `nvm`
-- corre migraciones
-- arranca Django en `8001`
-- arranca Next.js en `3000`
+Dia a dia:
+
+```bash
+make dev       # equivale a ./start-dev.sh
+```
+
+`start-dev.sh`:
+- valida `backend/venv`, `backend/.env`, `frontend/.env.local` y `frontend/node_modules` (si falta algo, indica el comando `make` que lo arregla)
+- usa nvm si esta instalado; si no, acepta el Node del PATH si cumple la version minima de `.nvmrc`
+- corre migraciones, arranca Django en `8001` y Next.js en `3000`
 - cierra ambos procesos con `Ctrl+C`
 
-Atajos disponibles en la raiz:
+Atajos en la raiz: `make backend`, `make frontend`, `make test`, `make test-backend`, `make test-frontend`, `make lint`, `make typecheck`, `make build`, `make check` (los mismos pasos que el CI), `make lock` / `make lock-upgrade` (regenerar `backend/requirements.txt` desde `requirements.in` con uv, ver ADR-011).
+
+Arranque manual, si hace falta depurar (desde la raiz del repo):
 
 ```bash
-make dev
-make migrate
-make backend
-make frontend
-make test
-make test-backend
-make test-frontend
-make lint
-make typecheck
-```
-
-Arranque manual, si hace falta depurar:
-
-```bash
-cd /Users/davidpalmero/Desktop/landing-cms
-source backend/venv/bin/activate
 cd backend
-python manage.py migrate
-python manage.py runserver 8001
+venv/bin/python manage.py migrate
+venv/bin/python manage.py runserver 8001
 ```
 
 En otra terminal:
 
 ```bash
-cd /Users/davidpalmero/Desktop/landing-cms
-source "$HOME/.nvm/nvm.sh"
-nvm use 20.19.0
+nvm use        # opcional: lee .nvmrc
 cd frontend
-npm ci
 npm run dev
 ```
 

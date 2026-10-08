@@ -139,7 +139,8 @@ class TestAIGenerationViews:
         assert 'instruction' in resp.data['details']
 
     @patch(GET_PLAN, return_value=mock_plan())
-    def test_ai_generation_rate_limit_returns_429_after_limit(self, mock_plan_patch, auth_client, user):
+    def test_ai_generation_rate_limit_returns_429_after_limit(self, mock_plan_patch, auth_client, user, settings):
+        settings.GOOGLE_AI_KEY = 'server-key'  # the plan limit applies to the server's key
         page = PageFactory(owner=user)
         for i in range(10):
             AIGenerationLog.objects.create(

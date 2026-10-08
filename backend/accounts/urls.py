@@ -7,7 +7,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
-from .throttles import AuthRateThrottle
+from .throttles import AuthRateThrottle, LoginUsernameThrottle
 from .views import (
     AISettingsView,
     GoogleLoginView,
@@ -21,7 +21,7 @@ from .views import (
 
 class CookieTokenObtainPairView(TokenObtainPairView):
     """Login: sets the JWTs as httpOnly cookies and keeps them out of the body."""
-    throttle_classes = [AuthRateThrottle]
+    throttle_classes = [AuthRateThrottle, LoginUsernameThrottle]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):

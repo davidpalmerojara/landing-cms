@@ -198,7 +198,13 @@ REST_FRAMEWORK = {
         'anon': '60/minute',
         'user': '120/minute',
         'auth': '10/minute',
+        'login_username': '5/minute',
     },
+    # Number of trusted proxies in front of the app. With the default (unset)
+    # DRF used the whole X-Forwarded-For header as the client id, so any
+    # client could reset its rate limits by sending a different value.
+    # 0 = use the connection address; set it to the real hop count in production.
+    'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')),
     'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
 }
 

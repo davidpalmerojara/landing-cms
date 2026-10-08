@@ -8,16 +8,22 @@ import type { CursorPosition } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
-import { getThemeById } from '@/lib/themes';
-import { defaultDesignTokens, tokensToCssVars, tokensToThemeVars } from '@/lib/design-tokens';
+import { pageThemeVars } from '@/lib/page-theme';
 import BrowserFrame from './BrowserFrame';
 import BlockWrapper from './BlockWrapper';
 import FloatingViewportControls from './FloatingViewportControls';
 
-function getCanvasWidthNumber(deviceMode: string) {
-  if (deviceMode === 'mobile') return 375;
-  if (deviceMode === 'tablet') return 768;
-  return 1024;
+// Must match the fixed widths in BrowserFrame.
+const CANVAS_WIDTHS: Record<string, number> = { mobile: 375, tablet: 768, desktop: 1200 };
+const CANVAS_MARGIN = 24; // px kept free on each side when fitting
+const CANVAS_TOP = 40;
+
+/** Zoom ≤ 100% that fits the frame in the viewport, centered horizontally. */
+function fitCanvas(viewportWidth: number, deviceMode: string) {
+  const frameWidth = CANVAS_WIDTHS[deviceMode] ?? CANVAS_WIDTHS.desktop;
+  const available = Math.max(viewportWidth - CANVAS_MARGIN * 2, 0);
+  const zoom = Math.max(Math.min(1, Math.floor((available / frameWidth) * 20) / 20), 0.5);
+  return { zoom, x: (viewportWidth - frameWidth * zoom) / 2, y: CANVAS_TOP };
 }
 
 const CURSOR_THROTTLE = 50; // ms between cursor sends
@@ -97,29 +103,10 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
   const setViewportState = useEditorStore((s) => s.setViewportState);
   const setInteractionState = useEditorStore((s) => s.setInteractionState);
 
-  const tokens = page.designTokens || defaultDesignTokens;
-  const theme = useMemo(() => getThemeById(page.themeId || 'default', page.customTheme), [page.themeId, page.customTheme]);
-  const themeVars = useMemo(() => {
-    // Design tokens generate both --bp-* vars and backward-compat --theme-* vars
-    const bpVars = tokensToCssVars(tokens);
-    const legacyVars = tokensToThemeVars(tokens);
-    // If no custom design tokens, fall back to the old theme system for legacy vars
-    const fallbackThemeVars = page.designTokens ? {} : {
-      '--theme-primary': theme.colors.primary,
-      '--theme-primary-hover': theme.colors.primaryHover,
-      '--theme-secondary': theme.colors.secondary,
-      '--theme-bg': theme.colors.background,
-      '--theme-surface': theme.colors.surface,
-      '--theme-text': theme.colors.text,
-      '--theme-text-muted': theme.colors.textMuted,
-      '--theme-border': theme.colors.border,
-      '--theme-accent': theme.colors.accent,
-    };
-    return {
-      ...bpVars,
-      ...(page.designTokens ? legacyVars : fallbackThemeVars),
-    } as React.CSSProperties;
-  }, [tokens, theme, page.designTokens]);
+  const themeVars = useMemo(
+    () => pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens }),
+    [page.themeId, page.customTheme, page.designTokens],
+  );
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const browserFrameRef = useRef<HTMLDivElement>(null);
@@ -142,21 +129,34 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
     onCursorMove(canvasX, canvasY);
   }, [onCursorMove]);
 
-  // --- Center canvas ---
+  // --- Center / fit canvas ---
+  // The last state set by auto-fit. While the viewport still matches it the
+  // user has not panned or zoomed, so a resize may re-fit the canvas.
+  const autoFitRef = useRef<{ zoom: number; x: number; y: number } | null>(null);
+
   const handleCenterCanvas = useCallback(() => {
     if (!viewportRef.current) return;
-    const viewport = viewportRef.current.getBoundingClientRect();
-    const frameWidth = browserFrameRef.current
-      ? browserFrameRef.current.offsetWidth
-      : getCanvasWidthNumber(deviceMode);
-    const newX = (viewport.width - frameWidth) / 2;
-    const newY = 60;
-    setViewportState({ zoom: 1, x: newX, y: newY });
+    const next = fitCanvas(viewportRef.current.clientWidth, deviceMode);
+    autoFitRef.current = next;
+    setViewportState(next);
   }, [deviceMode, setViewportState]);
 
   useEffect(() => {
     handleCenterCanvas();
   }, [deviceMode, handleCenterCanvas]);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      const current = useEditorStore.getState().viewportState;
+      const last = autoFitRef.current;
+      const untouched = last && current.zoom === last.zoom && current.x === last.x && current.y === last.y;
+      if (untouched) handleCenterCanvas();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleCenterCanvas]);
 
   // --- Space key for panning ---
   useEffect(() => {
@@ -249,7 +249,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
       data-canvas-viewport
       className={`flex-1 overflow-hidden relative bg-surface ${cursorClass}`}
       style={{
-        backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(var(--bp-color-border) 1px, transparent 1px)',
         backgroundSize: `${24 * viewportState.zoom}px ${24 * viewportState.zoom}px`,
         backgroundPosition: `${viewportState.x}px ${viewportState.y}px`,
       }}

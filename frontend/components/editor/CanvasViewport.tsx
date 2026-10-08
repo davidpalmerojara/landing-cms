@@ -181,37 +181,34 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
   }, [setInteractionState]);
 
   // --- Wheel zoom & pan ---
+  // Listening on the viewport element (not window) means wheel events from
+  // modals or panels drawn over the canvas keep scrolling those instead.
   useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      const viewport = viewportRef.current;
-      if (!viewport) return;
-      const rect = viewport.getBoundingClientRect();
-      const isOverViewport =
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
-      if (isOverViewport) {
-        e.preventDefault();
-        if (e.ctrlKey || e.metaKey) {
-          const cx = e.clientX - rect.left;
-          const cy = e.clientY - rect.top;
-          setViewportState((prev) => {
-            const delta = e.deltaY > 0 ? -0.1 : 0.1;
-            const newZoom = Math.min(Math.max(Math.round((prev.zoom + delta) * 10) / 10, 0.5), 2);
-            if (newZoom === prev.zoom) return prev;
-            const scaleRatio = newZoom / prev.zoom;
-            const newX = cx - (cx - prev.x) * scaleRatio;
-            const newY = cy - (cy - prev.y) * scaleRatio;
-            return { zoom: newZoom, x: newX, y: newY };
-          });
-        } else {
-          setViewportState((prev) => ({ ...prev, x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
-        }
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // non-passive: also blocks the browser's ctrl+wheel page zoom
+      if (e.ctrlKey || e.metaKey) {
+        const rect = viewport.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        setViewportState((prev) => {
+          const delta = e.deltaY > 0 ? -0.1 : 0.1;
+          const newZoom = Math.min(Math.max(Math.round((prev.zoom + delta) * 10) / 10, 0.5), 2);
+          if (newZoom === prev.zoom) return prev;
+          const scaleRatio = newZoom / prev.zoom;
+          const newX = cx - (cx - prev.x) * scaleRatio;
+          const newY = cy - (cy - prev.y) * scaleRatio;
+          return { zoom: newZoom, x: newX, y: newY };
+        });
+      } else {
+        setViewportState((prev) => ({ ...prev, x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
-    return () => window.removeEventListener('wheel', handleWheel, { capture: true });
+    viewport.addEventListener('wheel', handleWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', handleWheel);
   }, [setViewportState]);
 
   // --- Pan handlers ---

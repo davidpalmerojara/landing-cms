@@ -6,6 +6,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import { nextPathFromLocation } from '@/lib/safe-redirect';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -29,7 +30,7 @@ export default function LoginPage() {
 
     try {
       await api.auth.login({ username, password });
-      router.replace('/dashboard');
+      router.replace(nextPathFromLocation());
     } catch {
       setError(t('auth.loginError'));
       setIsLoading(false);
@@ -205,7 +206,7 @@ export default function LoginPage() {
                   setIsLoading(true);
                   try {
                     await api.auth.googleLogin(credentialResponse.credential);
-                    router.replace('/dashboard');
+                    router.replace(nextPathFromLocation());
                   } catch {
                     setError(t('auth.googleLoginError'));
                     setIsLoading(false);

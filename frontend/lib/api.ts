@@ -539,6 +539,10 @@ export interface ApiPageVersionDetail extends ApiPageVersion {
     status: string;
     theme_id: string;
     custom_theme: Record<string, string> | null;
+    // Present in snapshots taken since design tokens and SEO were added
+    design_tokens?: Record<string, unknown>;
+    seo_title?: string;
+    seo_description?: string;
   };
 }
 

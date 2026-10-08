@@ -23,7 +23,22 @@ interface CollabMessage {
   [key: string]: unknown;
 }
 
-export function useCollaboration(pageId: string) {
+export interface PageRestoredEvent {
+  versionNumber: number | null;
+  restoredBy: string | null;
+  /** True when the current user triggered the restore (in this or another tab). */
+  byMe: boolean;
+}
+
+export function useCollaboration(
+  pageId: string,
+  { onPageRestored }: { onPageRestored?: (event: PageRestoredEvent) => void } = {},
+) {
+  const onPageRestoredRef = useRef(onPageRestored);
+  useEffect(() => {
+    onPageRestoredRef.current = onPageRestored;
+  }, [onPageRestored]);
+
   const wsRef = useRef<WebSocket | null>(null);
   const renewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -129,6 +144,14 @@ export function useCollaboration(pageId: string) {
           msg.x as number,
           msg.y as number,
         );
+        break;
+
+      case 'page_restored':
+        onPageRestoredRef.current?.({
+          versionNumber: typeof msg.version_number === 'number' ? msg.version_number : null,
+          restoredBy: typeof msg.restored_by === 'string' ? msg.restored_by : null,
+          byMe: msg.restored_by_id === store.myUserId,
+        });
         break;
 
       case 'pong':

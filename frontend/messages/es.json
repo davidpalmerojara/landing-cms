@@ -352,7 +352,11 @@
     "loadErrorTitle": "Error al cargar",
     "pageNotFoundDescription": "La página que buscas no existe o fue eliminada.",
     "deleteBlockTitle": "Eliminar bloque",
-    "deleteBlockMessage": "¿Eliminar \"{name}\"? Esta acción se puede deshacer con Ctrl+Z."
+    "deleteBlockMessage": "¿Eliminar \"{name}\"? Esta acción se puede deshacer con Ctrl+Z.",
+    "restoreVersionSuccess": "Versión restaurada",
+    "restoredByCollaborator": "{name} ha restaurado la versión {number}",
+    "publishSuccess": "Página publicada en {path}",
+    "publishError": "No se ha podido publicar. Inténtalo de nuevo."
   },
   "versionHistory": {
     "title": "Historial de versiones",
@@ -504,8 +508,6 @@
     "logoCloud": "Logos",
     "customHtml": "HTML personalizado",
     "heroAria": "Sección hero",
-    "heroBadgeDefault": "Nuevo Editor UI",
-    "heroSecondaryAction": "Saber más",
     "ctaAria": "Llamada a la acción",
     "navbarAria": "Navegación principal",
     "toggleMenu": "Abrir menú",

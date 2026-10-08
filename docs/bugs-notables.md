@@ -57,3 +57,26 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Qué pasaba**: Junto al nombre de la página había un icono "Resetear a demo inicial". Tras un `confirm()`, sustituía la página del store por la de ejemplo.
 - **Por qué era grave**: El autosave detecta cualquier cambio del store y hace `PUT` a los 3 segundos. Resetear la demo sobrescribía la página real del usuario en el servidor. Era un resto de cuando el editor funcionaba sin backend.
 - **Arreglo**: Botón y acción del store eliminados.
+
+## 7. Dos bloques con el mismo ID tras guardar
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Tras cada autosave, el cliente copiaba a sus bloques los IDs que devolvía el servidor, emparejándolos por posición. Si añadías un bloque arriba mientras el guardado estaba en vuelo, el bloque nuevo recibía el ID del primero, el primero el del segundo, y el último se quedaba con el suyo: dos bloques con el mismo ID. En el siguiente guardado el servidor actualizaba uno encima del otro y borraba el que sobraba.
+- **Por qué**: El cliente usaba IDs temporales (`blk_…`) que el servidor descartaba. Había dos IDs por bloque y había que reconciliarlos.
+- **Cómo se detectó**: Leyendo `usePageSync` al preparar los tests: el emparejamiento por índice solo es correcto si el array local no cambia durante la petición.
+- **Arreglo**: IDs UUID generados en el cliente y conservados por el servidor (ADR-014), que además los valida: rechaza los que no son UUID, los repetidos y los de bloques de otra página. Ya no hay reconciliación tras guardar.
+- **Cómo se verificó**: Un test de `usePageSync` reproduce la carrera (guardado en vuelo, se añade un bloque, el servidor responde con otro orden). Con el código anterior el resultado era `[A, B, B]`; con el nuevo los IDs no cambian. Tests de backend para el ID de otra página (el bloque ajeno no se toca) y, en el navegador, los IDs se mantienen tras varios guardados.
+
+## 8. Restaurar una versión desconectaba a todos los editores
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Al restaurar una versión, el servidor avisaba por WebSocket con un mensaje `page.restored`. Channels lo despacha al método `page_restored` del consumer, que no existía: el consumer lanzaba una excepción y se cerraban las conexiones de todos los que editaban esa página.
+- **Arreglo**: Handler `page_restored`, que reenvía el aviso; el cliente recarga la página y muestra quién la restauró.
+- **Cómo se verificó**: Un test recorre el código del backend, encuentra cada tipo de mensaje que se envía a un grupo y comprueba que el consumer tiene su handler. Falla con el código anterior (`['page.restored']`) y pasa con el arreglo, así que cualquier mensaje nuevo sin handler también lo romperá.
+
+## 9. Restaurar una versión se aplicaba a medias y el autosave lo deshacía
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: El servidor restauraba bloques, tema, tokens y SEO, pero el cliente solo copiaba nombre, bloques y estado. El siguiente autosave enviaba el tema, los tokens y el SEO antiguos y deshacía esa parte de la restauración.
+- **Arreglo**: El cliente recarga la página entera desde el servidor con el mismo mapper que la carga normal (`reloadFromApi`). La carga se marca como remota para que el autosave no la reenvíe, y vacía el historial de deshacer.
+- **Cómo se verificó**: Test de `usePageSync` y prueba en el navegador: se guarda una versión, se cambia el título SEO, se restaura y, pasados los 3 segundos del autosave, el servidor sigue teniendo el título de la versión.

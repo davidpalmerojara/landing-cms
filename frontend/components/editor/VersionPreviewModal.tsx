@@ -8,6 +8,9 @@ import { defaultBlockStyles } from '@/types/blocks';
 import { api } from '@/lib/api';
 import type { ApiPageVersionDetail } from '@/lib/api';
 import { useEditorStore } from '@/store/editor-store';
+import { apiToTokens } from '@/lib/design-tokens';
+import { pageThemeVars } from '@/lib/page-theme';
+import type { ThemeColors } from '@/lib/themes';
 
 interface VersionPreviewModalProps {
   pageId: string;
@@ -121,8 +124,9 @@ function BlockRenderer({ block, diffStatus, showDiff }: { block: SnapshotBlock; 
   );
 }
 
-function PageColumn({ title, blocks, diffBlocks, showDiff }: {
+function PageColumn({ title, blocks, diffBlocks, showDiff, themeVars }: {
   title: string;
+  themeVars: React.CSSProperties;
   blocks: SnapshotBlock[];
   diffBlocks?: DiffBlock[];
   showDiff: boolean;
@@ -135,7 +139,7 @@ function PageColumn({ title, blocks, diffBlocks, showDiff }: {
       <div className="px-4 py-2 bg-surface-elevated/80 border-b border-surface-elevated/80 shrink-0">
         <span className="text-xs font-medium text-secondary">{title}</span>
       </div>
-      <div className="flex-1 overflow-y-auto bg-white">
+      <div className="flex-1 overflow-y-auto bg-white" style={themeVars}>
         {items.map((item, i) => (
           <BlockRenderer
             key={`${item.block.type}-${i}`}
@@ -164,6 +168,11 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
   const [showDiff, setShowDiff] = useState(true);
 
   const currentBlocks = useEditorStore((s) => s.page.blocks);
+  const currentPage = useEditorStore((s) => s.page);
+  const currentThemeVars = useMemo(
+    () => pageThemeVars({ themeId: currentPage.themeId, customTheme: currentPage.customTheme, designTokens: currentPage.designTokens }),
+    [currentPage.themeId, currentPage.customTheme, currentPage.designTokens],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -191,6 +200,14 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
   );
 
   const versionSnapshot = version?.snapshot || [];
+  const versionThemeVars = useMemo(() => {
+    const meta = version?.page_metadata;
+    return pageThemeVars({
+      themeId: meta?.theme_id,
+      customTheme: (meta?.custom_theme as ThemeColors | null) ?? undefined,
+      designTokens: apiToTokens(meta?.design_tokens),
+    });
+  }, [version]);
 
   const { currentDiff, versionDiff } = useMemo(
     () => computeDiff(currentSnapshot, versionSnapshot),
@@ -283,14 +300,14 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
       ) : splitView ? (
         <div className="flex-1 flex overflow-hidden">
           <div className="flex-1 border-r border-surface-elevated/80 flex flex-col min-w-0">
-            <PageColumn title={t('currentVersion')} blocks={currentSnapshot} diffBlocks={currentDiff} showDiff={showDiff} />
+            <PageColumn title={t('currentVersion')} themeVars={currentThemeVars} blocks={currentSnapshot} diffBlocks={currentDiff} showDiff={showDiff} />
           </div>
           <div className="flex-1 flex flex-col min-w-0">
-            <PageColumn title={`v${version?.version_number}${version?.label ? ` - ${version.label}` : ''}`} blocks={versionSnapshot} diffBlocks={versionDiff} showDiff={showDiff} />
+            <PageColumn title={`v${version?.version_number}${version?.label ? ` - ${version.label}` : ''}`} themeVars={versionThemeVars} blocks={versionSnapshot} diffBlocks={versionDiff} showDiff={showDiff} />
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex-1 overflow-y-auto bg-white" style={versionThemeVars}>
           {versionDiff.map((item, i) => (
             <BlockRenderer
               key={`${item.block.type}-${i}`}

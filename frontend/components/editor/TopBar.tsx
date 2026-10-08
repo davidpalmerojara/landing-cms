@@ -59,9 +59,15 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
 
   const handlePublish = useCallback(async () => {
     setIsPublishing(true);
-    await onPublish();
+    const ok = await onPublish();
     setIsPublishing(false);
-  }, [onPublish]);
+    const { addToast, page: published } = useEditorStore.getState();
+    if (ok) {
+      addToast(t('editor.publishSuccess', { path: `/p/${published.slug}` }), 'success');
+    } else {
+      addToast(t('editor.publishError'), 'error');
+    }
+  }, [onPublish, t]);
 
   const handleSaveVersion = useCallback(async () => {
     if (page.id.startsWith('page_')) return;

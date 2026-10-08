@@ -155,13 +155,14 @@ Store centralizado con `subscribeWithSelector`. Acciones principales:
 
 - **Bloques**: `addBlock`, `updateBlock`, `updateBlockStyle`, `deleteBlock`, `duplicateBlock`, `selectBlock`
 - **Responsive**: `updateBlockResponsiveStyle` (overrides por tablet/mobile)
-- **Historia**: `undo`, `redo`, `setPageWithHistory` (con arrays `past`/`future`)
+- **Historia**: `undo`, `redo`, `setPageWithHistory` (con arrays `past`/`future`; acepta `coalesceKey` para que las ediciones seguidas de un mismo campo formen un solo paso)
 - **Clipboard**: `copy`, `paste`
 - **Viewport**: `setDeviceMode`, `togglePreview`, `setZoom`, `panTo`
 - **DnD**: `startDragPending`, `startDrag`, `updateDragPosition`, `endDrag`, `setCanvasDropIndex`
 - **Colaboracion**: `setConnectedUsers`, `setRemoteCursors`, `applyRemotePageUpdate`
 - **Toasts**: `addToast`, `removeToast`
-- **Page**: `setPageWithHistory`, `loadPage`, `setAutoSaveStatus`
+- **Page**: `setPageWithHistory`, `loadPage` (sustituye la pagina y vacia historial y seleccion; marcada como remota para que el autosave no la reenvie), `setAutoSaveStatus`
+- **IDs de bloque**: UUID v4 generados en el cliente con `newBlockId()` y conservados por el servidor (ADR-014)
 
 ### Auto-save
 

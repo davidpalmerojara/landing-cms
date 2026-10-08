@@ -12,8 +12,8 @@ import { defaultSeoFields } from '@/types/page';
 import type { Block } from '@/types/blocks';
 import { api } from '@/lib/api';
 import type { ApiPage } from '@/lib/api';
-import { getThemeById } from '@/lib/themes';
-import { apiToTokens, defaultDesignTokens, tokensToCssVars, tokensToThemeVars } from '@/lib/design-tokens';
+import { apiToTokens } from '@/lib/design-tokens';
+import { pageThemeVars } from '@/lib/page-theme';
 
 type DeviceMode = 'desktop' | 'tablet' | 'mobile';
 
@@ -100,7 +100,7 @@ function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublis
         <button
           onClick={handlePublish}
           disabled={isPublishing}
-          className="text-white font-bold text-sm px-4 py-1.5 rounded-md shadow-lg shadow-[#2563EB]/20 transition-all active:scale-95 disabled:opacity-50"
+          className="text-white font-bold text-sm px-4 py-1.5 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
         >
           {isPublishing ? (
@@ -178,21 +178,7 @@ export default function PreviewPage() {
     );
   }
 
-  const theme = getThemeById(page.themeId || 'default', page.customTheme);
-  const designTokens = page.designTokens || defaultDesignTokens;
-  const bpVars = tokensToCssVars(designTokens);
-  const legacyVars = page.designTokens ? tokensToThemeVars(designTokens) : {
-    '--theme-primary': theme.colors.primary,
-    '--theme-primary-hover': theme.colors.primaryHover,
-    '--theme-secondary': theme.colors.secondary,
-    '--theme-bg': theme.colors.background,
-    '--theme-surface': theme.colors.surface,
-    '--theme-text': theme.colors.text,
-    '--theme-text-muted': theme.colors.textMuted,
-    '--theme-border': theme.colors.border,
-    '--theme-accent': theme.colors.accent,
-  };
-  const themeVars = { ...bpVars, ...legacyVars } as React.CSSProperties;
+  const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
 
   return (
     <div className="min-h-screen bg-white" style={themeVars}>

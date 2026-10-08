@@ -13,6 +13,7 @@ def disable_throttling(settings):
             'anon': '10000/minute',
             'user': '10000/minute',
             'auth': '10000/minute',
+            'login_username': '10000/minute',
         },
     }
 
@@ -52,3 +53,12 @@ def page_with_blocks(user):
     BlockFactory(page=page, type='features', order=1)
     BlockFactory(page=page, type='cta', order=2)
     return page
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Rate-limit counters live in the cache; each test starts from zero."""
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()

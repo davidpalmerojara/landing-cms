@@ -228,7 +228,7 @@ EMAIL_BACKEND = os.environ.get(
     'EMAIL_BACKEND',
     'django.core.mail.backends.console.EmailBackend'
 )
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'BuilderPro <noreply@builderpro.app>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Paxl <noreply@paxl.app>')
 
 # SMTP settings (for production with Resend, SendGrid, etc.)
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')

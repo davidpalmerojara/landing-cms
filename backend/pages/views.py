@@ -158,7 +158,7 @@ class PageViewSet(viewsets.ModelViewSet):
             send_mail(
                 subject=f'{request.user.username} te ha invitado a colaborar en "{page.name}"',
                 message=(
-                    f'{request.user.username} te ha invitado a editar la página "{page.name}" en BuilderPro.\n\n'
+                    f'{request.user.username} te ha invitado a editar la página "{page.name}" en Paxl.\n\n'
                     f'Abre el editor: {editor_url}\n'
                 ),
                 from_email=django_settings.DEFAULT_FROM_EMAIL,
@@ -166,7 +166,7 @@ class PageViewSet(viewsets.ModelViewSet):
                 html_message=(
                     f'<p><strong>{request.user.username}</strong> te ha invitado a colaborar '
                     f'en la página <strong>"{page.name}"</strong>.</p>'
-                    f'<p><a href="{editor_url}" style="display:inline-block;background:#4f46e5;color:#fff;'
+                    f'<p><a href="{editor_url}" style="display:inline-block;background:#2563EB;color:#fff;'
                     f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
                     f'Abrir editor</a></p>'
                 ),

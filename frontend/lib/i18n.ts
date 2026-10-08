@@ -1,7 +1,6 @@
 import en from '@/messages/en.json';
 import es from '@/messages/es.json';
 
-export const LOCALE_STORAGE_KEY = 'paxl-locale';
 export const LOCALE_COOKIE = 'paxl-locale';
 export const LOCALES = ['es', 'en'] as const;
 

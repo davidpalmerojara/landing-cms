@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
 import { blockRegistry } from '@/lib/block-registry';
 import { defaultBlockStyles } from '@/types/blocks';
+import { isBlockId, newBlockId } from '@/lib/block-factory';
 import type { Page } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
 import type { Block } from '@/types/blocks';
@@ -22,7 +23,7 @@ function logSyncError(message: string, error: unknown) {
 
 // --- Mappers ---
 
-function apiPageToLocal(apiPage: ApiPage): Page {
+export function apiPageToLocal(apiPage: ApiPage): Page {
   return {
     id: apiPage.id,
     name: apiPage.name,
@@ -55,7 +56,7 @@ function apiPageToLocal(apiPage: ApiPage): Page {
   };
 }
 
-function localPageToApi(page: Page) {
+export function localPageToApi(page: Page) {
   const seo = page.seo || defaultSeoFields;
   return {
     name: page.name,
@@ -84,36 +85,42 @@ function localPageToApi(page: Page) {
   };
 }
 
-// --- Sync block IDs from API response ---
+// --- Local backup (used only when the API is unreachable) ---
 
-function syncBlockIdsFromApi(updated: ApiPage) {
-  const localPage = useEditorStore.getState().page;
-  const selectedBlockId = useEditorStore.getState().selectedBlockId;
-  let newSelectedBlockId = selectedBlockId;
+const backupKey = (pageId: string) => `paxl-page-backup:${pageId}`;
 
-  // Sort API blocks by order to match frontend array order
-  const sortedApiBlocks = [...updated.blocks].sort((a, b) => a.order - b.order);
+function writeBackup(page: Page) {
+  try {
+    localStorage.setItem(backupKey(page.id), JSON.stringify(page));
+  } catch (e) {
+    logSyncError('Could not write local page backup:', e);
+  }
+}
 
-  const syncedBlocks = localPage.blocks.map((b, i) => {
-    const apiBlock = sortedApiBlocks[i];
-    if (apiBlock && b.id !== apiBlock.id) {
-      if (selectedBlockId === b.id) {
-        newSelectedBlockId = apiBlock.id;
-      }
-      return { ...b, id: apiBlock.id };
-    }
-    return b;
-  });
-  const needsSync = syncedBlocks.some((b, i) => b !== localPage.blocks[i]);
-  if (needsSync) {
-    useEditorStore.setState({ isRemoteUpdate: true });
-    useEditorStore.setState({
-      page: { ...localPage, blocks: syncedBlocks },
-      selectedBlockId: newSelectedBlockId,
-      isSaved: true,
-    });
-    queueMicrotask(() => useEditorStore.setState({ isRemoteUpdate: false }));
-  } else {
+function readBackup(pageId: string): Page | null {
+  try {
+    const raw = localStorage.getItem(backupKey(pageId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Page;
+    if (parsed?.id !== pageId || !Array.isArray(parsed.blocks)) return null;
+    return {
+      ...parsed,
+      // Backups written before ADR-014 may hold non-UUID block ids
+      blocks: parsed.blocks.map((b) => ({
+        ...b,
+        id: isBlockId(b.id) ? b.id : newBlockId(),
+        styles: b.styles || { ...defaultBlockStyles },
+      })),
+    };
+  } catch (e) {
+    logSyncError('Could not read local page backup:', e);
+    return null;
+  }
+}
+
+/** Marks the page as saved unless it changed while the request was in flight. */
+function markSavedIfUnchanged(sentPage: Page) {
+  if (useEditorStore.getState().page === sentPage) {
     useEditorStore.setState({ isSaved: true });
   }
 }
@@ -134,37 +141,21 @@ export function usePageSync(pageId?: string) {
     async function loadPage() {
       try {
         if (pageId) {
-          // Load specific page
           const apiPage = await api.pages.get(pageId);
-          useEditorStore.setState({ page: apiPageToLocal(apiPage) });
+          useEditorStore.getState().loadPage(apiPageToLocal(apiPage));
         } else {
-          // Load first available page, or use default
+          // Load first available page, or keep the default page from the store
           const response = await api.pages.list();
           if (response.results.length > 0) {
             const apiPage = await api.pages.get(response.results[0].id);
-            useEditorStore.setState({ page: apiPageToLocal(apiPage) });
+            useEditorStore.getState().loadPage(apiPageToLocal(apiPage));
           }
-          // If no pages exist, keep the default page from the store
         }
       } catch (e) {
-        logSyncError('Failed to load page from API, using local state:', e);
+        logSyncError('Failed to load page from API, using local backup if any:', e);
         setError(e instanceof Error ? e.message : 'Error al cargar');
-        // Fall back to localStorage if available
-        try {
-          const saved = localStorage.getItem('landing_builder_page');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (parsed?.blocks) {
-              parsed.blocks = parsed.blocks.map((b: Record<string, unknown>) => ({
-                ...b,
-                styles: b.styles || { ...defaultBlockStyles },
-              }));
-              useEditorStore.setState({ page: parsed });
-            }
-          }
-        } catch {
-          // Ignore localStorage errors
-        }
+        const backup = pageId ? readBackup(pageId) : null;
+        if (backup) useEditorStore.getState().loadPage(backup);
       } finally {
         setIsLoading(false);
       }
@@ -188,21 +179,18 @@ export function usePageSync(pageId?: string) {
           isSaved: true,
         });
       } else {
-        // Existing page, update
-        const updated = await api.pages.update(currentPage.id, payload);
-        // Sync block IDs from backend (new blocks get real UUIDs)
-        syncBlockIdsFromApi(updated);
+        // Block ids are generated client-side and kept by the server (ADR-014),
+        // so the response needs no reconciliation with local state.
+        await api.pages.update(currentPage.id, payload);
+        markSavedIfUnchanged(currentPage);
       }
 
-      // Also keep localStorage as backup
-      localStorage.setItem('landing_builder_page', JSON.stringify(useEditorStore.getState().page));
-
+      writeBackup(useEditorStore.getState().page);
       return true;
     } catch (e) {
       logSyncError('Failed to save to API:', e);
       setError(e instanceof Error ? e.message : 'Error al guardar');
-      // Fallback: save to localStorage
-      localStorage.setItem('landing_builder_page', JSON.stringify(currentPage));
+      writeBackup(currentPage);
       return false;
     }
   }, []);
@@ -221,16 +209,15 @@ export function usePageSync(pageId?: string) {
           isSaved: true,
         });
       } else {
-        const updated = await api.pages.update(currentPage.id, payload);
-        // Sync block IDs and update status
-        syncBlockIdsFromApi(updated);
-        // Ensure status is updated locally
+        await api.pages.update(currentPage.id, payload);
+        // Reflect the new status locally without adding an undo step
         const latestPage = useEditorStore.getState().page;
-        if (latestPage.status !== 'published') {
-          useEditorStore.setState({
-            page: { ...latestPage, status: 'published' },
-          });
-        }
+        useEditorStore.setState({
+          isRemoteUpdate: true,
+          page: { ...latestPage, status: 'published' },
+          isSaved: latestPage === currentPage,
+        });
+        queueMicrotask(() => useEditorStore.setState({ isRemoteUpdate: false }));
       }
       return true;
     } catch (e) {
@@ -240,5 +227,12 @@ export function usePageSync(pageId?: string) {
     }
   }, []);
 
-  return { isLoading, error, saveToApi, publishToApi, page };
+  /** Replace the editor state with the server's copy (e.g. after restoring a version). */
+  const reloadFromApi = useCallback(async () => {
+    const current = useEditorStore.getState().page;
+    const fresh = await api.pages.get(current.id);
+    useEditorStore.getState().loadPage(apiPageToLocal(fresh));
+  }, []);
+
+  return { isLoading, error, saveToApi, publishToApi, reloadFromApi, page };
 }

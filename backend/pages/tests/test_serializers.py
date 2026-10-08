@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from rest_framework import serializers
 from pages.models import Page, Block, CustomDomain
@@ -72,24 +74,67 @@ class TestPageDetailSerializerUpdate:
         # b2 was deleted
         assert not Block.objects.filter(pk=b2.pk).exists()
 
-    def test_update_creates_new_blocks_with_frontend_ids(self):
-        """Blocks with non-UUID ids (like blk_xxx) should be created as new."""
-        user = UserFactory()
-        page = PageFactory(owner=user)
+    def test_update_keeps_client_generated_block_ids(self):
+        """A new block keeps the id the client gave it, so nothing has to be remapped."""
+        page = PageFactory(owner=UserFactory())
+        client_id = uuid.uuid4()
 
-        data = {
+        serializer = PageDetailSerializer(instance=page, data={
             'name': page.name,
-            'blocks': [
-                {'id': 'blk_abc123', 'type': 'hero', 'order': 0, 'data': {}, 'styles': {}},
-            ],
-        }
-        serializer = PageDetailSerializer(instance=page, data=data)
+            'blocks': [{'id': str(client_id), 'type': 'hero', 'order': 0, 'data': {}, 'styles': {}}],
+        })
         assert serializer.is_valid(), serializer.errors
         updated = serializer.save()
 
-        assert updated.blocks.count() == 1
-        block = updated.blocks.first()
-        assert block.type == 'hero'
+        assert list(updated.blocks.values_list('id', flat=True)) == [client_id]
+
+    def test_create_keeps_client_generated_block_ids(self):
+        client_id = uuid.uuid4()
+        serializer = PageDetailSerializer(data={
+            'name': 'New',
+            'blocks': [{'id': str(client_id), 'type': 'hero', 'data': {}, 'styles': {}}],
+        })
+        assert serializer.is_valid(), serializer.errors
+        page = serializer.save(owner=UserFactory())
+
+        assert page.blocks.get().id == client_id
+
+    def test_rejects_non_uuid_block_ids(self):
+        page = PageFactory(owner=UserFactory())
+        serializer = PageDetailSerializer(instance=page, data={
+            'name': page.name,
+            'blocks': [{'id': 'blk_abc123', 'type': 'hero', 'order': 0, 'data': {}, 'styles': {}}],
+        })
+        assert not serializer.is_valid()
+        assert 'blocks' in serializer.errors
+
+    def test_rejects_duplicate_block_ids(self):
+        page = PageFactory(owner=UserFactory())
+        block_id = str(uuid.uuid4())
+        serializer = PageDetailSerializer(instance=page, data={
+            'name': page.name,
+            'blocks': [
+                {'id': block_id, 'type': 'hero', 'order': 0, 'data': {}, 'styles': {}},
+                {'id': block_id, 'type': 'cta', 'order': 1, 'data': {}, 'styles': {}},
+            ],
+        })
+        assert not serializer.is_valid()
+        assert 'blocks' in serializer.errors
+
+    def test_rejects_block_id_that_belongs_to_another_page(self):
+        """Reusing another page's block id must not move or overwrite that block."""
+        other_block = BlockFactory(page=PageFactory(owner=UserFactory()), type='hero', data={'title': 'Not yours'})
+        page = PageFactory(owner=UserFactory())
+
+        serializer = PageDetailSerializer(instance=page, data={
+            'name': page.name,
+            'blocks': [{'id': str(other_block.id), 'type': 'hero', 'order': 0, 'data': {'title': 'Hijacked'}, 'styles': {}}],
+        })
+        assert not serializer.is_valid()
+
+        other_block.refresh_from_db()
+        assert other_block.data == {'title': 'Not yours'}
+        assert other_block.page_id != page.id
 
 
 @pytest.mark.django_db

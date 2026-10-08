@@ -23,27 +23,25 @@ class AIResponse:
     provider: str  # 'anthropic' or 'gemini'
 
 
-def resolve_provider(user) -> tuple[str, str]:
-    """Determine which provider and API key to use.
-    Returns (provider_name, api_key) or raises ValueError if none available.
-    Priority: user key > server key.
+def resolve_provider(own_provider: str | None = None, own_key: str | None = None) -> tuple[str, str, bool]:
+    """Choose provider and key. Returns (provider, api_key, uses_server_key).
+
+    A key sent with the request (the user's own) is used for that call only
+    and never stored. Otherwise the server key is used, subject to plan limits.
     """
-    # 1. User's own key
-    if user.ai_provider and user.ai_api_key:
-        return user.ai_provider, user.ai_api_key
+    if own_provider and own_key:
+        return own_provider, own_key, False
 
-    # 2. Server-level keys
-    server_anthropic = getattr(settings, 'ANTHROPIC_API_KEY', '')
     server_gemini = getattr(settings, 'GOOGLE_AI_KEY', '')
-
+    server_anthropic = getattr(settings, 'ANTHROPIC_API_KEY', '')
     if server_gemini:
-        return 'gemini', server_gemini
+        return 'gemini', server_gemini, True
     if server_anthropic:
-        return 'anthropic', server_anthropic
+        return 'anthropic', server_anthropic, True
 
     raise ValueError(
-        'No hay API key de IA configurada. '
-        'Ve a Configuración > IA para añadir tu clave de Google Gemini o Anthropic.'
+        'No hay una clave de IA disponible. Puedes usar tu propia clave de '
+        'Google Gemini o Anthropic: se usa solo para esta petición y no se guarda.'
     )
 
 

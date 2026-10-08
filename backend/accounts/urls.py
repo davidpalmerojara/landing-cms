@@ -9,7 +9,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from .throttles import AuthRateThrottle, LoginUsernameThrottle
 from .views import (
-    AISettingsView,
     GoogleLoginView,
     LogoutView,
     MagicLinkRequestView,
@@ -66,5 +65,4 @@ urlpatterns = [
     path('magic/request/', MagicLinkRequestView.as_view(), name='auth-magic-request'),
     path('magic/verify/', MagicLinkVerifyView.as_view(), name='auth-magic-verify'),
     path('me/', MeView.as_view(), name='auth-me'),
-    path('ai-settings/', AISettingsView.as_view(), name='auth-ai-settings'),
 ]

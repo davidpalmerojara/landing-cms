@@ -26,27 +26,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     has_google = serializers.SerializerMethodField()
-    has_ai_key = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google', 'ai_provider', 'has_ai_key']
+        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google']
         read_only_fields = ['id', 'created_at']
 
     def get_has_google(self, obj):
         return bool(obj.google_id)
 
-    def get_has_ai_key(self, obj):
-        return bool(obj.ai_api_key)
 
-
-class AISettingsSerializer(serializers.Serializer):
-    ai_provider = serializers.ChoiceField(
-        choices=[('', 'None'), ('gemini', 'Google Gemini'), ('anthropic', 'Anthropic Claude')],
-        required=False,
-        allow_blank=True,
-    )
-    ai_api_key = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
 
 class GoogleAuthSerializer(serializers.Serializer):

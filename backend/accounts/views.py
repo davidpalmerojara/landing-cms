@@ -15,7 +15,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import MagicToken
 from .serializers import (
-    AISettingsSerializer,
     GoogleAuthSerializer,
     MagicLinkRequestSerializer,
     MagicLinkVerifySerializer,
@@ -251,41 +250,3 @@ class LogoutView(APIView):
         response = Response({'message': 'Sesión cerrada.'})
         clear_auth_cookies(response)
         return response
-
-
-class AISettingsView(APIView):
-    """GET/PUT /api/auth/ai-settings/ — manage user's AI API keys."""
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        masked_key = ''
-        if user.ai_api_key:
-            masked_key = '•' * 12 + user.ai_api_key[-4:]
-        return Response({
-            'ai_provider': user.ai_provider,
-            'ai_api_key': masked_key,
-            'has_key': bool(user.ai_api_key),
-        })
-
-    def put(self, request):
-        serializer = AISettingsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = request.user
-        provider = serializer.validated_data.get('ai_provider', '')
-        api_key = serializer.validated_data.get('ai_api_key', '')
-
-        user.ai_provider = provider
-        if api_key and not api_key.startswith('•'):
-            user.ai_api_key = api_key
-        elif not api_key:
-            user.ai_api_key = ''
-
-        user.save(update_fields=['ai_provider', 'ai_api_key'])
-
-        return Response({
-            'ai_provider': user.ai_provider,
-            'has_key': bool(user.ai_api_key),
-            'message': 'Configuración de IA guardada.',
-        })

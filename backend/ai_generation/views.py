@@ -47,6 +47,7 @@ def _check_rate_limit(user) -> str | None:
     recent_count = AIGenerationLog.objects.filter(
         user=user,
         created_at__gte=one_hour_ago,
+        used_own_key=False,
     ).count()
     if recent_count >= max_generations:
         return f'Has alcanzado el límite de {max_generations} generaciones por hora. Inténtalo más tarde.'
@@ -80,22 +81,26 @@ class GeneratePageView(APIView):
         tone = input_serializer.validated_data.get('tone', '')
         language = input_serializer.validated_data['language']
 
-        # 3. Rate limit
-        rate_error = _check_rate_limit(request.user)
-        if rate_error:
-            return Response(
-                {'error': rate_error},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-
-        # 4. Resolve AI provider (user key > server key)
+        # 3. Resolve the key first: the plan limit only applies to the server's key
         try:
-            provider, api_key = resolve_provider(request.user)
+            provider, api_key, uses_server_key = resolve_provider(
+                input_serializer.validated_data.get('provider'),
+                input_serializer.validated_data.get('api_key'),
+            )
         except ValueError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # 4. Rate limit (plan-based, server key only)
+        if uses_server_key:
+            rate_error = _check_rate_limit(request.user)
+            if rate_error:
+                return Response(
+                    {'error': rate_error},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
 
         # 5. Build prompts
         system_prompt = get_system_prompt()
@@ -115,6 +120,7 @@ class GeneratePageView(APIView):
                 logger.error(f'AI API error ({provider}): {e}')
                 AIGenerationLog.objects.create(
                     user=request.user,
+                    used_own_key=not uses_server_key,
                     page=page,
                     prompt=prompt,
                     mode=AIGenerationLog.Mode.FULL_PAGE,
@@ -156,6 +162,7 @@ class GeneratePageView(APIView):
         if last_error:
             AIGenerationLog.objects.create(
                 user=request.user,
+                used_own_key=not uses_server_key,
                 page=page,
                 prompt=prompt,
                 mode=AIGenerationLog.Mode.FULL_PAGE,
@@ -207,6 +214,7 @@ class GeneratePageView(APIView):
         cost = _calculate_cost(total_tokens_in, total_tokens_out, provider)
         AIGenerationLog.objects.create(
             user=request.user,
+            used_own_key=not uses_server_key,
             page=page,
             prompt=prompt,
             mode=AIGenerationLog.Mode.FULL_PAGE,
@@ -262,22 +270,26 @@ class EditBlockView(APIView):
         input_serializer.is_valid(raise_exception=True)
         instruction = input_serializer.validated_data['instruction']
 
-        # 4. Rate limit
-        rate_error = _check_rate_limit(request.user)
-        if rate_error:
-            return Response(
-                {'error': rate_error},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-
-        # 5. Resolve provider
+        # 4. Resolve the key first: the plan limit only applies to the server's key
         try:
-            provider, api_key = resolve_provider(request.user)
+            provider, api_key, uses_server_key = resolve_provider(
+                input_serializer.validated_data.get('provider'),
+                input_serializer.validated_data.get('api_key'),
+            )
         except ValueError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # 5. Rate limit (plan-based, server key only)
+        if uses_server_key:
+            rate_error = _check_rate_limit(request.user)
+            if rate_error:
+                return Response(
+                    {'error': rate_error},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
 
         # 6. Build prompts
         system_prompt = get_edit_block_system_prompt()
@@ -290,6 +302,7 @@ class EditBlockView(APIView):
             logger.error(f'AI edit block error ({provider}): {e}')
             AIGenerationLog.objects.create(
                 user=request.user,
+                used_own_key=not uses_server_key,
                 page=page,
                 prompt=instruction,
                 mode=AIGenerationLog.Mode.EDIT_BLOCK,
@@ -353,6 +366,7 @@ class EditBlockView(APIView):
         cost = _calculate_cost(ai_response.tokens_in, ai_response.tokens_out, provider)
         AIGenerationLog.objects.create(
             user=request.user,
+            used_own_key=not uses_server_key,
             page=page,
             prompt=instruction,
             mode=AIGenerationLog.Mode.EDIT_BLOCK,

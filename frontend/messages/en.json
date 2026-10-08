@@ -78,7 +78,8 @@
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "registerLink": "Sign up",
-    "loginLink": "Log in"
+    "loginLink": "Log in",
+    "googleEmailInUse": "An account with this email already exists. Log in with your username and password."
   },
   "errors": {
     "globalTitle": "Something went wrong",

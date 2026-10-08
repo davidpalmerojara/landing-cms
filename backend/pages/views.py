@@ -434,10 +434,8 @@ class SitemapView(generics.GenericAPIView):
             noindex=False,
         ).values('slug', 'updated_at').order_by('-updated_at')
 
-        frontend_url = getattr(
-            __import__('django.conf', fromlist=['settings']).settings,
-            'FRONTEND_URL', 'https://builderpro.com'
-        ).rstrip('/')
+        from django.conf import settings as django_settings
+        frontend_url = django_settings.FRONTEND_URL.rstrip('/')
 
         lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',

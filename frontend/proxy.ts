@@ -6,23 +6,24 @@ import { NextRequest, NextResponse } from 'next/server';
  * When a request arrives on a custom domain (not the app's own domain),
  * we resolve it to a page slug via the backend API and rewrite to /p/[slug].
  *
- * The app's own domains (localhost, builderpro.com, vercel) are excluded
- * so the dashboard, editor, etc. work normally.
+ * The app's own hosts (localhost, *.vercel.app, any extra host listed in
+ * APP_HOSTNAMES) are excluded so the dashboard, editor, etc. work normally.
+ * In development any IP address counts as the app, so the app can be opened
+ * from a phone on the local network.
  */
 
-const APP_DOMAINS = new Set([
+const APP_HOSTNAMES = new Set([
   'localhost',
   '127.0.0.1',
-  'builderpro.com',
-  'www.builderpro.com',
-  'app.builderpro.com',
+  ...(process.env.APP_HOSTNAMES ?? '').split(',').map((h) => h.trim()).filter(Boolean),
 ]);
 
-// Also match Vercel preview URLs
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+
 function isAppDomain(hostname: string): boolean {
-  if (APP_DOMAINS.has(hostname)) return true;
+  if (APP_HOSTNAMES.has(hostname)) return true;
   if (hostname.endsWith('.vercel.app')) return true;
-  if (hostname.endsWith('.builderpro.com')) return true;
+  if (process.env.NODE_ENV !== 'production' && IPV4.test(hostname)) return true;
   return false;
 }
 
@@ -84,8 +85,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static files and API routes
+  // Run on page routes only: skip Next internals, API routes and any path
+  // with a file extension (files in /public such as images).
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.[a-zA-Z0-9]+$).*)',
   ],
 };

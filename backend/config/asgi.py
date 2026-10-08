@@ -1,5 +1,5 @@
 """
-ASGI config for BuilderPro backend.
+ASGI config for the Paxl backend.
 Routes HTTP to Django and WebSocket to Channels.
 """
 

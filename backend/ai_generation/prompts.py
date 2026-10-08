@@ -8,7 +8,7 @@ from .block_schemas import build_schema_reference
 def get_system_prompt() -> str:
     schema_ref = build_schema_reference()
 
-    return f"""You are an expert landing page designer for BuilderPro, a visual page builder.
+    return f"""You are an expert landing page designer for Paxl, a visual page builder.
 Your job is to generate landing page blocks based on the user's description.
 
 ## Rules
@@ -228,7 +228,7 @@ def get_edit_block_system_prompt() -> str:
     """System prompt for editing a single block with AI."""
     schema_ref = build_schema_reference()
 
-    return f"""You are an expert landing page designer for BuilderPro, a visual page builder.
+    return f"""You are an expert landing page designer for Paxl, a visual page builder.
 Your job is to EDIT a single existing block based on the user's instructions.
 
 ## Rules

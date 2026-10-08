@@ -53,7 +53,7 @@ SAMPLE_BLOCKS = [
         'type': 'footer',
         'order': 4,
         'data': {
-            'companyName': 'BuilderPro',
+            'companyName': 'Paxl',
             'links': ['Privacy', 'Terms', 'Contact'],
         },
         'styles': {},

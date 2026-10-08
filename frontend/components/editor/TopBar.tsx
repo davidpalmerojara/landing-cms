@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import {
   Monitor, Smartphone, Tablet,
   Eye, Save, CheckCircle2,
-  RotateCcw, AlertCircle,
+  AlertCircle,
   Loader2, Globe, Share2, BarChart3, Search,
   Pencil, History, X, Check, Palette,
 } from 'lucide-react';
@@ -12,7 +12,6 @@ import { useTranslations } from 'next-intl';
 import ShareModal from './ShareModal';
 import { useEditorStore, getUserColor } from '@/store/editor-store';
 import type { CollabUser } from '@/store/editor-store';
-import ThemeSelector from './ThemeSelector';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import { api } from '@/lib/api';
@@ -34,7 +33,6 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const setDeviceMode = useEditorStore((s) => s.setDeviceMode);
   const isSaved = useEditorStore((s) => s.isSaved);
-  const resetDemo = useEditorStore((s) => s.resetDemo);
   const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
   const connectedUsers = useEditorStore((s) => s.connectedUsers);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,31 +80,23 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
     }
   }, [page.id, t, versionLabel]);
 
-  const handleResetDemo = useCallback(() => {
-    if (window.confirm(t('editor.resetDemoConfirm'))) {
-      localStorage.removeItem('landing_builder_page');
-      resetDemo();
-    }
-  }, [resetDemo, t]);
-
   return (
     <header className="h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
       <div className="flex items-center gap-2 xl:gap-4 flex-1 min-w-0 overflow-hidden">
         <a href="/dashboard" aria-label={t('editor.goToDashboard')} className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           {t('common.brand')}
         </a>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-primary tracking-wide truncate">{page.name}</span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-sm text-primary tracking-wide truncate max-w-[16rem]" title={page.name}>{page.name}</span>
             <span
-              className={`text-[9px] w-5 h-5 rounded-full font-bold flex items-center justify-center shrink-0 ${
+              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 border ${
                 page.status === 'published'
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-orange-500/15 text-orange-400 border border-orange-500/30'
+                  ? 'bg-success/10 text-success border-success/30'
+                  : 'bg-warning/10 text-warning border-warning/30'
               }`}
-              title={page.status === 'published' ? t('common.published') : t('common.draft')}
             >
-              {page.status === 'published' ? t('editor.statusPublishedShort') : t('editor.statusDraftShort')}
+              {page.status === 'published' ? t('common.published') : t('common.draft')}
             </span>
             <span aria-live="polite">
               {autoSaveStatus === 'saving' && (
@@ -122,26 +112,18 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
                 </span>
               )}
               {autoSaveStatus === 'error' && (
-                <span className="flex items-center gap-1 text-red-400 text-[10px]">
+                <span className="flex items-center gap-1 text-error text-[10px]">
                   <AlertCircle className="w-3 h-3" />
                   {t('editor.saveError')}
                 </span>
               )}
             </span>
             {apiError && (
-              <span className="flex items-center gap-1 text-red-400 text-[10px]" title={apiError}>
+              <span className="flex items-center gap-1 text-error text-[10px]" title={apiError}>
                 <AlertCircle className="w-3 h-3" />
                 {t('editor.offline')}
               </span>
             )}
-            <button
-              onClick={handleResetDemo}
-              aria-label={t('editor.resetDemo')}
-              className="ml-2 text-muted hover:text-red-400 p-1 rounded hover:bg-surface-card/50 transition-colors"
-              title={t('editor.resetDemo')}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       </div>
@@ -321,7 +303,6 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             </button>
           </>
         )}
-        <ThemeSelector />
         {/* Version toast */}
         {versionToast && (
           <div className="absolute top-14 sm:top-16 right-2 sm:right-4 bg-surface-elevated border border-default text-primary text-xs px-3 py-2 rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
@@ -331,11 +312,12 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
         {page.status === 'published' && page.slug && (
           <button
             onClick={() => window.open(`/p/${page.slug}`, '_blank')}
-            className="text-sm font-medium hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10"
+            className="text-sm font-medium flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10"
             title={t('editor.viewPublished')}
+            aria-label={t('editor.viewPublished')}
           >
             <Globe className="w-4 h-4" />
-            {t('editor.viewPublished')}
+            <span className="hidden 2xl:inline">{t('editor.viewPublished')}</span>
           </button>
         )}
         <button
@@ -345,15 +327,17 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
           }}
           className="text-sm font-medium flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
           title={t('editor.previewTitle')}
+          aria-label={t('editor.previewTitle')}
         >
           <Eye className="w-4 h-4" />
-          <span className="hidden xl:inline">{t('editor.previewTitle')}</span>
+          <span className="hidden 2xl:inline">{t('editor.previewTitle')}</span>
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
           className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card/50 transition-colors disabled:opacity-50"
           title={isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}
+          aria-label={isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -362,7 +346,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span className="hidden xl:inline">{isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}</span>
+          <span className="hidden 2xl:inline">{isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}</span>
         </button>
         <div className="hidden xl:flex items-center gap-1">
           <ThemeToggle />

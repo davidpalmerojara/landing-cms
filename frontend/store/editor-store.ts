@@ -166,7 +166,6 @@ interface EditorActions {
   setDesignTokenColors: (colors: ColorTokens) => void;
   updateSeo: (key: keyof SeoFields, value: string | boolean) => void;
   save: () => void;
-  resetDemo: () => void;
 
   // Viewport
   setViewportState: (updater: ViewportState | ((prev: ViewportState) => ViewportState)) => void;
@@ -534,15 +533,6 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     }));
   },
   save: () => set({ isSaved: true }),
-  resetDemo: () => {
-    set({
-      page: getDefaultPage(),
-      selectedBlockId: null,
-      past: [],
-      future: [],
-      isSaved: false,
-    });
-  },
 
   // --- Viewport ---
   setViewportState: (updater) => {

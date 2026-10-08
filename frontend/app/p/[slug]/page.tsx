@@ -2,8 +2,9 @@ import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { LOCALE_COOKIE, MESSAGES, resolveLocale } from '@/lib/i18n';
 import PublicPageClient from './PublicPageClient';
+import { serverApiUrl } from '@/lib/server-api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
+const API_BASE = serverApiUrl();
 
 interface ApiBlock {
   id: string;

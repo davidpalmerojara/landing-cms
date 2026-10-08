@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverApiUrl } from '@/lib/server-api';
 
 /**
  * Custom domain routing proxy.
@@ -37,7 +38,7 @@ async function resolveCustomDomain(hostname: string): Promise<string | null> {
     return cached.slug;
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
+  const apiUrl = serverApiUrl();
 
   try {
     const res = await fetch(`${apiUrl}/public/resolve-domain/?domain=${encodeURIComponent(hostname)}`, {

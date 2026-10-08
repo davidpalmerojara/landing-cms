@@ -16,7 +16,7 @@ No hace falta ningún servicio externo: en local se usa SQLite, una capa de cana
 
 ```bash
 make install   # crea backend/venv, instala dependencias y copia los .env de ejemplo
-make migrate   # crea la base de datos SQLite
+make migrate   # crea la base de datos SQLite y los planes Free/Pro
 make dev       # arranca backend y frontend; Ctrl+C para parar los dos
 ```
 

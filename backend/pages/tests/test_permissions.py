@@ -245,9 +245,10 @@ class TestVersionPermissions:
 
 @pytest.mark.django_db
 class TestAssetPermissions:
-    def test_owner_can_list_and_upload_assets(self, auth_client, user):
+    def test_owner_can_list_and_upload_assets(self, auth_client, user, settings, tmp_path):
+        settings.MEDIA_ROOT = tmp_path
         AssetFactory(owner=user)
-        upload = SimpleUploadedFile('asset.png', b'pngdata', content_type='image/png')
+        upload = SimpleUploadedFile('asset.png', b'\x89PNG\r\n\x1a\n' + b'\x00' * 32, content_type='image/png')
 
         list_resp = auth_client.get('/api/assets/')
         create_resp = auth_client.post('/api/assets/', {'file': upload}, format='multipart')

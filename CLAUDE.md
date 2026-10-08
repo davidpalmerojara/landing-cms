@@ -16,7 +16,7 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 
 | Dependencia | Version | Proposito |
 |---|---|---|
-| Next.js | 16.2.1 | Framework (App Router) |
+| Next.js | 16.4.0 | Framework (App Router) |
 | React | 19.2.3 | UI |
 | TypeScript | ^5 | Tipado obligatorio |
 | Zustand | ^5.0.11 | Estado global del editor |

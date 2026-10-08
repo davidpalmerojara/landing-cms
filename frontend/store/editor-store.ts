@@ -8,7 +8,7 @@ import type { Block, BlockStyles } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
 import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
-import { generateId } from '@/lib/block-factory';
+import { newBlockId } from '@/lib/block-factory';
 import { defaultCustomThemeColors } from '@/lib/themes';
 import type { ThemeColors } from '@/lib/themes';
 
@@ -82,6 +82,9 @@ interface EditorState {
   page: Page;
   past: Page[];
   future: Page[];
+  /** Consecutive edits with the same key within HISTORY_COALESCE_MS share one undo step. */
+  historyCoalesceKey: string | null;
+  historyCoalesceAt: number;
 
   // Selection & clipboard
   selectedBlockId: string | null;
@@ -126,7 +129,9 @@ interface EditorState {
 
 interface EditorActions {
   // Page mutations (with history)
-  setPageWithHistory: (updater: Page | ((prev: Page) => Page)) => void;
+  setPageWithHistory: (updater: Page | ((prev: Page) => Page), options?: { coalesceKey?: string }) => void;
+  /** Replace the document with a freshly loaded page: clears history and selection. */
+  loadPage: (page: Page) => void;
   addBlock: (type: string, label: string, index?: number | null, initialData?: Record<string, unknown>) => void;
   updateBlock: (id: string, key: string, value: unknown) => void;
   updateBlockStyle: (id: string, styleKey: keyof BlockStyles, value: unknown) => void;
@@ -200,6 +205,7 @@ interface EditorActions {
 export type EditorStore = EditorState & EditorActions;
 
 const HISTORY_LIMIT = 50;
+export const HISTORY_COALESCE_MS = 1000;
 
 export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, get) => {
   return ({
@@ -207,6 +213,8 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   page: getDefaultPage(),
   past: [],
   future: [],
+  historyCoalesceKey: null,
+  historyCoalesceAt: 0,
   selectedBlockId: null,
   clipboard: null,
   isPreviewMode: false,
@@ -233,21 +241,47 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   layerDropIndex: null,
 
   // --- Page mutations with history ---
-  setPageWithHistory: (updater) => {
-    const { page } = get();
+  setPageWithHistory: (updater, options) => {
+    const { page, historyCoalesceKey, historyCoalesceAt } = get();
     const newPage = typeof updater === 'function' ? updater(page) : updater;
     if (newPage === page) return;
+
+    const now = Date.now();
+    const coalesceKey = options?.coalesceKey ?? null;
+    const coalesce =
+      coalesceKey !== null &&
+      coalesceKey === historyCoalesceKey &&
+      now - historyCoalesceAt < HISTORY_COALESCE_MS;
+
     set((state) => ({
       page: newPage,
-      past: [...state.past, page].slice(-HISTORY_LIMIT),
+      // Typing in a field keeps extending the same undo step
+      past: coalesce ? state.past : [...state.past, page].slice(-HISTORY_LIMIT),
       future: [],
       isSaved: false,
+      historyCoalesceKey: coalesceKey,
+      historyCoalesceAt: now,
     }));
+  },
+
+  loadPage: (page) => {
+    // Flagged as remote so autosave doesn't send back what was just loaded
+    set({
+      page,
+      past: [],
+      future: [],
+      selectedBlockId: null,
+      isSaved: true,
+      isRemoteUpdate: true,
+      historyCoalesceKey: null,
+      historyCoalesceAt: 0,
+    });
+    queueMicrotask(() => set({ isRemoteUpdate: false }));
   },
 
   addBlock: (type, label, index = null, initialData) => {
     if (!initialData) return;
-    const newId = generateId();
+    const newId = newBlockId();
     const newBlock: Block = { id: newId, type, name: label, data: { ...initialData }, styles: { ...defaultBlockStyles } };
     get().setPageWithHistory((prev) => {
       const newBlocks = [...prev.blocks];
@@ -264,7 +298,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
       blocks: prev.blocks.map((block) =>
         block.id === id ? { ...block, data: { ...block.data, [key]: value } } : block
       ),
-    }));
+    }), { coalesceKey: `block:${id}:data:${key}` });
   },
 
   updateBlockStyle: (id, styleKey, value) => {
@@ -275,7 +309,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           ? { ...block, styles: { ...(block.styles || defaultBlockStyles), [styleKey]: value } }
           : block
       ),
-    }));
+    }), { coalesceKey: `block:${id}:style:${String(styleKey)}` });
   },
 
   updateBlockResponsiveStyle: (id, device, styleKey, value) => {
@@ -300,7 +334,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           },
         };
       }),
-    }));
+    }), { coalesceKey: `block:${id}:${device}:${String(styleKey)}` });
   },
 
   deleteBlock: (id) => {
@@ -332,7 +366,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   duplicateBlock: (id) => {
-    const newId = generateId();
+    const newId = newBlockId();
     get().setPageWithHistory((prev) => {
       const index = prev.blocks.findIndex((b) => b.id === id);
       if (index === -1) return prev;
@@ -389,6 +423,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
       page: prevState,
       past: state.past.slice(0, -1),
       future: [page, ...state.future].slice(0, HISTORY_LIMIT),
+      historyCoalesceKey: null,
     }));
   },
 
@@ -400,6 +435,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
       page: nextState,
       past: [...state.past, page].slice(-HISTORY_LIMIT),
       future: state.future.slice(1),
+      historyCoalesceKey: null,
     }));
   },
 
@@ -414,7 +450,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   paste: () => {
     const { clipboard, selectedBlockId, page } = get();
     if (!clipboard) return;
-    const newId = generateId();
+    const newId = newBlockId();
     const newBlock: Block = { ...JSON.parse(JSON.stringify(clipboard)), id: newId };
 
     get().setPageWithHistory((prev) => {
@@ -473,7 +509,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           },
         },
       };
-    });
+    }, { coalesceKey: `tokens:colors:${String(key)}` });
   },
   updateDesignTokenTypography: (key, value) => {
     get().setPageWithHistory((prev) => {
@@ -488,7 +524,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           },
         },
       };
-    });
+    }, { coalesceKey: `tokens:typography:${String(key)}` });
   },
   updateDesignTokenSpacing: (key, value) => {
     get().setPageWithHistory((prev) => {
@@ -503,7 +539,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           },
         },
       };
-    });
+    }, { coalesceKey: `tokens:spacing:${String(key)}` });
   },
   updateDesignTokenBorders: (key, value) => {
     get().setPageWithHistory((prev) => {
@@ -518,7 +554,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
           },
         },
       };
-    });
+    }, { coalesceKey: `tokens:borders:${String(key)}` });
   },
   setDesignTokenColors: (colors) => {
     get().setPageWithHistory((prev) => {
@@ -530,7 +566,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     get().setPageWithHistory((prev) => ({
       ...prev,
       seo: { ...(prev.seo || defaultSeoFields), [key]: value },
-    }));
+    }), { coalesceKey: `seo:${key}` });
   },
   save: () => set({ isSaved: true }),
 

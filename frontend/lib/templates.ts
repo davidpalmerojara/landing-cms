@@ -1,9 +1,7 @@
 import { defaultBlockStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
+import { newBlockId } from '@/lib/block-factory';
 
-function generateId(prefix = 'blk') {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
 export interface PageTemplate {
   id: string;
@@ -26,7 +24,7 @@ export function instantiateTemplate(template: PageTemplate): {
   name: string;
 } {
   const blocks: Block[] = template.blocks.map((def) => ({
-    id: generateId(),
+    id: newBlockId(),
     type: def.type,
     name: def.type,
     data: { ...def.data },

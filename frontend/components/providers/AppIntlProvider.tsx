@@ -46,7 +46,8 @@ export default function AppIntlProvider({ children, initialLocale }: AppIntlProv
 
   return (
     <LocaleContext.Provider value={value}>
-      <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
+      {/* Fixed time zone so server and client format dates identically. */}
+      <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]} timeZone="Europe/Madrid">
         {children}
       </NextIntlClientProvider>
     </LocaleContext.Provider>

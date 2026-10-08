@@ -8,7 +8,7 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 BACKEND_VENV="$BACKEND_DIR/venv"
 BACKEND_PORT="${BACKEND_PORT:-8001}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
-NODE_VERSION="${NODE_VERSION:-20.19.0}"
+NODE_VERSION="${NODE_VERSION:-$(cat "$ROOT_DIR/.nvmrc")}"
 
 BACKEND_PID=""
 FRONTEND_PID=""
@@ -33,24 +33,46 @@ trap cleanup INT TERM EXIT
 require_file() {
   local file_path="$1"
   local label="$2"
+  local hint="$3"
 
   if [[ ! -f "${file_path}" ]]; then
-    echo "Falta ${label}: ${file_path}" >&2
+    echo "Falta ${label}. ${hint}" >&2
+    exit 1
+  fi
+}
+
+# Use nvm if it is installed; otherwise accept whatever Node is on PATH
+# as long as it meets the minimum version in .nvmrc.
+use_node() {
+  if [[ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+    nvm use "${NODE_VERSION}" >/dev/null
+  fi
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo "No se encontró Node. Instala Node ${NODE_VERSION} o superior." >&2
+    exit 1
+  fi
+
+  if ! node -e '
+    const [a, b] = process.argv.slice(1).map((v) => v.replace(/^v/, "").split(".").map(Number));
+    process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);
+  ' "$(node -v)" "${NODE_VERSION}"; then
+    echo "Node $(node -v) es demasiado antiguo. Hace falta ${NODE_VERSION} o superior." >&2
     exit 1
   fi
 }
 
 echo "Verificando entorno..."
-require_file "$BACKEND_DIR/manage.py" "backend/manage.py"
-require_file "$BACKEND_VENV/bin/activate" "backend/venv/bin/activate"
-require_file "$BACKEND_DIR/.env" "backend/.env"
-require_file "$FRONTEND_DIR/package.json" "frontend/package.json"
-require_file "$FRONTEND_DIR/.env.local" "frontend/.env.local"
-
-if [[ ! -f "$HOME/.nvm/nvm.sh" ]]; then
-  echo "No se encontró nvm en \$HOME/.nvm/nvm.sh" >&2
+require_file "$BACKEND_VENV/bin/activate" "backend/venv" "Ejecuta: make install"
+require_file "$BACKEND_DIR/.env" "backend/.env" "Ejecuta: make env"
+require_file "$FRONTEND_DIR/.env.local" "frontend/.env.local" "Ejecuta: make env"
+if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
+  echo "Faltan las dependencias del frontend. Ejecuta: make install" >&2
   exit 1
 fi
+use_node
 
 echo "Aplicando migraciones del backend..."
 (
@@ -67,11 +89,9 @@ echo "Arrancando backend en http://localhost:${BACKEND_PORT} ..."
 ) &
 BACKEND_PID=$!
 
-echo "Arrancando frontend en http://localhost:${FRONTEND_PORT} con Node ${NODE_VERSION} ..."
+echo "Arrancando frontend en http://localhost:${FRONTEND_PORT} con Node $(node -v) ..."
 (
   cd "$FRONTEND_DIR"
-  source "$HOME/.nvm/nvm.sh"
-  nvm use "${NODE_VERSION}" >/dev/null
   exec npm run dev -- --port "${FRONTEND_PORT}"
 ) &
 FRONTEND_PID=$!

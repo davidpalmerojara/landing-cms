@@ -30,7 +30,7 @@ Arranque recomendado:
 ```
 
 Este script:
-- valida `backend/.env`, `frontend/.env.local`, `backend/venv` y `nvm`
+- valida `backend/venv`, `backend/.env`, `frontend/.env.local` y `frontend/node_modules`; usa nvm solo si esta instalado
 - ejecuta migraciones
 - arranca backend en `8001`
 - arranca frontend en `3000`

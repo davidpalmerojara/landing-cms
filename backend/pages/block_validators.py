@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
 from typing import Callable
 
 from rest_framework import serializers
 
 from .block_sanitizers import (
+    sanitize_block_data,
     sanitize_custom_html,
     sanitize_plain_text,
     sanitize_text,
@@ -23,6 +26,10 @@ FAQ_QUESTION_MAX = 200
 FAQ_ANSWER_MAX = 1000
 COPYRIGHT_MAX = 200
 CUSTOM_HTML_MAX = 50_000
+# Whole data object of one block, serialized (custom HTML is the largest field)
+MAX_BLOCK_DATA_BYTES = 64_000
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class FieldRule:
@@ -46,7 +53,14 @@ def _validate_fields(
     if not isinstance(data, dict):
         raise serializers.ValidationError('El campo data debe ser un objeto JSON.')
 
-    validated = dict(data)
+    # Allowlist: only fields with a rule are kept, so unknown keys (such as an
+    # unvalidated "buttonLink": "javascript:...") never reach the database or
+    # other editors. Dropped rather than rejected so pages saved with stale
+    # keys can still be saved.
+    unknown = sorted(set(data) - set(rules))
+    if unknown:
+        logger.info('Dropping unknown %s fields: %s', block_type, unknown)
+    validated: dict = {}
     errors: dict[str, list[str]] = {}
 
     for key, rule in rules.items():
@@ -59,11 +73,15 @@ def _validate_fields(
         if value is None:
             if not rule.allow_null:
                 errors.setdefault(key, []).append('Este campo no puede ser null.')
+            else:
+                validated[key] = None
             continue
 
         if rule.kind == 'boolean':
             if not isinstance(value, bool):
                 errors.setdefault(key, []).append('Debe ser un booleano.')
+            else:
+                validated[key] = value
             continue
 
         if rule.coerce_to_string and isinstance(value, int):
@@ -324,6 +342,18 @@ BLOCK_VALIDATORS: dict[str, Callable[[dict], dict]] = {
     'stats': validate_stats_data,
     'timeline': validate_timeline_data,
 }
+
+
+def clean_block_data(block_type: str, data, *, partial: bool = False) -> dict:
+    """Single validation path for block content, used by the REST API and the
+    collaboration WebSocket: known type, size limit, sanitizing, allowlist."""
+    if block_type not in BLOCK_VALIDATORS:
+        raise serializers.ValidationError(f'Tipo de bloque desconocido: {block_type}.')
+    if not isinstance(data, dict):
+        raise serializers.ValidationError('El campo data debe ser un objeto JSON.')
+    if len(json.dumps(data, ensure_ascii=False).encode()) > MAX_BLOCK_DATA_BYTES:
+        raise serializers.ValidationError('El contenido del bloque es demasiado grande.')
+    return validate_block_data(block_type, sanitize_block_data(block_type, data), partial=partial)
 
 
 def validate_block_data(block_type: str | None, data: dict, *, partial: bool = False) -> dict:

@@ -185,3 +185,39 @@ def test_update_existing_block_merges_partial_data():
     updated = serializer.save()
     updated_block = updated.blocks.get(id=block.id)
     assert updated_block.data == {'title': 'New', 'subtitle': 'Keep me', 'alignment': 'left'}
+
+
+@pytest.mark.django_db
+class TestBlockAllowlist:
+    def _save(self, blocks):
+        serializer = PageDetailSerializer(data={'name': 'Allowlist', 'blocks': blocks})
+        return serializer
+
+    def test_rejects_unknown_block_types(self):
+        serializer = self._save([{'type': 'script', 'data': {}, 'styles': {}}])
+        assert not serializer.is_valid()
+        assert 'type' in serializer.errors['blocks'][0]
+
+    def test_drops_fields_without_a_rule(self):
+        serializer = self._save([{
+            'type': 'hero',
+            'data': {'title': 'Hola', 'buttonLink': 'javascript:alert(1)', 'onload': 'x'},
+            'styles': {},
+        }])
+        assert serializer.is_valid(), serializer.errors
+        page = serializer.save(owner=UserFactory())
+        assert page.blocks.get().data == {'title': 'Hola'}
+
+    def test_keeps_null_and_boolean_values_that_have_rules(self):
+        serializer = self._save([{
+            'type': 'pricing',
+            'data': {'title': None, 'plan2Highlighted': True},
+            'styles': {},
+        }])
+        assert serializer.is_valid(), serializer.errors
+        page = serializer.save(owner=UserFactory())
+        assert page.blocks.get().data == {'title': None, 'plan2Highlighted': True}
+
+    def test_rejects_oversized_block_data(self):
+        serializer = self._save([{'type': 'customHtml', 'data': {'html': 'x' * 70_000}, 'styles': {}}])
+        assert not serializer.is_valid()

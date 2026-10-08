@@ -2,8 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 import re
 from .models import Page, Block, Asset, PageVersion, CustomDomain
-from .block_sanitizers import sanitize_block_data
-from .block_validators import validate_block_data
+from .block_validators import BLOCK_VALIDATORS, clean_block_data
 
 
 class AssetSerializer(serializers.ModelSerializer):
@@ -39,17 +38,14 @@ class BlockSerializer(serializers.ModelSerializer):
         if block_type is None and self.instance is not None:
             block_type = self.instance.type
 
-        data = attrs.get('data')
-        if block_type and data is not None:
-            try:
-                sanitized_data = sanitize_block_data(block_type, data)
-                attrs['data'] = validate_block_data(
-                    block_type,
-                    sanitized_data,
-                    partial=self._is_partial_block_update(),
-                )
-            except serializers.ValidationError as exc:
-                raise serializers.ValidationError({'data': exc.detail})
+        try:
+            if block_type not in BLOCK_VALIDATORS:
+                raise serializers.ValidationError(f'Tipo de bloque desconocido: {block_type}.')
+            if attrs.get('data') is not None:
+                attrs['data'] = clean_block_data(block_type, attrs['data'], partial=self._is_partial_block_update())
+        except serializers.ValidationError as exc:
+            field = 'type' if block_type not in BLOCK_VALIDATORS else 'data'
+            raise serializers.ValidationError({field: exc.detail})
         return attrs
 
     def _is_partial_block_update(self):

@@ -90,11 +90,11 @@ export default function BillingPage() {
   return (
     <div className="min-h-screen bg-surface text-secondary">
       {/* Header */}
-      <header className="border-b border-subtle\/80">
+      <header className="border-b border-subtle/80">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card\/50 transition-colors"
+            className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -120,7 +120,7 @@ export default function BillingPage() {
         ) : (
           <>
             {/* Current plan banner */}
-            <div className="mb-10 p-6 rounded-xl border border-subtle\/80 bg-surface-elevated\/50">
+            <div className="mb-10 p-6 rounded-xl border border-subtle/80 bg-surface-elevated/50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted mb-1">{t('billing.currentPlan')}</p>
@@ -218,10 +218,10 @@ export default function BillingPage() {
             {payments.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-primary mb-4">{t('billing.paymentHistory')}</h3>
-                <div className="border border-subtle\/80 rounded-xl overflow-x-auto">
+                <div className="border border-subtle/80 rounded-xl overflow-x-auto">
                   <table className="w-full text-sm min-w-[480px]">
                     <thead>
-                      <tr className="border-b border-subtle\/80 text-muted text-xs uppercase tracking-wider">
+                      <tr className="border-b border-subtle/80 text-muted text-xs uppercase tracking-wider">
                         <th className="text-left px-4 py-3 font-medium">{t('billing.date')}</th>
                         <th className="text-left px-4 py-3 font-medium">{t('billing.amount')}</th>
                         <th className="text-left px-4 py-3 font-medium">{t('billing.status')}</th>
@@ -230,7 +230,7 @@ export default function BillingPage() {
                     </thead>
                     <tbody>
                       {payments.map((p) => (
-                        <tr key={p.id} className="border-b border-subtle\/50 last:border-0">
+                        <tr key={p.id} className="border-b border-subtle/50 last:border-0">
                           <td className="px-4 py-3 text-secondary">
                             {new Date(p.created_at).toLocaleDateString(locale)}
                           </td>
@@ -314,8 +314,8 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
     <div
       className={`rounded-xl border p-6 flex flex-col ${
         highlighted
-          ? 'border-primary/50 bg-primary\/5 shadow-lg shadow-primary/10'
-          : 'border-subtle\/80 bg-surface-elevated\/30'
+          ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/10'
+          : 'border-subtle/80 bg-surface-elevated/30'
       }`}
     >
       <div className="flex items-center gap-2 mb-4">

@@ -41,7 +41,7 @@ export default function TemplatePickerModal({
       {/* Modal */}
       <div className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle\/80">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80">
           <div>
             <h2 className="text-lg font-semibold text-primary">
               {t('dashboard.createPage')}
@@ -85,11 +85,11 @@ export default function TemplatePickerModal({
               onClick={() => setSelectedId(null)}
               className={`group text-left rounded-xl border-2 transition-all p-4 flex flex-col ${
                 selectedId === null
-                  ? 'border-primary bg-primary\/5'
-                  : 'border-subtle hover:border-default bg-surface-elevated\/30'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-subtle hover:border-default bg-surface-elevated/30'
               }`}
             >
-              <div className="h-28 rounded-lg bg-surface-elevated border border-subtle\/50 flex items-center justify-center mb-3">
+              <div className="h-28 rounded-lg bg-surface-elevated border border-subtle/50 flex items-center justify-center mb-3">
                 <FileText className="w-8 h-8 text-muted" />
               </div>
               <h3 className="font-medium text-sm text-primary">
@@ -107,11 +107,11 @@ export default function TemplatePickerModal({
                 onClick={() => setSelectedId(template.id)}
                 className={`group text-left rounded-xl border-2 transition-all p-4 flex flex-col ${
                   selectedId === template.id
-                    ? 'border-primary bg-primary\/5'
-                    : 'border-subtle hover:border-default bg-surface-elevated\/30'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-subtle hover:border-default bg-surface-elevated/30'
                 }`}
               >
-                <div className="h-28 rounded-lg bg-surface-elevated border border-subtle\/50 flex items-center justify-center mb-3 relative overflow-hidden">
+                <div className="h-28 rounded-lg bg-surface-elevated border border-subtle/50 flex items-center justify-center mb-3 relative overflow-hidden">
                   <LayoutTemplate className="w-8 h-8 text-muted" />
                   <div className="absolute top-2 right-2">
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-surface-card text-secondary font-medium">
@@ -134,7 +134,7 @@ export default function TemplatePickerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle\/80">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80">
           <button
             onClick={onClose}
             disabled={isCreating}

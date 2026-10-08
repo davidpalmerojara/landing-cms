@@ -221,7 +221,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
 
               {/* Collaborators */}
               {collaborators.map((collab) => (
-                <div key={collab.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-surface-card\/50 transition-colors">
+                <div key={collab.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-surface-card/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-default flex items-center justify-center text-white text-xs font-bold">
                       {collab.username.charAt(0).toUpperCase()}

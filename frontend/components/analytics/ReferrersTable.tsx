@@ -40,7 +40,7 @@ export default function ReferrersTable({ data }: ReferrersTableProps) {
                 <span className="text-muted shrink-0">{item.count}</span>
               </div>
               <div className="h-1 bg-surface-card rounded mt-0.5">
-                <div className="h-full bg-primary\/60 rounded" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-primary/60 rounded" style={{ width: `${pct}%` }} />
               </div>
             </div>
             <span className="text-muted w-8 text-right shrink-0">{pct}%</span>

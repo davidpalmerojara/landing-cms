@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint --max-warnings 45",
     "typecheck": "tsc --noEmit",
+    "check:classes": "node scripts/check-classes.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

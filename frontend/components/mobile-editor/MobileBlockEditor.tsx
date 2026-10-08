@@ -52,8 +52,8 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
   return (
     <div className="pb-8">
       {/* Block header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-default/15 bg-surface-card\/40">
-        <div className="w-10 h-10 rounded-xl bg-primary\/10 flex items-center justify-center border border-[#2563EB]/20">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-default/15 bg-surface-card/40">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
           <BlockIcon size={18} className="text-primary-color" />
         </div>
         <div>
@@ -154,7 +154,7 @@ function SectionAccordion({
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="w-full flex items-center justify-between px-5 py-4 min-h-11 active:bg-surface-card\/40"
+        className="w-full flex items-center justify-between px-5 py-4 min-h-11 active:bg-surface-card/40"
       >
         <span className="text-sm font-medium text-secondary">{title}</span>
         <ChevronDown
@@ -325,7 +325,7 @@ function MobileColorPicker({
             key={color}
             onClick={() => onChange(color)}
             className={`w-11 h-11 rounded-lg border-2 transition-all active:scale-95 ${
-              value === color ? 'border-[#2563EB] ring-2 ring-[#2563EB]/30' : 'border-default\/30'
+              value === color ? 'border-[#2563EB] ring-2 ring-[#2563EB]/30' : 'border-default/30'
             }`}
             style={{ backgroundColor: color }}
             aria-label={t('colorOption', { value: color })}
@@ -342,7 +342,7 @@ function MobileColorPicker({
             className="flex-1 px-3 py-2.5 rounded-lg bg-surface-card border border-default/15 text-white text-sm font-mono focus:border-[#2563EB]/50 outline-none"
           />
           <div
-            className="w-10 h-10 rounded-lg border border-default\/30 flex-shrink-0"
+            className="w-10 h-10 rounded-lg border border-default/30 flex-shrink-0"
             style={{ backgroundColor: value || 'transparent' }}
           />
         </div>

@@ -59,59 +59,46 @@
   --bp-scrollbar-border: var(--bp-color-border-subtle);
 }
 
-/* ─── Tailwind utility layer ───────────────────────────────────────────────── */
+/* ─── Tailwind theme ───────────────────────────────────────────────────────── */
+/* Tokens are registered as Tailwind theme colors so every utility, variant
+   (hover:, focus-visible:, group-hover:…) and opacity modifier (/50) is
+   generated. `inline` makes utilities reference the --bp-* variables directly,
+   so switching data-theme swaps every color at runtime.
 
-@layer utilities {
-  /* Surfaces */
-  .bg-surface          { background-color: var(--bp-color-surface); }
-  .bg-surface-elevated { background-color: var(--bp-color-surface-elevated); }
-  .bg-surface-card     { background-color: var(--bp-color-surface-card); }
+   Shared names (bg-, border-, ring-, text-, from-…):
+     primary (brand blue), primary-light, primary-dark, accent,
+     surface, surface-elevated, surface-card, success, warning, error, muted.
+   Per-utility names keep the existing class semantics:
+     text-primary / text-secondary / text-muted  → text colors (not the brand blue)
+     text-primary-color                          → brand blue text
+     border-default / border-subtle              → border colors
+     bg-default / bg-subtle                      → fills in the border grays
+                                                   (dividers, toggle tracks)  */
 
-  /* Borders */
-  .border-default { border-color: var(--bp-color-border); }
-  .border-subtle  { border-color: var(--bp-color-border-subtle); }
+@theme inline {
+  --color-primary: var(--bp-color-primary);
+  --color-primary-light: var(--bp-color-primary-light);
+  --color-primary-dark: var(--bp-color-primary-dark);
+  --color-accent: var(--bp-color-accent);
 
-  /* Text */
-  .text-primary   { color: var(--bp-color-text-primary); }
-  .text-secondary { color: var(--bp-color-text-secondary); }
-  .text-muted     { color: var(--bp-color-text-muted); }
+  --color-surface: var(--bp-color-surface);
+  --color-surface-elevated: var(--bp-color-surface-elevated);
+  --color-surface-card: var(--bp-color-surface-card);
 
-  /* Primary */
-  .bg-primary       { background-color: var(--bp-color-primary); }
-  .bg-primary-light { background-color: var(--bp-color-primary-light); }
-  .bg-primary-dark  { background-color: var(--bp-color-primary-dark); }
-  .text-accent      { color: var(--bp-color-accent); }
+  --color-success: var(--bp-color-success);
+  --color-warning: var(--bp-color-warning);
+  --color-error: var(--bp-color-error);
+  --color-muted: var(--bp-color-text-muted);
 
-  /* Status */
-  .text-success { color: var(--bp-color-success); }
-  .text-warning { color: var(--bp-color-warning); }
-  .text-error   { color: var(--bp-color-error); }
+  --text-color-primary: var(--bp-color-text-primary);
+  --text-color-secondary: var(--bp-color-text-secondary);
+  --text-color-muted: var(--bp-color-text-muted);
+  --text-color-primary-color: var(--bp-color-primary);
 
-  /* Hover/opacity variants for surfaces */
-  .bg-surface-card\/80  { background-color: color-mix(in srgb, var(--bp-color-surface-card) 80%, transparent); }
-  .bg-surface-card\/50  { background-color: color-mix(in srgb, var(--bp-color-surface-card) 50%, transparent); }
-  .bg-surface-elevated\/80 { background-color: color-mix(in srgb, var(--bp-color-surface-elevated) 80%, transparent); }
-  .bg-surface-elevated\/50 { background-color: color-mix(in srgb, var(--bp-color-surface-elevated) 50%, transparent); }
-
-  /* Border opacity variants */
-  .border-default\/80 { border-color: color-mix(in srgb, var(--bp-color-border) 80%, transparent); }
-  .border-default\/50 { border-color: color-mix(in srgb, var(--bp-color-border) 50%, transparent); }
-  .border-default\/30 { border-color: color-mix(in srgb, var(--bp-color-border) 30%, transparent); }
-  .border-default\/10 { border-color: color-mix(in srgb, var(--bp-color-border) 10%, transparent); }
-  .border-subtle\/80  { border-color: color-mix(in srgb, var(--bp-color-border-subtle) 80%, transparent); }
-  .border-subtle\/50  { border-color: color-mix(in srgb, var(--bp-color-border-subtle) 50%, transparent); }
-  .border-subtle\/30  { border-color: color-mix(in srgb, var(--bp-color-border-subtle) 30%, transparent); }
-
-  /* Primary opacity variants */
-  .bg-primary\/20  { background-color: color-mix(in srgb, var(--bp-color-primary) 20%, transparent); }
-  .bg-primary\/10  { background-color: color-mix(in srgb, var(--bp-color-primary) 10%, transparent); }
-  .text-primary-color { color: var(--bp-color-primary); }
-
-  /* Ring */
-  .ring-primary { --tw-ring-color: var(--bp-color-primary); }
-
-  /* Placeholder */
-  .placeholder-muted::placeholder { color: var(--bp-color-text-muted); }
+  --border-color-default: var(--bp-color-border);
+  --border-color-subtle: var(--bp-color-border-subtle);
+  --background-color-default: var(--bp-color-border);
+  --background-color-subtle: var(--bp-color-border-subtle);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */

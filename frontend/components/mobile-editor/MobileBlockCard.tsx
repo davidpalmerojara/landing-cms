@@ -258,7 +258,7 @@ export default function MobileBlockCard({
         )}
 
         {swipeDirection === 'right' && (
-          <div className="absolute inset-0 bg-primary\/10 flex items-center justify-start pl-5 rounded-xl">
+          <div className="absolute inset-0 bg-primary/10 flex items-center justify-start pl-5 rounded-xl">
             <div className="flex items-center gap-2 text-primary-color" style={{ opacity: swipeProgress }}>
               <Copy size={18} />
               <span className="text-sm font-medium">{t('common.duplicate')}</span>
@@ -342,7 +342,7 @@ export default function MobileBlockCard({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden="true" />
           <div
-            className="absolute right-2 top-full mt-1 z-50 bg-surface-card border border-default\/30 rounded-xl shadow-xl py-1.5 min-w-[180px]"
+            className="absolute right-2 top-full mt-1 z-50 bg-surface-card border border-default/30 rounded-xl shadow-xl py-1.5 min-w-[180px]"
             role="menu"
             aria-label={t('dashboard.pageOptions', { name: label })}
           >

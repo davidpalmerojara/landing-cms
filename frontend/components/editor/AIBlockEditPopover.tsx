@@ -76,7 +76,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
     >
       <div className="bg-surface border border-subtle rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-subtle\/80">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-subtle/80">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             <span className="text-xs font-medium text-secondary">{t('ai.blockEditTitle')}</span>

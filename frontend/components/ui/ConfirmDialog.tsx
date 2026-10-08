@@ -72,7 +72,7 @@ export default function ConfirmDialog({
         <div className="flex items-start gap-3">
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              variant === 'danger' ? 'bg-red-500/10' : 'bg-primary\/10'
+              variant === 'danger' ? 'bg-red-500/10' : 'bg-primary/10'
             }`}
           >
             <AlertTriangle

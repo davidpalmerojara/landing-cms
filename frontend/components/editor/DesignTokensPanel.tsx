@@ -83,10 +83,10 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-subtle\/50">
+    <div className="border-b border-subtle/50">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-xs font-semibold text-secondary uppercase tracking-wider hover:bg-surface-card\/30 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-3 text-xs font-semibold text-secondary uppercase tracking-wider hover:bg-surface-card/30 transition-colors"
       >
         <Icon className="w-3.5 h-3.5 text-muted" />
         {title}
@@ -112,11 +112,11 @@ function PalettePresets({ onSelect }: { onSelect: (preset: TokenPreset) => void 
           <button
             key={preset.id}
             onClick={() => onSelect(preset)}
-            className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-[#2563EB]/50 hover:bg-surface-card\/50 transition-all group"
+            className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-[#2563EB]/50 hover:bg-surface-card/50 transition-all group"
           >
             <div className="flex gap-0.5">
               {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background, preset.colors.textPrimary].map((c, i) => (
-                <div key={i} className="w-4 h-4 rounded-sm border border-default\/50" style={{ backgroundColor: c }} />
+                <div key={i} className="w-4 h-4 rounded-sm border border-default/50" style={{ backgroundColor: c }} />
               ))}
             </div>
             <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">{preset.name}</span>
@@ -138,7 +138,7 @@ function TypographyScalePreview({ baseSize, scaleRatio }: { baseSize: number; sc
     { label: 'small', size: Math.round(baseSize / scaleRatio) },
   ];
   return (
-    <div className="bg-surface-elevated\/50 rounded-lg p-3 space-y-1">
+    <div className="bg-surface-elevated/50 rounded-lg p-3 space-y-1">
       {sizes.map(({ label, size }) => (
         <div key={label} className="flex items-baseline gap-2">
           <span className="text-[9px] text-muted w-8 text-right font-mono">{label}</span>
@@ -257,8 +257,8 @@ export default function DesignTokensPanel() {
   ];
 
   return (
-    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated\/80 flex flex-col overflow-hidden shrink-0">
-      <div className="px-4 py-3 border-b border-subtle\/50">
+    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col overflow-hidden shrink-0">
+      <div className="px-4 py-3 border-b border-subtle/50">
         <h2 className="text-sm font-semibold text-primary">{t('title')}</h2>
         <p className="text-[10px] text-muted mt-0.5">{t('description')}</p>
       </div>
@@ -267,7 +267,7 @@ export default function DesignTokensPanel() {
         {/* Colors */}
         <Section title={t('colors')} icon={Palette}>
           <PalettePresets onSelect={handlePreset} />
-          <div className="h-px bg-subtle\/60 my-2" />
+          <div className="h-px bg-subtle/60 my-2" />
           <div className="space-y-2.5">
             {colorFields.map(({ key, label, desc }) => (
               <ColorField
@@ -408,7 +408,7 @@ export default function DesignTokensPanel() {
             unit="px"
             onChange={(v) => updateBorders('radiusLg', `${v}px`)}
           />
-          <div className="flex items-center gap-3 bg-surface-elevated\/50 rounded-lg p-3">
+          <div className="flex items-center gap-3 bg-surface-elevated/50 rounded-lg p-3">
             <div className="w-10 h-10 border border-default" style={{ borderRadius: borders.radiusSm, backgroundColor: colors.surface }} />
             <div className="w-10 h-10 border border-default" style={{ borderRadius: borders.radiusMd, backgroundColor: colors.surface }} />
             <div className="w-10 h-10 border border-default" style={{ borderRadius: borders.radiusLg, backgroundColor: colors.surface }} />

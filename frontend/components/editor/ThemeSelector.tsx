@@ -45,7 +45,7 @@ export default function ThemeSelector() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card\/50 transition-colors"
+        className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
         title={t('buttonTitle')}
       >
         <Palette className="w-4 h-4" />
@@ -53,7 +53,7 @@ export default function ThemeSelector() {
       </button>
 
       {open && !showCustom && (
-        <div className="absolute top-full right-0 mt-2 w-52 bg-surface-card border border-default\/15 rounded-lg shadow-xl z-50 py-2">
+        <div className="absolute top-full right-0 mt-2 w-52 bg-surface-card border border-default/15 rounded-lg shadow-xl z-50 py-2">
           <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-muted font-semibold">
             {t('paletteTitle')}
           </div>
@@ -67,20 +67,20 @@ export default function ThemeSelector() {
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
                 themeId === theme.id
                   ? 'bg-surface-card text-primary'
-                  : 'text-secondary hover:text-primary hover:bg-surface-card\/50'
+                  : 'text-secondary hover:text-primary hover:bg-surface-card/50'
               }`}
             >
               <div className="flex gap-1">
                 <div
-                  className="w-4 h-4 rounded-full border border-default\/30"
+                  className="w-4 h-4 rounded-full border border-default/30"
                   style={{ backgroundColor: theme.colors.primary }}
                 />
                 <div
-                  className="w-4 h-4 rounded-full border border-default\/30"
+                  className="w-4 h-4 rounded-full border border-default/30"
                   style={{ backgroundColor: theme.colors.background }}
                 />
                 <div
-                  className="w-4 h-4 rounded-full border border-default\/30"
+                  className="w-4 h-4 rounded-full border border-default/30"
                   style={{ backgroundColor: theme.colors.text }}
                 />
               </div>
@@ -98,20 +98,20 @@ export default function ThemeSelector() {
             className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors mt-1 ${
               themeId === 'custom'
                 ? 'bg-surface-card text-primary'
-                : 'text-secondary hover:text-primary hover:bg-surface-card\/50'
+                : 'text-secondary hover:text-primary hover:bg-surface-card/50'
             }`}
           >
             <div className="flex gap-1">
               <div
-                className="w-4 h-4 rounded-full border border-default\/30"
+                className="w-4 h-4 rounded-full border border-default/30"
                 style={{ backgroundColor: customColors.primary }}
               />
               <div
-                className="w-4 h-4 rounded-full border border-default\/30"
+                className="w-4 h-4 rounded-full border border-default/30"
                 style={{ backgroundColor: customColors.background }}
               />
               <div
-                className="w-4 h-4 rounded-full border border-default\/30"
+                className="w-4 h-4 rounded-full border border-default/30"
                 style={{ backgroundColor: customColors.text }}
               />
             </div>
@@ -125,7 +125,7 @@ export default function ThemeSelector() {
 
       {/* Custom theme editor */}
       {open && showCustom && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-surface-card border border-default\/15 rounded-lg shadow-xl z-50 py-2">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-surface-card border border-default/15 rounded-lg shadow-xl z-50 py-2">
           <div className="flex items-center gap-2 px-3 py-1.5">
             <button
               onClick={() => setShowCustom(false)}
@@ -148,7 +148,7 @@ export default function ThemeSelector() {
                   </span>
                   <label className="relative cursor-pointer">
                     <div
-                      className="w-6 h-6 rounded-md border border-default\/30 hover:border-default transition-colors"
+                      className="w-6 h-6 rounded-md border border-default/30 hover:border-default transition-colors"
                       style={{ backgroundColor: customColors[key] }}
                     />
                     <input

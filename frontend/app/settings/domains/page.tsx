@@ -61,15 +61,15 @@ function DnsInstructions({ domain }: { domain: ApiCustomDomain }) {
   if (!instructions) return null;
 
   return (
-    <div className="mt-4 p-4 bg-surface-elevated\/50 rounded-lg border border-subtle\/50 space-y-3">
+    <div className="mt-4 p-4 bg-surface-elevated/50 rounded-lg border border-subtle/50 space-y-3">
       <h4 className="text-[11px] font-bold text-secondary uppercase tracking-widest">{t('domains.dnsConfig')}</h4>
       <p className="text-[12px] text-muted">
         {t('domains.dnsDescription')}
       </p>
       <div className="space-y-2">
         {/* CNAME */}
-        <div className="flex items-center gap-3 p-2.5 bg-surface rounded-md border border-subtle\/50">
-          <span className="text-[10px] font-bold text-primary-color bg-primary\/10 px-2 py-0.5 rounded">CNAME</span>
+        <div className="flex items-center gap-3 p-2.5 bg-surface rounded-md border border-subtle/50">
+          <span className="text-[10px] font-bold text-primary-color bg-primary/10 px-2 py-0.5 rounded">CNAME</span>
           <div className="flex-1 min-w-0">
             <span className="text-[11px] text-secondary">{t('domains.recordName')} </span>
             <span className="text-[11px] text-primary font-mono">{instructions.cname.name}</span>
@@ -85,7 +85,7 @@ function DnsInstructions({ domain }: { domain: ApiCustomDomain }) {
           </button>
         </div>
         {/* A Record alternative */}
-        <div className="flex items-center gap-3 p-2.5 bg-surface rounded-md border border-subtle\/50">
+        <div className="flex items-center gap-3 p-2.5 bg-surface rounded-md border border-subtle/50">
           <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">A</span>
           <div className="flex-1 min-w-0">
             <span className="text-[11px] text-secondary">{t('domains.recordName')} </span>
@@ -280,11 +280,11 @@ export default function DomainsSettingsPage() {
 
   return (
     <div className="min-h-screen bg-surface text-secondary">
-      <header className="border-b border-subtle\/80">
+      <header className="border-b border-subtle/80">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card\/50 transition-colors"
+            className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -355,7 +355,7 @@ export default function DomainsSettingsPage() {
         ) : (
           <div className="space-y-4">
             {domains.map((d) => (
-              <div key={d.id} className="bg-surface-elevated\/50 border border-subtle\/80 rounded-xl p-5">
+              <div key={d.id} className="bg-surface-elevated/50 border border-subtle/80 rounded-xl p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Globe className="w-5 h-5 text-muted" />
@@ -377,7 +377,7 @@ export default function DomainsSettingsPage() {
                         href={`https://${d.domain}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card\/50 transition-colors"
+                        className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
                         title={t('domains.visit')}
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -387,7 +387,7 @@ export default function DomainsSettingsPage() {
                       <button
                         onClick={() => handleVerify(d.id)}
                         disabled={verifyingId === d.id}
-                        className="flex items-center gap-1.5 text-[11px] font-medium text-primary-color hover:text-primary-color/80 bg-primary\/10 hover:bg-primary\/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-primary-color hover:text-primary-color/80 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       >
                         {verifyingId === d.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />

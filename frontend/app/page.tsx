@@ -21,7 +21,7 @@ export default function LandingPage() {
     <div id="main-content" className="min-h-screen bg-surface font-sans text-secondary selection:bg-[#2563EB]/30">
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-surface/70 backdrop-blur-xl border-b border-subtle\/50" aria-label={t('navigation.main')}>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-surface/70 backdrop-blur-xl border-b border-subtle/50" aria-label={t('navigation.main')}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link
             href="/"
@@ -81,7 +81,7 @@ export default function LandingPage() {
             </Link>
             <a
               href="#demo"
-              className="w-full sm:w-auto bg-surface-card\/80 border border-default/30 px-8 py-4 rounded-full font-extrabold text-lg transition-colors flex items-center justify-center gap-2 hover:bg-surface-card"
+              className="w-full sm:w-auto bg-surface-card/80 border border-default/30 px-8 py-4 rounded-full font-extrabold text-lg transition-colors flex items-center justify-center gap-2 hover:bg-surface-card"
               style={{ color: '#2563EB' }}
             >
               <PlayCircle className="w-5 h-5" />
@@ -119,7 +119,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-12 gap-6">
             {/* Large Card — Drag & Drop */}
-            <div className="col-span-12 md:col-span-8 relative bg-surface-elevated\/50 rounded-xl p-8 transition-all hover:bg-surface-card\/50 overflow-hidden group">
+            <div className="col-span-12 md:col-span-8 relative bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 overflow-hidden group">
               <div className="absolute bottom-0 right-0 w-[300px] h-[300px] rounded-full blur-[100px] -z-0" style={{ background: 'rgba(37, 99, 235, 0.1)' }} />
               <div className="relative z-10">
                 <MousePointer2 className="w-8 h-8 mb-4" style={{ color: '#2563EB' }} />
@@ -127,7 +127,7 @@ export default function LandingPage() {
                 <p className="text-secondary leading-relaxed mb-6 max-w-lg">
                   {t('marketing.home.dragDropDescription')}
                 </p>
-                <div className="bg-surface-elevated\/80 rounded-lg p-4 border border-subtle\/30 aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
+                <div className="bg-surface-elevated/80 rounded-lg p-4 border border-subtle/30 aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
                   <div className="w-full h-full rounded bg-surface-card/40 flex items-center justify-center text-muted text-sm">
                     {t('marketing.home.interfacePreview')}
                   </div>
@@ -136,7 +136,7 @@ export default function LandingPage() {
             </div>
 
             {/* Small Card — Rendimiento Extremo */}
-            <div className="col-span-12 md:col-span-4 bg-surface-elevated\/50 rounded-xl p-8 transition-all hover:bg-surface-card\/50 flex flex-col justify-between">
+            <div className="col-span-12 md:col-span-4 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 flex flex-col justify-between">
               <div>
                 <Zap className="w-8 h-8 mb-4" style={{ color: '#2563EB' }} />
                 <h3 className="text-xl font-bold text-white mb-2">{t('marketing.home.performanceTitle')}</h3>
@@ -151,7 +151,7 @@ export default function LandingPage() {
             </div>
 
             {/* Small Card — Diseño Responsive */}
-            <div className="col-span-12 md:col-span-4 bg-surface-elevated\/50 rounded-xl p-8 transition-all hover:bg-surface-card\/50">
+            <div className="col-span-12 md:col-span-4 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50">
               <Smartphone className="w-8 h-8 mb-4" style={{ color: '#ff59e3' }} />
               <h3 className="text-xl font-bold text-white mb-2">{t('marketing.home.responsiveTitle')}</h3>
               <p className="text-secondary leading-relaxed text-sm">
@@ -160,10 +160,10 @@ export default function LandingPage() {
             </div>
 
             {/* Large Card — Editor Mockup */}
-            <div className="col-span-12 md:col-span-8 bg-surface-elevated\/50 rounded-xl p-8 transition-all hover:bg-surface-card\/50 overflow-hidden group">
-              <div className="rounded-lg border border-subtle\/30 overflow-hidden transition-transform duration-700 group-hover:scale-[1.02]">
+            <div className="col-span-12 md:col-span-8 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 overflow-hidden group">
+              <div className="rounded-lg border border-subtle/30 overflow-hidden transition-transform duration-700 group-hover:scale-[1.02]">
                 {/* Fake Browser Chrome */}
-                <div className="h-10 border-b border-subtle\/50 flex items-center px-4 gap-4 bg-surface-elevated\/80">
+                <div className="h-10 border-b border-subtle/50 flex items-center px-4 gap-4 bg-surface-elevated/80">
                   <div className="flex gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                     <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
@@ -184,7 +184,7 @@ export default function LandingPage() {
       </section>
 
       {/* Editor Highlight Section */}
-      <section id="how-it-works" className="py-24 bg-surface-elevated\/30" aria-label={t('marketing.home.editorSection')}>
+      <section id="how-it-works" className="py-24 bg-surface-elevated/30" aria-label={t('marketing.home.editorSection')}>
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-7xl font-black tracking-tighter text-white mb-12">
             {t('marketing.home.editorTitleBefore')}{' '}
@@ -194,8 +194,8 @@ export default function LandingPage() {
           <div className="relative max-w-5xl mx-auto">
             {/* Glow behind */}
             <div className="absolute inset-0 -z-10 blur-[100px] rounded-full" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.15) 0%, rgba(37, 99, 235,0.15) 100%)' }} />
-            <div className="border border-subtle\/30 rounded-2xl overflow-hidden">
-              <div className="bg-surface-elevated\/50 rounded-xl aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
+            <div className="border border-subtle/30 rounded-2xl overflow-hidden">
+              <div className="bg-surface-elevated/50 rounded-xl aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
                 <div className="text-muted text-lg">{t('marketing.home.canvasPreview')}</div>
               </div>
             </div>
@@ -267,7 +267,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="border-t border-subtle\/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="border-t border-subtle/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-muted text-sm">&copy; 2026 Paxl Inc. {t('marketing.home.footerLegal')}</p>
             <div className="flex items-center gap-4 text-muted">
               <ThemeToggle />

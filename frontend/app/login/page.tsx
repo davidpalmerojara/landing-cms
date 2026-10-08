@@ -87,7 +87,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoFocus
-                className="w-full bg-surface-elevated\/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
+                className="w-full bg-surface-elevated/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
                 placeholder={t('auth.username')}
               />
             </div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-surface-elevated\/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
+                className="w-full bg-surface-elevated/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                 onChange={(e) => setMagicEmail(e.target.value)}
                 required
                 autoFocus
-                className="w-full bg-surface-elevated\/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
+                className="w-full bg-surface-elevated/80 border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none transition-colors"
                 placeholder={t('auth.email')}
               />
             </div>

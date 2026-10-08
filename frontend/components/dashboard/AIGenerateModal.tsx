@@ -126,7 +126,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
       <div className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-2xl mx-4 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle\/80">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-tr from-primary to-primary rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
@@ -215,7 +215,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
           {/* Inline key setup */}
           {showKeySetup && (
-            <div className="bg-surface-elevated\/50 border border-subtle rounded-xl p-4 space-y-3">
+            <div className="bg-surface-elevated/50 border border-subtle rounded-xl p-4 space-y-3">
               <p className="text-xs text-secondary">
                 {t('ai.keyHelpText')}{' '}
                 <span className="text-primary-color">aistudio.google.com</span>
@@ -251,7 +251,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
           {/* Generating status */}
           {isGenerating && statusMsg && (
-            <div className="flex items-center gap-3 text-sm text-secondary bg-primary\/5 border border-primary/20 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-3 text-sm text-secondary bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
               <Loader2 className="w-4 h-4 animate-spin text-primary-color shrink-0" />
               <span>{statusMsg}</span>
             </div>
@@ -259,7 +259,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle\/80">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80">
           <button
             onClick={onClose}
             disabled={isGenerating}

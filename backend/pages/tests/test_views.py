@@ -458,6 +458,7 @@ class TestBlockSecurity:
             'error': 'Error de validación.',
             'code': 'BAD_REQUEST',
             'details': {
-                'blocks': [{'data': {'backgroundImage': ['URL no permitida: javascript:alert(1)']}}],
+                # DRF >= 3.17 keys list errors by item index
+                'blocks': {0: {'data': {'backgroundImage': ['URL no permitida: javascript:alert(1)']}}},
             },
         }

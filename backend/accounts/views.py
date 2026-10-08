@@ -165,13 +165,13 @@ class MagicLinkRequestView(APIView):
 
         # Send email
         send_mail(
-            subject='Tu enlace de acceso a BuilderPro',
+            subject='Tu enlace de acceso a Paxl',
             message=f'Haz clic en el siguiente enlace para iniciar sesión:\n\n{magic_url}\n\nEste enlace expira en 15 minutos.',
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             html_message=(
-                f'<p>Haz clic en el siguiente enlace para iniciar sesión en BuilderPro:</p>'
-                f'<p><a href="{magic_url}" style="display:inline-block;background:#4f46e5;color:#fff;'
+                f'<p>Haz clic en el siguiente enlace para iniciar sesión en Paxl:</p>'
+                f'<p><a href="{magic_url}" style="display:inline-block;background:#2563EB;color:#fff;'
                 f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
                 f'Iniciar sesión</a></p>'
                 f'<p style="color:#666;font-size:14px;">Este enlace expira en 15 minutos. '

@@ -2,7 +2,9 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 NODE_VERSION ?= 20.19.0
 
-.PHONY: dev backend frontend migrate test test-backend test-frontend lint typecheck
+.PHONY: dev backend frontend migrate test test-backend test-frontend lint typecheck lock lock-upgrade
+
+UV_COMPILE := uv pip compile requirements.in -o requirements.txt --python-version 3.13 --universal --generate-hashes
 
 dev:
 	./start-dev.sh
@@ -29,3 +31,9 @@ lint:
 
 typecheck:
 	zsh -lc 'source "$$HOME/.nvm/nvm.sh" && nvm use $(NODE_VERSION) >/dev/null && cd $(FRONTEND_DIR) && npx tsc --noEmit'
+
+lock:
+	cd $(BACKEND_DIR) && $(UV_COMPILE)
+
+lock-upgrade:
+	cd $(BACKEND_DIR) && $(UV_COMPILE) --upgrade

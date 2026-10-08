@@ -96,6 +96,16 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-011: Lockfile de Python generado con uv
+
+- **Fecha**: 2026-10-08
+- **Contexto**: `requirements.txt` solo tenía rangos (`djangorestframework>=3.15,<4.0`). Cada instalación limpia podía traer versiones distintas: en local había DRF 3.16.1 y una instalación nueva traía 3.18.3, que cambia el formato de los errores de validación en listas y rompía 2 tests. Sin versiones fijas, "en mi máquina funciona" no garantiza nada en CI ni en producción.
+- **Decisión**: Separar intención y resultado. `backend/requirements.in` contiene los rangos que se editan a mano. `backend/requirements.txt` es el lockfile: lo genera `uv pip compile` con versiones exactas, resolución universal (vale para macOS y Linux) y hashes. `pip install -r requirements.txt` sigue funcionando, así que Render y el CI no necesitan uv para instalar; uv solo hace falta para regenerar el lock (`make lock`). La versión de Python se fija en `backend/.python-version` (3.13).
+- **Alternativas**: `pip-tools` (`pip-compile`) hace lo mismo pero es más lento; `pip freeze` mezcla dependencias directas y transitivas y no deja claro qué se pidió a propósito.
+- **Consecuencias**: Instalaciones reproducibles y verificadas por hash. Actualizar una dependencia es explícito: se edita `requirements.in` (o se ejecuta `make lock-upgrade`) y el diff del lock se revisa en el commit. Las dependencias de test siguen en el mismo fichero que las de producción; separarlas queda pendiente si el tamaño de la imagen de producción importa.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

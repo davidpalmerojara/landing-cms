@@ -1,3 +1,4 @@
+import html
 from urllib.parse import urlparse
 
 import bleach
@@ -68,10 +69,16 @@ def sanitize_text(value):
 
 
 def sanitize_plain_text(value):
-    """Strip all HTML from plain text fields."""
+    """Strip all HTML from plain text fields and store the result as text.
+
+    bleach returns HTML-escaped output ("<10ms" -> "&lt;10ms"). These fields
+    are rendered by React as text, which escapes on output, so storing
+    entities made them show up literally. Unescaping is safe as long as plain
+    text fields are never injected as HTML.
+    """
     if not isinstance(value, str):
         return value
-    return bleach.clean(value, tags=[], attributes={}, strip=True)
+    return html.unescape(bleach.clean(value, tags=[], attributes={}, strip=True))
 
 
 def sanitize_custom_html(value):

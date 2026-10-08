@@ -131,6 +131,20 @@ class TestBlockSanitization:
         page = serializer.save(owner=UserFactory())
         assert page.blocks.first().data['title'] == 'alert(1)Hello'
 
+    @pytest.mark.parametrize('text', ['<10ms', 'Tom & Jerry', 'a > b', '5 &lt; 6'])
+    def test_plain_text_fields_are_stored_unescaped(self, text):
+        # React escapes text when rendering; storing HTML entities made the
+        # page show "&lt;10ms" instead of "<10ms".
+        serializer = PageDetailSerializer(data={
+            'name': 'Stats',
+            'blocks': [{'type': 'stats', 'data': {'stat1Value': text}, 'styles': {}}],
+        })
+        assert serializer.is_valid(), serializer.errors
+
+        page = serializer.save(owner=UserFactory())
+        expected = '5 < 6' if text == '5 &lt; 6' else text
+        assert page.blocks.first().data['stat1Value'] == expected
+
     def test_custom_html_strips_event_handlers(self):
         serializer = PageDetailSerializer(data={
             'name': 'Unsafe HTML',

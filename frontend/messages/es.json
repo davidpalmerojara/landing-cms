@@ -78,7 +78,8 @@
     "noAccount": "¿No tienes cuenta?",
     "haveAccount": "¿Ya tienes cuenta?",
     "registerLink": "Regístrate",
-    "loginLink": "Inicia sesión"
+    "loginLink": "Inicia sesión",
+    "googleEmailInUse": "Ya existe una cuenta con este email. Inicia sesión con tu usuario y contraseña."
   },
   "errors": {
     "globalTitle": "Algo salió mal",

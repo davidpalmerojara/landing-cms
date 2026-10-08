@@ -111,9 +111,20 @@ class GoogleLoginView(APIView):
         if not user:
             # Check if email is already taken by another account
             user = User.objects.filter(email=email).first()
+            if user and user.has_usable_password():
+                # Emails are not verified on sign-up, so this account may have
+                # been registered by someone else with this email. Linking would
+                # hand them the Google user's account (pre-account takeover).
+                return Response(
+                    {
+                        'error': 'Ya existe una cuenta con este email. Inicia sesión con tu usuario y contraseña.',
+                        'code': 'EMAIL_IN_USE',
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
             if user:
-                # Link Google to the existing account so the same identity can
-                # sign in via either password or Google OAuth.
+                # Passwordless account (created by magic link, which proves
+                # control of the email): safe to add Google as a login method.
                 user.google_id = google_sub
                 if picture:
                     user.avatar = picture

@@ -207,8 +207,9 @@ export default function LoginPage() {
                   try {
                     await api.auth.googleLogin(credentialResponse.credential);
                     router.replace(nextPathFromLocation());
-                  } catch {
-                    setError(t('auth.googleLoginError'));
+                  } catch (e) {
+                    const emailInUse = e instanceof Error && e.message.includes('EMAIL_IN_USE');
+                    setError(t(emailInUse ? 'auth.googleEmailInUse' : 'auth.googleLoginError'));
                     setIsLoading(false);
                   }
                 }}

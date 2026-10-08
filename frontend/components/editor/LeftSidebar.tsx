@@ -144,12 +144,12 @@ export default function LeftSidebar() {
               {filteredBlocks.map((b) => {
                 const IconComponent = b.icon;
                 return (
+                  <div role="listitem" key={b.type} className="flex">
                   <button
-                    role="listitem"
-                    key={b.type}
+                    type="button"
                     onPointerDown={(e) => handleComponentPointerDown(e, b.type, b.label, b.initialData)}
                     onClick={() => addBlock(b.type, b.label, null, b.initialData)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-default/10 bg-surface-elevated/50 hover:bg-surface-card hover:border-default/30 transition-all group text-left cursor-grab active:cursor-grabbing"
+                    className="w-full flex flex-col items-center gap-2 p-3 rounded-lg border border-default/10 bg-surface-elevated/50 hover:bg-surface-card hover:border-default/30 transition-all group text-left cursor-grab active:cursor-grabbing"
                   >
                     <div className="w-10 h-10 rounded-lg bg-surface-card flex items-center justify-center text-secondary group-hover:text-primary-color group-hover:bg-primary/10 transition-colors">
                       <IconComponent className="w-4 h-4" />
@@ -158,6 +158,7 @@ export default function LeftSidebar() {
                       {b.label}
                     </span>
                   </button>
+                  </div>
                 );
               })}
             </div>

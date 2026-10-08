@@ -352,7 +352,11 @@
     "loadErrorTitle": "Loading error",
     "pageNotFoundDescription": "The page you're looking for doesn't exist or was deleted.",
     "deleteBlockTitle": "Delete block",
-    "deleteBlockMessage": "Delete \"{name}\"? You can undo this action with Ctrl+Z."
+    "deleteBlockMessage": "Delete \"{name}\"? You can undo this action with Ctrl+Z.",
+    "restoreVersionSuccess": "Version restored",
+    "restoredByCollaborator": "{name} restored version {number}",
+    "publishSuccess": "Page published at {path}",
+    "publishError": "The page could not be published. Please try again."
   },
   "versionHistory": {
     "title": "Version history",
@@ -504,8 +508,6 @@
     "logoCloud": "Logos",
     "customHtml": "Custom HTML",
     "heroAria": "Hero section",
-    "heroBadgeDefault": "New UI Editor",
-    "heroSecondaryAction": "Learn more",
     "ctaAria": "Call to action",
     "navbarAria": "Main navigation",
     "toggleMenu": "Toggle menu",

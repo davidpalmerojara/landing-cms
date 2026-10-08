@@ -125,6 +125,16 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-014: IDs de bloque generados en el cliente
+
+- **Fecha**: 2026-10-08
+- **Contexto**: El cliente creaba los bloques con IDs temporales (`blk_<timestamp>_<random>`). El servidor los descartaba y generaba UUIDs nuevos, y tras cada guardado el cliente copiaba los IDs del servidor emparejando bloques por posición. Si el usuario añadía, movía o borraba un bloque mientras el guardado estaba en vuelo, los IDs se cruzaban: en un test, añadir un bloque arriba durante un guardado dejaba dos bloques con el mismo ID, y el siguiente guardado sobrescribía uno con otro.
+- **Decisión**: El cliente genera UUID v4 (`newBlockId()`, con alternativa a `crypto.getRandomValues` fuera de contextos seguros) y el servidor los conserva. `PageDetailSerializer.validate_blocks` rechaza con 400 los IDs que no son UUID, los repetidos en el mismo envío y los que pertenecen a otra página. Tras guardar ya no hay reconciliación: la respuesta del servidor no modifica el estado local, y la página solo se marca como guardada si no cambió mientras la petición estaba en vuelo.
+- **Alternativas**: Reconciliar por un ID temporal enviado junto al bloque (sigue habiendo dos IDs por bloque y lógica de mapeo); bloquear la edición durante el guardado (empeora la experiencia y no evita el problema con colaboración).
+- **Consecuencias**: Guardar es idempotente: reenviar la misma página produce el mismo estado. El servidor debe validar los IDs que recibe, porque un cliente podría enviar el ID de un bloque ajeno; está cubierto con tests. Las copias de seguridad locales antiguas con IDs `blk_` se migran al leerlas.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

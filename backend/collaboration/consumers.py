@@ -356,6 +356,17 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
             'user_id': event['user_id'],
         })
 
+    async def page_restored(self, event):
+        """Sent by the REST restore view. Without this handler Channels raised
+        'No handler for message type page.restored' and dropped every socket
+        on the page."""
+        await self.send_json({
+            'type': 'page_restored',
+            'version_number': event.get('version_number'),
+            'restored_by': event.get('restored_by'),
+            'restored_by_id': event.get('restored_by_id'),
+        })
+
     async def broadcast_cursor_moved(self, event):
         if self.channel_name == event.get('sender_channel'):
             return

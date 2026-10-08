@@ -24,6 +24,7 @@ import { usePageSync } from '@/hooks/usePageSync';
 import { useDragManager } from '@/hooks/useDragManager';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useCollaboration } from '@/hooks/useCollaboration';
+import { useAuth } from '@/hooks/useAuth';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics';
 
@@ -32,6 +33,7 @@ export default function EditorPage() {
   const params = useParams();
   const pageId = params.pageId as string;
   const isQuickEditMode = useIsQuickEditMode();
+  const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: `/login?next=${encodeURIComponent(`/editor/${pageId}`)}` });
   const [activeView, setActiveView] = useState<EditorView>('design');
   const [showHistory, setShowHistory] = useState(false);
   const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
@@ -43,40 +45,34 @@ export default function EditorPage() {
   const page = useEditorStore((s) => s.page);
   const toasts = useEditorStore((s) => s.toasts);
   const removeToast = useEditorStore((s) => s.removeToast);
+  const addToast = useEditorStore((s) => s.addToast);
   useEditorShortcuts();
-  const { isLoading, error, saveToApi, publishToApi } = usePageSync(pageId);
+  const { isLoading, error, saveToApi, publishToApi, reloadFromApi } = usePageSync(pageId);
   useDragManager();
   useAutoSave(saveToApi);
-  const { sendCursorMove } = useCollaboration(pageId);
+  const { sendCursorMove } = useCollaboration(pageId, {
+    onPageRestored: ({ versionNumber, restoredBy, byMe }) => {
+      reloadFromApi().catch((e: unknown) => {
+        addToast(t('editor.restoreVersionError'), 'error');
+        if (process.env.NODE_ENV === 'development') console.error('Failed to reload restored page:', e);
+      });
+      if (!byMe && restoredBy) {
+        addToast(t('editor.restoredByCollaborator', { name: restoredBy, number: versionNumber ?? '' }), 'info');
+      }
+    },
+  });
 
   const handleRestore = async (versionId: string) => {
     try {
       await api.versions.restore(pageId, versionId, true);
-      // Re-fetch from API to get fresh state
-      const fresh = await api.pages.get(pageId);
-      const { defaultBlockStyles } = await import('@/types/blocks');
-      const { blockRegistry } = await import('@/lib/block-registry');
-      const blocks = fresh.blocks
-        .sort((a, b) => a.order - b.order)
-        .map((b) => ({
-          id: b.id,
-          type: b.type,
-          name: blockRegistry[b.type]?.label || b.type,
-          data: b.data,
-          styles: { ...defaultBlockStyles, ...b.styles },
-        }));
-      useEditorStore.setState({
-        page: {
-          ...useEditorStore.getState().page,
-          name: fresh.name,
-          blocks,
-          status: fresh.status as 'draft' | 'published',
-        },
-      });
+      // Take the whole restored page (blocks, theme, tokens, SEO) from the server
+      await reloadFromApi();
       setShowHistory(false);
       setPreviewVersionId(null);
-    } catch {
-      alert(t('editor.restoreVersionError'));
+      addToast(t('editor.restoreVersionSuccess'), 'success');
+    } catch (e) {
+      addToast(t('editor.restoreVersionError'), 'error');
+      if (process.env.NODE_ENV === 'development') console.error('Failed to restore version:', e);
     }
   };
 
@@ -84,7 +80,7 @@ export default function EditorPage() {
     setPreviewVersionId(versionId);
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading || !user) {
     return (
       <div className="flex items-center justify-center h-dvh bg-surface text-secondary">
         <div className="flex flex-col items-center gap-3">

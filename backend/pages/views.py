@@ -397,6 +397,7 @@ class PageVersionViewSet(viewsets.GenericViewSet):
                         'type': 'page.restored',
                         'version_number': version.version_number,
                         'restored_by': request.user.username,
+                        'restored_by_id': str(request.user.pk),
                     },
                 )
         except Exception:

@@ -9,6 +9,9 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
   const t = useTranslations('blocks');
   const bgImage = data.backgroundImage as string;
   const alignment = (data.alignment as string) || 'center';
+  // Optional: an empty field hides the element (no placeholder text on real pages)
+  const badgeText = typeof data.badgeText === 'string' ? data.badgeText.trim() : '';
+  const secondaryButtonText = typeof data.secondaryButtonText === 'string' ? data.secondaryButtonText.trim() : '';
   const isLeft = alignment === 'left';
 
   return (
@@ -32,15 +35,17 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
         <div className="absolute inset-0 bg-black/50" />
       )}
       <div className={`${isLeft ? 'max-w-5xl mx-auto w-full' : ''}`}>
-        <div
-          className={`relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm`}
-          style={{
-            backgroundColor: bgImage ? 'rgba(255,255,255,0.15)' : 'var(--theme-surface)',
-            color: bgImage ? '#fff' : 'var(--theme-text-muted)',
-          }}
-        >
-          <Sparkles className="w-4 h-4" /> {(data.badgeText as string) || t('heroBadgeDefault')}
-        </div>
+        {badgeText && (
+          <div
+            className={`relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm`}
+            style={{
+              backgroundColor: bgImage ? 'rgba(255,255,255,0.15)' : 'var(--theme-surface)',
+              color: bgImage ? '#fff' : 'var(--theme-text-muted)',
+            }}
+          >
+            <Sparkles className="w-4 h-4" /> {badgeText}
+          </div>
+        )}
         <EditableText
           blockId={blockId}
           fieldKey="title"
@@ -87,18 +92,20 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
           >
             <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
           </button>
-          <button
-            className={`rounded-full font-medium border transition-all hover:opacity-80 ${
-              isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
-            }`}
-            style={{
-              backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
-              color: bgImage ? '#fff' : 'var(--theme-text)',
-              borderColor: bgImage ? 'rgba(255,255,255,0.3)' : 'var(--theme-border)',
-            }}
-          >
-            {(data.secondaryButtonText as string) || t('heroSecondaryAction')}
-          </button>
+          {secondaryButtonText && (
+            <button
+              className={`rounded-full font-medium border transition-all hover:opacity-80 ${
+                isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
+              }`}
+              style={{
+                backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
+                color: bgImage ? '#fff' : 'var(--theme-text)',
+                borderColor: bgImage ? 'rgba(255,255,255,0.3)' : 'var(--theme-border)',
+              }}
+            >
+              {secondaryButtonText}
+            </button>
+          )}
         </div>
       </div>
     </section>

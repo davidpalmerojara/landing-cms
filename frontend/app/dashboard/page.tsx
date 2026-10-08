@@ -6,14 +6,12 @@ import { useTranslations } from 'next-intl';
 import {
   Plus, FileText, Copy, Trash2, ExternalLink, Globe,
   Loader2, AlertCircle, MoreVertical, LogOut, Users,
-  FolderOpen, LayoutTemplate, Image, Settings, Search,
-  Bell, TrendingUp, Zap, LayoutGrid, CheckCircle,
-  Layers, Pencil, HelpCircle, MessageSquare, ArrowRight,
-  Menu, X,
+  FolderOpen, Settings, Search, Layers, Pencil, Menu, X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiPageListItem } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { pageTemplates, instantiateTemplate } from '@/lib/templates';
 import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
 import AIGenerateModal from '@/components/dashboard/AIGenerateModal';
@@ -25,6 +23,8 @@ export default function DashboardPage() {
   const t = useTranslations();
   const router = useRouter();
   const { user, isLoading: isAuthLoading, logout } = useAuth({ redirectTo: '/login' });
+  const { subscription } = useSubscription({ enabled: Boolean(user) });
+  const plan = subscription?.plan ?? null;
   const [pages, setPages] = useState<ApiPageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +37,6 @@ export default function DashboardPage() {
 
   const sidebarNav = [
     { label: t('dashboard.sidebar.projects'), icon: FolderOpen, href: '/dashboard', active: true },
-    { label: t('dashboard.sidebar.templates'), icon: LayoutTemplate, href: '/dashboard', active: false },
-    { label: t('dashboard.sidebar.assets'), icon: Image, href: '/dashboard', active: false },
     { label: t('dashboard.sidebar.settings'), icon: Settings, href: '/settings', active: false },
   ];
 
@@ -170,7 +168,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div id="main-content" className="min-h-screen bg-surface text-white">
+    <div id="main-content" className="min-h-screen bg-surface text-primary">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -182,17 +180,10 @@ export default function DashboardPage() {
       {/* Sidebar */}
       <aside className={`fixed left-0 top-0 h-full flex flex-col py-8 px-4 w-64 z-40 bg-surface border-r border-default/15 text-sm font-medium tracking-wide transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo */}
-        <div className="mb-10 px-2 flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded flex items-center justify-center text-black font-bold text-sm"
-            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-          >
-            B
-          </div>
-          <div>
-            <h1 className="text-lg font-black text-primary leading-tight tracking-tighter">Paxl</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted">{t('dashboard.sidebar.highPerformance')}</p>
-          </div>
+        <div className="mb-10 px-4">
+          <a href="/dashboard" className="text-xl font-black tracking-tighter text-primary-color">
+            {t('common.brand')}
+          </a>
         </div>
 
         {/* Nav */}
@@ -216,32 +207,38 @@ export default function DashboardPage() {
 
         {/* Bottom section */}
         <div className="mt-auto space-y-6">
-          {/* Usage card */}
-          <div className="p-4 rounded-xl bg-surface-card border border-default/10">
-            <p className="text-xs text-muted mb-3">
-              {t('dashboard.usage', { current: pages.length, max: 20 })}
-            </p>
-            <div className="h-1.5 w-full bg-surface-elevated rounded-full overflow-hidden">
+          {/* Usage card — only rendered once the real plan is known */}
+          {plan && (
+            <div className="p-4 rounded-xl bg-surface-card border border-default/10">
+              <p className="text-xs font-bold text-primary mb-1">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
+              <p className="text-xs text-muted mb-3">
+                {t('dashboard.usage', { current: pages.length, max: plan.max_pages })}
+              </p>
               <div
-                className="h-full bg-primary rounded-full transition-all"
-                style={{ width: `${Math.min((pages.length / 20) * 100, 100)}%` }}
-              />
+                className="h-1.5 w-full bg-surface-elevated rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={plan.max_pages}
+                aria-valuenow={pages.length}
+                aria-label={t('dashboard.usage', { current: pages.length, max: plan.max_pages })}
+              >
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${Math.min((pages.length / plan.max_pages) * 100, 100)}%` }}
+                />
+              </div>
+              {plan.name === 'free' && (
+                <button
+                  onClick={() => router.push('/settings/billing')}
+                  className="mt-4 w-full py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-full transition-all active:scale-95"
+                >
+                  {t('dashboard.upgradePlan')}
+                </button>
+              )}
             </div>
-            <button
-              onClick={() => router.push('/settings/billing')}
-              className="mt-4 w-full py-2 text-xs font-bold text-black rounded-full transition-all active:scale-95"
-              style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
-            >
-              {t('dashboard.upgradePlan')}
-            </button>
-          </div>
+          )}
 
-          {/* Support links */}
           <div className="space-y-1">
-            <a href="#" className="flex items-center gap-3 px-4 py-2 text-muted hover:text-primary transition-colors">
-              <HelpCircle className="w-4 h-4" />
-              <span className="text-xs">{t('dashboard.support')}</span>
-            </a>
             <button
               onClick={logout}
               className="flex items-center gap-3 px-4 py-2 text-muted hover:text-primary transition-colors w-full text-left"
@@ -272,22 +269,10 @@ export default function DashboardPage() {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder={t('dashboard.searchPages')}
-              className="w-full bg-surface-elevated border-none rounded-lg pl-10 py-2 text-sm text-white placeholder-muted focus:ring-1 focus:ring-primary outline-none"
+              className="w-full bg-surface-elevated border-none rounded-lg pl-10 py-2 text-sm text-primary placeholder-muted focus:ring-1 focus:ring-primary outline-none"
             />
           </div>
 
-          {/* Nav tabs */}
-          <nav className="hidden md:flex items-center gap-6 ml-4">
-            <a href="/dashboard" className="text-primary-color border-b-2 border-primary pb-1 text-sm font-bold tracking-tight">
-              {t('dashboard.panel')}
-            </a>
-            <a href="#" className="text-muted hover:text-primary transition-colors text-sm font-bold tracking-tight">
-              {t('dashboard.analytics')}
-            </a>
-            <a href="#" className="text-muted hover:text-primary transition-colors text-sm font-bold tracking-tight">
-              {t('dashboard.help')}
-            </a>
-          </nav>
         </div>
 
         <div className="flex items-center gap-4">
@@ -295,12 +280,6 @@ export default function DashboardPage() {
             <ThemeToggle />
             <LocaleSwitcher />
           </div>
-          <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
-            aria-label={t('dashboard.notifications')}
-          >
-            <Bell className="w-5 h-5" />
-          </button>
           <button
             onClick={() => router.push('/settings')}
             className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
@@ -313,8 +292,10 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-3 pl-2">
             <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-white">{user.username}</p>
-              <p className="text-[10px] text-muted uppercase tracking-wider">{t('dashboard.configuredStatus')}</p>
+              <p className="text-xs font-bold text-primary">{user.username}</p>
+              {plan && (
+                <p className="text-[10px] text-muted uppercase tracking-wider">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
+              )}
             </div>
             <div className="w-10 h-10 rounded-full border-2 border-primary/20 bg-surface-card flex items-center justify-center text-sm font-bold text-primary-color">
               {user.username?.charAt(0).toUpperCase() || 'U'}
@@ -337,8 +318,7 @@ export default function DashboardPage() {
             <button
               onClick={handleOpenCreate}
               disabled={isCreating}
-              className="flex items-center gap-2 px-6 py-3 rounded-full text-black font-bold shadow-[0_16px_32px_-8px_rgba(37, 99, 235,0.3)] active:scale-95 transition-all disabled:opacity-50"
-              style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
+              className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all disabled:opacity-50"
             >
               {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
               <span>{t('dashboard.newPage')}</span>
@@ -346,40 +326,22 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
-            <div className="bg-surface-elevated p-6 rounded-2xl border border-default/10">
-              <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">{t('dashboard.statsTotalPages')}</p>
-              <p className="text-2xl font-black text-white">{pages.length}</p>
-              <div className="mt-2 text-[10px] text-primary-color font-bold flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> {t('dashboard.statsTotalPagesHint')}
+          <dl className="grid grid-cols-3 gap-3 sm:gap-6 mb-12">
+            {[
+              { label: t('dashboard.statsTotalPages'), value: pages.length },
+              { label: t('dashboard.statsPublished'), value: publishedCount },
+              { label: t('dashboard.statsBlocks'), value: totalBlocks },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-surface-elevated p-4 sm:p-6 rounded-2xl border border-default/10">
+                <dt className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider sm:tracking-widest mb-1">{stat.label}</dt>
+                <dd className="text-2xl font-black text-primary">{stat.value}</dd>
               </div>
-            </div>
-            <div className="bg-surface-elevated p-6 rounded-2xl border border-default/10">
-              <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">{t('dashboard.statsPublished')}</p>
-              <p className="text-2xl font-black text-white">{publishedCount}</p>
-              <div className="mt-2 text-[10px] text-primary-color font-bold flex items-center gap-1">
-                <Globe className="w-3 h-3" /> {t('dashboard.statsPublishedHint')}
-              </div>
-            </div>
-            <div className="bg-surface-elevated p-6 rounded-2xl border border-default/10">
-              <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">{t('dashboard.statsBlocks')}</p>
-              <p className="text-2xl font-black text-white">{totalBlocks}</p>
-              <div className="mt-2 text-[10px] text-primary-color font-bold flex items-center gap-1">
-                <LayoutGrid className="w-3 h-3" /> {t('dashboard.statsBlocksHint')}
-              </div>
-            </div>
-            <div className="bg-surface-elevated p-6 rounded-2xl border border-default/10">
-              <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">{t('dashboard.statsServer')}</p>
-              <p className="text-2xl font-black text-white">99.9%</p>
-              <div className="mt-2 text-[10px] text-primary-color font-bold flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {t('dashboard.statsServerHint')}
-              </div>
-            </div>
-          </div>
+            ))}
+          </dl>
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2 text-error text-sm mb-6 bg-error/10 border border-error/20 rounded-lg px-4 py-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
@@ -398,13 +360,12 @@ export default function DashboardPage() {
               <div className="w-16 h-16 bg-surface-card border border-default/10 rounded-2xl flex items-center justify-center mb-4">
                 <FileText className="w-8 h-8 text-muted" />
               </div>
-              <h2 className="text-lg font-bold text-white mb-2">{t('dashboard.emptyTitle')}</h2>
+              <h2 className="text-lg font-bold text-primary mb-2">{t('dashboard.emptyTitle')}</h2>
               <p className="text-sm text-muted mb-6">{t('dashboard.emptyDescription')}</p>
               <button
                 onClick={handleOpenCreate}
                 disabled={isCreating}
-                className="flex items-center gap-2 px-6 py-3 rounded-full text-black font-bold shadow-[0_16px_32px_-8px_rgba(37, 99, 235,0.3)] active:scale-95 transition-all disabled:opacity-50"
-                style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all disabled:opacity-50"
               >
                 {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                 {t('dashboard.createPage')}
@@ -435,7 +396,7 @@ export default function DashboardPage() {
                         className={`px-2 py-1 text-[10px] font-black tracking-widest rounded uppercase ${
                           page.status === 'published'
                             ? 'bg-primary text-white'
-                            : 'bg-surface-card text-white'
+                            : 'bg-surface-card text-primary'
                         }`}
                       >
                         {page.status === 'published' ? t('common.published').toUpperCase() : t('common.draft').toUpperCase()}
@@ -449,7 +410,7 @@ export default function DashboardPage() {
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex justify-between items-start mb-1">
                       <h3
-                        className="text-lg font-bold text-white truncate cursor-pointer flex-1"
+                        className="text-lg font-bold text-primary truncate cursor-pointer flex-1"
                         onClick={() => router.push(`/editor/${page.id}`)}
                       >
                         {page.name}
@@ -461,7 +422,7 @@ export default function DashboardPage() {
                             e.stopPropagation();
                             setOpenMenuId(openMenuId === page.id ? null : page.id);
                           }}
-                          className="text-muted hover:text-white transition-colors p-1"
+                          className="text-muted hover:text-primary transition-colors p-1"
                           aria-label={t('dashboard.pageOptions', { name: page.name })}
                         >
                           <MoreVertical className="w-5 h-5" />
@@ -517,7 +478,7 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 handleDelete(page.id, page.name);
                               }}
-                              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                              className="w-full text-left px-3 py-2 text-sm text-error hover:bg-error/10 flex items-center gap-2"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               {t('common.delete')}
@@ -546,7 +507,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => router.push(`/editor/${page.id}`)}
-                        className="w-8 h-8 rounded-full bg-surface-card flex items-center justify-center text-primary-color hover:bg-primary hover:text-black transition-all"
+                        className="w-8 h-8 rounded-full bg-surface-card flex items-center justify-center text-primary-color hover:bg-primary hover:text-white transition-all"
                         aria-label={t('dashboard.editPage')}
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -563,7 +524,7 @@ export default function DashboardPage() {
       {/* Mobile FAB */}
       <button
         onClick={handleOpenCreate}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-black rounded-full shadow-2xl flex items-center justify-center md:hidden active:scale-90 transition-transform"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center md:hidden active:scale-90 transition-transform"
         aria-label={t('dashboard.newPage')}
       >
         <Plus className="w-6 h-6" />

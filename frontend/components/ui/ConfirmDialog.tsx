@@ -98,7 +98,7 @@ export default function ConfirmDialog({
             className={`text-[12px] font-medium px-3 py-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-500 text-white'
-                : 'bg-primary hover:bg-[#2563EB]/80 text-white'
+                : 'bg-primary hover:bg-primary/80 text-white'
             }`}
           >
             {confirmLabel}

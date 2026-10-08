@@ -19,11 +19,14 @@
 
   --bp-color-text-primary: #F9FAFB;
   --bp-color-text-secondary: #9CA3AF;
-  --bp-color-text-muted: #6B7280;
+  /* Muted text must still reach 4.5:1 on surface-card (WCAG AA) */
+  --bp-color-text-muted: #8B95A5;
 
   --bp-color-success: #10B981;
   --bp-color-warning: #F59E0B;
   --bp-color-error: #EF4444;
+  /* Red used as text: lighter than the fill so it reaches 4.5:1 on cards */
+  --bp-color-error-text: #F87171;
 
   /* Scrollbar inherits surface tokens */
   --bp-scrollbar-track: var(--bp-color-surface);
@@ -46,12 +49,14 @@
   --bp-color-border-subtle: #D1D5DB;
 
   --bp-color-text-primary: #111827;
-  --bp-color-text-secondary: #6B7280;
-  --bp-color-text-muted: #9CA3AF;
+  --bp-color-text-secondary: #4B5563;
+  --bp-color-text-muted: #6B7280;
 
-  --bp-color-success: #10B981;
-  --bp-color-warning: #F59E0B;
-  --bp-color-error: #EF4444;
+  /* Darker status colors: ≥4.5:1 as text on white and with white text on top */
+  --bp-color-success: #047857;
+  --bp-color-warning: #B45309;
+  --bp-color-error: #DC2626;
+  --bp-color-error-text: #DC2626;
 
   --bp-scrollbar-track: var(--bp-color-surface-elevated);
   --bp-scrollbar-thumb: var(--bp-color-border);
@@ -94,6 +99,7 @@
   --text-color-secondary: var(--bp-color-text-secondary);
   --text-color-muted: var(--bp-color-text-muted);
   --text-color-primary-color: var(--bp-color-primary);
+  --text-color-error: var(--bp-color-error-text);
 
   --border-color-default: var(--bp-color-border);
   --border-color-subtle: var(--bp-color-border-subtle);

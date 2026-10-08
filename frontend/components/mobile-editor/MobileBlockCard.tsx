@@ -240,13 +240,13 @@ export default function MobileBlockCard({
       {/* Swipe backgrounds */}
       <div className="relative overflow-hidden rounded-xl">
         {swipeDirection === 'left' && (
-          <div className="absolute inset-0 bg-red-500/20 flex items-center justify-end pr-5 rounded-xl">
-            <div className="flex items-center gap-2 text-red-400" style={{ opacity: swipeProgress }}>
+          <div className="absolute inset-0 bg-error/20 flex items-center justify-end pr-5 rounded-xl">
+            <div className="flex items-center gap-2 text-error" style={{ opacity: swipeProgress }}>
               <Trash2 size={18} />
               {deleteConfirm ? (
                 <button
                   onClick={handleConfirmDelete}
-                  className="text-sm font-semibold text-red-400 bg-red-500/20 px-3 py-1.5 min-h-11 flex items-center rounded-lg active:bg-red-500/30"
+                  className="text-sm font-semibold text-error bg-error/20 px-3 py-1.5 min-h-11 flex items-center rounded-lg active:bg-error/30"
                 >
                   {t('common.done')}
                 </button>
@@ -283,7 +283,7 @@ export default function MobileBlockCard({
           >
             <button
               data-drag-handle
-              className="touch-none shrink-0 flex items-center justify-center min-w-11 min-h-11 -ml-1 text-[#666] active:text-[#999] rounded-lg"
+              className="touch-none shrink-0 flex items-center justify-center min-w-11 min-h-11 -ml-1 text-muted active:text-secondary rounded-lg"
               aria-label={t('mobile.dragToReorder')}
               onTouchStart={(e) => onDragHandleProps.onTouchStart(e, index)}
             >
@@ -297,13 +297,13 @@ export default function MobileBlockCard({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{label}</p>
-                <p className="text-xs text-[#888] truncate">{preview}</p>
+                <p className="text-sm font-medium text-primary truncate">{label}</p>
+                <p className="text-xs text-secondary truncate">{preview}</p>
               </div>
             </div>
 
             <button
-              className="shrink-0 flex items-center justify-center min-w-11 min-h-11 -mr-1 text-[#666] active:text-white rounded-lg"
+              className="shrink-0 flex items-center justify-center min-w-11 min-h-11 -mr-1 text-muted active:text-primary rounded-lg"
               aria-label={t('dashboard.pageOptions', { name: label })}
               aria-expanded={menuOpen}
               onClick={handleMenuToggle}
@@ -348,7 +348,7 @@ export default function MobileBlockCard({
           >
             {!isFirst && (
               <button
-                className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-[#333]"
+                className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-surface-elevated"
                 role="menuitem"
                 onClick={handleAction(() => onMoveUp(block.id))}
               >
@@ -357,7 +357,7 @@ export default function MobileBlockCard({
             )}
             {!isLast && (
               <button
-                className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-[#333]"
+                className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-surface-elevated"
                 role="menuitem"
                 onClick={handleAction(() => onMoveDown(block.id))}
               >
@@ -365,14 +365,14 @@ export default function MobileBlockCard({
               </button>
             )}
             <button
-              className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-[#333]"
+              className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-secondary active:bg-surface-elevated"
               role="menuitem"
               onClick={handleAction(() => onDuplicate(block.id))}
             >
               <Copy size={16} /> {t('common.duplicate')}
             </button>
             <button
-              className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-red-400 active:bg-[#333]"
+              className="flex items-center gap-3 w-full px-4 py-2.5 min-h-11 text-sm text-error active:bg-surface-elevated"
               role="menuitem"
               onClick={handleAction(() => onDelete(block.id))}
             >

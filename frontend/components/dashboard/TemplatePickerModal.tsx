@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X, FileText, Loader2, LayoutTemplate, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { pageTemplates } from '@/lib/templates';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface TemplatePickerModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export default function TemplatePickerModal({
 }: TemplatePickerModalProps) {
   const t = useTranslations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, open, onClose);
 
   if (!open) return null;
 
@@ -39,11 +42,17 @@ export default function TemplatePickerModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="template-picker-title"
+        className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80">
           <div>
-            <h2 className="text-lg font-semibold text-primary">
+            <h2 id="template-picker-title" className="text-lg font-semibold text-primary">
               {t('dashboard.createPage')}
             </h2>
             <p className="text-sm text-muted mt-0.5">
@@ -52,6 +61,7 @@ export default function TemplatePickerModal({
           </div>
           <button
             onClick={onClose}
+            aria-label={t('common.close')}
             className="p-1.5 rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors"
           >
             <X className="w-5 h-5" />
@@ -70,9 +80,9 @@ export default function TemplatePickerModal({
               className="group text-left rounded-xl border-2 border-primary/30 hover:border-primary/60 bg-gradient-to-b from-primary/5 to-primary/5 transition-all p-4 flex flex-col"
             >
               <div className="h-28 rounded-lg bg-gradient-to-br from-primary/10 to-primary/10 border border-primary/20 flex items-center justify-center mb-3">
-                <Sparkles className="w-8 h-8 text-violet-400" />
+                <Sparkles className="w-8 h-8 text-primary-color" />
               </div>
-              <h3 className="font-medium text-sm text-violet-300">
+              <h3 className="font-medium text-sm text-primary-color">
                 {t('ai.title')}
               </h3>
               <p className="text-xs text-muted mt-1">
@@ -83,6 +93,7 @@ export default function TemplatePickerModal({
             {/* Blank page option */}
             <button
               onClick={() => setSelectedId(null)}
+              aria-pressed={selectedId === null}
               className={`group text-left rounded-xl border-2 transition-all p-4 flex flex-col ${
                 selectedId === null
                   ? 'border-primary bg-primary/5'
@@ -105,6 +116,7 @@ export default function TemplatePickerModal({
               <button
                 key={template.id}
                 onClick={() => setSelectedId(template.id)}
+                aria-pressed={selectedId === template.id}
                 className={`group text-left rounded-xl border-2 transition-all p-4 flex flex-col ${
                   selectedId === template.id
                     ? 'border-primary bg-primary/5'

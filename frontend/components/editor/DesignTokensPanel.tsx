@@ -51,7 +51,7 @@ function ColorField({
           const v = e.target.value;
           if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v);
         }}
-        className="w-[72px] bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-[#2563EB]"
+        className="w-[72px] bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-primary"
       />
     </div>
   );
@@ -112,7 +112,7 @@ function PalettePresets({ onSelect }: { onSelect: (preset: TokenPreset) => void 
           <button
             key={preset.id}
             onClick={() => onSelect(preset)}
-            className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-[#2563EB]/50 hover:bg-surface-card/50 transition-all group"
+            className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-primary/50 hover:bg-surface-card/50 transition-all group"
           >
             <div className="flex gap-0.5">
               {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background, preset.colors.textPrimary].map((c, i) => (
@@ -184,7 +184,7 @@ function SliderField({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 bg-surface-card rounded-full appearance-none cursor-pointer accent-[#2563EB] [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#2563EB] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-lg"
+        className="w-full h-1.5 bg-surface-card rounded-full appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-lg"
       />
     </div>
   );
@@ -209,7 +209,7 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-surface-elevated border border-default rounded-md px-2 py-1.5 text-xs text-secondary focus:outline-none focus:border-[#2563EB] appearance-none cursor-pointer"
+        className="w-full bg-surface-elevated border border-default rounded-md px-2 py-1.5 text-xs text-secondary focus:outline-none focus:border-primary appearance-none cursor-pointer"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>

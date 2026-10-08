@@ -32,7 +32,7 @@ function Toast({ toast, onDismiss }: ToastProps) {
       'flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl border text-sm font-medium animate-in fade-in slide-in-from-bottom-2',
       toast.variant === 'success' && 'bg-emerald-950/90 border-emerald-800 text-emerald-200',
       toast.variant === 'error' && 'bg-red-950/90 border-red-800 text-red-200',
-      toast.variant === 'info' && 'bg-primary/10 border-[#2563EB]/30 text-primary-color',
+      toast.variant === 'info' && 'bg-primary/10 border-primary/30 text-primary-color',
     )}>
       <Icon className="w-4 h-4 shrink-0" />
       <span className="flex-1">{toast.message}</span>

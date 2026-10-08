@@ -259,7 +259,7 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
           <button
             onClick={handleRestore}
             disabled={loading}
-            className="flex items-center gap-1.5 text-white text-xs font-medium px-3 py-1.5 rounded-md shadow-lg shadow-[#2563EB]/20 transition-all active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-white text-xs font-medium px-3 py-1.5 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
           >
             <RotateCcw className="w-3.5 h-3.5" />

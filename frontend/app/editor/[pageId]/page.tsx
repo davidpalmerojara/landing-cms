@@ -103,7 +103,7 @@ export default function EditorPage() {
           <div className="w-14 h-14 bg-surface-card border border-default/15 rounded-2xl flex items-center justify-center mb-2">
             <span className="text-2xl">{is404 ? '🔍' : '⚠️'}</span>
           </div>
-          <h2 className="text-lg font-bold text-white">
+          <h2 className="text-lg font-bold text-primary">
             {is404 ? t('editor.pageNotFoundTitle') : t('editor.loadErrorTitle')}
           </h2>
           <p className="text-sm text-muted">

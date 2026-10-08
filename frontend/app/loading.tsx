@@ -9,7 +9,7 @@ export default function Loading() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-surface text-secondary">
       <div className="flex flex-col items-center gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2563EB]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary-color" />
         <span className="text-sm">{t('loading')}</span>
       </div>
     </div>

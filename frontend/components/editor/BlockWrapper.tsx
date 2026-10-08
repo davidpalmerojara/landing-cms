@@ -77,8 +77,8 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
       )}
       {/* Drop indicator bottom (last block) */}
       {canvasDropIndex === blocksLength && index === blocksLength - 1 && (
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#2563EB] animate-drop-pulse z-50">
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#2563EB] rounded-full shadow-[0_0_10px_rgba(0,207,252,1)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary animate-drop-pulse z-50">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary rounded-full shadow-[0_0_10px_rgba(0,207,252,1)]" />
         </div>
       )}
 

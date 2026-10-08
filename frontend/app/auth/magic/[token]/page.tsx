@@ -39,7 +39,7 @@ export default function MagicVerifyPage() {
 
         {verifying && (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-[#2563EB] animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-color animate-spin" />
             <p className="text-secondary">{t('auth.magicVerifying')}</p>
           </div>
         )}
@@ -60,7 +60,7 @@ export default function MagicVerifyPage() {
             </div>
             <a
               href="/login"
-              className="text-primary-color hover:text-[#2563EB]/80 transition-colors text-sm"
+              className="text-primary-color hover:text-primary-color/80 transition-colors text-sm"
             >
               {t('auth.backToLogin')}
             </a>

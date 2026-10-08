@@ -64,7 +64,8 @@ describe('MobileBlockCard', () => {
       />,
     );
 
-    const card = view.container.querySelector('[role="listitem"] p.text-sm.font-medium.text-white') as HTMLElement;
+    // Find the label by its text, not by styling classes (which change with theming).
+    const card = [...view.container.querySelectorAll('[role="listitem"] p')].find((p) => p.textContent === 'Hero') as HTMLElement;
     click(card);
     expect(onTap).toHaveBeenCalledWith(block.id);
 

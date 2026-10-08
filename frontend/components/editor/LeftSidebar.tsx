@@ -84,9 +84,9 @@ export default function LeftSidebar() {
   };
 
   return (
-    <aside aria-label={t('editor.components')} className="w-48 lg:w-56 xl:w-64 bg-surface-card\/80 backdrop-blur-2xl border-r border-default/15 flex flex-col shrink-0 z-20">
+    <aside aria-label={t('editor.components')} className="w-48 lg:w-56 xl:w-64 bg-surface-card/80 backdrop-blur-2xl border-r border-default/15 flex flex-col shrink-0 z-20">
       <div className="p-4 border-b border-default/15 shrink-0">
-        <div role="tablist" aria-label={t('editor.currentView')} className="flex bg-surface-elevated\/80 p-1 rounded-lg border border-default/10 shadow-inner">
+        <div role="tablist" aria-label={t('editor.currentView')} className="flex bg-surface-elevated/80 p-1 rounded-lg border border-default/10 shadow-inner">
           <button
             id="tab-components"
             role="tab"
@@ -96,7 +96,7 @@ export default function LeftSidebar() {
             className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
               leftTab === 'components'
                 ? 'bg-surface-card text-primary shadow-sm border border-default/30'
-                : 'text-muted hover:text-secondary hover:bg-surface-card\/30 border border-transparent'
+                : 'text-muted hover:text-secondary hover:bg-surface-card/30 border border-transparent'
             }`}
           >
             <BoxSelect className="w-3.5 h-3.5" /> {t('editor.components')}
@@ -110,7 +110,7 @@ export default function LeftSidebar() {
             className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
               leftTab === 'layers'
                 ? 'bg-surface-card text-primary shadow-sm border border-default/30'
-                : 'text-muted hover:text-secondary hover:bg-surface-card\/30 border border-transparent'
+                : 'text-muted hover:text-secondary hover:bg-surface-card/30 border border-transparent'
             }`}
           >
             <Layers className="w-3.5 h-3.5" /> {t('editor.layers')}
@@ -149,9 +149,9 @@ export default function LeftSidebar() {
                     key={b.type}
                     onPointerDown={(e) => handleComponentPointerDown(e, b.type, b.label, b.initialData)}
                     onClick={() => addBlock(b.type, b.label, null, b.initialData)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-default/10 bg-surface-elevated\/50 hover:bg-surface-card hover:border-default/30 transition-all group text-left cursor-grab active:cursor-grabbing"
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-default/10 bg-surface-elevated/50 hover:bg-surface-card hover:border-default/30 transition-all group text-left cursor-grab active:cursor-grabbing"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-surface-card flex items-center justify-center text-secondary group-hover:text-primary-color group-hover:bg-primary\/10 transition-colors">
+                    <div className="w-10 h-10 rounded-lg bg-surface-card flex items-center justify-center text-secondary group-hover:text-primary-color group-hover:bg-primary/10 transition-colors">
                       <IconComponent className="w-4 h-4" />
                     </div>
                     <span className="text-[10px] font-medium text-secondary group-hover:text-primary text-center truncate w-full">
@@ -190,7 +190,7 @@ export default function LeftSidebar() {
                   style={{ opacity: isBeingDragged ? 0.3 : 1 }}
                   className={`flex items-center gap-2.5 p-2 rounded-md cursor-grab active:cursor-grabbing text-sm border transition-all select-none ${
                     selectedBlockId === block.id
-                      ? 'bg-primary\/10 border-primary/30 text-primary-color'
+                      ? 'bg-primary/10 border-primary/30 text-primary-color'
                       : 'border-transparent text-secondary hover:bg-surface-elevated hover:text-primary'
                   } ${isLayerDragOver ? 'border-t-primary bg-primary/5' : ''}`}
                 >

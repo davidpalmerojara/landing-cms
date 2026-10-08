@@ -135,11 +135,11 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl bg-surface border border-subtle\/80 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+      <div className="w-full max-w-3xl bg-surface border border-subtle/80 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-subtle\/80 bg-surface-elevated/20 shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-subtle/80 bg-surface-elevated/20 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary\/10 flex items-center justify-center border border-[#2563EB]/20">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
               <ImageIcon className="w-4 h-4 text-[#2563EB]" />
             </div>
             <div>
@@ -149,7 +149,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-muted hover:text-primary hover:bg-surface-card\/50 rounded-lg transition-colors"
+            className="p-2 text-muted hover:text-primary hover:bg-surface-card/50 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -163,9 +163,9 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-xl border-2 border-dashed border-subtle bg-surface-elevated/30 hover:bg-surface-elevated\/80 hover:border-[#2563EB]/50 transition-all flex flex-col items-center justify-center py-8 cursor-pointer group"
+              className="w-full rounded-xl border-2 border-dashed border-subtle bg-surface-elevated/30 hover:bg-surface-elevated/80 hover:border-[#2563EB]/50 transition-all flex flex-col items-center justify-center py-8 cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-full bg-surface-card\/50 group-hover:bg-primary\/10 flex items-center justify-center mb-4 transition-colors">
+              <div className="w-12 h-12 rounded-full bg-surface-card/50 group-hover:bg-primary/10 flex items-center justify-center mb-4 transition-colors">
                 <UploadCloud className="w-6 h-6 text-secondary group-hover:text-[#2563EB] transition-colors" />
               </div>
               <p className="text-sm font-medium text-primary mb-1 group-hover:text-[#2563EB] transition-colors">
@@ -205,7 +205,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
           {/* Empty state */}
           {!isLoading && assets.length === 0 && !isUploading && (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center pb-20">
-              <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-tr from-surface-elevated to-surface-card flex items-center justify-center border border-subtle\/50 shadow-inner">
+              <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-tr from-surface-elevated to-surface-card flex items-center justify-center border border-subtle/50 shadow-inner">
                 <FileImage className="w-10 h-10 text-muted" />
               </div>
               <h3 className="text-lg font-semibold text-primary mb-2">{t('assets.emptyTitle')}</h3>
@@ -249,7 +249,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
                     className={`group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ${
                       isSelected
                         ? 'ring-2 ring-[#2563EB] ring-offset-2 ring-offset-surface scale-[0.98]'
-                        : 'border border-subtle\/80 hover:border-default hover:shadow-lg'
+                        : 'border border-subtle/80 hover:border-default hover:shadow-lg'
                     }`}
                   >
                     {/* Image */}
@@ -299,7 +299,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-subtle\/80 bg-surface flex items-center justify-between shrink-0">
+        <div className="p-5 border-t border-subtle/80 bg-surface flex items-center justify-between shrink-0">
           <div className="text-[11px] text-muted truncate max-w-[200px]">
             {selectedAsset ? selectedAsset.name : t('assets.noneSelected')}
           </div>

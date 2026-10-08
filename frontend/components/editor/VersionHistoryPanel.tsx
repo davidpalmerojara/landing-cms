@@ -17,7 +17,7 @@ interface VersionHistoryPanelProps {
 }
 
 const TRIGGER_CONFIG: Record<string, { icon: typeof Clock; labelKey: string; color: string }> = {
-  manual: { icon: Save, labelKey: 'triggerManual', color: 'bg-primary\/20 text-primary-color border-[#2563EB]/30' },
+  manual: { icon: Save, labelKey: 'triggerManual', color: 'bg-primary/20 text-primary-color border-[#2563EB]/30' },
   auto_publish: { icon: Globe, labelKey: 'triggerAutoPublish', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   auto_restore: { icon: RotateCcw, labelKey: 'triggerAutoRestore', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
   auto_ai_generation: { icon: Sparkles, labelKey: 'triggerAutoAi', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
@@ -119,16 +119,16 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
   };
 
   return (
-    <div className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated\/80 flex flex-col h-full shrink-0 overflow-hidden">
+    <div className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col h-full shrink-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-elevated\/80 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-elevated/80 shrink-0">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-secondary" />
           <h2 className="text-sm font-medium text-primary">{t('title')}</h2>
         </div>
         <button
           onClick={onClose}
-          className="text-muted hover:text-secondary p-1 rounded hover:bg-surface-card\/50 transition-colors"
+          className="text-muted hover:text-secondary p-1 rounded hover:bg-surface-card/50 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -177,7 +177,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                     }`} />
 
                     {/* Card */}
-                    <div className="ml-6 bg-surface-elevated\/50 hover:bg-surface-elevated border border-subtle\/60 hover:border-default\/80 rounded-lg p-3 transition-colors">
+                    <div className="ml-6 bg-surface-elevated/50 hover:bg-surface-elevated border border-subtle/60 hover:border-default/80 rounded-lg p-3 transition-colors">
                       {/* Top row: version number + trigger badge */}
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs font-semibold text-primary">
@@ -241,7 +241,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                         </button>
                         <button
                           onClick={() => handleRestore(version.id, version.version_number)}
-                          className="text-[10px] text-primary-color hover:text-[#2563EB]/80 bg-primary\/10 hover:bg-primary\/20 px-2 py-1 rounded transition-colors"
+                          className="text-[10px] text-primary-color hover:text-[#2563EB]/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors"
                         >
                           {t('restore')}
                         </button>
@@ -274,7 +274,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                 <button
                   onClick={() => fetchVersions(currentPage + 1, true)}
                   disabled={loadingMore}
-                  className="flex items-center gap-1 text-xs text-muted hover:text-secondary px-3 py-1.5 rounded hover:bg-surface-card\/50 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 text-xs text-muted hover:text-secondary px-3 py-1.5 rounded hover:bg-surface-card/50 transition-colors disabled:opacity-50"
                 >
                   {loadingMore ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

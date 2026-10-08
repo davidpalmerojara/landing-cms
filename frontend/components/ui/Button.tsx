@@ -14,9 +14,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'bg-primary hover:bg-[#2563EB]/80 text-white shadow-lg shadow-[#2563EB]/20 active:scale-95',
   secondary:
-    'bg-surface-elevated\/50 border border-subtle\/50 text-secondary hover:bg-surface-card hover:text-primary active:scale-[0.98] active:bg-surface-card',
+    'bg-surface-elevated/50 border border-subtle/50 text-secondary hover:bg-surface-card hover:text-primary active:scale-[0.98] active:bg-surface-card',
   ghost:
-    'text-secondary hover:text-primary hover:bg-surface-card\/50 active:opacity-90 active:bg-surface-card\/50',
+    'text-secondary hover:text-primary hover:bg-surface-card/50 active:opacity-90 active:bg-surface-card/50',
   danger:
     'bg-transparent border border-red-900/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-300 active:scale-[0.98] active:bg-red-500/10',
 };

@@ -34,14 +34,14 @@ export default function Inspector() {
 
   if (!selectedBlock) {
     return (
-      <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card\/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
+      <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
         <div className="h-14 flex items-center px-5 border-b border-default/15 shrink-0">
           <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
             <Settings className="w-4 h-4 text-muted" /> {t('editor.inspector')}
           </h2>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-muted p-8 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-surface-elevated\/50 flex items-center justify-center border border-default/10">
+          <div className="w-16 h-16 rounded-full bg-surface-elevated/50 flex items-center justify-center border border-default/10">
             <Settings className="w-6 h-6 text-muted" />
           </div>
           <div>
@@ -60,7 +60,7 @@ export default function Inspector() {
   const BlockIcon = blockConfig?.icon || Layout;
 
   return (
-    <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card\/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
+    <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
       <div className="h-14 flex items-center px-5 border-b border-default/15 shrink-0">
         <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
           <Settings className="w-4 h-4 text-muted" /> {t('editor.inspector')}
@@ -71,7 +71,7 @@ export default function Inspector() {
           {/* Block header */}
           <div className="p-5 border-b border-default/15 bg-surface-elevated/20">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-md bg-primary\/10 flex items-center justify-center border border-[#2563EB]/20">
+              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
                 <BlockIcon className="w-4 h-4 text-[#2563EB]" />
               </div>
               <div>
@@ -83,7 +83,7 @@ export default function Inspector() {
 
           {!blockConfig ? (
             <div className="p-8 text-center text-muted text-[12px]">
-              <div className="bg-surface-elevated\/50 rounded-lg p-4 border border-default/10">
+              <div className="bg-surface-elevated/50 rounded-lg p-4 border border-default/10">
                 {t('editor.unknownBlockConfig')}
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function Inspector() {
                     <div id="inspector-section-styles" className="px-5 pb-6 space-y-6">
                       {/* Device mode indicator */}
                       {isResponsive && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-primary\/10 border border-[#2563EB]/20 rounded-lg">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-[#2563EB]/20 rounded-lg">
                           <DeviceIcon className="w-3.5 h-3.5 text-[#2563EB]" />
                           <span className="text-[11px] text-[#2563EB] font-medium">
                             {deviceMode === 'mobile' ? t('editor.editingMobileStyles') : t('editor.editingTabletStyles')}
@@ -263,7 +263,7 @@ export default function Inspector() {
           <div className="p-5 mt-2 flex gap-2">
             <button
               onClick={() => duplicateBlock(selectedBlock.id)}
-              className="flex-1 py-2.5 px-2 bg-surface-elevated\/50 border border-default/10 text-secondary rounded-lg text-[11px] font-medium hover:bg-surface-card hover:text-primary transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 px-2 bg-surface-elevated/50 border border-default/10 text-secondary rounded-lg text-[11px] font-medium hover:bg-surface-card hover:text-primary transition-all flex items-center justify-center gap-1.5"
             >
               <Copy className="w-3.5 h-3.5" /> {t('common.duplicate')}
             </button>

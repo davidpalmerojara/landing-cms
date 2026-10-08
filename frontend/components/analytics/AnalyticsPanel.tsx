@@ -31,7 +31,7 @@ function Skeleton({ className }: { className?: string }) {
 
 function MetricSkeleton() {
   return (
-    <div className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4 flex flex-col gap-2">
+    <div className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4 flex flex-col gap-2">
       <Skeleton className="h-3 w-16" />
       <Skeleton className="h-7 w-24" />
     </div>
@@ -114,7 +114,7 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header with period selector */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-card\/80 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-card/80 shrink-0">
         <h2 className="text-sm font-medium text-primary">{t('analytics.title')}</h2>
         <div className="flex items-center gap-2">
           <div className="flex bg-surface-card rounded-lg p-0.5">
@@ -182,7 +182,7 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
             </div>
 
             {/* Views over time */}
-            <section className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4">
+            <section className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4">
               <h3 className="text-xs text-muted uppercase tracking-wider mb-3">{t('analytics.viewsOverTime')}</h3>
               <ViewsChart data={data.views_over_time} />
             </section>
@@ -190,25 +190,25 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
             {/* Two-column grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Clicks by block */}
-              <section className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4">
+              <section className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4">
                 <h3 className="text-xs text-muted uppercase tracking-wider mb-3">{t('analytics.clicksByBlock')}</h3>
                 <ClicksByBlockChart data={data.clicks_by_block} />
               </section>
 
               {/* Scroll funnel */}
-              <section className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4">
+              <section className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4">
                 <h3 className="text-xs text-muted uppercase tracking-wider mb-3">{t('analytics.scrollDepth')}</h3>
                 <ScrollFunnel data={data.scroll_depth_distribution} totalPageviews={data.total_views} />
               </section>
 
               {/* Referrers */}
-              <section className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4">
+              <section className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4">
                 <h3 className="text-xs text-muted uppercase tracking-wider mb-3">{t('analytics.topReferrers')}</h3>
                 <ReferrersTable data={data.top_referrers} />
               </section>
 
               {/* Device breakdown */}
-              <section className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4">
+              <section className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4">
                 <h3 className="text-xs text-muted uppercase tracking-wider mb-3">{t('analytics.devices')}</h3>
                 <DeviceChart data={data.device_breakdown} />
               </section>

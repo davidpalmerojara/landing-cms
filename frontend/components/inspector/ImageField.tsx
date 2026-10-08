@@ -39,7 +39,7 @@ export default function ImageField({ id, value, onChange }: ImageFieldProps) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowPicker(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-secondary hover:text-primary active:text-primary bg-surface-elevated\/50 border border-default/10 rounded-md hover:bg-surface-card active:bg-surface-card transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-secondary hover:text-primary active:text-primary bg-surface-elevated/50 border border-default/10 rounded-md hover:bg-surface-card active:bg-surface-card transition-colors"
             >
               <RefreshCw className="w-3 h-3" />
               {t('common.change')}
@@ -55,7 +55,7 @@ export default function ImageField({ id, value, onChange }: ImageFieldProps) {
       ) : (
         <button
           onClick={() => setShowPicker(true)}
-          className="w-full flex flex-col items-center justify-center gap-2 py-6 rounded-lg border-2 border-dashed border-default/20 bg-surface-elevated/30 hover:bg-surface-elevated\/80 hover:border-[#2563EB]/50 active:bg-surface-elevated\/80 active:border-[#2563EB]/50 text-muted hover:text-[#2563EB] active:text-[#2563EB] transition-all cursor-pointer group"
+          className="w-full flex flex-col items-center justify-center gap-2 py-6 rounded-lg border-2 border-dashed border-default/20 bg-surface-elevated/30 hover:bg-surface-elevated/80 hover:border-[#2563EB]/50 active:bg-surface-elevated/80 active:border-[#2563EB]/50 text-muted hover:text-[#2563EB] active:text-[#2563EB] transition-all cursor-pointer group"
         >
           <ImagePlus className="w-5 h-5" />
           <span className="text-[11px] font-medium">{t('inspector.selectImage')}</span>

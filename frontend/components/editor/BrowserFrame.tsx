@@ -54,7 +54,7 @@ const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
             <div className="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-500 transition-colors" />
             <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors" />
           </div>
-          <div className="mx-auto bg-surface-card\/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-muted border border-default/10 shadow-inner">
+          <div className="mx-auto bg-surface-card/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-muted border border-default/10 shadow-inner">
             <LockIcon className="w-3 h-3 mr-2 opacity-50" /> tu-proyecto.dev
           </div>
           <div className="w-[52px]" />

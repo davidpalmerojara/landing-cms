@@ -37,7 +37,7 @@ function SeoInput({
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength + 10}
         placeholder={placeholder}
-        className="w-full bg-surface-elevated border border-surface-elevated\/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+        className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
       />
     </div>
   );
@@ -61,7 +61,7 @@ function SeoTextarea({
         maxLength={maxLength + 10}
         placeholder={placeholder}
         rows={3}
-        className="w-full bg-surface-elevated border border-surface-elevated\/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors resize-none"
+        className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors resize-none"
       />
     </div>
   );
@@ -146,8 +146,8 @@ export default function SeoPanel() {
   })();
 
   return (
-    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated\/80 flex flex-col shrink-0 z-20">
-      <div className="h-14 flex items-center px-5 border-b border-surface-elevated\/80 shrink-0">
+    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col shrink-0 z-20">
+      <div className="h-14 flex items-center px-5 border-b border-surface-elevated/80 shrink-0">
         <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
           <Search className="w-4 h-4 text-muted" /> {t('panelTitle')}
         </h2>
@@ -156,10 +156,10 @@ export default function SeoPanel() {
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="pb-10">
           {/* Basic SEO */}
-          <div className="border-b border-surface-elevated\/50">
+          <div className="border-b border-surface-elevated/50">
             <button
               onClick={() => toggleSection('seo')}
-              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated\/30 transition-colors"
+              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Search className="w-4 h-4 text-muted" />
@@ -203,7 +203,7 @@ export default function SeoPanel() {
                   <button
                     onClick={() => updateSeo('noindex', !seo.noindex)}
                     className={`relative w-9 h-5 rounded-full transition-colors ${
-                      seo.noindex ? 'bg-red-500/80' : 'bg-border-default'
+                      seo.noindex ? 'bg-red-500/80' : 'bg-default'
                     }`}
                   >
                     <span
@@ -226,10 +226,10 @@ export default function SeoPanel() {
           </div>
 
           {/* Open Graph */}
-          <div className="border-b border-surface-elevated\/50">
+          <div className="border-b border-surface-elevated/50">
             <button
               onClick={() => toggleSection('og')}
-              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated\/30 transition-colors"
+              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Share2 className="w-4 h-4 text-muted" />
@@ -260,11 +260,11 @@ export default function SeoPanel() {
                     {t('ogImage')}
                   </label>
                   {seo.ogImage ? (
-                    <div className="relative rounded-lg overflow-hidden border border-surface-elevated\/50">
+                    <div className="relative rounded-lg overflow-hidden border border-surface-elevated/50">
                       <img src={seo.ogImage} alt="OG" className="w-full h-24 object-cover" />
                       <button
                         onClick={() => updateSeo('ogImage', '')}
-                        className="absolute top-1.5 right-1.5 p-1 bg-surface-elevated\/80 rounded-full hover:bg-surface-card transition-colors"
+                        className="absolute top-1.5 right-1.5 p-1 bg-surface-elevated/80 rounded-full hover:bg-surface-card transition-colors"
                       >
                         <X className="w-3 h-3 text-secondary" />
                       </button>
@@ -275,7 +275,7 @@ export default function SeoPanel() {
                       value={seo.ogImage}
                       onChange={(e) => updateSeo('ogImage', e.target.value)}
                       placeholder={t('ogImagePlaceholder')}
-                      className="w-full bg-surface-elevated border border-surface-elevated\/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                      className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
                     />
                   )}
                 </div>
@@ -286,7 +286,7 @@ export default function SeoPanel() {
                   <select
                     value={seo.ogType}
                     onChange={(e) => updateSeo('ogType', e.target.value)}
-                    className="w-full bg-surface-elevated border border-surface-elevated\/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                    className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
                   >
                     <option value="website">{t('ogTypeWebsite')}</option>
                     <option value="article">{t('ogTypeArticle')}</option>
@@ -298,10 +298,10 @@ export default function SeoPanel() {
           </div>
 
           {/* Preview */}
-          <div className="border-b border-surface-elevated\/50">
+          <div className="border-b border-surface-elevated/50">
             <button
               onClick={() => toggleSection('preview')}
-              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated\/30 transition-colors"
+              className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Eye className="w-4 h-4 text-muted" />

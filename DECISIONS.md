@@ -106,6 +106,16 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-012: Tokens de la interfaz registrados como tema de Tailwind
+
+- **Fecha**: 2026-10-08
+- **Contexto**: Los colores de la interfaz del editor (superficies, bordes, textos, azul primario) se definían como variables `--bp-*` en `:root` y `[data-theme="light"]`, y cada clase (`.bg-surface-card`, `.border-subtle\/80`…) se escribía a mano dentro de `@layer utilities`. En Tailwind v4 esas clases son fijas: no generan variantes ni modificadores, así que `hover:bg-surface-card`, `focus-visible:ring-primary` o `bg-surface-card/50` no producían CSS. Había 109 clases muertas en el código, sin hover ni foco visible, y el interruptor del inspector apagado era invisible. Además, 202 usos escribían `\/` en el JSX, lo que deja una barra invertida literal en el nombre de la clase.
+- **Decisión**: Las variables `--bp-*` siguen siendo la fuente de los valores y el modo claro/oscuro sigue cambiándolas con `data-theme`. Encima se registran como tema con `@theme inline`: `--color-*` para los nombres compartidos (primary, surface, success…) y espacios por utilidad (`--text-color-primary`, `--border-color-default`, `--background-color-default`) para los nombres ambiguos. Así se mantiene el significado de clases existentes como `text-primary` (texto principal) frente a `bg-primary` (azul). `scripts/check-classes.mjs` usa el escáner y el design system de Tailwind para fallar en CI si alguna clase de color no genera CSS.
+- **Alternativas**: Renombrar todas las clases a una única escala `--color-*` (miles de cambios y riesgo de choques de significado); seguir escribiendo variantes a mano en `@layer` (no escala y es justo lo que falló).
+- **Consecuencias**: Cualquier variante u opacidad de un token funciona sin tocar CSS. El modo oscuro se verificó con un diff de píxeles antes y después: idéntico salvo los bordes y fondos que antes no se pintaban. Los colores de los bloques de la página del usuario no cambian: siguen el sistema de temas de ADR-005.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

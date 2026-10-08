@@ -32,7 +32,7 @@ export default function ScrollFunnel({ data, totalPageviews }: ScrollFunnelProps
             <span className="text-xs text-secondary w-16 text-right">{step.label}</span>
             <div className="flex-1 h-6 bg-surface-card rounded overflow-hidden relative">
               <div
-                className="h-full bg-primary\/80 rounded transition-all"
+                className="h-full bg-primary/80 rounded transition-all"
                 style={{ width: `${pct}%` }}
               />
               <span className="absolute inset-0 flex items-center px-2 text-xs text-primary font-medium">

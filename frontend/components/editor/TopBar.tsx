@@ -90,7 +90,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
   }, [resetDemo, t]);
 
   return (
-    <header className="h-14 bg-surface-card\/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
+    <header className="h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
       <div className="flex items-center gap-2 xl:gap-4 flex-1 min-w-0 overflow-hidden">
         <a href="/dashboard" aria-label={t('editor.goToDashboard')} className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           {t('common.brand')}
@@ -137,7 +137,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             <button
               onClick={handleResetDemo}
               aria-label={t('editor.resetDemo')}
-              className="ml-2 text-muted hover:text-red-400 p-1 rounded hover:bg-surface-card\/50 transition-colors"
+              className="ml-2 text-muted hover:text-red-400 p-1 rounded hover:bg-surface-card/50 transition-colors"
               title={t('editor.resetDemo')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -149,7 +149,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
       <div className="flex items-center gap-3">
         {/* View toggle: Design / Analytics */}
         {onViewChange && (
-          <div role="radiogroup" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated\/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
+          <div role="radiogroup" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
             <button
               role="radio"
               aria-checked={activeView === 'design'}
@@ -158,7 +158,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                 activeView === 'design'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                 activeView === 'styles'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Palette className="w-3.5 h-3.5" />
@@ -186,7 +186,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                 activeView === 'seo'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Search className="w-3.5 h-3.5" />
@@ -200,7 +200,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                 activeView === 'analytics'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -211,7 +211,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
 
         {/* Device mode (only visible in design view) */}
         {(activeView === 'design' || activeView === 'styles') && (
-          <div className="flex items-center bg-surface-elevated\/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
+          <div className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
             <button
               aria-label={t('editor.desktopView')}
               aria-pressed={deviceMode === 'desktop'}
@@ -219,7 +219,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`p-1.5 rounded-full transition-all duration-200 ${
                 deviceMode === 'desktop'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Monitor className="w-4 h-4" />
@@ -231,7 +231,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`p-1.5 rounded-full transition-all duration-200 ${
                 deviceMode === 'tablet'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Tablet className="w-4 h-4" />
@@ -243,7 +243,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               className={`p-1.5 rounded-full transition-all duration-200 ${
                 deviceMode === 'mobile'
                   ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card\/50'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
               }`}
             >
               <Smartphone className="w-4 h-4" />
@@ -294,7 +294,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               <button
                 onClick={() => setShowVersionInput(true)}
                 aria-label={t('editor.saveVersion')}
-                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card\/50"
+                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
                 title={t('editor.saveVersion')}
               >
                 <Save className="w-4 h-4" />
@@ -305,7 +305,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               <button
                 onClick={onOpenHistory}
                 aria-label={t('editor.versionHistory')}
-                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card\/50"
+                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
                 title={t('editor.versionHistory')}
               >
                 <History className="w-4 h-4" />
@@ -314,7 +314,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             <button
               onClick={() => setShowShareModal(true)}
               aria-label={t('editor.share')}
-              className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card\/50"
+              className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
               title={t('editor.share')}
             >
               <Share2 className="w-4 h-4" />
@@ -331,7 +331,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
         {page.status === 'published' && page.slug && (
           <button
             onClick={() => window.open(`/p/${page.slug}`, '_blank')}
-            className="text-sm font-medium hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary\/10"
+            className="text-sm font-medium hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10"
             title={t('editor.viewPublished')}
           >
             <Globe className="w-4 h-4" />
@@ -343,7 +343,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             await handleSave();
             window.open(`/preview/${page.id}`, '_blank');
           }}
-          className="text-sm font-medium flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card\/50"
+          className="text-sm font-medium flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
           title={t('editor.previewTitle')}
         >
           <Eye className="w-4 h-4" />
@@ -352,7 +352,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card\/50 transition-colors disabled:opacity-50"
+          className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card/50 transition-colors disabled:opacity-50"
           title={isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}
         >
           {isSaving ? (

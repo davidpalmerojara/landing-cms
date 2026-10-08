@@ -21,7 +21,7 @@ export default function MetricCard({ label, value, prevValue, currentValue, suff
   }
 
   return (
-    <div className="bg-surface-elevated border border-surface-card\/80 rounded-xl p-4 flex flex-col gap-1">
+    <div className="bg-surface-elevated border border-surface-card/80 rounded-xl p-4 flex flex-col gap-1">
       <span className="text-xs text-muted uppercase tracking-wider">{label}</span>
       <div className="flex items-end gap-2">
         <span className="text-2xl font-semibold text-primary">

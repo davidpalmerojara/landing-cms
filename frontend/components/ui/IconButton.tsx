@@ -16,7 +16,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         size === 'sm' ? 'p-1.5' : 'p-2',
         active
           ? 'bg-surface-card text-primary shadow-sm'
-          : 'text-muted hover:text-secondary hover:bg-surface-card\/50',
+          : 'text-muted hover:text-secondary hover:bg-surface-card/50',
         className
       )}
       {...props}

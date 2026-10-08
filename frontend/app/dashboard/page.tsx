@@ -530,7 +530,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2 mb-6">
                       <p className="text-xs text-muted">/{page.slug}</p>
                       {page.is_shared && (
-                        <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary\/10 border border-primary/20 text-primary-color font-medium">
+                        <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-color font-medium">
                           <Users className="w-2.5 h-2.5" />
                           {page.owner_name}
                         </span>

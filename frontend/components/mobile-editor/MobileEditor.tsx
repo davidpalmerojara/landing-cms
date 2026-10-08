@@ -318,7 +318,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   return (
     <div className="flex flex-col h-dvh bg-surface text-white">
       {/* --- Toolbar --- */}
-      <header className="flex items-center justify-between px-4 h-14 bg-surface-card\/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
+      <header className="flex items-center justify-between px-4 h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
         {/* Left: Back */}
         <a
           href="/dashboard"
@@ -338,7 +338,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
               onChange={(e) => setNameValue(e.target.value)}
               onBlur={handleNameSubmit}
               onKeyDown={handleNameKeyDown}
-              className="text-sm font-medium text-white bg-surface-card border border-default\/30 rounded-lg px-3 py-1 outline-none focus:border-[#2563EB]/50 max-w-[180px] text-center"
+              className="text-sm font-medium text-white bg-surface-card border border-default/30 rounded-lg px-3 py-1 outline-none focus:border-[#2563EB]/50 max-w-[180px] text-center"
               aria-label={t('mobile.pageName')}
             />
           ) : (
@@ -405,7 +405,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
         {page.blocks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
             <div className="w-16 h-16 rounded-2xl bg-surface-card border border-default/15 flex items-center justify-center">
-              <Layers size={28} className="text-default" />
+              <Layers size={28} className="text-muted" />
             </div>
             <div>
               <p className="text-lg font-semibold text-white">{t('mobile.emptyTitle')}</p>

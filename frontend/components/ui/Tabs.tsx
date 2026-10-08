@@ -14,7 +14,7 @@ interface TabsProps {
 
 export default function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
   return (
-    <div className={clsx('flex border-b border-subtle\/80', className)}>
+    <div className={clsx('flex border-b border-subtle/80', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.key}
@@ -22,7 +22,7 @@ export default function Tabs({ tabs, activeTab, onTabChange, className }: TabsPr
           className={clsx(
             'flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-widest transition-colors',
             activeTab === tab.key
-              ? 'text-primary border-b-2 border-primary-color'
+              ? 'text-primary border-b-2 border-primary'
               : 'text-muted hover:text-secondary'
           )}
         >

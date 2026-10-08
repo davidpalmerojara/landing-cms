@@ -17,7 +17,7 @@ export default function FloatingViewportControls({ onCenterCanvas }: FloatingVie
 
   return (
     <div
-      className={`absolute bottom-6 flex items-center gap-2 bg-surface-card\/90 backdrop-blur-2xl border border-default/15 p-1.5 rounded-full shadow-2xl z-40 transition-all duration-300 ${
+      className={`absolute bottom-6 flex items-center gap-2 bg-surface-card/90 backdrop-blur-2xl border border-default/15 p-1.5 rounded-full shadow-2xl z-40 transition-all duration-300 ${
         isPreviewMode ? 'right-6' : 'right-[276px] lg:right-[308px] xl:right-[340px]'
       }`}
     >

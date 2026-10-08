@@ -1,3 +1,4 @@
+import uuid
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from rest_framework import viewsets, status, generics, mixins, parsers
@@ -656,6 +657,23 @@ ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 # SVG excluded from direct upload — contains executable code (XSS risk).
 # To support SVG in the future, sanitize with bleach or DOMPurify server-side.
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+IMAGE_EXTENSIONS = {'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif'}
+
+
+def detect_image_type(uploaded_file) -> str | None:
+    """Image type from the file's first bytes (its signature), not from the
+    Content-Type the client declares, which anyone can set to image/png."""
+    head = uploaded_file.read(12)
+    uploaded_file.seek(0)
+    if head.startswith(b'\xff\xd8\xff'):
+        return 'image/jpeg'
+    if head.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'image/png'
+    if head[:6] in (b'GIF87a', b'GIF89a'):
+        return 'image/gif'
+    if head[:4] == b'RIFF' and head[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
 
 
 class AssetViewSet(
@@ -681,12 +699,15 @@ class AssetViewSet(
         if not uploaded_file:
             raise ValidationError({'file': 'No se ha subido ningún archivo.'})
 
-        content_type = uploaded_file.content_type or ''
+        content_type = detect_image_type(uploaded_file)
         if content_type not in ALLOWED_IMAGE_TYPES:
             raise ValidationError({
-                'file': f'Tipo de archivo no permitido: {content_type}. '
-                        f'Solo se aceptan imágenes (JPG, PNG, WebP, GIF, SVG).'
+                'file': 'El archivo no es una imagen válida. Solo se aceptan JPG, PNG, WebP y GIF.'
             })
+        original_name = uploaded_file.name
+        # Stored under a random name with the detected extension: a file named
+        # evil.html is never served back as HTML from our domain
+        uploaded_file.name = f'{uuid.uuid4().hex}.{IMAGE_EXTENSIONS[content_type]}'
 
         if uploaded_file.size > MAX_FILE_SIZE:
             size_mb = uploaded_file.size / (1024 * 1024)
@@ -697,7 +718,7 @@ class AssetViewSet(
 
         serializer.save(
             owner=self.request.user,
-            name=uploaded_file.name,
+            name=original_name[:255],
             mime_type=content_type,
             size=uploaded_file.size,
         )

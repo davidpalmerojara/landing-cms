@@ -103,7 +103,7 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
         <p className="text-sm text-red-400 mb-3">{error}</p>
         <button
           onClick={fetchData}
-          className="text-sm text-primary-color hover:text-[#2563EB]/80 flex items-center gap-1"
+          className="text-sm text-primary-color hover:text-primary-color/80 flex items-center gap-1"
         >
           <RefreshCw size={14} /> {t('common.retry')}
         </button>

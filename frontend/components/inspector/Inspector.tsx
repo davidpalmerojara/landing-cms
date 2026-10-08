@@ -71,8 +71,8 @@ export default function Inspector() {
           {/* Block header */}
           <div className="p-5 border-b border-default/15 bg-surface-elevated/20">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
-                <BlockIcon className="w-4 h-4 text-[#2563EB]" />
+              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20">
+                <BlockIcon className="w-4 h-4 text-primary-color" />
               </div>
               <div>
                 <span className="font-medium text-[13px] text-primary block">{getTranslatedBlockLabel(selectedBlock.type, t, selectedBlock.name)}</span>
@@ -156,9 +156,9 @@ export default function Inspector() {
                     <div id="inspector-section-styles" className="px-5 pb-6 space-y-6">
                       {/* Device mode indicator */}
                       {isResponsive && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-[#2563EB]/20 rounded-lg">
-                          <DeviceIcon className="w-3.5 h-3.5 text-[#2563EB]" />
-                          <span className="text-[11px] text-[#2563EB] font-medium">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                          <DeviceIcon className="w-3.5 h-3.5 text-primary-color" />
+                          <span className="text-[11px] text-primary-color font-medium">
                             {deviceMode === 'mobile' ? t('editor.editingMobileStyles') : t('editor.editingTabletStyles')}
                           </span>
                         </div>
@@ -240,7 +240,7 @@ export default function Inspector() {
                                   onChange={(e) =>
                                     handleStyleChange('borderRadius', parseInt(e.target.value, 10))
                                   }
-                                  className="flex-1 accent-[#2563EB] h-1.5"
+                                  className="flex-1 accent-primary h-1.5"
                                 />
                                 <span className="text-[12px] text-secondary font-mono w-10 text-right">
                                   {styles.borderRadius}px

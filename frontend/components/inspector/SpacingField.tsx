@@ -19,7 +19,7 @@ export default function SpacingField({ label, top, bottom, left, right, onChange
   };
 
   const inputClass =
-    'w-full text-center text-[12px] py-1.5 rounded-md bg-surface-elevated border border-default/10 text-secondary focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+    'w-full text-center text-[12px] py-1.5 rounded-md bg-surface-elevated border border-default/10 text-secondary focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
   return (
     <div className="space-y-2">

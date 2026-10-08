@@ -165,7 +165,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('share.emailPlaceholder')}
-              className="flex-1 bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 focus:border-[#2563EB]/50"
+              className="flex-1 bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
               disabled={isAdding}
             />
             <button
@@ -223,7 +223,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
               {collaborators.map((collab) => (
                 <div key={collab.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-surface-card/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-default flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-default flex items-center justify-center text-primary text-xs font-bold">
                       {collab.username.charAt(0).toUpperCase()}
                     </div>
                     <div>

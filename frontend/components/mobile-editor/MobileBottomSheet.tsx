@@ -128,7 +128,7 @@ export default function MobileBottomSheet({
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between px-5 pb-3 border-b border-default/15">
-            <h2 className="text-sm font-semibold text-white">{title}</h2>
+            <h2 className="text-sm font-semibold text-primary">{title}</h2>
             <button
               onClick={onClose}
               className="text-sm font-medium text-primary-color active:opacity-70 px-3 py-1.5 min-w-11 min-h-11 flex items-center -mr-2 rounded-lg"

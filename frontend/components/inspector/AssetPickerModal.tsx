@@ -139,8 +139,8 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-subtle/80 bg-surface-elevated/20 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
-              <ImageIcon className="w-4 h-4 text-[#2563EB]" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+              <ImageIcon className="w-4 h-4 text-primary-color" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-primary tracking-wide">{t('assets.mediaLibrary')}</h2>
@@ -163,12 +163,12 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-xl border-2 border-dashed border-subtle bg-surface-elevated/30 hover:bg-surface-elevated/80 hover:border-[#2563EB]/50 transition-all flex flex-col items-center justify-center py-8 cursor-pointer group"
+              className="w-full rounded-xl border-2 border-dashed border-subtle bg-surface-elevated/30 hover:bg-surface-elevated/80 hover:border-primary/50 transition-all flex flex-col items-center justify-center py-8 cursor-pointer group"
             >
               <div className="w-12 h-12 rounded-full bg-surface-card/50 group-hover:bg-primary/10 flex items-center justify-center mb-4 transition-colors">
-                <UploadCloud className="w-6 h-6 text-secondary group-hover:text-[#2563EB] transition-colors" />
+                <UploadCloud className="w-6 h-6 text-secondary group-hover:text-primary-color transition-colors" />
               </div>
-              <p className="text-sm font-medium text-primary mb-1 group-hover:text-[#2563EB] transition-colors">
+              <p className="text-sm font-medium text-primary mb-1 group-hover:text-primary-color transition-colors">
                 {t('assets.uploadPrompt')}
               </p>
               <p className="text-xs text-muted flex items-center gap-1.5">
@@ -196,7 +196,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
           {isLoading && (
             <div className="flex-1 flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm text-muted">{t('assets.loading')}</span>
               </div>
             </div>
@@ -227,9 +227,9 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
               {/* Uploading card */}
               {isUploading && (
                 <div className="relative aspect-square rounded-xl overflow-hidden border border-subtle bg-surface-elevated flex flex-col items-center justify-center">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-[#2563EB]/20 to-purple-900/20 animate-pulse" />
-                  <Loader2 className="w-8 h-8 text-[#2563EB] animate-spin mb-3 z-10" />
-                  <span className="text-sm font-semibold text-[#2563EB] z-10">{Math.min(uploadProgress, 100)}%</span>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-purple-900/20 animate-pulse" />
+                  <Loader2 className="w-8 h-8 text-primary-color animate-spin mb-3 z-10" />
+                  <span className="text-sm font-semibold text-primary-color z-10">{Math.min(uploadProgress, 100)}%</span>
                   <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-surface">
                     <div
                       className="h-full bg-primary transition-all duration-300 ease-out"
@@ -248,7 +248,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
                     onClick={() => setSelectedId(isSelected ? null : asset.id)}
                     className={`group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ${
                       isSelected
-                        ? 'ring-2 ring-[#2563EB] ring-offset-2 ring-offset-surface scale-[0.98]'
+                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-surface scale-[0.98]'
                         : 'border border-subtle/80 hover:border-default hover:shadow-lg'
                     }`}
                   >
@@ -263,7 +263,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
                     <div
                       className={`absolute top-3 right-3 w-6 h-6 rounded-full border flex items-center justify-center transition-all z-20 ${
                         isSelected
-                          ? 'bg-primary border-[#2563EB] text-white shadow-md scale-100'
+                          ? 'bg-primary border-primary text-white shadow-md scale-100'
                           : 'bg-black/20 border-white/30 text-transparent backdrop-blur-sm opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100'
                       }`}
                     >
@@ -315,7 +315,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
               disabled={!selectedId}
               className={`px-6 py-2 rounded-full text-sm font-semibold transition-all shadow-lg ${
                 selectedId
-                  ? 'bg-primary text-white hover:bg-[#2563EB]/80 shadow-[#2563EB]/20 active:scale-95'
+                  ? 'bg-primary text-white hover:bg-primary/80 shadow-primary/20 active:scale-95'
                   : 'bg-surface-card text-muted cursor-not-allowed shadow-none'
               }`}
             >

@@ -14,7 +14,7 @@ export default function EditorLoading() {
         <div className="flex-1" />
         <div className="flex items-center gap-2">
           <div className="w-24 h-8 bg-surface-card rounded-lg animate-pulse" />
-          <div className="w-24 h-8 bg-[#2563EB]/20 rounded-lg animate-pulse" />
+          <div className="w-24 h-8 bg-primary/20 rounded-lg animate-pulse" />
         </div>
       </div>
 

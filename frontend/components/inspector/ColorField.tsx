@@ -103,7 +103,7 @@ export default function ColorField({ id, value, onChange }: ColorFieldProps) {
                 key={color}
                 className={`w-6 h-6 rounded-md border transition-all hover:scale-110 ${
                   value === color
-                    ? 'border-[#2563EB] ring-1 ring-[#2563EB] scale-110'
+                    ? 'border-primary ring-1 ring-primary scale-110'
                     : 'border-default hover:border-default'
                 }`}
                 style={{ backgroundColor: color }}

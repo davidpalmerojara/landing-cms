@@ -342,7 +342,7 @@ Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en 
 - Auto-save con debounce 3s
 - Paginas publicas en `/p/[slug]` con SSR + SEO metadata
 - Version history con snapshots y restore
-- Temas predefinidos (8) + Design Tokens custom (color, tipografia, spacing, borders)
+- Temas predefinidos (8, los usan las plantillas via `theme_id`) + Design Tokens custom (color, tipografia, spacing, borders) editables en la vista Estilos. Ambos se resuelven en `lib/page-theme.ts`
 - Responsive styles por bloque (tablet/mobile overrides)
 - AI generation (full page + edit block) con Anthropic y Google
 - Analytics tracking (pageview, click, scroll, CTA conversion)
@@ -491,10 +491,12 @@ cd backend && pytest
 | Border subtle | `#1F2937` | Bordes sutiles, separadores |
 | Text primary | `#F9FAFB` | Texto principal |
 | Text secondary | `#9CA3AF` | Texto secundario |
-| Text muted | `#6B7280` | Texto deshabilitado, placeholders |
+| Text muted | `#8B95A5` | Texto secundario de menor jerarquia, placeholders (4.5:1 sobre card) |
 | Success | `#10B981` | Estados exitosos |
 | Warning | `#F59E0B` | Advertencias |
-| Error | `#EF4444` | Errores, acciones destructivas |
+| Error | `#EF4444` (texto: `#F87171`) | Errores, acciones destructivas |
+
+Modo claro (`[data-theme="light"]` en `app/globals.css`): superficies `#FFFFFF`/`#F9FAFB`, texto `#111827`/`#4B5563`/`#6B7280`, success `#047857`, warning `#B45309`, error `#DC2626`. Todos los pares texto/fondo cumplen WCAG AA (4.5:1). Los tokens se usan como clases de Tailwind (ADR-012); `npm run check:classes` falla si una clase de color no genera CSS.
 
 ### Tipografia
 

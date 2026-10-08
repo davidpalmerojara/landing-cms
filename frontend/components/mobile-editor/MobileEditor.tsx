@@ -18,8 +18,7 @@ import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { resolveStyles } from '@/types/blocks';
-import { defaultDesignTokens, tokensToCssVars, tokensToThemeVars } from '@/lib/design-tokens';
-import { getThemeById } from '@/lib/themes';
+import { pageThemeVars } from '@/lib/page-theme';
 import MobileBlockCard from './MobileBlockCard';
 import MobileBottomSheet from './MobileBottomSheet';
 import MobileBlockEditor from './MobileBlockEditor';
@@ -316,13 +315,13 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   }));
 
   return (
-    <div className="flex flex-col h-dvh bg-surface text-white">
+    <div className="flex flex-col h-dvh bg-surface text-primary">
       {/* --- Toolbar --- */}
       <header className="flex items-center justify-between px-4 h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
         {/* Left: Back */}
         <a
           href="/dashboard"
-          className="flex items-center justify-center text-secondary active:text-white min-w-11 min-h-11 -ml-2 rounded-lg"
+          className="flex items-center justify-center text-secondary active:text-primary min-w-11 min-h-11 -ml-2 rounded-lg"
           aria-label={t('common.backToDashboard')}
         >
           <ArrowLeft size={20} />
@@ -338,13 +337,13 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
               onChange={(e) => setNameValue(e.target.value)}
               onBlur={handleNameSubmit}
               onKeyDown={handleNameKeyDown}
-              className="text-sm font-medium text-white bg-surface-card border border-default/30 rounded-lg px-3 py-1 outline-none focus:border-[#2563EB]/50 max-w-[180px] text-center"
+              className="text-sm font-medium text-primary bg-surface-card border border-default/30 rounded-lg px-3 py-1 outline-none focus:border-primary/50 max-w-[180px] text-center"
               aria-label={t('mobile.pageName')}
             />
           ) : (
             <button
               onClick={handleNameTap}
-              className="text-sm font-medium text-white truncate max-w-[160px] px-2 py-1 rounded-lg active:bg-surface-card transition-colors"
+              className="text-sm font-medium text-primary truncate max-w-[160px] px-2 py-1 rounded-lg active:bg-surface-card transition-colors"
               aria-label={t('mobile.editPageName')}
             >
               {page.name}
@@ -376,7 +375,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsPreview(true)}
-            className="flex items-center justify-center min-w-11 min-h-11 text-secondary active:text-white rounded-lg"
+            className="flex items-center justify-center min-w-11 min-h-11 text-secondary active:text-primary rounded-lg"
             aria-label={t('mobile.previewPage')}
           >
             <Eye size={20} />
@@ -386,7 +385,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
             className={`flex items-center justify-center min-w-11 min-h-11 rounded-lg ${
               page.status === 'published'
                 ? 'text-emerald-400'
-                : 'text-secondary active:text-white'
+                : 'text-secondary active:text-primary'
             }`}
             aria-label={page.status === 'published' ? t('mobile.publishedTitle') : t('mobile.publishTitle')}
           >
@@ -408,8 +407,8 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
               <Layers size={28} className="text-muted" />
             </div>
             <div>
-              <p className="text-lg font-semibold text-white">{t('mobile.emptyTitle')}</p>
-              <p className="text-sm text-[#888] mt-1">
+              <p className="text-lg font-semibold text-primary">{t('mobile.emptyTitle')}</p>
+              <p className="text-sm text-secondary mt-1">
                 {t('mobile.emptyDescription')}
               </p>
             </div>
@@ -508,7 +507,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
                 <div className="w-10 h-10 rounded-xl bg-surface-card border border-default/15 flex items-center justify-center shrink-0">
                   <BlockIcon size={18} className="text-primary-color" />
                 </div>
-                <span className="text-sm font-medium text-white">{b.label}</span>
+                <span className="text-sm font-medium text-primary">{b.label}</span>
               </button>
             );
           })}
@@ -544,11 +543,11 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
             </>
           ) : (
             <>
-              <p className="text-sm text-[#aaa]">{t('mobile.publishDescription', { slug: page.slug })}</p>
+              <p className="text-sm text-secondary">{t('mobile.publishDescription', { slug: page.slug })}</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPublishSheet(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-surface-card text-sm font-medium text-secondary active:bg-[#333]"
+                  className="flex-1 py-3.5 rounded-xl bg-surface-card text-sm font-medium text-secondary active:bg-surface-elevated"
                 >
                   {t('common.cancel')}
                 </button>
@@ -581,22 +580,7 @@ function MobilePreview({
   const t = useTranslations();
   const [showBar, setShowBar] = useState(true);
 
-  // Build theme CSS variables (same logic as CanvasViewport and PublicPageClient)
-  const tokens = page.designTokens || defaultDesignTokens;
-  const theme = getThemeById(page.themeId || 'default', page.customTheme);
-  const bpVars = tokensToCssVars(tokens);
-  const legacyVars = page.designTokens ? tokensToThemeVars(tokens) : {
-    '--theme-primary': theme.colors.primary,
-    '--theme-primary-hover': theme.colors.primaryHover,
-    '--theme-secondary': theme.colors.secondary,
-    '--theme-bg': theme.colors.background,
-    '--theme-surface': theme.colors.surface,
-    '--theme-text': theme.colors.text,
-    '--theme-text-muted': theme.colors.textMuted,
-    '--theme-border': theme.colors.border,
-    '--theme-accent': theme.colors.accent,
-  };
-  const themeVars = { ...bpVars, ...legacyVars } as React.CSSProperties;
+  const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
 
   return (
     <div className="fixed inset-0 z-80 bg-white">
@@ -653,11 +637,11 @@ function MobilePreview({
               e.stopPropagation();
               onBack();
             }}
-            className="flex items-center gap-2 text-sm font-medium text-white active:opacity-70 min-h-11"
+            className="flex items-center gap-2 text-sm font-medium text-primary active:opacity-70 min-h-11"
           >
             <ArrowLeft size={16} /> {t('mobile.backToEditor')}
           </button>
-          <span className="text-xs text-[#888]">{t('mobile.previewLabel')}</span>
+          <span className="text-xs text-secondary">{t('mobile.previewLabel')}</span>
         </div>
       )}
     </div>

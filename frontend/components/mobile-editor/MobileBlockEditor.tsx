@@ -53,12 +53,12 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
     <div className="pb-8">
       {/* Block header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-default/15 bg-surface-card/40">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-[#2563EB]/20">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
           <BlockIcon size={18} className="text-primary-color" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white">{getTranslatedBlockLabel(block.type, t, config?.label || block.type)}</p>
-          <p className="text-xs text-[#888] uppercase tracking-wider">{block.type}</p>
+          <p className="text-sm font-semibold text-primary">{getTranslatedBlockLabel(block.type, t, config?.label || block.type)}</p>
+          <p className="text-xs text-secondary uppercase tracking-wider">{block.type}</p>
         </div>
       </div>
 
@@ -93,7 +93,7 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
 
             return (
               <div key={group.key} className="space-y-2">
-                <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">
+                <label className="text-xs font-semibold text-secondary uppercase tracking-wider">
                   {translateStyleGroupLabel(group.key, locale)}
                 </label>
                 {group.key === 'background' ? (
@@ -159,7 +159,7 @@ function SectionAccordion({
         <span className="text-sm font-medium text-secondary">{title}</span>
         <ChevronDown
           size={18}
-          className={`text-[#666] transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}
+          className={`text-muted transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}
         />
       </button>
       {isOpen && children}
@@ -184,7 +184,7 @@ function MobileField({
     case 'text':
       return (
         <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <input
@@ -192,7 +192,7 @@ function MobileField({
             type="text"
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-white text-sm placeholder-muted focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
           />
         </div>
       );
@@ -200,7 +200,7 @@ function MobileField({
     case 'textarea':
       return (
         <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <textarea
@@ -208,7 +208,7 @@ function MobileField({
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             rows={3}
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-white text-sm placeholder-muted focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all resize-none"
+            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all resize-none"
           />
         </div>
       );
@@ -216,14 +216,14 @@ function MobileField({
     case 'select':
       return (
         <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <select
             id={fieldId}
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-white text-sm focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all appearance-auto"
+            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all appearance-auto"
           >
             {(field.options || []).map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -237,7 +237,7 @@ function MobileField({
     case 'toggle':
       return (
         <div className="flex items-center justify-between py-1">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <input
@@ -246,7 +246,7 @@ function MobileField({
             role="switch"
             checked={!!value}
             onChange={(e) => onChange(e.target.checked)}
-            className="w-11 h-6 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 checked:bg-[#2563EB] bg-surface-card
+            className="w-11 h-6 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 checked:bg-primary bg-surface-card
               before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform before:duration-200 checked:before:translate-x-5"
           />
         </div>
@@ -255,7 +255,7 @@ function MobileField({
     case 'color':
       return (
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-[#888]">{field.label}</label>
+          <label className="text-xs font-semibold text-secondary">{field.label}</label>
           <MobileColorPicker value={(value as string) || ''} onChange={onChange} />
         </div>
       );
@@ -263,7 +263,7 @@ function MobileField({
     case 'image':
       return (
         <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <input
@@ -272,7 +272,7 @@ function MobileField({
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder="https://..."
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-white text-sm placeholder-muted focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
           />
           {typeof value === 'string' && value && (
             <div className="w-full h-24 rounded-lg bg-surface-card border border-default/15 overflow-hidden">
@@ -290,7 +290,7 @@ function MobileField({
     default:
       return (
         <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-[#888]">
+          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
             {field.label}
           </label>
           <input
@@ -298,7 +298,7 @@ function MobileField({
             type="text"
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-white text-sm focus:border-[#2563EB]/50 focus:ring-1 focus:ring-[#2563EB]/30 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
           />
         </div>
       );
@@ -325,7 +325,7 @@ function MobileColorPicker({
             key={color}
             onClick={() => onChange(color)}
             className={`w-11 h-11 rounded-lg border-2 transition-all active:scale-95 ${
-              value === color ? 'border-[#2563EB] ring-2 ring-[#2563EB]/30' : 'border-default/30'
+              value === color ? 'border-primary ring-2 ring-primary/30' : 'border-default/30'
             }`}
             style={{ backgroundColor: color }}
             aria-label={t('colorOption', { value: color })}
@@ -339,7 +339,7 @@ function MobileColorPicker({
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder="#000000"
-            className="flex-1 px-3 py-2.5 rounded-lg bg-surface-card border border-default/15 text-white text-sm font-mono focus:border-[#2563EB]/50 outline-none"
+            className="flex-1 px-3 py-2.5 rounded-lg bg-surface-card border border-default/15 text-primary text-sm font-mono focus:border-primary/50 outline-none"
           />
           <div
             className="w-10 h-10 rounded-lg border border-default/30 flex-shrink-0"
@@ -375,13 +375,13 @@ function MobileSlider({
     <div className="space-y-1">
       {label && (
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-[#666]">{label}</span>
-          <span className="text-[11px] text-[#888] font-mono">{value}px</span>
+          <span className="text-[11px] text-muted">{label}</span>
+          <span className="text-[11px] text-secondary font-mono">{value}px</span>
         </div>
       )}
       {!label && (
         <div className="flex justify-end">
-          <span className="text-[11px] text-[#888] font-mono">{value}px</span>
+          <span className="text-[11px] text-secondary font-mono">{value}px</span>
         </div>
       )}
       <input
@@ -390,7 +390,7 @@ function MobileSlider({
         max={max}
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="w-full accent-[#2563EB] h-1.5"
+        className="w-full accent-primary h-1.5"
       />
     </div>
   );

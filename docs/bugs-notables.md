@@ -32,3 +32,28 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se detectó**: Revisando la interfaz en modo claro y oscuro, y después con un script que pasa cada clase del código por el design system de Tailwind (`candidatesToCss`): las que devuelven `null` no generan CSS. Con el CSS antiguo, el script encontraba 109.
 - **Arreglo**: Tokens registrados con `@theme inline` (ADR-012), escapes `\/` eliminados y las clases inexistentes corregidas.
 - **Cómo se verificó**: Capturas deterministas de 16 pantallas en claro y oscuro antes y después, comparadas píxel a píxel. Dos tandas del "antes" dieron un 0,000 % de diferencia entre sí, así que el método no tiene ruido. Después del cambio, en oscuro solo cambian los bordes y fondos que antes no se pintaban. El script queda en el CI (`npm run check:classes`).
+
+## 4. Las páginas publicadas ignoraban el tema de su plantilla
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Una página creada con la plantilla SaaS (tema oscuro) se veía oscura en el editor y clara una vez publicada.
+- **Por qué**: Hay dos sistemas de tema: `theme_id` (temas predefinidos) y `design_tokens` (tokens editables, que mandan si existen). El backend guarda `design_tokens = {}` por defecto. El editor convertía primero con `apiToTokens({})`, que devuelve `undefined`, y usaba `theme_id`. La página pública preguntaba por el valor crudo: `{}` es *truthy* en JavaScript, así que aplicaba los tokens por defecto (claros). La lógica estaba copiada en cuatro sitios (lienzo, editor móvil, preview y página pública) y una copia había divergido.
+- **Cómo se detectó**: Comparando capturas del editor y de `/p/<slug>` de la misma página, y trazando de dónde sale cada variable CSS que leen los bloques.
+- **Arreglo**: Una única función, `pageThemeVars()` en `lib/page-theme.ts`, que usan los cuatro sitios. Recibe los tokens ya convertidos, así que "sin tokens" significa lo mismo en todas partes.
+- **Cómo se verificó**: Test unitario que reproduce el caso del `{}` y diff de capturas: la página publicada pasa a verse igual que en el editor.
+
+## 5. "<10ms" se mostraba como "&lt;10ms"
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: En la plantilla SaaS, la estadística "<10ms" se veía como "&lt;10ms". Lo mismo con cualquier texto con `&`, `<` o `>` ("Tom & Jerry" → "Tom &amp; Jerry").
+- **Por qué**: El backend sanea los campos de texto con `bleach.clean()`, que además de quitar etiquetas devuelve el texto escapado como HTML. Esos campos los pinta React como texto, y React vuelve a escapar, así que las entidades se veían literalmente.
+- **Cómo se detectó**: Revisando las capturas del editor.
+- **Arreglo**: Los campos de texto plano se guardan como texto: se quitan las etiquetas y se desescapan las entidades (`html.unescape`). Es seguro porque solo el bloque Custom HTML se inyecta como HTML; el resto lo escapa React al pintar. Las páginas antiguas se corrigen en su siguiente guardado.
+- **Cómo se verificó**: Test parametrizado con `<10ms`, `Tom & Jerry`, `a > b` y `5 &lt; 6`: fallaba antes del cambio y pasa después. El test que comprueba que se eliminan las etiquetas `<script>` sigue pasando.
+
+## 6. Un botón que podía borrar la página real
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Junto al nombre de la página había un icono "Resetear a demo inicial". Tras un `confirm()`, sustituía la página del store por la de ejemplo.
+- **Por qué era grave**: El autosave detecta cualquier cambio del store y hace `PUT` a los 3 segundos. Resetear la demo sobrescribía la página real del usuario en el servidor. Era un resto de cuando el editor funcionaba sin backend.
+- **Arreglo**: Botón y acción del store eliminados.

@@ -17,7 +17,7 @@ interface VersionHistoryPanelProps {
 }
 
 const TRIGGER_CONFIG: Record<string, { icon: typeof Clock; labelKey: string; color: string }> = {
-  manual: { icon: Save, labelKey: 'triggerManual', color: 'bg-primary/20 text-primary-color border-[#2563EB]/30' },
+  manual: { icon: Save, labelKey: 'triggerManual', color: 'bg-primary/20 text-primary-color border-primary/30' },
   auto_publish: { icon: Globe, labelKey: 'triggerAutoPublish', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   auto_restore: { icon: RotateCcw, labelKey: 'triggerAutoRestore', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
   auto_ai_generation: { icon: Sparkles, labelKey: 'triggerAutoAi', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
@@ -172,7 +172,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                     {/* Timeline dot */}
                     <div className={`absolute left-0 top-3 w-[14px] h-[14px] rounded-full border-2 z-10 ${
                       isFirst
-                        ? 'bg-primary bg-[#2563EB] border-[#2563EB]'
+                        ? 'bg-primary border-primary'
                         : 'bg-surface-card border-default group-hover:border-default'
                     }`} />
 
@@ -200,7 +200,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                               if (e.key === 'Enter') handleUpdateLabel(version.id);
                               if (e.key === 'Escape') setEditingId(null);
                             }}
-                            className="flex-1 bg-surface-card text-xs text-primary px-2 py-1 rounded border border-default outline-none focus:border-[#2563EB]"
+                            className="flex-1 bg-surface-card text-xs text-primary px-2 py-1 rounded border border-default outline-none focus:border-primary"
                           />
                           <button onClick={() => handleUpdateLabel(version.id)} className="text-emerald-400 hover:text-emerald-300 p-0.5">
                             <Check className="w-3.5 h-3.5" />
@@ -241,7 +241,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                         </button>
                         <button
                           onClick={() => handleRestore(version.id, version.version_number)}
-                          className="text-[10px] text-primary-color hover:text-[#2563EB]/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors"
+                          className="text-[10px] text-primary-color hover:text-primary-color/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors"
                         >
                           {t('restore')}
                         </button>

@@ -206,6 +206,9 @@ export const api = {
 
     me: () => request<ApiUser>('/auth/me/'),
 
+    /** Single-use, 30-second ticket to open the collaboration WebSocket. */
+    wsTicket: () => request<{ ticket: string; expires_in: number }>('/auth/ws-ticket/', { method: 'POST' }),
+
     /** Revokes the refresh token and clears the session cookies on the server. */
     logout: async () => {
       const res = await fetch(`${API_BASE}/auth/logout/`, { method: 'POST', credentials: 'include' });

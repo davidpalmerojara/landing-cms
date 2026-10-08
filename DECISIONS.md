@@ -97,7 +97,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Fecha**: 2026-03-26; reescrito el 2026-10-08
 - **Contexto**: La primera versión enviaba el JWT en la query string (`?token=`), sacándolo de localStorage, con el riesgo de que acabara en logs y en el historial. Al pasar a cookies httpOnly (ADR-008), JavaScript ya no tiene el token.
 - **Decisión**: `collaboration.middleware.JWTAuthMiddleware` lee la cookie `bp_access` del handshake con el parser de cookies de Django. `channels.security.websocket.OriginValidator` rechaza handshakes cuyo `Origin` no esté en `CSRF_TRUSTED_ORIGINS`: como la cookie autentica el socket, sin esta comprobación otra web podría abrir uno con la sesión del usuario (*cross-site WebSocket hijacking*).
-- **Consecuencias**: Funciona cuando el WebSocket va al mismo sitio que la app, como en local. Si en producción el WebSocket va a otro dominio (Render) que el frontend (Vercel), el navegador no enviará la cookie; para ese caso está previsto un ticket de un solo uso que se pide por la API (con cookie) y se presenta al conectar.
+- **Ticket para dominios distintos**: En producción el WebSocket va a otro dominio (Render) que el frontend (Vercel), y el navegador no envía la cookie. Antes de cada conexión, el cliente pide `POST /api/auth/ws-ticket/` (autenticado con la cookie a través del rewrite) y conecta con `?ticket=`. El ticket es aleatorio, vale 30 segundos y se consume al usarlo, así que aunque quede en un log no sirve para nada. Si no hay ticket, el middleware usa la cookie.
+- **Consecuencias**: Los tickets viven en la caché de Django: con un solo proceso basta la caché en memoria; con varios procesos hace falta una caché compartida (Redis).
 
 ---
 
@@ -152,6 +153,18 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - `DATABASE_URL` admite parámetros como `?sslmode=require`.
   - `/healthz` responde sin consultar la base de datos, para que los pings no impidan que una base de datos serverless se duerma.
 - **Consecuencias**: Funciona con un solo proceso. Escalar a varios procesos exige definir `REDIS_URL`, y entonces todo pasa a Redis sin tocar código. Los bloqueos en memoria se pierden al reiniciar, lo cual es aceptable porque caducan a los 30 segundos.
+
+---
+
+## ADR-016: Contenido de usuario: una sola validación y HTML aislado
+
+- **Fecha**: 2026-10-08
+- **Contexto**: El contenido de los bloques llega por dos caminos: el guardado REST y la edición en tiempo real por WebSocket. El REST saneaba, pero el WebSocket reenviaba los datos tal cual a los demás editores, y el bloque Custom HTML se inyectaba con `dangerouslySetInnerHTML`. Un colaborador podía ejecutar código en el editor del dueño y, mientras los tokens estaban en localStorage, robarle la sesión. Además, el validador aceptaba claves desconocidas (`buttonLink: "javascript:..."`) y tipos de bloque inexistentes.
+- **Decisión**: Defensa en dos capas.
+  - **Servidor**: `clean_block_data()` es la única puerta de entrada del contenido, tanto para el REST como para el WebSocket. Exige un tipo conocido, impone un límite de tamaño, sanea el HTML con bleach por campo y aplica una lista blanca: los campos sin regla se descartan. El WebSocket obtiene el tipo real del bloque de la base de datos, comprueba que es de esa página y solo reenvía datos limpios y estilos primitivos.
+  - **Navegador**: Custom HTML se pinta en un `<iframe sandbox>` sin `allow-scripts`, de modo que nada de ese bloque puede ejecutar JavaScript aunque el saneado fallara. `allow-same-origin` sin scripts es seguro y permite medir la altura del contenido.
+  - Las subidas se aceptan por la firma de los bytes, no por el `Content-Type` declarado, y se guardan con un nombre aleatorio y la extensión del tipo detectado.
+- **Consecuencias**: Añadir un campo a un bloque exige añadir su regla en `block_validators.py`; si no, se descarta al guardar (lo vigila la comparación entre registro y reglas). El HTML personalizado no hereda las fuentes ni los colores del tema de la página.
 
 ---
 

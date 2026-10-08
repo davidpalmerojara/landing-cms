@@ -74,11 +74,12 @@ if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
 fi
 use_node
 
-echo "Aplicando migraciones del backend..."
+echo "Aplicando migraciones y planes del backend..."
 (
   cd "$BACKEND_DIR"
   source "$BACKEND_VENV/bin/activate"
   python manage.py migrate
+  python manage.py seed_plans
 )
 
 echo "Arrancando backend en http://localhost:${BACKEND_PORT} ..."

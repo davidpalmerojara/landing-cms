@@ -32,7 +32,7 @@ frontend:
 	cd $(FRONTEND_DIR) && npm run dev
 
 migrate:
-	cd $(BACKEND_DIR) && $(VENV_BIN)/python manage.py migrate
+	cd $(BACKEND_DIR) && $(VENV_BIN)/python manage.py migrate && $(VENV_BIN)/python manage.py seed_plans
 
 # --- Quality (same steps as CI) ---
 
@@ -45,7 +45,7 @@ test-frontend:
 	cd $(FRONTEND_DIR) && npm test
 
 lint:
-	cd $(FRONTEND_DIR) && npm run lint
+	cd $(FRONTEND_DIR) && npm run lint && npm run check:classes
 
 typecheck:
 	cd $(FRONTEND_DIR) && npm run typecheck

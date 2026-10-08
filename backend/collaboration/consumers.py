@@ -11,6 +11,9 @@ import logging
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
+from rest_framework.exceptions import ValidationError
+
+from pages.block_validators import clean_block_data
 
 from .locks import InMemoryLockManager, LockManager, get_lock_manager
 
@@ -34,6 +37,38 @@ def user_can_access_page(user, page_id: str) -> bool:
         Q(owner=user) | Q(collaborators=user),
         pk=page_id,
     ).exists()
+
+
+MAX_STYLES_BYTES = 8_000
+
+
+@database_sync_to_async
+def get_block_type(page_id: str, block_id: str) -> str | None:
+    """Type of the block if it exists and belongs to this page, else None."""
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from pages.models import Block
+    try:
+        return Block.objects.filter(page_id=page_id, id=block_id).values_list('type', flat=True).first()
+    except (DjangoValidationError, ValueError):  # malformed UUID
+        return None
+
+
+def clean_styles(styles):
+    """Styles are inline CSS values: a small object of primitives (plus the
+    nested per-device 'responsive' object). Anything else is dropped."""
+    if not isinstance(styles, dict) or len(json.dumps(styles)) > MAX_STYLES_BYTES:
+        return None
+
+    def primitives(obj, depth=0):
+        cleaned = {}
+        for key, value in obj.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                cleaned[str(key)] = value
+            elif isinstance(value, dict) and depth < 2:
+                cleaned[str(key)] = primitives(value, depth + 1)
+        return cleaned
+
+    return primitives(styles)
 
 
 @database_sync_to_async
@@ -287,12 +322,30 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
             })
             return
 
-        # Broadcast to all other users
+        # Validate exactly like the REST API before relaying to other editors:
+        # their editors render this data, so unsanitized input would be XSS.
+        block_type = await get_block_type(self.page_id, block_id)
+        if block_type is None:
+            await self.send_json({'type': 'error', 'code': 'block_not_found', 'message': 'El bloque no existe en esta página.'})
+            return
+
+        data = content.get('data')
+        if data is not None:
+            try:
+                data = clean_block_data(block_type, data, partial=True)
+            except ValidationError as exc:
+                await self.send_json({'type': 'error', 'code': 'invalid_block_data', 'message': str(exc.detail)})
+                return
+
+        styles = content.get('styles')
+        if styles is not None:
+            styles = clean_styles(styles)
+
         await self.channel_layer.group_send(self.group_name, {
             'type': 'broadcast_block_updated',
             'block_id': block_id,
-            'data': content.get('data'),
-            'styles': content.get('styles'),
+            'data': data,
+            'styles': styles,
             'user_id': user_id,
             'sender_channel': self.channel_name,
         })

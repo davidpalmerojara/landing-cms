@@ -128,7 +128,7 @@ class TestNestedBlocks:
             'name': page.name,
             'blocks': [
                 {'id': hero_id, 'type': 'hero', 'order': 0, 'data': {'title': 'Updated'}, 'styles': {}},
-                {'type': 'new_block', 'order': 1, 'data': {}, 'styles': {}},
+                {'type': 'cta', 'order': 1, 'data': {}, 'styles': {}},
             ],
         }
         resp = auth_client.put(page_detail_url(page.id), data, format='json')

@@ -1,5 +1,6 @@
 'use client';
 
+import { ExternalLink } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import MarketingShell from '@/components/marketing/MarketingShell';
 
@@ -34,6 +35,25 @@ export default function AboutPage() {
           <p className="mt-4 text-lg leading-8 text-secondary">
             {t('marketing.pages.about.missionBody')}
           </p>
+
+          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+            {t('marketing.pages.about.authorTitle')}
+          </p>
+          <p className="mt-4 text-base leading-7 text-secondary">
+            {t('marketing.pages.about.authorBody')}
+          </p>
+          <ul className="mt-6 flex flex-wrap gap-4 text-sm font-semibold">
+            <li>
+              <a href="https://davidpalmero.dev" className="inline-flex items-center gap-1.5 text-primary-color hover:underline">
+                davidpalmero.dev <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </li>
+            <li>
+              <a href="https://github.com/davidpalmerojara/landing-cms" className="inline-flex items-center gap-1.5 text-primary-color hover:underline">
+                {t('marketing.pages.about.sourceCode')} <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </li>
+          </ul>
         </article>
 
         <div className="space-y-4">

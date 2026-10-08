@@ -14,7 +14,7 @@ export default function TermsPage() {
   return (
     <MarketingShell
       title={t('marketing.pages.terms.title')}
-      subtitle={`${t('marketing.pages.terms.updated')}: 26/03/2026`}
+      subtitle={`${t('marketing.pages.terms.updated')}: ${t('marketing.pages.terms.updatedDate')}`}
     >
       <div className="max-w-4xl space-y-8">
         <p className="text-lg leading-8 text-secondary">{t('marketing.pages.terms.intro')}</p>

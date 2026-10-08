@@ -139,9 +139,8 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
       {page.show_watermark && (
         <div className="fixed bottom-4 right-4 z-50">
           <a
-            href="https://paxl.app"
+            href="/"
             target="_blank"
-            rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-surface-elevated/90 backdrop-blur-sm text-muted hover:text-primary text-xs px-3 py-1.5 rounded-full shadow-lg border border-subtle/50 transition-colors"
           >
             <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none"><path d="M8 1l2 5h5l-4 3 2 5-5-4-5 4 2-5-4-3h5z" fill="currentColor"/></svg>

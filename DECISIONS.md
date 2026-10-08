@@ -116,6 +116,15 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-013: Next 16.4 y plugin de hooks fijado temporalmente
+
+- **Fecha**: 2026-10-08
+- **Contexto**: `npm audit` marcaba una vulnerabilidad crítica en Next.js 16.2 (denegación de servicio en Server Components) y un *open redirect* en next-intl, además de varias altas en dependencias de desarrollo. Al aplicar `npm audit fix`, `eslint-plugin-react-hooks` pasaba de 7.0.1 a 7.1.1, cuya regla `set-state-in-effect` es más estricta: marca 8 componentes que cargan datos llamando a una función `async` desde un `useEffect`.
+- **Decisión**: Subir `next` a 16.4.0 y aplicar `npm audit fix` sin cambios incompatibles. Fijar `eslint-plugin-react-hooks` en 7.0.1 con `overrides` en `package.json` hasta mover esa carga de datos a hooks (`useSubscription` y `usePlans` ya siguen ese patrón). `eslint-config-next` se queda en 16.2.1.
+- **Consecuencias**: Quedan 5 avisos altos, todos en la cadena de `eslint-config-next` (`fast-glob` → `micromatch` → `braces`). Es una herramienta de desarrollo que no llega al código desplegado, y npm solo ofrece "arreglarlo" bajando a la versión 14. El `override` debe quitarse cuando los 8 componentes usen hooks de datos; entonces la regla nueva pasará sin cambios.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

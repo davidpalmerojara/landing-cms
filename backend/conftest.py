@@ -62,3 +62,13 @@ def clear_cache():
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def no_external_secrets(settings):
+    """Tests must behave the same on any machine as in CI: never pick up API
+    keys from a developer's .env. Tests that need one set it explicitly."""
+    settings.GOOGLE_AI_KEY = ''
+    settings.ANTHROPIC_API_KEY = ''
+    settings.STRIPE_SECRET_KEY = ''
+    settings.GOOGLE_CLIENT_ID = ''

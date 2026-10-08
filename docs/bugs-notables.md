@@ -80,3 +80,20 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Qué pasaba**: El servidor restauraba bloques, tema, tokens y SEO, pero el cliente solo copiaba nombre, bloques y estado. El siguiente autosave enviaba el tema, los tokens y el SEO antiguos y deshacía esa parte de la restauración.
 - **Arreglo**: El cliente recarga la página entera desde el servidor con el mismo mapper que la carga normal (`reloadFromApi`). La carga se marca como remota para que el autosave no la reenvíe, y vacía el historial de deshacer.
 - **Cómo se verificó**: Test de `usePageSync` y prueba en el navegador: se guarda una versión, se cambia el título SEO, se restaura y, pasados los 3 segundos del autosave, el servidor sigue teniendo el título de la versión.
+
+## 10. Renovar la sesión solo con la cookie daba un 500
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: El endpoint de refresh aceptaba el token en el cuerpo o en la cookie. Con solo la cookie y un cuerpo JSON, devolvía 500.
+- **Por qué**: Para inyectar el token de la cookie hacía `request.data._mutable = True`, un truco que solo funciona con el `QueryDict` de un formulario. Con JSON, `request.data` es un `dict` normal y lanza `AttributeError`. No se notaba porque el frontend mandaba también el token en el cuerpo, sacado de localStorage, que era justo lo que había que quitar.
+- **Arreglo**: Vista de refresh propia que lee la cookie, valida con `TokenRefreshSerializer`, rota el refresh token y nunca devuelve tokens en el cuerpo (ADR-008).
+- **Cómo se verificó**: El test nuevo falla con la vista anterior (`'dict' object has no attribute '_mutable'`) y pasa con la nueva. Otros tests cubren que un refresh token rotado o revocado en el logout ya no sirve.
+
+## 11. Una cookie de Google impedía conectar el WebSocket
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Tras pasar la autenticación del WebSocket a la cookie de sesión, los tests unitarios pasaban, pero en el navegador el socket se cerraba nada más abrirse (código 1006).
+- **Por qué**: El navegador también enviaba `g_state`, una cookie del login de Google cuyo valor es JSON. `http.cookies.SimpleCookie`, el parser estándar de Python, deja de leer al encontrar un valor que no le gusta y descarta en silencio todas las cookies siguientes, incluida `bp_access`. El socket llegaba sin usuario y se rechazaba.
+- **Cómo se detectó**: Abriendo el socket a mano desde la página para ver el código de cierre y comparando los dos parsers con la cabecera real del navegador.
+- **Arreglo**: Usar `django.http.cookie.parse_cookie`, el mismo parser tolerante que Django usa en las peticiones HTTP.
+- **Cómo se verificó**: Test con la cabecera real (`g_state` con JSON delante de `bp_access`) y prueba en el navegador: el servidor responde con el mensaje `connected`. Lección: el test unitario usaba una cabecera "limpia"; la prueba en un navegador real fue lo que lo destapó.

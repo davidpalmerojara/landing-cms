@@ -1,89 +1,49 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
-// --- Token management ---
+// --- Session ---
+// The JWTs live only in httpOnly cookies set by the backend (ADR-008):
+// JavaScript never sees them, so an XSS cannot read them. Every request
+// sends the cookies with credentials: 'include'.
 
-const TOKEN_KEY = 'paxl_access_token';
-const REFRESH_KEY = 'paxl_refresh_token';
-
-export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_KEY);
-}
-
-export function setTokens(access: string, refresh: string) {
-  localStorage.setItem(TOKEN_KEY, access);
-  localStorage.setItem(REFRESH_KEY, refresh);
-}
-
-export function clearTokens() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
-
-let refreshPromise: Promise<string | null> | null = null;
-
-async function doRefresh(): Promise<string | null> {
-  const refresh = getRefreshToken();
-
+// Earlier versions copied the tokens into localStorage; remove those copies.
+const LEGACY_TOKEN_KEYS = ['paxl_access_token', 'paxl_refresh_token'];
+if (typeof window !== 'undefined') {
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      // Send refresh token in body if available (cookie is also sent automatically)
-      body: JSON.stringify(refresh ? { refresh } : {}),
-    });
-    if (!res.ok) {
-      clearTokens();
-      return null;
-    }
-    const data = await res.json();
-    // Store in localStorage as fallback; httpOnly cookies are set by backend
-    if (data.access) setTokens(data.access, data.refresh || refresh || '');
-    return data.access;
+    LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
   } catch {
-    clearTokens();
-    return null;
+    // Storage blocked (private mode, disabled cookies): nothing to clean up
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = doRefresh().finally(() => { refreshPromise = null; });
+let refreshPromise: Promise<boolean> | null = null;
+
+/** Ask the backend to rotate the session cookies. Resolves false if the session is gone. */
+async function doRefresh(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh/`, { method: 'POST', credentials: 'include' });
+    return res.ok;
+  } catch {
+    // Network error: treat as no session; the original request reports the failure
+    return false;
+  }
+}
+
+function refreshSession(): Promise<boolean> {
+  // Concurrent 401s share a single refresh request
+  if (!refreshPromise) refreshPromise = doRefresh().finally(() => { refreshPromise = null; });
   return refreshPromise;
 }
 
-// --- Core fetch with auto-refresh retry ---
+// --- Core fetch with one refresh-and-retry on 401 ---
 
-async function fetchWithRetry<T>(
-  doFetch: (headers: Record<string, string>) => Promise<Response>,
-  extraHeaders?: Record<string, string>,
-): Promise<T> {
-  const headers: Record<string, string> = { ...extraHeaders };
+async function fetchWithRetry<T>(doFetch: () => Promise<Response>): Promise<T> {
+  let res = await doFetch();
 
-  const token = getAccessToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  let res = await doFetch(headers);
-
-  // If 401, try to refresh (cookies or localStorage refresh token)
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
-      res = await doFetch(headers);
-    }
+  if (res.status === 401 && (await refreshSession())) {
+    res = await doFetch();
   }
 
   if (!res.ok) {
-    if (res.status === 401) clearTokens();
     const text = await res.text();
     throw new Error(`API ${res.status}: ${text}`);
   }
@@ -95,10 +55,8 @@ async function fetchWithRetry<T>(
 // --- Request helpers ---
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  return fetchWithRetry<T>(
-    (headers) => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }),
-    { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) },
-  );
+  const headers = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
+  return fetchWithRetry<T>(() => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }));
 }
 
 // --- Types ---
@@ -113,15 +71,6 @@ export interface ApiUser {
 
 export interface AuthResponse {
   user: ApiUser;
-  tokens: {
-    access: string;
-    refresh: string;
-  };
-}
-
-export interface LoginResponse {
-  access: string;
-  refresh: string;
 }
 
 export interface ApiBlock {
@@ -201,7 +150,7 @@ export interface PaginatedResponse<T> {
 
 async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
   return fetchWithRetry<T>(
-    (headers) => fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData, credentials: 'include' }),
+    () => fetch(`${API_BASE}${path}`, { method: 'POST', body: formData, credentials: 'include' }),
   );
 }
 
@@ -222,17 +171,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      setTokens(res.tokens.access, res.tokens.refresh);
       return res;
     },
 
     login: async (data: { username: string; password: string }) => {
-      const res = await request<LoginResponse>('/auth/login/', {
+      return request<{ message: string }>('/auth/login/', {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      setTokens(res.access, res.refresh);
-      return res;
     },
 
     googleLogin: async (token: string) => {
@@ -240,7 +186,6 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       });
-      setTokens(res.tokens.access, res.tokens.refresh);
       return res;
     },
 
@@ -256,24 +201,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       });
-      setTokens(res.tokens.access, res.tokens.refresh);
       return res;
     },
 
     me: () => request<ApiUser>('/auth/me/'),
 
+    /** Revokes the refresh token and clears the session cookies on the server. */
     logout: async () => {
-      // Clear httpOnly cookies on the server
-      try {
-        await fetch(`${API_BASE}/auth/logout/`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-      } catch {
-        // Best-effort
-      }
-      // Clear localStorage fallback
-      clearTokens();
+      const res = await fetch(`${API_BASE}/auth/logout/`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error(`API ${res.status}: logout failed`);
     },
   },
 

@@ -11,6 +11,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from channels.security.websocket import OriginValidator  # noqa: E402
+from django.conf import settings  # noqa: E402
 from django.core.asgi import get_asgi_application  # noqa: E402
 
 from collaboration.middleware import JWTAuthMiddleware  # noqa: E402
@@ -20,5 +22,9 @@ django_asgi = get_asgi_application()
 
 application = ProtocolTypeRouter({
     'http': django_asgi,
-    'websocket': JWTAuthMiddleware(URLRouter(websocket_urlpatterns)),
+    # Cookies authenticate the socket, so the handshake Origin must be one of ours
+    'websocket': OriginValidator(
+        JWTAuthMiddleware(URLRouter(websocket_urlpatterns)),
+        settings.CSRF_TRUSTED_ORIGINS,
+    ),
 })

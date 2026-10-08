@@ -26,9 +26,8 @@ class TestRegister:
         }
         resp = anon_client.post('/api/auth/register/', data, format='json')
         assert resp.status_code == status.HTTP_201_CREATED
-        assert 'tokens' in resp.data
-        assert 'access' in resp.data['tokens']
-        assert 'refresh' in resp.data['tokens']
+        assert 'tokens' not in resp.data
+        assert 'bp_access' in resp.cookies and 'bp_refresh' in resp.cookies
         assert resp.data['user']['username'] == 'newuser'
 
     def test_register_duplicate_username(self, anon_client):
@@ -63,8 +62,10 @@ class TestLogin:
         data = {'username': 'loginuser', 'password': 'testpass123'}
         resp = anon_client.post('/api/auth/login/', data, format='json')
         assert resp.status_code == status.HTTP_200_OK
-        assert 'access' in resp.data
-        assert 'refresh' in resp.data
+        # Tokens travel only in httpOnly cookies, never in the body (ADR-008)
+        assert 'access' not in resp.data and 'refresh' not in resp.data
+        assert resp.cookies['bp_access']['httponly']
+        assert resp.cookies['bp_refresh']['httponly']
 
     def test_login_invalid_credentials(self, anon_client):
         UserFactory(username='loginuser2')
@@ -124,7 +125,8 @@ class TestMagicLinkVerify:
             format='json',
         )
         assert resp.status_code == status.HTTP_200_OK
-        assert 'tokens' in resp.data
+        assert 'tokens' not in resp.data
+        assert 'bp_access' in resp.cookies
         assert resp.data['user']['email'] == 'verify@example.com'
 
         # Token should be marked as used
@@ -167,20 +169,13 @@ class TestMagicLinkVerify:
 
 @pytest.mark.django_db
 class TestTokenRefresh:
-    def test_refresh_returns_new_access(self, anon_client):
-        # First login to get tokens
+    def test_refresh_with_cookie_only_rotates_tokens(self, anon_client):
         UserFactory(username='refreshuser')
-        login_resp = anon_client.post(
-            '/api/auth/login/',
-            {'username': 'refreshuser', 'password': 'testpass123'},
-            format='json',
-        )
-        refresh_token = login_resp.data['refresh']
+        anon_client.post('/api/auth/login/', {'username': 'refreshuser', 'password': 'testpass123'}, format='json')
+        old_refresh = anon_client.cookies['bp_refresh'].value
 
-        resp = anon_client.post(
-            '/api/auth/refresh/',
-            {'refresh': refresh_token},
-            format='json',
-        )
+        resp = anon_client.post('/api/auth/refresh/', {}, format='json')
+
         assert resp.status_code == status.HTTP_200_OK
-        assert 'access' in resp.data
+        assert 'access' not in resp.data
+        assert resp.cookies['bp_refresh'].value != old_refresh

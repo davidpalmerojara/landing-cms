@@ -57,6 +57,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -98,17 +99,21 @@ ASGI_APPLICATION = 'config.asgi.application'
 # Database — SQLite for dev, PostgreSQL for production
 
 if os.environ.get('DATABASE_URL'):
-    # Production: parse DATABASE_URL
+    # Production: postgres://user:pass@host:5432/name?sslmode=require
     import urllib.parse
     url = urllib.parse.urlparse(os.environ['DATABASE_URL'])
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
+            'USER': urllib.parse.unquote(url.username or ''),
+            'PASSWORD': urllib.parse.unquote(url.password or ''),
             'HOST': url.hostname,
             'PORT': url.port or 5432,
+            # Query parameters (e.g. sslmode=require for Neon) go to the driver
+            'OPTIONS': dict(urllib.parse.parse_qsl(url.query)),
+            'CONN_MAX_AGE': 60,
+            'CONN_HEALTH_CHECKS': True,
         }
     }
 else:
@@ -144,6 +149,19 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# whitenoise serves the collected static files (Django admin) from the app
+# itself, so production needs no separate static host. The manifest storage
+# needs `collectstatic`, which only runs in the production build.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
 
 
 # Media files (uploads)
@@ -214,6 +232,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Security headers (enforced in production)
 if not DEBUG:
+    # TLS ends at the hosting proxy, which forwards plain HTTP with
+    # X-Forwarded-Proto. No SECURE_SSL_REDIRECT: the platform already
+    # redirects to HTTPS and its internal health check arrives over HTTP.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
@@ -263,10 +285,12 @@ STRIPE_PRO_PRICE_YEARLY = os.environ.get('STRIPE_PRO_PRICE_YEARLY', '')
 # Redis & Channels
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+# Without REDIS_URL: in-memory channel layer and block locks (single process only)
+REDIS_ENABLED = bool(os.environ.get('REDIS_URL'))
 
 # Use Redis channel layer if available, otherwise fall back to in-memory (dev only).
 # In-memory only works for a single process — use Redis in production.
-if os.environ.get('REDIS_URL'):
+if REDIS_ENABLED:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',

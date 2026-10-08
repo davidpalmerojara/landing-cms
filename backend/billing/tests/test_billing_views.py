@@ -8,6 +8,12 @@ from billing.models import Plan, Subscription, PaymentHistory, WebhookLog
 from tests.factories import UserFactory, WorkspaceFactory
 
 
+@pytest.fixture(autouse=True)
+def stripe_webhook_secret(settings):
+    """Tests must not depend on the developer's local .env."""
+    settings.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret'
+
+
 def get_plans() -> tuple[Plan, Plan]:
     free_plan, _ = Plan.objects.get_or_create(
         name='free',
@@ -174,6 +180,21 @@ class TestBillingViews:
         assert subscription.plan == pro_plan
         assert subscription.status == Subscription.Status.ACTIVE
         assert WebhookLog.objects.filter(stripe_event_id='evt_valid_123', processed=True).exists()
+
+    @patch('billing.views._get_stripe', return_value=stripe)
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_without_configured_secret_returns_500(self, mock_construct_event, _mock_get_stripe, auth_client, settings):
+        settings.STRIPE_WEBHOOK_SECRET = ''
+
+        resp = auth_client.post(
+            '/api/billing/webhook/',
+            '{"id":"evt_no_secret"}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=123,v1=valid',
+        )
+
+        assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        mock_construct_event.assert_not_called()
 
     @patch('billing.views._get_stripe', return_value=stripe)
     @patch('stripe.Webhook.construct_event')

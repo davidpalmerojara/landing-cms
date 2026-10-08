@@ -243,7 +243,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
         selectBlock(newBlock.id);
       }
     }, 50);
-  }, [addBlock, selectBlock]);
+  }, [addBlock, selectBlock, t]);
 
   // --- Name editing ---
   const handleNameTap = useCallback(() => {

@@ -2,7 +2,7 @@
 
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
-import { LOCALE_COOKIE, LOCALE_STORAGE_KEY, MESSAGES, type AppLocale, isLocale } from '@/lib/i18n';
+import { LOCALE_COOKIE, MESSAGES, type AppLocale } from '@/lib/i18n';
 
 interface LocaleContextValue {
   locale: AppLocale;
@@ -16,38 +16,15 @@ interface AppIntlProviderProps {
   initialLocale: AppLocale;
 }
 
+// The cookie is the single source of truth: the server reads it to render
+// the initial locale, so the client never has to correct it after hydration.
 function persistLocale(locale: AppLocale) {
-  try {
-    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-  } catch {
-    // Storage may be unavailable.
-  }
-
   document.documentElement.lang = locale;
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export default function AppIntlProvider({ children, initialLocale }: AppIntlProviderProps) {
   const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
-
-  useEffect(() => {
-    let resolvedLocale = initialLocale;
-
-    try {
-      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-      if (isLocale(storedLocale)) {
-        resolvedLocale = storedLocale;
-      }
-    } catch {
-      // Storage may be unavailable.
-    }
-
-    if (resolvedLocale !== initialLocale) {
-      setLocaleState(resolvedLocale);
-    }
-
-    persistLocale(resolvedLocale);
-  }, [initialLocale]);
 
   useEffect(() => {
     persistLocale(locale);

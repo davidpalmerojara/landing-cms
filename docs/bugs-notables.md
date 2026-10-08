@@ -97,3 +97,11 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se detectó**: Abriendo el socket a mano desde la página para ver el código de cierre y comparando los dos parsers con la cabecera real del navegador.
 - **Arreglo**: Usar `django.http.cookie.parse_cookie`, el mismo parser tolerante que Django usa en las peticiones HTTP.
 - **Cómo se verificó**: Test con la cabecera real (`g_state` con JSON delante de `bp_access`) y prueba en el navegador: el servidor responde con el mensaje `connected`. Lección: el test unitario usaba una cabecera "limpia"; la prueba en un navegador real fue lo que lo destapó.
+
+## 12. El rewrite de /api perdía la barra final (detectado antes de desplegar)
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Para que las cookies de sesión sean del mismo sitio en producción, el frontend reenvía `/api/*` a Django con un rewrite de Next. Al probarlo en local, los GET devolvían 301 y los POST, 500.
+- **Por qué**: El patrón `/api/:path*` captura la ruta sin la barra final. Django exige la barra (`APPEND_SLASH`), así que redirigía los GET y no podía redirigir un POST sin perder el cuerpo, de ahí el 500. Además, Next redirige por defecto `/api/pages/` a `/api/pages` antes de aplicar el rewrite.
+- **Arreglo**: Destino del rewrite con barra final (`/api/:path*/`), ya que todas las rutas de la API terminan en `/`, y `skipTrailingSlashRedirect` en `next.config.ts`.
+- **Cómo se verificó**: Login por `/api/auth/login/` a través de Next (200 con las dos cookies), una consulta con *query string* intacta y los dos recorridos completos en el navegador (sesión y editor, 24/24) en modo rewrite. Ahora el modo rewrite es el de desarrollo por defecto, así que local y producción se comportan igual.

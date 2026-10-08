@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import { api } from '@/lib/api';
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001';
 const LOCK_RENEW_INTERVAL = 10_000; // 10s
@@ -214,7 +215,7 @@ export function useCollaboration(
     let attemptCount = 0;
     let wasConnected = false;
 
-    function connect() {
+    async function connect() {
       if (!pageId || pageId.startsWith('page_')) return;
 
       if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
@@ -224,8 +225,18 @@ export function useCollaboration(
         return;
       }
 
-      // Authenticated by the httpOnly session cookie sent with the handshake
-      const url = `${WS_BASE}/ws/pages/${pageId}/`;
+      // A fresh single-use ticket per attempt: the socket may be on another
+      // domain where the session cookie is not sent (ADR-010)
+      let ticket: string;
+      try {
+        ({ ticket } = await api.auth.wsTicket());
+      } catch (e) {
+        logCollabWarning('[collab] Could not get a WebSocket ticket, not connecting', e);
+        return;
+      }
+      if (!mountedRef.current) return;
+
+      const url = `${WS_BASE}/ws/pages/${pageId}/?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 

@@ -15,6 +15,7 @@ from .views import (
     MagicLinkVerifyView,
     RegisterView,
     MeView,
+    WsTicketView,
 )
 
 
@@ -65,4 +66,5 @@ urlpatterns = [
     path('magic/request/', MagicLinkRequestView.as_view(), name='auth-magic-request'),
     path('magic/verify/', MagicLinkVerifyView.as_view(), name='auth-magic-verify'),
     path('me/', MeView.as_view(), name='auth-me'),
+    path('ws-ticket/', WsTicketView.as_view(), name='auth-ws-ticket'),
 ]

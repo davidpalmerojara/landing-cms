@@ -105,3 +105,32 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Por qué**: El patrón `/api/:path*` captura la ruta sin la barra final. Django exige la barra (`APPEND_SLASH`), así que redirigía los GET y no podía redirigir un POST sin perder el cuerpo, de ahí el 500. Además, Next redirige por defecto `/api/pages/` a `/api/pages` antes de aplicar el rewrite.
 - **Arreglo**: Destino del rewrite con barra final (`/api/:path*/`), ya que todas las rutas de la API terminan en `/`, y `skipTrailingSlashRedirect` en `next.config.ts`.
 - **Cómo se verificó**: Login por `/api/auth/login/` a través de Next (200 con las dos cookies), una consulta con *query string* intacta y los dos recorridos completos en el navegador (sesión y editor, 24/24) en modo rewrite. Ahora el modo rewrite es el de desarrollo por defecto, así que local y producción se comportan igual.
+
+## 13. Un colaborador podía ejecutar código en el editor del dueño
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: La edición en tiempo real reenviaba por WebSocket los datos de un bloque a los demás editores sin pasar por el saneado que sí hacía el guardado REST. Bastaba con mandar a un bloque Custom HTML un `<img src=x onerror="...">`: el editor del dueño lo inyectaba con `dangerouslySetInnerHTML` y el código se ejecutaba con su sesión.
+- **Arreglo**: Una única función de validación para REST y WebSocket, con tipo de bloque leído de la base de datos y lista blanca de campos, y Custom HTML dentro de un `<iframe sandbox>` sin scripts (ADR-016).
+- **Cómo se verificó**: Tests del consumer con el payload real (`onerror` y `<script>` no llegan a los demás), con un `javascript:` en una URL (rechazado) y con el ID de un bloque de otra página (rechazado). Tests del componente: el HTML va al `srcdoc` del iframe y el sandbox no incluye `allow-scripts`.
+
+## 14. El límite de intentos de login se saltaba con una cabecera
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: El login tenía un límite de 10 intentos por minuto por IP, pero enviando una cabecera `X-Forwarded-For` distinta en cada petición nunca se alcanzaba.
+- **Por qué**: Sin `NUM_PROXIES`, DRF usa la cabecera `X-Forwarded-For` entera como identificador del cliente, y esa cabecera la escribe el propio cliente.
+- **Arreglo**: `NUM_PROXIES` configurable (0 por defecto, la IP de la conexión) y un segundo límite por nombre de usuario (5 por minuto), que repartir el ataque entre muchas IPs no esquiva.
+- **Cómo se verificó**: Con la configuración anterior, 12 intentos con cabeceras distintas daban todos 401 y ninguno 429. Con la nueva, el límite salta, y otra cuenta sigue pudiendo entrar.
+
+## 15. Se podía preparar el secuestro de una cuenta antes de que existiera
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: Alguien podía registrarse con el email de otra persona, ya que el registro no verifica el email. Cuando la víctima entraba después con Google, el sistema vinculaba su Google a esa cuenta ya existente, y el atacante seguía entrando con su contraseña.
+- **Arreglo**: Google solo se vincula a cuentas sin contraseña (las creadas por enlace mágico, que sí demuestra el control del email). Si la cuenta tiene contraseña, responde 409 y pide entrar con usuario y contraseña. El test anterior comprobaba justo el comportamiento vulnerable y se sustituyó.
+- **Pendiente conocido**: El enlace mágico tiene el mismo problema de fondo: no hay verificación de email en el registro. Queda cerrado porque Google y el enlace mágico salen de la demo, tal como estaba planificado.
+
+## 16. Un HTML subido como si fuera una imagen
+
+- **Fecha**: 2026-10-08
+- **Qué pasaba**: La subida de imágenes comprobaba el `Content-Type` que declara el navegador. Un fichero `evil.html` declarado como `image/png` se aceptaba y se guardaba con su nombre y extensión originales, listo para servirse como HTML desde nuestro dominio.
+- **Arreglo**: El tipo se detecta por la firma de los primeros bytes (JPEG, PNG, GIF, WebP) y el fichero se guarda con un nombre aleatorio y la extensión del tipo detectado. El nombre original solo se conserva como etiqueta.
+- **Cómo se verificó**: Tests con un HTML declarado como PNG (rechazado), un PNG real llamado `evil.html` (guardado como `.png` con un nombre aleatorio) y un SVG con `onload` (rechazado).

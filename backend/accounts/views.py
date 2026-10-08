@@ -3,6 +3,7 @@ import secrets
 import uuid
 
 from django.conf import settings
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from google.auth.transport import requests as google_requests
@@ -250,3 +251,20 @@ class LogoutView(APIView):
         response = Response({'message': 'Sesión cerrada.'})
         clear_auth_cookies(response)
         return response
+
+
+WS_TICKET_TTL = 30  # seconds
+
+
+class WsTicketView(APIView):
+    """POST /api/auth/ws-ticket/ — single-use ticket to open the collaboration
+    WebSocket. The request is authenticated by the session cookie (through
+    the same-site /api rewrite); the socket itself may live on another domain
+    where that cookie is not sent (ADR-010)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        ticket = secrets.token_urlsafe(32)
+        cache.set(f'ws_ticket:{ticket}', str(request.user.pk), WS_TICKET_TTL)
+        return Response({'ticket': ticket, 'expires_in': WS_TICKET_TTL})
+

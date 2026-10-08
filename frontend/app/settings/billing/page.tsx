@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { planFeatures } from '@/lib/plan-features';
+import PlanFeatureList from '@/components/billing/PlanFeatureList';
 import {
-  ArrowLeft, Check, X, Loader2, Crown, CreditCard,
-  ExternalLink, AlertCircle, Infinity,
+  ArrowLeft, Loader2, Crown, CreditCard, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiBillingPlan, ApiSubscription, ApiPayment } from '@/lib/api';
@@ -291,20 +292,7 @@ interface PlanCardProps {
 
 function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highlighted }: PlanCardProps) {
   const t = useTranslations();
-  const featureList: Array<{
-    key: keyof ApiBillingPlan;
-    label: string;
-    format?: (v: number | boolean) => string;
-  }> = [
-    { key: 'max_pages', label: t('billing.featurePages'), format: (v) => (v === -1 ? t('billing.unlimited') : `${v}`) },
-    { key: 'max_ai_generations_per_hour', label: t('billing.featureAiPerHour'), format: (v) => (v === -1 ? t('billing.unlimited') : v === 0 ? t('billing.notIncluded') : `${v}`) },
-    { key: 'has_analytics', label: t('billing.featureAnalytics') },
-    { key: 'has_collaboration', label: t('billing.featureCollaboration') },
-    { key: 'has_custom_domain', label: t('billing.featureCustomDomain') },
-    { key: 'has_ab_testing', label: t('billing.featureAbTesting') },
-    { key: 'remove_watermark', label: t('billing.featureNoWatermark') },
-    { key: 'max_version_history', label: t('billing.featureVersionHistory'), format: (v) => (v === -1 ? t('billing.unlimited') : t('billing.versionCount', { count: v as number })) },
-  ];
+  const features = planFeatures(plan, t);
   const price = cycle === 'yearly' && plan.price_yearly
     ? (parseFloat(plan.price_yearly) / 12).toFixed(0)
     : parseFloat(plan.price_monthly).toFixed(0);
@@ -334,35 +322,13 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
       </div>
 
       {/* Features */}
-      <ul className="space-y-3 flex-1 mb-6">
-        {featureList.map((f) => {
-          const value = plan[f.key];
-          const isBoolean = typeof value === 'boolean';
-          const isEnabled = isBoolean ? value : (value as number) > 0 || (value as number) === -1;
-
-          return (
-            <li key={f.key} className="flex items-center gap-2.5 text-sm">
-              {isEnabled ? (
-                <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                  <Check className="w-2.5 h-2.5 text-emerald-400" />
-                </div>
-              ) : (
-                <div className="w-4 h-4 rounded-full bg-surface-card flex items-center justify-center shrink-0">
-                  <X className="w-2.5 h-2.5 text-muted" />
-                </div>
-              )}
-              <span className={isEnabled ? 'text-secondary' : 'text-muted'}>
-                {f.label}
-                {f.format && (
-                  <span className="text-muted ml-1">
-                    ({f.format(value as number)})
-                  </span>
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="flex-1 mb-6">
+        <PlanFeatureList
+          features={features}
+          includedLabel={t('billing.included')}
+          notIncludedLabel={t('billing.notIncluded')}
+        />
+      </div>
 
       {/* CTA */}
       {isCurrent ? (

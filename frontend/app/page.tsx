@@ -1,18 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import {
-  MousePointer2, Zap, Smartphone, PlayCircle,
-} from 'lucide-react';
+import { ArrowDown, Globe, LayoutGrid, Palette, Smartphone } from 'lucide-react';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-
-const gradientStyle = {
-  background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-} as const;
+import { tokenPresets } from '@/lib/design-tokens';
 
 export default function LandingPage() {
   const t = useTranslations();
@@ -25,14 +19,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link
             href="/"
-            className="text-2xl font-black tracking-tighter"
-            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            className="text-2xl font-black tracking-tighter text-primary-color"
           >
             {t('common.brand')}
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <a href="#features" className="text-primary-color hover:text-primary transition-colors">{t('navigation.features')}</a>
+            <a href="#features" className="text-secondary hover:text-primary transition-colors">{t('navigation.features')}</a>
             <a href="#how-it-works" className="text-secondary hover:text-primary transition-colors">{t('navigation.howItWorks')}</a>
             <Link href="/pricing" className="text-secondary hover:text-primary transition-colors">{t('navigation.pricing')}</Link>
           </div>
@@ -47,8 +40,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/register"
-              className="text-white text-sm font-medium px-5 py-2 rounded-full shadow-lg transition-all active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+              className="bg-primary hover:bg-primary-dark text-white text-sm font-medium px-5 py-2 rounded-full shadow-lg transition-all active:scale-95"
             >
               {t('marketing.home.register')}
             </Link>
@@ -57,167 +49,149 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden" aria-label={t('marketing.home.heroSection')}>
-        {/* Background Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full blur-[120px] -z-10" style={{ background: 'rgba(37, 99, 235, 0.1)' }} />
+      <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 overflow-hidden" aria-label={t('marketing.home.heroSection')}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full blur-[120px] -z-10 bg-primary/10" />
 
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-primary leading-[0.9] mb-8 max-w-5xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-primary leading-[0.95] mb-8 max-w-5xl mx-auto">
             {t('marketing.home.heroTitleBefore')}{' '}
-            <span style={gradientStyle}>{t('marketing.home.heroTitleAccent')}</span>
+            <span className="text-primary-color">{t('marketing.home.heroTitleAccent')}</span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-secondary font-medium max-w-3xl mx-auto mb-12 leading-relaxed">
+          <p className="text-lg md:text-xl text-secondary font-medium max-w-2xl mx-auto mb-10 leading-relaxed">
             {t('marketing.home.heroSubtitle')}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
               href="/register"
-              className="w-full sm:w-auto text-white px-8 py-4 rounded-full font-extrabold text-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+              className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white px-8 py-4 rounded-full font-extrabold text-lg transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {t('marketing.home.ctaPrimary')}
             </Link>
             <a
-              href="#demo"
-              className="w-full sm:w-auto bg-surface-card/80 border border-default/30 px-8 py-4 rounded-full font-extrabold text-lg transition-colors flex items-center justify-center gap-2 hover:bg-surface-card"
-              style={{ color: '#2563EB' }}
+              href="#how-it-works"
+              className="w-full sm:w-auto bg-surface-card/80 border border-default/30 text-primary-color px-8 py-4 rounded-full font-extrabold text-lg transition-colors flex items-center justify-center gap-2 hover:bg-surface-card"
             >
-              <PlayCircle className="w-5 h-5" />
               {t('marketing.home.ctaSecondary')}
+              <ArrowDown className="w-5 h-5" aria-hidden="true" />
             </a>
           </div>
-        </div>
-      </section>
 
-      {/* Social Proof */}
-      <section className="py-12 border-y border-subtle/20" aria-label={t('marketing.home.socialProofSection')}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale">
-            <span className="text-xl font-bold tracking-widest uppercase">Acme Corp</span>
-            <span className="text-xl font-bold tracking-widest uppercase">Globex</span>
-            <span className="text-xl font-bold tracking-widest uppercase">Soylent</span>
-            <span className="text-xl font-bold tracking-widest uppercase">INITECH</span>
-            <span className="text-xl font-bold tracking-widest uppercase">Umbrella</span>
+          <div className="max-w-6xl mx-auto rounded-2xl border border-default/30 overflow-hidden shadow-2xl shadow-primary/10">
+            <Image
+              src="/landing/editor.webp"
+              alt={t('marketing.home.heroImageAlt')}
+              width={1440}
+              height={900}
+              priority
+              className="w-full h-auto"
+            />
           </div>
         </div>
       </section>
 
-      {/* Feature Grid — Bento Style */}
-      <section id="features" className="py-24 bg-surface" aria-label={t('marketing.home.featuresSection')}>
+      {/* Features */}
+      <section id="features" className="py-24 bg-surface scroll-mt-16" aria-label={t('marketing.home.featuresSection')}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-primary mb-4">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-primary mb-4">
               {t('marketing.home.featuresTitleBefore')}{' '}
-              <span style={gradientStyle}>{t('marketing.home.featuresTitleAccent')}</span>
+              <span className="text-primary-color">{t('marketing.home.featuresTitleAccent')}</span>
             </h2>
-            <p className="text-xl text-secondary max-w-2xl mx-auto">
+            <p className="text-lg text-secondary max-w-2xl mx-auto">
               {t('marketing.home.featuresSubtitle')}
             </p>
           </div>
 
           <div className="grid grid-cols-12 gap-6">
-            {/* Large Card — Drag & Drop */}
-            <div className="col-span-12 md:col-span-8 relative bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 overflow-hidden group">
-              <div className="absolute bottom-0 right-0 w-[300px] h-[300px] rounded-full blur-[100px] -z-0" style={{ background: 'rgba(37, 99, 235, 0.1)' }} />
-              <div className="relative z-10">
-                <MousePointer2 className="w-8 h-8 mb-4" style={{ color: '#2563EB' }} />
-                <h3 className="text-3xl font-bold text-primary mb-2">{t('marketing.home.dragDropTitle')}</h3>
-                <p className="text-secondary leading-relaxed mb-6 max-w-lg">
-                  {t('marketing.home.dragDropDescription')}
-                </p>
-                <div className="bg-surface-elevated/80 rounded-lg p-4 border border-subtle/30 aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
-                  <div className="w-full h-full rounded bg-surface-card/40 flex items-center justify-center text-muted text-sm">
-                    {t('marketing.home.interfacePreview')}
-                  </div>
-                </div>
-              </div>
+            {/* Blocks */}
+            <div className="col-span-12 md:col-span-7 bg-surface-elevated/50 rounded-xl p-8">
+              <LayoutGrid className="w-8 h-8 mb-4 text-primary-color" aria-hidden="true" />
+              <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.blocksTitle')}</h3>
+              <p className="text-secondary leading-relaxed">{t('marketing.home.blocksDescription')}</p>
             </div>
 
-            {/* Small Card — Rendimiento Extremo */}
-            <div className="col-span-12 md:col-span-4 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 flex flex-col justify-between">
-              <div>
-                <Zap className="w-8 h-8 mb-4" style={{ color: '#2563EB' }} />
-                <h3 className="text-xl font-bold text-primary mb-2">{t('marketing.home.performanceTitle')}</h3>
-                <p className="text-secondary leading-relaxed text-sm">
-                  {t('marketing.home.performanceDescription')}
-                </p>
-              </div>
-              <div className="mt-6">
-                <span className="text-6xl font-black text-primary">99</span>
-                <p className="text-muted text-sm mt-1">{t('marketing.home.performanceScore')}</p>
-              </div>
+            {/* Theme */}
+            <div className="col-span-12 md:col-span-5 bg-surface-elevated/50 rounded-xl p-8 flex flex-col">
+              <Palette className="w-8 h-8 mb-4 text-primary-color" aria-hidden="true" />
+              <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.themeTitle')}</h3>
+              <p className="text-secondary leading-relaxed mb-6">{t('marketing.home.themeDescription')}</p>
+              <ul className="mt-auto flex flex-wrap gap-3" aria-label={t('marketing.home.themePresetsLabel')}>
+                {tokenPresets.slice(0, 4).map((preset) => (
+                  <li key={preset.id} className="flex rounded-full overflow-hidden border border-default/30" title={preset.name}>
+                    {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background].map((color) => (
+                      <span key={color} className="w-5 h-5" style={{ backgroundColor: color }} />
+                    ))}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Small Card — Diseño Responsive */}
-            <div className="col-span-12 md:col-span-4 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50">
-              <Smartphone className="w-8 h-8 mb-4" style={{ color: '#ff59e3' }} />
-              <h3 className="text-xl font-bold text-primary mb-2">{t('marketing.home.responsiveTitle')}</h3>
-              <p className="text-secondary leading-relaxed text-sm">
-                {t('marketing.home.responsiveDescription')}
-              </p>
+            {/* Responsive + mobile editor */}
+            <div className="col-span-12 md:col-span-5 bg-surface-elevated/50 rounded-xl p-8 flex flex-col overflow-hidden">
+              <Smartphone className="w-8 h-8 mb-4 text-primary-color" aria-hidden="true" />
+              <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.responsiveTitle')}</h3>
+              <p className="text-secondary leading-relaxed mb-8">{t('marketing.home.responsiveDescription')}</p>
+              <Image
+                src="/landing/mobile.webp"
+                alt={t('marketing.home.mobileImageAlt')}
+                width={600}
+                height={1298}
+                className="w-56 h-auto mx-auto -mb-40 rounded-3xl border-4 border-surface-card shadow-xl"
+              />
             </div>
 
-            {/* Large Card — Editor Mockup */}
-            <div className="col-span-12 md:col-span-8 bg-surface-elevated/50 rounded-xl p-8 transition-all hover:bg-surface-card/50 overflow-hidden group">
-              <div className="rounded-lg border border-subtle/30 overflow-hidden transition-transform duration-700 group-hover:scale-[1.02]">
-                {/* Fake Browser Chrome */}
-                <div className="h-10 border-b border-subtle/50 flex items-center px-4 gap-4 bg-surface-elevated/80">
-                  <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-default" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-default" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-default" />
-                  </div>
-                  <div className="flex-1 max-w-xs mx-auto bg-surface h-6 rounded-md border border-subtle flex items-center justify-center text-[10px] text-muted font-mono">
-                    paxl.app/editor
-                  </div>
-                </div>
-                {/* Editor Placeholder */}
-                <div className="aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.08) 0%, rgba(37, 99, 235,0.08) 100%)' }}>
-                  <div className="text-muted text-sm">{t('marketing.home.editorPreview')}</div>
-                </div>
-              </div>
+            {/* Publish */}
+            <div className="col-span-12 md:col-span-7 bg-surface-elevated/50 rounded-xl p-8 flex flex-col overflow-hidden">
+              <Globe className="w-8 h-8 mb-4 text-primary-color" aria-hidden="true" />
+              <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.publishTitle')}</h3>
+              <p className="text-secondary leading-relaxed mb-8">{t('marketing.home.publishDescription')}</p>
+              <Image
+                src="/landing/published.webp"
+                alt={t('marketing.home.publishedImageAlt')}
+                width={1440}
+                height={900}
+                className="w-full h-auto rounded-lg border border-default/30 mt-auto"
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Editor Highlight Section */}
-      <section id="how-it-works" className="py-24 bg-surface-elevated/30" aria-label={t('marketing.home.editorSection')}>
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-7xl font-black tracking-tighter text-primary mb-12">
-            {t('marketing.home.editorTitleBefore')}{' '}
-            <span style={gradientStyle}>{t('marketing.home.editorTitleAccent')}</span>
+      {/* How it works */}
+      <section id="how-it-works" className="py-24 bg-surface-elevated/30 scroll-mt-16" aria-labelledby="how-it-works-title">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 id="how-it-works-title" className="text-4xl md:text-5xl font-black tracking-tighter text-primary mb-12 text-center">
+            {t('marketing.home.howTitle')}
           </h2>
-
-          <div className="relative max-w-5xl mx-auto">
-            {/* Glow behind */}
-            <div className="absolute inset-0 -z-10 blur-[100px] rounded-full" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.15) 0%, rgba(37, 99, 235,0.15) 100%)' }} />
-            <div className="border border-subtle/30 rounded-2xl overflow-hidden">
-              <div className="bg-surface-elevated/50 rounded-xl aspect-video flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235,0.05) 0%, rgba(37, 99, 235,0.05) 100%)' }}>
-                <div className="text-muted text-lg">{t('marketing.home.canvasPreview')}</div>
-              </div>
-            </div>
-          </div>
+          <ol className="grid md:grid-cols-3 gap-6">
+            {([1, 2, 3] as const).map((step) => (
+              <li key={step} className="bg-surface rounded-xl p-6 border border-default/20">
+                <span className="w-9 h-9 rounded-full bg-primary/10 text-primary-color font-black flex items-center justify-center mb-4" aria-hidden="true">
+                  {step}
+                </span>
+                <h3 className="text-lg font-bold text-primary mb-2">{t(`marketing.home.step${step}Title`)}</h3>
+                <p className="text-secondary leading-relaxed text-sm">{t(`marketing.home.step${step}Body`)}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 md:py-40 relative overflow-hidden" aria-label={t('marketing.home.ctaSection')}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-[150px] -z-10" style={{ background: 'rgba(37, 99, 235, 0.05)' }} />
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-7xl font-black tracking-tighter text-primary mb-8">
+      <section className="py-20 md:py-32 relative overflow-hidden" aria-label={t('marketing.home.ctaSection')}>
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-primary mb-8">
             {t('marketing.home.finalTitleBefore')}{' '}
-            <span style={gradientStyle}>{t('marketing.home.finalTitleAccent')}</span>
+            <span className="text-primary-color">{t('marketing.home.finalTitleAccent')}</span>
           </h2>
-          <a
+          <Link
             href="/register"
-            className="inline-block text-white px-12 py-6 rounded-full font-black text-xl transition-all hover:scale-105 active:scale-95 shadow-xl mb-6"
-            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+            className="inline-block bg-primary hover:bg-primary-dark text-white px-10 py-5 rounded-full font-black text-xl transition-all active:scale-95 shadow-xl shadow-primary/20 mb-6"
           >
             {t('marketing.home.finalCta')}
-          </a>
+          </Link>
           <p className="text-muted text-sm">
             {t('marketing.home.finalNote')}
           </p>
@@ -260,15 +234,13 @@ export default function LandingPage() {
             <div>
               <h4 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.connect')}</h4>
               <ul className="space-y-2 text-sm text-muted">
-                <li><a href="#" className="hover:text-primary-color transition-colors">Twitter</a></li>
-                <li><a href="#" className="hover:text-primary-color transition-colors">Instagram</a></li>
                 <li><Link href="/contact" className="hover:text-primary-color transition-colors">{t('navigation.support')}</Link></li>
               </ul>
             </div>
           </div>
 
           <div className="border-t border-subtle/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted text-sm">&copy; 2026 Paxl Inc. {t('marketing.home.footerLegal')}</p>
+            <p className="text-muted text-sm">&copy; 2026 Paxl. {t('marketing.home.footerLegal')}</p>
             <div className="flex items-center gap-4 text-muted">
               <ThemeToggle />
               <LocaleSwitcher />

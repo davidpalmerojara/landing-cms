@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --max-warnings 42",
+    "lint": "eslint --max-warnings 41",
     "typecheck": "tsc --noEmit",
     "check:classes": "node scripts/check-classes.mjs",
     "test": "vitest run",

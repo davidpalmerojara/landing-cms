@@ -15,6 +15,7 @@ import type { CollabUser } from '@/store/editor-store';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import { api } from '@/lib/api';
+import { useGuestSession } from '@/components/guest/GuestSessionProvider';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
@@ -35,6 +36,8 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
   const isSaved = useEditorStore((s) => s.isSaved);
   const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
   const connectedUsers = useEditorStore((s) => s.connectedUsers);
+  const { isGuest } = useGuestSession();
+  const addToast = useEditorStore((s) => s.addToast);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -318,10 +321,11 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               </button>
             )}
             <button
-              onClick={() => setShowShareModal(true)}
+              onClick={() => (isGuest ? addToast(t('guest.shareLocked'), 'info') : setShowShareModal(true))}
               aria-label={t('editor.share')}
-              className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
-              title={t('editor.share')}
+              aria-disabled={isGuest || undefined}
+              className={`text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors hover:bg-surface-card/50 ${isGuest ? 'text-muted' : 'text-secondary hover:text-primary'}`}
+              title={isGuest ? t('guest.shareLocked') : t('editor.share')}
             >
               <Share2 className="w-4 h-4" />
             </button>

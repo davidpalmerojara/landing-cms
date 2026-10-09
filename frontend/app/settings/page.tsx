@@ -40,7 +40,18 @@ export default function SettingsPage() {
         <p className="text-sm text-muted mb-8">{t('settingsPage.subtitle')}</p>
 
         <div className="space-y-3">
-          {/* Domains link card */}
+          {/* Domains link card (a guest session sees why it is off instead of a dead end) */}
+          {user.is_guest ? (
+            <div className="w-full flex items-center gap-4 p-5 bg-surface-elevated/30 border border-subtle/50 rounded-xl">
+              <div className="w-10 h-10 bg-surface-card border border-default/50 rounded-lg flex items-center justify-center shrink-0">
+                <Globe className="w-5 h-5 text-muted" aria-hidden="true" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium text-secondary">{t('settingsPage.domainsTitle')}</h3>
+                <p className="text-xs text-muted mt-0.5">{t('guest.domainsLocked')}</p>
+              </div>
+            </div>
+          ) : (
           <button
             onClick={() => router.push('/settings/domains')}
             className="w-full flex items-center gap-4 p-5 bg-surface-elevated/50 border border-subtle/80 rounded-xl hover:border-default transition-all text-left group"
@@ -54,8 +65,10 @@ export default function SettingsPage() {
             </div>
             <ChevronRight className="w-4 h-4 text-muted group-hover:text-secondary transition-colors shrink-0" />
           </button>
+          )}
 
-          {/* Account placeholder — coming soon */}
+          {/* Account placeholder — coming soon. Nothing to set up on a temporary guest account */}
+          {!user.is_guest && (
           <div className="w-full flex items-center gap-4 p-5 bg-surface-elevated/30 border border-subtle/50 rounded-xl opacity-50 cursor-not-allowed">
             <div className="w-10 h-10 bg-surface-card border border-default/50 rounded-lg flex items-center justify-center shrink-0">
               <User className="w-5 h-5 text-muted" />
@@ -71,6 +84,7 @@ export default function SettingsPage() {
             </div>
             <ChevronRight className="w-4 h-4 text-muted shrink-0" />
           </div>
+          )}
         </div>
       </main>
     </div>

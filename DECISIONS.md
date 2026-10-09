@@ -232,6 +232,22 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-022: Modo invitado temporal para probar sin registrarse
+
+- **Fecha**: 2026-10-09
+- **Contexto**: Quien evalúa la demo pública (reclutadores, sobre todo) debe poder probar el editor en un clic, pero el alojamiento gratuito (una instancia, sin cron, Postgres pequeño) no aguanta que se abuse de él.
+- **Decisión**:
+  - `POST /api/auth/guest/` crea un usuario temporal (`User.is_guest`, nombre `invitado-xxxxxxxx`, contraseña inutilizable, email `@guest.invalid`, un dominio reservado que nunca puede ser real) con su espacio de trabajo en un plan Pro activo sin Stripe, e inicia sesión con las mismas cookies httpOnly (ADR-008). Dura 24 h (`GUEST_LIFETIME_HOURS`) desde `created_at`.
+  - Sin cron: cada invitado nuevo borra antes un lote (50) de los caducados, y `manage.py cleanup_guests` hace lo mismo a demanda. El borrado cae en cascada (páginas, bloques, versiones, mensajes, analítica, suscripción) y se encarga además de los ficheros subidos y de los refresh tokens. Se pide al frontend que descarte la copia en caché de sus páginas publicadas (ADR-019). La autenticación y el refresh rechazan con `GUEST_EXPIRED` a un invitado pasadas las 24 h aunque su JWT siga vigente.
+  - Límites: 5 invitados por hora y por IP (`GUEST_CREATION_RATE`, con `NUM_PROXIES`), 200 invitados vivos a la vez (`GUEST_MAX_ACTIVE`, si no `503 GUEST_CAPACITY`), 5 páginas (`GUEST_MAX_PAGES`, `403 GUEST_PAGE_LIMIT`), 10 versiones por página. Sin subir ficheros, sin facturación, sin dominios propios y sin compartir páginas (enviaría correos): `403 GUEST_NOT_ALLOWED`.
+  - Sus páginas publicadas siempre son `noindex`, con marca de agua (aunque el plan Pro la quite) y fuera de los dos sitemaps.
+  - `POST /api/auth/guest/claim/` convierte al invitado en cuenta normal con los mismos campos y validación que el registro: conserva todas sus páginas, pasa al plan Free (las páginas que superen su límite se quedan, pero no se pueden crear más), cierra la sesión anterior (refresh token en lista negra) y entrega cookies nuevas. El email queda sin verificar, como en el registro con contraseña (ADR-018).
+  - Frontend: botón "Probar sin registrarse" en la portada, el login y el registro. Si el navegador ya tiene una sesión, lleva al panel en vez de crear un invitado, para no pisar las cookies de una cuenta real. Un aviso permanente en el editor y el panel dice que la sesión es temporal y abre el formulario para crear la cuenta.
+- **Alternativas**: Una cuenta de demostración compartida (todos verían y borrarían el trabajo de los demás); invitados sin límite de vida hasta que se llene la base de datos; un cron externo (no hay).
+- **Consecuencias**: Un invitado es un usuario real en la tabla durante 24 h, así que toda comprobación de permisos pasa por `user.is_guest` en lugar de por el plan, que es Pro. Un mismo atacante con muchas IP puede llenar los 200 huecos durante 24 h; el tope protege la base de datos, no la disponibilidad de la prueba.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

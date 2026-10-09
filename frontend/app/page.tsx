@@ -7,6 +7,7 @@ import { ArrowDown, Globe, LayoutGrid, Palette, Smartphone } from 'lucide-react'
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { tokenPresets } from '@/lib/design-tokens';
+import GuestStartButton from '@/components/guest/GuestStartButton';
 
 export default function LandingPage() {
   const t = useTranslations();
@@ -69,6 +70,7 @@ export default function LandingPage() {
             >
               {t('marketing.home.ctaPrimary')}
             </Link>
+            <GuestStartButton variant="hero" />
             <a
               href="#how-it-works"
               className="w-full sm:w-auto bg-surface-card/80 border border-default/30 text-primary-color px-8 py-4 rounded-full font-extrabold text-lg transition-colors flex items-center justify-center gap-2 hover:bg-surface-card"

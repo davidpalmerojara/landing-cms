@@ -1,7 +1,7 @@
 import { defaultBlockStyles } from '@/types/blocks';
 import type { Block, BlockDataMap, BlockType } from '@/types/blocks';
 import { newBlockId } from '@/lib/block-factory';
-import { presetTokens } from '@/lib/design-tokens';
+import { defaultDesignTokens, presetTokens, tokensToApi } from '@/lib/design-tokens';
 import type { DesignTokens } from '@/lib/design-tokens';
 import { makeBlock } from '@/lib/block-data';
 
@@ -35,6 +35,29 @@ export function instantiateTemplate(template: PageTemplate): {
     makeBlock({ id: newBlockId(), name: def.type, styles: { ...defaultBlockStyles, ...def.styles } }, def.type, def.data),
   );
   return { blocks, designTokens: presetTokens(template.presetId), name: template.name };
+}
+
+/**
+ * Body of `POST /api/pages/` for a new page: the template's blocks and theme,
+ * or a blank page named `blankName` when `templateId` is null or unknown.
+ */
+export function buildPagePayload(templateId: string | null, blankName: string): Record<string, unknown> {
+  const template = templateId ? pageTemplates.find((candidate) => candidate.id === templateId) : undefined;
+  if (!template) {
+    return { name: blankName, design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
+  }
+  const { blocks, designTokens, name } = instantiateTemplate(template);
+  return {
+    name,
+    design_tokens: tokensToApi(designTokens),
+    blocks: blocks.map((b, i) => ({
+      id: b.id,
+      type: b.type,
+      order: i,
+      data: b.data,
+      styles: b.styles,
+    })),
+  };
 }
 
 // ─── Template definitions ────────────────────────────────────────

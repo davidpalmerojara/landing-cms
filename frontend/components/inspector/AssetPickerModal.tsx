@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiAsset } from '@/lib/api';
+import GuestFeatureNotice from '@/components/guest/GuestFeatureNotice';
+import { useGuestSession } from '@/components/guest/GuestSessionProvider';
 
 interface AssetPickerModalProps {
   onSelect: (asset: ApiAsset) => void;
@@ -17,6 +19,7 @@ interface AssetPickerModalProps {
 export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModalProps) {
   const t = useTranslations();
   const locale = useLocale();
+  const { isGuest } = useGuestSession();
   const [assets, setAssets] = useState<ApiAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -159,6 +162,13 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
         <div className="flex-1 overflow-y-auto flex flex-col relative">
           {/* Upload zone */}
           <div className="p-6 shrink-0">
+            {isGuest ? (
+              <GuestFeatureNotice
+                title={t('guest.uploadTitle')}
+                description={t('guest.uploadBody')}
+                actionLabel={t('guest.claimAction')}
+              />
+            ) : (
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -175,6 +185,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
                 <AlertCircle className="w-3 h-3" /> {t('assets.uploadHint')}
               </p>
             </div>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -212,12 +223,14 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
               <p className="text-sm text-muted max-w-xs mb-8 leading-relaxed">
                 {t('assets.emptyDescription')}
               </p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-surface-elevated text-primary hover:bg-white px-6 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
-              >
-                {t('assets.uploadFirst')}
-              </button>
+              {!isGuest && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-surface-elevated text-primary hover:bg-white px-6 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
+                >
+                  {t('assets.uploadFirst')}
+                </button>
+              )}
             </div>
           )}
 

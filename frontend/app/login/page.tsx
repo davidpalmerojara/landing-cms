@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
-import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft, Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import { nextPathFromLocation } from '@/lib/safe-redirect';
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
+import GuestStartButton from '@/components/guest/GuestStartButton';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -24,6 +25,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [securedNextPath, setSecuredNextPath] = useState<string | null>(null);
+  const [guestExpired, setGuestExpired] = useState(false);
+
+  // useAuth sends an expired guest here with ?guest=expired
+  useEffect(() => {
+    setGuestExpired(new URLSearchParams(window.location.search).get('guest') === 'expired');
+  }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +81,13 @@ export default function LoginPage() {
           </h1>
           <p className="text-sm text-muted mt-1">{t('auth.loginSubtitle')}</p>
         </div>
+
+        {guestExpired && (
+          <div role="status" className="flex items-start gap-2 text-secondary text-sm bg-surface-elevated border border-subtle rounded-lg px-4 py-3 mb-4">
+            <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />
+            <span>{t('guest.expiredNotice')}</span>
+          </div>
+        )}
 
         {/* Error */}
         {error && (
@@ -227,6 +241,14 @@ export default function LoginPage() {
             </div>
           </>
         )}
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-subtle" />
+          <span className="text-xs text-muted">{t('common.or')}</span>
+          <div className="flex-1 h-px bg-subtle" />
+        </div>
+
+        <GuestStartButton variant="form" />
 
         <p className="text-center text-sm text-muted mt-6">
           {t('auth.noAccount')}{' '}

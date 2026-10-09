@@ -26,6 +26,8 @@ import { useDragManager } from '@/hooks/useDragManager';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useAuth } from '@/hooks/useAuth';
+import GuestSessionProvider from '@/components/guest/GuestSessionProvider';
+import GuestBanner from '@/components/guest/GuestBanner';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
@@ -34,7 +36,7 @@ export default function EditorPage() {
   const params = useParams();
   const pageId = params.pageId as string;
   const isQuickEditMode = useIsQuickEditMode();
-  const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: `/login?next=${encodeURIComponent(`/editor/${pageId}`)}` });
+  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: `/login?next=${encodeURIComponent(`/editor/${pageId}`)}` });
   const [activeView, setActiveView] = useState<EditorView>('design');
   const [showHistory, setShowHistory] = useState(false);
   const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export default function EditorPage() {
   // --- Quick Edit Mode (mobile) ---
   if (isQuickEditMode) {
     return (
-      <>
+      <GuestSessionProvider user={user} onClaimed={setUser}>
         <MobileEditor pageId={pageId} onSave={saveToApi} onPublish={publishToApi} />
         <ConfirmDialog
           open={pendingDeleteBlockId !== null}
@@ -135,16 +137,18 @@ export default function EditorPage() {
           onCancel={cancelDeleteBlock}
         />
         <ToastContainer toasts={toasts} onDismiss={removeToast} />
-      </>
+      </GuestSessionProvider>
     );
   }
 
   // --- Desktop editor ---
   return (
+    <GuestSessionProvider user={user} onClaimed={setUser}>
     <div
       className="flex flex-col h-dvh bg-surface font-sans text-secondary overflow-hidden outline-none"
       tabIndex={0}
     >
+      <GuestBanner />
       <TopBar
         onSave={saveToApi}
         onPublish={publishToApi}
@@ -204,5 +208,6 @@ export default function EditorPage() {
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
+    </GuestSessionProvider>
   );
 }

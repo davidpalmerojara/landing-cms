@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import type { ApiBillingPlan, ApiSubscription, ApiPayment } from '@/lib/api';
 import { useAppLocale } from '@/components/providers/AppIntlProvider';
 import { useAuth } from '@/hooks/useAuth';
+import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -19,7 +20,7 @@ export default function BillingPage() {
   const t = useTranslations();
   const { locale } = useAppLocale();
   const router = useRouter();
-  const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
+  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
 
   const [plans, setPlans] = useState<ApiBillingPlan[]>([]);
   const [subscription, setSubscription] = useState<ApiSubscription | null>(null);
@@ -48,7 +49,8 @@ export default function BillingPage() {
   }, [t]);
 
   useEffect(() => {
-    if (user) loadData();
+    // A guest session has no plan to manage: it never reaches the billing API
+    if (user && !user.is_guest) loadData();
   }, [user, loadData]);
 
   const handleCheckout = async () => {
@@ -80,6 +82,18 @@ export default function BillingPage() {
       <div className="flex items-center justify-center min-h-screen bg-surface text-secondary">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (user.is_guest) {
+    return (
+      <GuestSettingsScreen
+        user={user}
+        onClaimed={setUser}
+        title={t('guest.billingTitle')}
+        description={t('guest.billingBody')}
+        backHref="/dashboard"
+      />
     );
   }
 

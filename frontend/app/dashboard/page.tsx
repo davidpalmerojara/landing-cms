@@ -8,22 +8,40 @@ import {
   Loader2, AlertCircle, MoreVertical, LogOut, Users,
   FolderOpen, Settings, Search, Layers, Pencil, Menu, X, EyeOff,
 } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { ApiPageListItem } from '@/lib/api';
+import { api, apiErrorCode } from '@/lib/api';
+import type { ApiPageListItem, ApiUser } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { pageTemplates, instantiateTemplate } from '@/lib/templates';
-import { apiToTokens, defaultDesignTokens, tokensToApi } from '@/lib/design-tokens';
+import { buildPagePayload } from '@/lib/templates';
+import { apiToTokens } from '@/lib/design-tokens';
 import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
 import AIGenerateModal from '@/components/dashboard/AIGenerateModal';
 import PagePreviewThumbnail from '@/components/dashboard/PagePreviewThumbnail';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
+import GuestSessionProvider, { useGuestSession } from '@/components/guest/GuestSessionProvider';
+import GuestBanner from '@/components/guest/GuestBanner';
 
 export default function DashboardPage() {
+  const { user, setUser, isLoading, logout } = useAuth({ redirectTo: '/login' });
+
+  return (
+    <GuestSessionProvider user={user} onClaimed={setUser}>
+      <Dashboard user={user} isAuthLoading={isLoading} logout={logout} />
+    </GuestSessionProvider>
+  );
+}
+
+interface DashboardProps {
+  user: ApiUser | null;
+  isAuthLoading: boolean;
+  logout: () => Promise<void>;
+}
+
+function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const t = useTranslations();
   const router = useRouter();
-  const { user, isLoading: isAuthLoading, logout } = useAuth({ redirectTo: '/login' });
+  const { isGuest, openClaim } = useGuestSession();
   const { subscription } = useSubscription({ enabled: Boolean(user) });
   const plan = subscription?.plan ?? null;
   const [pages, setPages] = useState<ApiPageListItem[]>([]);
@@ -77,35 +95,13 @@ export default function DashboardPage() {
   const handleCreateFromTemplate = async (templateId: string | null) => {
     setIsCreating(true);
     try {
-      let payload: Record<string, unknown>;
-
-      if (templateId) {
-        const template = pageTemplates.find((t) => t.id === templateId);
-        if (template) {
-          const { blocks, designTokens, name } = instantiateTemplate(template);
-          payload = {
-            name,
-            design_tokens: tokensToApi(designTokens),
-            blocks: blocks.map((b, i) => ({
-              id: b.id,
-              type: b.type,
-              order: i,
-              data: b.data,
-              styles: b.styles,
-            })),
-          };
-        } else {
-          payload = { name: t('dashboard.createUntitled'), design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
-        }
-      } else {
-        payload = { name: t('dashboard.createUntitled'), design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
-      }
-
-      const page = await api.pages.create(payload);
+      const page = await api.pages.create(buildPagePayload(templateId, t('dashboard.createUntitled')));
       router.push(`/editor/${page.id}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.createError');
-      if (msg.includes('403') && msg.includes('plan_limit')) {
+      if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
+        setError(t('guest.pageLimit'));
+      } else if (msg.includes('403') && msg.includes('plan_limit')) {
         setError(t('dashboard.planLimit'));
       } else {
         setError(msg);
@@ -121,7 +117,9 @@ export default function DashboardPage() {
       loadPages();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.duplicateError');
-      if (msg.includes('403') && msg.includes('plan_limit')) {
+      if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
+        setError(t('guest.pageLimit'));
+      } else if (msg.includes('403') && msg.includes('plan_limit')) {
         setError(t('dashboard.planLimit'));
       } else {
         setError(msg);
@@ -219,8 +217,23 @@ export default function DashboardPage() {
 
         {/* Bottom section */}
         <div className="mt-auto space-y-6">
+          {/* Guest sessions have no plan to show: say what they are and how to keep the work */}
+          {isGuest && (
+            <div className="p-4 rounded-xl bg-surface-card border border-default/10">
+              <p className="text-xs font-bold text-primary mb-1">{t('guest.cardTitle')}</p>
+              <p className="text-xs text-muted mb-3">{t('guest.cardBody')}</p>
+              <button
+                type="button"
+                onClick={openClaim}
+                className="w-full min-h-11 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-full transition-all active:scale-95"
+              >
+                {t('guest.claimAction')}
+              </button>
+            </div>
+          )}
+
           {/* Usage card — only rendered once the real plan is known */}
-          {plan && (
+          {plan && !isGuest && (
             <div className="p-4 rounded-xl bg-surface-card border border-default/10">
               <p className="text-xs font-bold text-primary mb-1">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
               <p className="text-xs text-muted mb-3">
@@ -305,7 +318,9 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 pl-2">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold text-primary">{user.username}</p>
-              {plan && (
+              {isGuest ? (
+                <p className="text-[10px] text-muted uppercase tracking-wider">{t('guest.cardTitle')}</p>
+              ) : plan && (
                 <p className="text-[10px] text-muted uppercase tracking-wider">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
               )}
             </div>
@@ -319,6 +334,8 @@ export default function DashboardPage() {
       {/* Main content */}
       <main className="lg:ml-64 pt-24 pb-12 px-4 lg:px-8 min-h-screen">
         <div className="max-w-7xl mx-auto">
+          <GuestBanner className="mb-8 rounded-xl border" />
+
           {/* Header section */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>

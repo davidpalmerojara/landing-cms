@@ -177,14 +177,15 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 
 - **User** (AbstractUser): UUID pk, email unico, google_id. Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **Workspace**: owner FK, nombre
-- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published), theme_id, custom_theme (JSON), design_tokens (JSON), SEO fields (seo_title, seo_description, og_*, noindex)
+- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), theme_id, custom_theme (JSON), design_tokens (JSON), SEO fields (seo_title, seo_description, og_*, noindex)
+- **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
 - **Asset**: owner FK, workspace FK, name, file (FileField), mime_type, size
 - **CustomDomain**: workspace FK, page FK, domain (unique), dns_status, ssl_status, is_active
 - **Plan**: name, max_pages, max_ai_generations_per_hour, feature flags
 - **Subscription**: workspace FK, plan FK, stripe_subscription_id, status, billing_cycle
-- **AnalyticsEvent**: page FK, event_type, visitor_id, block_id, event_data (JSON), UTM params
+- **AnalyticsEvent**: page FK, event_type, visitor_id (hash diario calculado en servidor, sin cookies), block_id, event_data (JSON filtrado por tipo), referrer (solo origen), UTM params, screen_size
 - **AIGenerationLog**: user FK, page FK, prompt, mode, token counts, cost
 
 ---
@@ -264,6 +265,10 @@ Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en 
 | PUT | `/{id}/` | Si | Update completo (sync bloques) |
 | DELETE | `/{id}/` | Si | Eliminar |
 | POST | `/{id}/duplicate/` | Si | Duplicar con bloques |
+| POST | `/{id}/publish/` | Si | Congelar el borrador como version publica (ADR-017) |
+| POST | `/{id}/unpublish/` | Si | Despublicar |
+| GET | `/{id}/submissions/` | Si | Mensajes del formulario de contacto (paginado) |
+| DELETE | `/{id}/submissions/{sid}/` | Si | Borrar un mensaje |
 | GET/POST | `/{id}/versions/` | Si | Listar/crear versiones |
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version |
 
@@ -271,7 +276,8 @@ Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en 
 
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
-| GET | `/api/public/pages/{slug}/` | No | Pagina publicada por slug |
+| GET | `/api/public/pages/{slug}/` | No | Version publicada (copia congelada) por slug |
+| POST | `/api/public/pages/{slug}/contact/` | No | Enviar el formulario de contacto (throttle + honeypot) |
 | GET | `/api/sitemap/` | No | Sitemap XML (cache 1h) |
 | GET | `/api/public/sitemap-data/` | No | JSON para Next.js sitemap |
 | GET | `/api/public/resolve-domain/` | No | Resolver dominio custom |

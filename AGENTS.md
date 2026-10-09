@@ -152,7 +152,7 @@ Estado:
 ## Modelo De Datos
 Jerarquía principal:
 - `Workspace` -> agrupa páginas y assets; pertenece a `User` mediante `owner`.
-- `Page` -> pertenece a `owner` y opcionalmente a `workspace`; contiene `blocks`, `collaborators`, tema, design tokens, SEO y estado `draft/published`.
+- `Page` -> pertenece a `owner` y opcionalmente a `workspace`; contiene `blocks`, `collaborators`, tema, design tokens, SEO y estado `draft/published`. `published_version` apunta a la `PageVersion` congelada que sirve la página pública (ADR-017); el estado solo cambia con publish/unpublish.
 - `Block` -> pertenece a `Page`; guarda `type`, `order`, `data` y `styles` en JSON.
 
 Relaciones relevantes:
@@ -162,7 +162,8 @@ Relaciones relevantes:
 - `Asset` representa media subida por usuario/workspace.
 - `CustomDomain` vincula dominios personalizados a una `Page`.
 - `Subscription` es `OneToOne` con `Workspace`; `Plan` gobierna límites/features.
-- `AnalyticsEvent` guarda eventos anónimos de páginas publicadas.
+- `AnalyticsEvent` guarda eventos anónimos de páginas publicadas, sin cookies: el `visitor_id` es un hash diario calculado en servidor (`analytics/privacy.py`).
+- `FormSubmission` (app `submissions`) guarda los mensajes del formulario de contacto de páginas publicadas (sin IP).
 - `AIGenerationLog` registra uso y coste estimado de IA.
 
 Block schemas:
@@ -188,13 +189,13 @@ Block schemas:
 ## Endpoints De La API
 Públicos:
 - Auth: `POST /api/auth/register/`, `POST /api/auth/login/`, `POST /api/auth/refresh/`, `POST /api/auth/logout/`, `POST /api/auth/google/`, `POST /api/auth/magic/request/`, `POST /api/auth/magic/verify/`
-- Pages públicas: `GET /api/public/pages/{slug}/`, `GET /api/sitemap/`, `GET /api/public/sitemap-data/`, `GET /api/public/resolve-domain/?domain=...`
+- Pages públicas: `GET /api/public/pages/{slug}/`, `GET /api/sitemap/`, `GET /api/public/sitemap-data/`, `GET /api/public/resolve-domain/?domain=...`, `POST /api/public/pages/{slug}/contact/`
 - Analytics ingest: `POST /api/analytics/collect/`
 - Billing público: `GET /api/billing/plans/`, `POST /api/billing/webhook/`
 
 Autenticados:
 - Auth: `GET /api/auth/me/`
-- Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`
+- Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/publish/`, `POST /api/pages/{id}/unpublish/`, `GET /api/pages/{id}/submissions/`, `DELETE /api/pages/{id}/submissions/{sid}/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`
 - Versions: `GET|POST /api/pages/{page_id}/versions/`, `GET|PATCH|DELETE /api/pages/{page_id}/versions/{id}/`, `POST /api/pages/{page_id}/versions/{id}/restore/`
 - Assets: `GET|POST /api/assets/`, `DELETE /api/assets/{id}/`
 - AI: `POST /api/pages/{page_id}/generate/`, `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/`

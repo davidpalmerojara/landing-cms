@@ -180,7 +180,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **User** (AbstractUser): UUID pk, email unico, google_id, is_guest (cuenta temporal, ADR-022). Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
-- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), design_tokens (JSON, el tema completo de la pagina, ADR-020), SEO fields (seo_title, seo_description, og_*, noindex)
+- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), SEO fields (seo_title, seo_description, og_*, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
@@ -262,6 +262,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/magic/verify/` | No | Verificar magic token |
 | POST | `/guest/` | No | Sesión de invitado temporal, 24 h (ADR-022) |
 | POST | `/guest/claim/` | Si (invitado) | Convertir el invitado en cuenta normal y conservar sus páginas |
+| POST | `/join/` | No | Canjear un enlace de invitación: colaborador (usuario con sesión) o invitado nuevo (ADR-024) |
 | GET | `/me/` | Si | Usuario actual |
 
 ### Pages (`/api/pages/`)
@@ -271,7 +272,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | GET | `/` | Si | Lista paginada (owner) |
 | POST | `/` | Si | Crear pagina + bloques |
 | GET | `/{id}/` | Si | Detalle con bloques + SEO |
-| PUT | `/{id}/` | Si | Update completo (sync bloques) |
+| PUT | `/{id}/` | Si | Update completo (sync bloques). Exige `version`; `409 VERSION_CONFLICT` si cambió (ADR-024) |
 | DELETE | `/{id}/` | Si | Eliminar |
 | POST | `/{id}/duplicate/` | Si | Duplicar con bloques |
 | POST | `/{id}/publish/` | Si | Congelar el borrador como version publica (ADR-017) |
@@ -280,6 +281,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | DELETE | `/{id}/submissions/{sid}/` | Si | Borrar un mensaje |
 | GET/POST | `/{id}/versions/` | Si | Listar/crear versiones |
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version |
+| POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
 
 ### Public
 

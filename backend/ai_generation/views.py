@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from pages import sync
 from pages.models import Page, Block, create_version_snapshot
 from . import demo, providers
 from .merge import merge_block_data
@@ -294,6 +295,8 @@ class GeneratePageView(APIView):
             demo_extra = {'fixture_id': match.fixture.id, 'matched': match.matched}
 
         created_blocks = _replace_page_blocks(page, request.user, sanitized)
+        sync.bump_version(page)
+        sync.notify_page_updated(page, sync.REASON_AI, request.user, sync.connection_id_from(request))
         cost = _log(request.user, page, route, AIGenerationLog.Mode.FULL_PAGE, prompt, tokens_in, tokens_out)
 
         logger.info(
@@ -304,6 +307,7 @@ class GeneratePageView(APIView):
 
         return Response({
             'page_id': str(page.pk),
+            'version': page.version,
             'block_count': len(created_blocks),
             'blocks': created_blocks,
             **_source_fields(route, **demo_extra),
@@ -419,6 +423,8 @@ class EditBlockView(APIView):
         block.type = new_type
         block.data = new_data
         block.save()
+        sync.bump_version(page)
+        sync.notify_page_updated(page, sync.REASON_AI, request.user, sync.connection_id_from(request))
 
         cost = _log(request.user, page, route, AIGenerationLog.Mode.EDIT_BLOCK, instruction, tokens_in, tokens_out)
 
@@ -428,6 +434,7 @@ class EditBlockView(APIView):
         )
 
         return Response({
+            'version': page.version,
             'block': {
                 'id': str(block.pk),
                 'type': block.type,

@@ -1,6 +1,11 @@
 import uuid
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+
+INVITE_LIFETIME = timedelta(hours=24)
+INVITE_MAX_USES = 5
 
 
 class Workspace(models.Model):
@@ -80,6 +85,10 @@ class Page(models.Model):
     )
     published_at = models.DateTimeField(null=True, blank=True)
 
+    # Optimistic concurrency (ADR-024): bumped by every write that changes the
+    # page. A save based on an older version is refused with 409.
+    version = models.PositiveIntegerField(default=1)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -134,6 +143,43 @@ class Page(models.Model):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+
+def new_invite_token() -> str:
+    import secrets
+    return secrets.token_urlsafe(24)
+
+
+def default_invite_expiry():
+    from django.utils import timezone
+    return timezone.now() + INVITE_LIFETIME
+
+
+class PageInvite(models.Model):
+    """A link that adds whoever opens it as a collaborator of the page.
+
+    Short-lived and limited in uses so it can be pasted into another browser
+    ("open it in incognito") without leaving a permanent door open.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name='invites')
+    token = models.CharField(max_length=64, unique=True, default=new_invite_token, editable=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='page_invites',
+    )
+    expires_at = models.DateTimeField(default=default_invite_expiry)
+    max_uses = models.PositiveSmallIntegerField(default=INVITE_MAX_USES)
+    uses = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['expires_at'])]
+
+    def __str__(self):
+        return f'Invite to {self.page_id} (expires {self.expires_at:%Y-%m-%d %H:%M})'
 
 
 class Block(models.Model):

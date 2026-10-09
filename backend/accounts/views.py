@@ -6,9 +6,13 @@ from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -87,6 +91,81 @@ class GuestView(APIView):
             raise GuestCapacityReached()
         user = create_guest()
         return _auth_response(user, status_code=status.HTTP_201_CREATED)
+
+
+class InviteInvalid(APIException):
+    """One answer for unknown, expired and used-up links, so a token cannot be probed."""
+    status_code = status.HTTP_404_NOT_FOUND
+    default_code = 'INVITE_INVALID'
+
+    def __init__(self):
+        super().__init__(detail={'error': 'Este enlace de invitación no es válido o ha caducado.', 'code': 'INVITE_INVALID'})
+
+
+class JoinView(APIView):
+    """POST /api/auth/join/ — open a page invite link.
+
+    A signed-in user becomes a collaborator of the page; someone without a
+    session gets a new guest (same limits and cookies as /guest/) who becomes
+    one. The owner just gets the page back.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthRateThrottle]
+
+    def post(self, request):
+        from pages.models import PageInvite
+
+        token = request.data.get('token') if hasattr(request.data, 'get') else None
+        invite = (
+            PageInvite.objects.select_related('page').filter(token=token).first()
+            if isinstance(token, str) and 0 < len(token) <= 100 else None
+        )
+        if invite is None or not self._is_open(invite):
+            raise InviteInvalid()
+        page = invite.page
+
+        if request.user.is_authenticated:
+            user = request.user
+            if page.owner_id != user.pk and not page.collaborators.filter(pk=user.pk).exists():
+                with transaction.atomic():
+                    self._use(invite)
+                    page.collaborators.add(user)
+            return Response({'page_id': str(page.pk), 'user': UserSerializer(user).data})
+
+        # Starting a session is what the guest throttle and capacity limit protect
+        self._throttle_guest_creation(request)
+        sweep_before_creating()
+        if active_guests().count() >= settings.GUEST_MAX_ACTIVE:
+            logger.warning('Guest capacity reached (%s active)', settings.GUEST_MAX_ACTIVE)
+            raise GuestCapacityReached()
+        with transaction.atomic():
+            # If the use cannot be taken (someone else took the last one) no guest is created
+            self._use(invite)
+            user = create_guest()
+            page.collaborators.add(user)
+        response = _auth_response(user, status_code=status.HTTP_201_CREATED)
+        response.data['page_id'] = str(page.pk)
+        return response
+
+    @staticmethod
+    def _is_open(invite) -> bool:
+        return invite.expires_at > timezone.now() and invite.uses < invite.max_uses
+
+    @staticmethod
+    def _use(invite) -> None:
+        """Take one use atomically: of five simultaneous joins on the last use, one wins."""
+        from pages.models import PageInvite
+
+        taken = PageInvite.objects.filter(
+            pk=invite.pk, uses__lt=F('max_uses'), expires_at__gt=timezone.now(),
+        ).update(uses=F('uses') + 1)
+        if taken == 0:
+            raise InviteInvalid()
+
+    def _throttle_guest_creation(self, request) -> None:
+        throttle = GuestCreationThrottle()
+        if not throttle.allow_request(request, self):
+            self.throttled(request, throttle.wait())
 
 
 class GuestClaimView(APIView):

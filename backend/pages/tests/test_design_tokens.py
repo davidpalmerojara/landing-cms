@@ -120,7 +120,9 @@ class TestCleanDesignTokens:
 @pytest.mark.django_db
 class TestDesignTokensApi:
     def _put(self, client, page, **fields):
-        return client.put(f'/api/pages/{page.id}/', {'name': page.name, 'blocks': [], **fields}, format='json')
+        page.refresh_from_db()
+        body = {'name': page.name, 'blocks': [], 'version': page.version, **fields}
+        return client.put(f'/api/pages/{page.id}/', body, format='json')
 
     def test_valid_tokens_are_saved(self, auth_client, page):
         resp = self._put(auth_client, page, design_tokens=valid_tokens())

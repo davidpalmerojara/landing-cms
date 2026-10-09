@@ -171,7 +171,7 @@ def test_page_serializer_accepts_valid_hero_payload():
 
 
 @pytest.mark.django_db
-def test_update_existing_block_merges_partial_data():
+def test_update_existing_block_replaces_its_data():
     user = UserFactory()
     page = PageFactory(owner=user)
     block = BlockFactory(
@@ -195,7 +195,8 @@ def test_update_existing_block_merges_partial_data():
     assert serializer.is_valid(), serializer.errors
     updated = serializer.save()
     updated_block = updated.blocks.get(id=block.id)
-    assert updated_block.data == {'title': 'New', 'subtitle': 'Keep me', 'alignment': 'left'}
+    # Replaced, not merged: a key the editor removed is really gone (ADR-024)
+    assert updated_block.data == {'title': 'New'}
 
 
 @pytest.mark.django_db

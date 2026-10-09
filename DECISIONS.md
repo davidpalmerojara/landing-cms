@@ -178,6 +178,16 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-018: Demostrar el email se queda con la cuenta
+
+- **Fecha**: 2026-10-09
+- **Contexto**: El registro con contraseña no verifica el email, así que alguien puede registrar el email de otra persona antes que ella (apropiación previa de la cuenta). El enlace mágico y Google sí demuestran que quien entra controla el email. Antes, Google respondía 409 en ese caso y el enlace mágico simplemente dejaba entrar.
+- **Decisión**: `User.email_verified` se marca cuando alguien entra con enlace mágico o Google. Si la cuenta tenía una contraseña sin confirmar, `confirm_email_owner()` desactiva esa contraseña, cierra todas las sesiones y deja de compartir las páginas. Para cerrar sesiones, `User.sessions_revoked_at` hace que se rechacen los access tokens emitidos antes (en la API y en el WebSocket), y los refresh tokens pasan a la lista negra. La respuesta lleva `password_disabled: true` y el frontend explica lo ocurrido.
+- **Alternativas**: Quitar el enlace mágico y Google de la demo (resuelve el riesgo pero pierde dos formas de entrar); verificar el email en el registro con un correo de confirmación (es lo ideal, pero necesita un envío de correo fiable que la demo gratuita no tiene garantizado).
+- **Consecuencias**: Quien se registró con contraseña de buena fe y después entra con enlace mágico pierde la contraseña y sigue entrando sin ella; la pantalla de aviso se lo explica. Si más adelante hay un correo de confirmación al registrarse, las cuentas confirmadas no se verán afectadas (`email_verified` ya existe). La migración marca como verificadas las cuentas sin contraseña o con Google.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

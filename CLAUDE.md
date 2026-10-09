@@ -176,6 +176,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 ### Modelo de datos (Django)
 
 - **User** (AbstractUser): UUID pk, email unico, google_id. Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
+- **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
 - **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), theme_id, custom_theme (JSON), design_tokens (JSON), SEO fields (seo_title, seo_description, og_*, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)

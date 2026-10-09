@@ -3,6 +3,7 @@ import { act, useEffect } from 'react';
 import type { ApiPage } from '@/lib/api';
 import { useEditorStore } from '@/store/editor-store';
 import { usePageSync } from '@/hooks/usePageSync';
+import { presetTokens, tokensToApi } from '@/lib/design-tokens';
 import { render } from '../mobile-editor/test-utils';
 
 vi.mock('@/lib/api', () => ({
@@ -32,8 +33,6 @@ function apiPage(overrides: Partial<ApiPage> = {}): ApiPage {
     name: 'Landing',
     slug: 'landing',
     status: 'draft',
-    theme_id: 'dark',
-    custom_theme: {},
     design_tokens: {},
     seo_title: '',
     seo_description: '',
@@ -131,7 +130,7 @@ describe('usePageSync', () => {
 
   it('falls back to the backup of the same page, replacing legacy block ids', async () => {
     localStorage.setItem(`paxl-page-backup:${PAGE_ID}`, JSON.stringify({
-      id: PAGE_ID, name: 'From backup', status: 'draft', slug: 'landing', themeId: 'default',
+      id: PAGE_ID, name: 'From backup', status: 'draft', slug: 'landing',
       blocks: [{ id: 'blk_legacy_1', type: 'hero', name: 'Hero', data: {}, styles: {} }],
     }));
     localStorage.setItem('paxl-page-backup:another-page', JSON.stringify({ id: 'another-page', blocks: [] }));
@@ -145,16 +144,16 @@ describe('usePageSync', () => {
     view.unmount();
   });
 
-  it('reloadFromApi takes theme, tokens and SEO from the server (version restore)', async () => {
+  it('reloadFromApi takes tokens and SEO from the server (version restore)', async () => {
     getPage.mockResolvedValue(apiPage());
     const view = await mount();
     act(() => { useEditorStore.getState().updateSeo('seoTitle', 'Local title'); });
 
-    getPage.mockResolvedValue(apiPage({ theme_id: 'ember', seo_title: 'Restored title' }));
+    getPage.mockResolvedValue(apiPage({ design_tokens: tokensToApi(presetTokens('ember')), seo_title: 'Restored title' }));
     await act(async () => { await sync.reloadFromApi(); });
 
     const { page, past } = useEditorStore.getState();
-    expect(page.themeId).toBe('ember');
+    expect(page.designTokens).toEqual(presetTokens('ember'));
     expect(page.seo?.seoTitle).toBe('Restored title');
     expect(past).toEqual([]);
     view.unmount();

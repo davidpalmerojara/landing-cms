@@ -56,8 +56,7 @@ class Page(models.Model):
         related_name='shared_pages',
         blank=True,
     )
-    theme_id = models.CharField(max_length=50, default='default', blank=True)
-    custom_theme = models.JSONField(default=dict, blank=True)
+    # The page theme: colours, typography, spacing, borders. {} = defaults. See pages/design_tokens.py
     design_tokens = models.JSONField(default=dict, blank=True)
 
     # SEO fields
@@ -181,7 +180,7 @@ class PageVersion(models.Model):
     page_metadata = models.JSONField(
         default=dict,
         blank=True,
-        help_text='Page-level fields at the time of snapshot (name, slug, theme_id, etc.)',
+        help_text='Page-level fields at the time of snapshot (name, slug, design_tokens, etc.)',
     )
     trigger = models.CharField(max_length=20, choices=Trigger.choices, default=Trigger.MANUAL)
     label = models.CharField(max_length=200, blank=True, default='')
@@ -234,8 +233,6 @@ def create_version_snapshot(page, user, trigger, label=''):
         'name': page.name,
         'slug': page.slug,
         'status': page.status,
-        'theme_id': page.theme_id,
-        'custom_theme': page.custom_theme,
         'design_tokens': page.design_tokens,
         'seo_title': page.seo_title,
         'seo_description': page.seo_description,

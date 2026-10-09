@@ -81,8 +81,6 @@ export interface ApiPublicPage {
   slug: string;
   status: string;
   name: string;
-  theme_id?: string;
-  custom_theme?: Record<string, string> | null;
   design_tokens?: Record<string, unknown> | null;
   seo_title?: string;
   seo_description?: string;
@@ -124,8 +122,6 @@ export interface ApiPage extends ApiSeoFields {
   name: string;
   slug: string;
   status: string;
-  theme_id?: string;
-  custom_theme?: Record<string, string> | null;
   design_tokens?: Record<string, unknown> | null;
   blocks: ApiBlock[];
   published_at?: string | null;
@@ -146,8 +142,6 @@ export interface ApiPageListItem extends ApiSeoFields {
   name: string;
   slug: string;
   status: string;
-  theme_id?: string;
-  custom_theme?: Record<string, unknown>;
   design_tokens?: Record<string, unknown> | null;
   block_count: number;
   owner_name?: string;
@@ -567,8 +561,6 @@ export interface ApiPageVersionDetail extends ApiPageVersion {
     name: string;
     slug: string;
     status: string;
-    theme_id: string;
-    custom_theme: Record<string, string> | null;
     // Present in snapshots taken since design tokens and SEO were added
     design_tokens?: Record<string, unknown>;
     seo_title?: string;

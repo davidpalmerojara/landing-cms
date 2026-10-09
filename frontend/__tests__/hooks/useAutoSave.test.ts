@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
 import { defaultBlockStyles } from '@/types/blocks';
 import { defaultSeoFields } from '@/types/page';
+import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Page } from '@/types/page';
 
 // We test useAutoSave indirectly by mimicking what it does:
@@ -21,7 +22,7 @@ function makePage(id: string, blockCount = 1): Page {
     name: 'Test',
     status: 'draft',
     slug: 'test',
-    themeId: 'default',
+    designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks,
   };

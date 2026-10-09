@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
 import { defaultBlockStyles, type Block } from '@/types/blocks';
 import { defaultSeoFields, type Page } from '@/types/page';
-import { defaultDesignTokens } from '@/lib/design-tokens';
+import { cloneDesignTokens, defaultDesignTokens, presetTokens } from '@/lib/design-tokens';
 
 function makeBlock(id: string, type = 'hero'): Block {
   return {
@@ -20,7 +20,7 @@ function makePage(blocks: Block[], overrides: Partial<Page> = {}): Page {
     name: 'Test Page',
     status: 'draft',
     slug: 'test-page',
-    themeId: 'default',
+    designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks,
     ...overrides,
@@ -308,14 +308,15 @@ describe('editor-store', () => {
       expect(tokens?.colors.primary).toBe('#ff0000');
     });
 
-    it('initializes designTokens from defaults if not present', () => {
-      // default page from resetStore has no designTokens
+    it('keeps the rest of the theme when one color is edited', () => {
+      const dark = presetTokens('dark');
+      resetStore(undefined, { designTokens: dark });
+
       useEditorStore.getState().updateDesignTokenColor('accent', '#123456');
+
       const tokens = useEditorStore.getState().page.designTokens;
-      expect(tokens).toBeDefined();
-      expect(tokens!.colors.accent).toBe('#123456');
-      // other colors should be defaults
-      expect(tokens!.colors.primary).toBe(defaultDesignTokens.colors.primary);
+      expect(tokens.colors).toEqual({ ...dark.colors, accent: '#123456' });
+      expect(tokens.typography).toEqual(dark.typography);
     });
   });
 

@@ -2,15 +2,13 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { Page, SeoFields } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
-import type { DesignTokens, ColorTokens, TypographyTokens, SpacingTokens, BorderTokens } from '@/lib/design-tokens';
-import { defaultDesignTokens } from '@/lib/design-tokens';
+import type { ColorTokens, TypographyTokens, SpacingTokens, BorderTokens } from '@/lib/design-tokens';
+import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Block, BlockStyles } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
 import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
 import { newBlockId } from '@/lib/block-factory';
-import { defaultCustomThemeColors } from '@/lib/themes';
-import type { ThemeColors } from '@/lib/themes';
 
 // --- Default page (hardcoded to avoid circular dep: block-registry → blocks → EditableText → editor-store) ---
 
@@ -20,7 +18,7 @@ function getDefaultPage(): Page {
     name: 'Acme Landing',
     status: 'draft',
     slug: 'acme-landing',
-    themeId: 'default',
+    designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks: [
       { id: 'blk_default_1', type: 'hero', name: 'Hero Section', data: { title: 'Crea landing pages increíbles.', subtitle: 'Un editor visual de próxima generación diseñado para equipos ambiciosos.', buttonText: 'Comenzar gratis', backgroundImage: '', alignment: 'center' }, styles: { ...defaultBlockStyles } },
@@ -162,8 +160,6 @@ interface EditorActions {
   togglePreview: () => void;
   setLeftTab: (tab: LeftTab) => void;
   toggleInspectorSection: (section: keyof InspectorSections) => void;
-  setTheme: (themeId: string) => void;
-  setCustomThemeColor: (key: string, value: string) => void;
   updateDesignTokenColor: (key: keyof ColorTokens, value: string) => void;
   updateDesignTokenTypography: (key: keyof TypographyTokens, value: string | number) => void;
   updateDesignTokenSpacing: (key: keyof SpacingTokens, value: string) => void;
@@ -478,27 +474,9 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
         [section]: !state.inspectorSections[section],
       },
     })),
-  setTheme: (themeId) => {
-    get().setPageWithHistory((prev) => ({
-      ...prev,
-      themeId,
-      customTheme: themeId === 'custom' && !prev.customTheme
-        ? { ...defaultCustomThemeColors }
-        : prev.customTheme,
-    }));
-  },
-  setCustomThemeColor: (key, value) => {
-    get().setPageWithHistory((prev) => ({
-      ...prev,
-      customTheme: {
-        ...(prev.customTheme || defaultCustomThemeColors),
-        [key]: value,
-      } as ThemeColors,
-    }));
-  },
   updateDesignTokenColor: (key, value) => {
     get().setPageWithHistory((prev) => {
-      const tokens = prev.designTokens || { ...defaultDesignTokens };
+      const tokens = prev.designTokens;
       return {
         ...prev,
         designTokens: {
@@ -513,7 +491,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
   updateDesignTokenTypography: (key, value) => {
     get().setPageWithHistory((prev) => {
-      const tokens = prev.designTokens || { ...defaultDesignTokens };
+      const tokens = prev.designTokens;
       return {
         ...prev,
         designTokens: {
@@ -528,7 +506,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
   updateDesignTokenSpacing: (key, value) => {
     get().setPageWithHistory((prev) => {
-      const tokens = prev.designTokens || { ...defaultDesignTokens };
+      const tokens = prev.designTokens;
       return {
         ...prev,
         designTokens: {
@@ -543,7 +521,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
   updateDesignTokenBorders: (key, value) => {
     get().setPageWithHistory((prev) => {
-      const tokens = prev.designTokens || { ...defaultDesignTokens };
+      const tokens = prev.designTokens;
       return {
         ...prev,
         designTokens: {
@@ -558,7 +536,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
   setDesignTokenColors: (colors) => {
     get().setPageWithHistory((prev) => {
-      const tokens = prev.designTokens || { ...defaultDesignTokens };
+      const tokens = prev.designTokens;
       return { ...prev, designTokens: { ...tokens, colors } };
     });
   },

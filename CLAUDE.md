@@ -180,7 +180,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **User** (AbstractUser): UUID pk, email unico, google_id. Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
-- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), theme_id, custom_theme (JSON), design_tokens (JSON), SEO fields (seo_title, seo_description, og_*, noindex)
+- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), design_tokens (JSON, el tema completo de la pagina, ADR-020), SEO fields (seo_title, seo_description, og_*, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
@@ -354,7 +354,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 - Auto-save con debounce 3s
 - Paginas publicas en `/p/[slug]` renderizadas en el servidor con SEO metadata; datos en cache de Next que Django invalida al publicar (`REVALIDATE_SECRET`, ADR-019); fuentes del tema autoalojadas con next/font
 - Version history con snapshots y restore
-- Temas predefinidos (8, los usan las plantillas via `theme_id`) + Design Tokens custom (color, tipografia, spacing, borders) editables en la vista Estilos. Ambos se resuelven en `lib/page-theme.ts`
+- Tema de pagina = Design Tokens (color, tipografia, spacing, borders) editables en la vista Estilos, con 14 presets de paleta (los 8 temas antiguos incluidos; las plantillas usan `presetId`). Se resuelven en `lib/page-theme.ts` (ADR-020)
 - Responsive styles por bloque (tablet/mobile overrides)
 - AI generation (full page + edit block) con Anthropic y Google
 - Analytics tracking (pageview, click, scroll, CTA conversion)

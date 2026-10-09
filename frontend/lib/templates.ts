@@ -1,13 +1,16 @@
 import { defaultBlockStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
 import { newBlockId } from '@/lib/block-factory';
+import { presetTokens } from '@/lib/design-tokens';
+import type { DesignTokens } from '@/lib/design-tokens';
 
 
 export interface PageTemplate {
   id: string;
   name: string;
   description: string;
-  themeId: string;
+  /** Id of the tokenPresets entry whose colors the page starts with */
+  presetId: string;
   category: string;
   /** Block types in order; each can override data and styles */
   blocks: Array<{
@@ -20,7 +23,7 @@ export interface PageTemplate {
 /** Instantiate a template's blocks with unique IDs */
 export function instantiateTemplate(template: PageTemplate): {
   blocks: Block[];
-  themeId: string;
+  designTokens: DesignTokens;
   name: string;
 } {
   const blocks: Block[] = template.blocks.map((def) => ({
@@ -30,7 +33,7 @@ export function instantiateTemplate(template: PageTemplate): {
     data: { ...def.data },
     styles: { ...defaultBlockStyles, ...def.styles },
   }));
-  return { blocks, themeId: template.themeId, name: template.name };
+  return { blocks, designTokens: presetTokens(template.presetId), name: template.name };
 }
 
 // ─── Template definitions ────────────────────────────────────────
@@ -42,7 +45,7 @@ export const pageTemplates: PageTemplate[] = [
     id: 'saas-landing',
     name: 'SaaS Landing',
     description: 'Página de producto SaaS con hero, stats, features, testimonios, pricing, FAQ y CTA.',
-    themeId: 'dark',
+    presetId: 'dark',
     category: 'Negocio',
     blocks: [
       {
@@ -172,7 +175,7 @@ export const pageTemplates: PageTemplate[] = [
     id: 'portfolio',
     name: 'Portfolio',
     description: 'Portafolio personal de diseñador con proyectos, servicios, testimonios y contacto.',
-    themeId: 'slate',
+    presetId: 'slate',
     category: 'Creativo',
     blocks: [
       {
@@ -261,7 +264,7 @@ export const pageTemplates: PageTemplate[] = [
     id: 'restaurant',
     name: 'Restaurante',
     description: 'Landing para restaurante de brasa con galería de platos, testimonios, ubicación y reservas.',
-    themeId: 'ember',
+    presetId: 'ember',
     category: 'Gastronomía',
     blocks: [
       {
@@ -351,7 +354,7 @@ export const pageTemplates: PageTemplate[] = [
     id: 'coming-soon',
     name: 'Coming Soon',
     description: 'Página de prelanzamiento con hero impactante, adelanto de features y lista de espera.',
-    themeId: 'dark',
+    presetId: 'dark',
     category: 'Lanzamiento',
     blocks: [
       {

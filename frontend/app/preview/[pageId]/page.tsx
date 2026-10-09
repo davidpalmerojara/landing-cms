@@ -125,7 +125,7 @@ export default function PreviewPage() {
     );
   }
 
-  const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
+  const themeVars = pageThemeVars(page.designTokens);
 
   return (
     <div className="min-h-screen bg-white">

@@ -104,8 +104,8 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
   const setInteractionState = useEditorStore((s) => s.setInteractionState);
 
   const themeVars = useMemo(
-    () => pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens }),
-    [page.themeId, page.customTheme, page.designTokens],
+    () => pageThemeVars(page.designTokens),
+    [page.designTokens],
   );
 
   const viewportRef = useRef<HTMLDivElement>(null);

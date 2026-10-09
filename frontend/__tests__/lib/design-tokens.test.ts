@@ -16,6 +16,7 @@ import {
   fontStack,
   fontVariable,
   googleFonts,
+  scaleRatios,
   type DesignTokens,
 } from '@/lib/design-tokens';
 
@@ -23,10 +24,6 @@ describe('design-tokens', () => {
   // --- tokensToCssVars ---
   describe('tokensToCssVars', () => {
     const vars = tokensToCssVars(defaultDesignTokens);
-
-    it('generates --bp-color-primary from tokens.colors.primary', () => {
-      expect(vars['--bp-color-primary']).toBe(defaultColorTokens.primary);
-    });
 
     it('generates --bp-font-heading from the self-hosted font, with the name and sans-serif as fallbacks', () => {
       expect(vars['--bp-font-heading']).toBe("var(--font-page-inter, 'Inter'), sans-serif");
@@ -53,9 +50,9 @@ describe('design-tokens', () => {
       expect(vars['--bp-radius-full']).toBe('9999px');
     });
 
-    it('includes all 11 color properties', () => {
+    it('leaves colors to --theme-* (--bp-color-* belongs to the editor chrome)', () => {
       const colorKeys = Object.keys(vars).filter((k) => k.startsWith('--bp-color-'));
-      expect(colorKeys).toHaveLength(11);
+      expect(colorKeys).toEqual([]);
     });
   });
 
@@ -75,8 +72,8 @@ describe('design-tokens', () => {
       expect(vars['--theme-text']).toBe(defaultColorTokens.textPrimary);
     });
 
-    it('generates 9 theme vars total', () => {
-      expect(Object.keys(vars)).toHaveLength(9);
+    it('generates 8 theme vars total', () => {
+      expect(Object.keys(vars)).toHaveLength(8);
     });
   });
 
@@ -97,16 +94,16 @@ describe('design-tokens', () => {
 
   // --- apiToTokens edge cases ---
   describe('apiToTokens', () => {
-    it('returns undefined for null input', () => {
-      expect(apiToTokens(null)).toBeUndefined();
+    it('returns the defaults for null input', () => {
+      expect(apiToTokens(null)).toEqual(defaultDesignTokens);
     });
 
-    it('returns undefined for undefined input', () => {
-      expect(apiToTokens(undefined)).toBeUndefined();
+    it('returns the defaults for undefined input', () => {
+      expect(apiToTokens(undefined)).toEqual(defaultDesignTokens);
     });
 
-    it('returns undefined for empty object', () => {
-      expect(apiToTokens({})).toBeUndefined();
+    it('returns the defaults for an empty object (a page that saved no tokens)', () => {
+      expect(apiToTokens({})).toEqual(defaultDesignTokens);
     });
 
     it('uses defaults when sections are missing', () => {
@@ -178,5 +175,25 @@ describe('theme fonts', () => {
 
   it('keeps unknown names as plain families and strips characters that could escape the value', () => {
     expect(fontStack("Comic Sans'; } body { display:none")).toBe("'Comic Sans  body  display:none', sans-serif");
+  });
+});
+
+describe('server-side validation (backend/pages/design_tokens.py)', () => {
+  // The server keeps its own copy of the lists the editor offers: read it as
+  // text so the two cannot drift apart unnoticed.
+  const source = readFileSync(resolve(__dirname, '../../../backend/pages/design_tokens.py'), 'utf8');
+
+  it('accepts exactly the fonts the editor offers', () => {
+    const block = source.match(/ALLOWED_FONTS = \(([^)]*)\)/)![1];
+    const serverFonts = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+
+    expect(serverFonts).toEqual(googleFonts);
+  });
+
+  it('accepts exactly the type scale ratios the editor offers', () => {
+    const block = source.match(/ALLOWED_SCALE_RATIOS = \(([^)]*)\)/)![1];
+    const serverRatios = block.split(',').map((n) => n.trim()).filter(Boolean).map(Number);
+
+    expect(serverRatios).toEqual(scaleRatios.map((r) => r.value));
   });
 });

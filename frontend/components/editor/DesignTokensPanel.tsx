@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import {
-  defaultDesignTokens, tokenPresets, scaleRatios, googleFonts,
+  tokenPresets, scaleRatios, googleFonts,
   meetsWcagAA, contrastRatio,
 } from '@/lib/design-tokens';
 import type {
@@ -17,6 +17,8 @@ import type {
 } from '@/lib/design-tokens';
 
 // --- Color Picker Field ---
+
+const COMPLETE_HEX = /^#[0-9a-f]{6}$/i;
 
 function ColorField({
   label,
@@ -29,11 +31,27 @@ function ColorField({
   value: string;
   onChange: (v: string) => void;
 }) {
+  // What is being typed. Only a complete color reaches the page tokens, which
+  // are saved as typed and validated by the server.
+  const [draft, setDraft] = useState(value);
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    setDraft(value);
+  }
+
+  const handleText = (text: string) => {
+    if (!/^#[0-9a-fA-F]{0,6}$/.test(text)) return;
+    setDraft(text);
+    if (COMPLETE_HEX.test(text)) onChange(text);
+  };
+
   return (
     <div className="flex items-center gap-3 group">
       <label className="relative w-8 h-8 rounded-lg border border-default overflow-hidden cursor-pointer shrink-0 shadow-inner hover:border-default transition-colors">
         <input
           type="color"
+          aria-label={label}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -46,11 +64,10 @@ function ColorField({
       </div>
       <input
         type="text"
-        value={value}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v);
-        }}
+        value={draft}
+        onChange={(e) => handleText(e.target.value)}
+        onBlur={() => setDraft(value)}
+        aria-label={label}
         className="w-[72px] bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-primary"
       />
     </div>
@@ -230,7 +247,7 @@ export default function DesignTokensPanel() {
   const updateBorders = useEditorStore((s) => s.updateDesignTokenBorders);
   const setDesignTokenColors = useEditorStore((s) => s.setDesignTokenColors);
 
-  const tokens = page.designTokens || defaultDesignTokens;
+  const tokens = page.designTokens;
   const colors = tokens.colors;
   const typo = tokens.typography;
   const spacing = tokens.spacing;

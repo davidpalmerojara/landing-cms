@@ -15,7 +15,6 @@ const page: ApiPublicPage = {
   slug: 'mi-landing',
   status: 'published',
   name: 'Mi landing',
-  theme_id: 'default',
   design_tokens: {},
   blocks: Object.entries(blockRegistry).map(([type, definition], order) => ({
     id: blockIds[order],

@@ -580,7 +580,7 @@ function MobilePreview({
   const t = useTranslations();
   const [showBar, setShowBar] = useState(true);
 
-  const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
+  const themeVars = pageThemeVars(page.designTokens);
 
   return (
     <div className="fixed inset-0 z-80 bg-white">

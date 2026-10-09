@@ -3,17 +3,18 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
-import { getThemeById } from '@/lib/themes';
+import { pageThemeVars } from '@/lib/page-theme';
+import type { DesignTokens } from '@/lib/design-tokens';
 import type { ApiPreviewBlock } from '@/lib/api';
 
 const VIRTUAL_WIDTH = 1280;
 
 interface PagePreviewThumbnailProps {
   blocks: ApiPreviewBlock[];
-  themeId?: string;
+  designTokens: DesignTokens;
 }
 
-export default function PagePreviewThumbnail({ blocks, themeId }: PagePreviewThumbnailProps) {
+export default function PagePreviewThumbnail({ blocks, designTokens }: PagePreviewThumbnailProps) {
   const t = useTranslations('preview');
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
@@ -28,20 +29,7 @@ export default function PagePreviewThumbnail({ blocks, themeId }: PagePreviewThu
     return () => observer.disconnect();
   }, []);
 
-  const themeVars = useMemo(() => {
-    const theme = getThemeById(themeId || 'default');
-    return {
-      '--theme-primary': theme.colors.primary,
-      '--theme-primary-hover': theme.colors.primaryHover,
-      '--theme-secondary': theme.colors.secondary,
-      '--theme-bg': theme.colors.background,
-      '--theme-surface': theme.colors.surface,
-      '--theme-text': theme.colors.text,
-      '--theme-text-muted': theme.colors.textMuted,
-      '--theme-border': theme.colors.border,
-      '--theme-accent': theme.colors.accent,
-    } as React.CSSProperties;
-  }, [themeId]);
+  const themeVars = useMemo(() => pageThemeVars(designTokens), [designTokens]);
 
   if (blocks.length === 0) {
     return (

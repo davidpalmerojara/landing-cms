@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
 import { isBlockId, newBlockId } from '@/lib/block-factory';
+import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Page } from '@/types/page';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ApiPage } from '@/lib/api';
@@ -38,6 +39,8 @@ function readBackup(pageId: string): Page | null {
     if (parsed?.id !== pageId || !Array.isArray(parsed.blocks)) return null;
     return {
       ...parsed,
+      // Backups written before design tokens were the only theme have none
+      designTokens: parsed.designTokens ?? cloneDesignTokens(defaultDesignTokens),
       // Backups written before ADR-014 may hold non-UUID block ids
       blocks: parsed.blocks.map((b) => ({
         ...b,

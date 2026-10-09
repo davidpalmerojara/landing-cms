@@ -6,7 +6,6 @@ import type { ApiPublicPage } from '@/lib/api';
 import { apiToTokens } from '@/lib/design-tokens';
 import { apiBlocksToLocal } from '@/lib/page-mapping';
 import { pageThemeVars } from '@/lib/page-theme';
-import type { ThemeColors } from '@/lib/themes';
 import PageRenderer from '@/components/renderer/PageRenderer';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
@@ -18,12 +17,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   const t = useTranslations();
   const blocks = apiBlocksToLocal(page.blocks);
-  // Convert first: the API sends {} for "no tokens", which is truthy.
-  const themeVars = pageThemeVars({
-    themeId: page.theme_id,
-    customTheme: page.custom_theme as ThemeColors | undefined,
-    designTokens: apiToTokens(page.design_tokens as Record<string, unknown> | undefined),
-  });
+  const themeVars = pageThemeVars(apiToTokens(page.design_tokens));
 
   if (blocks.length === 0) {
     return (

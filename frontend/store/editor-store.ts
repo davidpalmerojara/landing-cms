@@ -20,6 +20,7 @@ import {
   pathKey,
   removeListItem,
   setAtPath,
+  splitApiStyles,
   withBlockData,
 } from '@/lib/block-data';
 
@@ -82,16 +83,30 @@ interface InspectorSections {
   styles: boolean;
 }
 
-export interface CollabUser {
-  id: string;
+/** One open collaboration socket (a user with two tabs has two). */
+export interface PresenceEntry {
+  connectionId: string;
+  userId: string;
   username: string;
-  email: string;
-  avatar: string;
+}
+
+/**
+ * State of the collaboration socket. `offline`: gave up reconnecting;
+ * `revoked`: access removed while editing; `unavailable`: the owner's plan has
+ * no real-time collaboration (saving still works).
+ */
+export type CollabStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'revoked' | 'unavailable';
+
+/** The page as the server last had it, and its version: the base of the three-way merge. */
+export interface SyncBase {
+  page: Page;
+  version: number;
 }
 
 export interface CursorPosition {
   x: number; // 0-1 relative to canvas width
   y: number; // 0-1 relative to canvas height
+  connectionId: string;
   userId: string;
   username: string;
   color: string;
@@ -116,6 +131,21 @@ export function getUserColor(userId: string) {
     hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
   }
   return COLLAB_COLORS[Math.abs(hash) % COLLAB_COLORS.length];
+}
+
+/** Sockets on the page other than this tab's (another person, or this person in another tab). */
+export function countOtherConnections({ presence, myConnectionId }: { presence: PresenceEntry[]; myConnectionId: string | null }): number {
+  return presence.filter((entry) => entry.connectionId !== myConnectionId).length;
+}
+
+/** One entry per person (first connection wins): avatars show people, not tabs. */
+export function uniquePresenceUsers(presence: PresenceEntry[]): PresenceEntry[] {
+  const seen = new Set<string>();
+  return presence.filter((entry) => {
+    if (seen.has(entry.userId)) return false;
+    seen.add(entry.userId);
+    return true;
+  });
 }
 
 interface EditorState {
@@ -148,10 +178,15 @@ interface EditorState {
 
   // Collaboration
   myUserId: string | null;
-  connectedUsers: CollabUser[];
-  blockLocks: Record<string, string>; // blockId → userId
-  cursorPositions: Record<string, CursorPosition>; // userId → cursor
+  /** This tab's socket, sent as X-Connection-Id so the server can skip our own echo */
+  myConnectionId: string | null;
+  collabStatus: CollabStatus;
+  /** Every open socket on the page, ours included */
+  presence: PresenceEntry[];
+  blockLocks: Record<string, PresenceEntry>; // blockId → holding connection
+  cursorPositions: Record<string, CursorPosition>; // connectionId → cursor
   isRemoteUpdate: boolean;
+  syncBase: SyncBase | null;
 
   // Toasts
   toasts: ToastData[];
@@ -232,15 +267,34 @@ interface EditorActions {
 
   // Collaboration
   setMyUserId: (id: string) => void;
-  setConnectedUsers: (users: CollabUser[]) => void;
-  setBlockLocks: (locks: Record<string, string>) => void;
-  setBlockLock: (blockId: string, userId: string | null) => void;
-  setCursorPosition: (userId: string, x: number, y: number) => void;
-  removeCursorPosition: (userId: string) => void;
+  setCollabStatus: (status: CollabStatus) => void;
+  /** Start of a session: own connection and everyone present. */
+  setPresence: (connectionId: string | null, entries: PresenceEntry[]) => void;
+  addPresence: (entry: PresenceEntry) => void;
+  /** A socket left: its cursor goes too. */
+  removePresence: (connectionId: string) => void;
+  /** Forget everything about the session (socket closed or editor left). */
+  clearCollaboration: () => void;
+  setBlockLocks: (locks: Record<string, PresenceEntry>) => void;
+  setBlockLock: (blockId: string, holder: PresenceEntry | null) => void;
+  setCursorPosition: (connectionId: string, x: number, y: number) => void;
+  removeCursorPosition: (connectionId: string) => void;
+  setSyncBase: (base: SyncBase | null) => void;
+  /**
+   * Replace the page with one merged from the server: no undo step, no
+   * autosave. `rebase` brings each undo/redo snapshot up to date so undoing a
+   * local edit does not revert someone else's. The selection is kept while
+   * its block still exists.
+   */
+  applyRemotePage: (page: Page, rebase?: (snapshot: Page) => Page) => void;
   /** Replace a block's type and data (AI edit). Returns false, changing nothing, for an unknown type. */
   replaceBlockData: (blockId: string, newType: string, newData: unknown) => boolean;
-  /** Merge data/styles received from another editor; data is normalized for the block's type. */
-  applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: Record<string, unknown>) => void;
+  /**
+   * Live edit relayed from the block's lock holder: its data (normalized) and
+   * styles (API shape) REPLACE the block's, in the page, the undo snapshots
+   * and the sync base, so neither undo nor the next merge brings back the old text.
+   */
+  applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: unknown) => void;
 
   // Toasts
   addToast: (message: string, variant?: 'success' | 'error' | 'info') => void;
@@ -279,10 +333,13 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   isSaved: false,
   autoSaveStatus: 'idle',
   myUserId: null,
-  connectedUsers: [],
+  myConnectionId: null,
+  collabStatus: 'idle',
+  presence: [],
   blockLocks: {},
   cursorPositions: {},
   isRemoteUpdate: false,
+  syncBase: null,
   viewportState: { zoom: 1, x: 0, y: 0 },
   interactionState: { isPanning: false, isSpacePressed: false, isMiddleClickPanning: false },
   toasts: [],
@@ -669,33 +726,82 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
 
   // --- Collaboration ---
   setMyUserId: (id) => set({ myUserId: id }),
-  setConnectedUsers: (users) => set({ connectedUsers: users }),
+  setCollabStatus: (status) => set({ collabStatus: status }),
+  setPresence: (connectionId, entries) => {
+    const own = entries.find((e) => e.connectionId === connectionId);
+    set((state) => ({
+      myConnectionId: connectionId,
+      myUserId: own?.userId ?? state.myUserId,
+      presence: entries,
+    }));
+  },
+  addPresence: (entry) => {
+    set((state) => ({
+      presence: [...state.presence.filter((e) => e.connectionId !== entry.connectionId), entry],
+    }));
+  },
+  removePresence: (connectionId) => {
+    set((state) => {
+      const cursors = Object.fromEntries(
+        Object.entries(state.cursorPositions).filter(([id]) => id !== connectionId),
+      );
+      const locks = Object.fromEntries(
+        Object.entries(state.blockLocks).filter(([, holder]) => holder.connectionId !== connectionId),
+      );
+      return {
+        presence: state.presence.filter((e) => e.connectionId !== connectionId),
+        cursorPositions: cursors,
+        blockLocks: locks,
+      };
+    });
+  },
+  clearCollaboration: () => {
+    set({ myConnectionId: null, presence: [], blockLocks: {}, cursorPositions: {} });
+  },
   setBlockLocks: (locks) => set({ blockLocks: locks }),
-  setBlockLock: (blockId, userId) => {
+  setBlockLock: (blockId, holder) => {
     set((state) => {
       const newLocks = { ...state.blockLocks };
-      if (userId) newLocks[blockId] = userId;
+      if (holder) newLocks[blockId] = holder;
       else delete newLocks[blockId];
       return { blockLocks: newLocks };
     });
   },
-  setCursorPosition: (userId, x, y) => {
-    const { connectedUsers } = get();
-    const user = connectedUsers.find((u) => u.id === userId);
-    if (!user) return;
-    const color = getUserColor(userId);
+  setCursorPosition: (connectionId, x, y) => {
+    const entry = get().presence.find((e) => e.connectionId === connectionId);
+    if (!entry) return;
+    // Colored by user: two tabs of one person look alike
+    const color = getUserColor(entry.userId);
     set((state) => ({
       cursorPositions: {
         ...state.cursorPositions,
-        [userId]: { x, y, userId, username: user.username, color: color.hex, timestamp: Date.now() },
+        [connectionId]: {
+          x, y, connectionId, userId: entry.userId, username: entry.username, color: color.hex, timestamp: Date.now(),
+        },
       },
     }));
   },
-  removeCursorPosition: (userId) => {
+  removeCursorPosition: (connectionId) => {
     set((state) => {
-      const { [userId]: _, ...rest } = state.cursorPositions;
+      const { [connectionId]: _, ...rest } = state.cursorPositions;
       return { cursorPositions: rest };
     });
+  },
+  setSyncBase: (base) => set({ syncBase: base }),
+  applyRemotePage: (page, rebase) => {
+    const { selectedBlockId, pendingDeleteBlockId } = get();
+    const exists = (id: string | null) => id !== null && page.blocks.some((b) => b.id === id);
+    set((state) => ({
+      page,
+      past: rebase ? state.past.map(rebase) : state.past,
+      future: rebase ? state.future.map(rebase) : state.future,
+      selectedBlockId: exists(selectedBlockId) ? selectedBlockId : null,
+      pendingDeleteBlockId: exists(pendingDeleteBlockId) ? pendingDeleteBlockId : null,
+      // The next local edit starts its own undo step
+      historyCoalesceKey: null,
+      isRemoteUpdate: true,
+    }));
+    queueMicrotask(() => set({ isRemoteUpdate: false }));
   },
   replaceBlockData: (blockId, newType, newData) => {
     if (!isBlockType(newType)) return false;
@@ -707,16 +813,21 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   applyRemoteBlockUpdate: (blockId, data, styles) => {
-    set({ isRemoteUpdate: true });
-    const { page } = get();
-    const newPage = {
-      ...page,
-      blocks: mapBlock(page.blocks, blockId, (block) => {
-        const withData = isPlainObject(data) ? withBlockData(block, { ...block.data, ...data }) : block;
-        return styles ? { ...withData, styles: { ...withData.styles, ...styles } } : withData;
-      }),
+    const replace = (block: Block): Block => {
+      const withData = isPlainObject(data) ? withBlockData(block, data) : block;
+      if (!isPlainObject(styles)) return withData;
+      const { styles: base, responsiveStyles } = splitApiStyles(styles);
+      // Rebuilt from its parts so per-device styles absent from the relay are dropped
+      return makeBlock({ id: withData.id, name: withData.name, styles: base, responsiveStyles }, withData.type, withData.data);
     };
-    set({ page: newPage, isSaved: false });
+    const inPage = (page: Page): Page => ({ ...page, blocks: mapBlock(page.blocks, blockId, replace) });
+    set((state) => ({
+      page: inPage(state.page),
+      past: state.past.map(inPage),
+      future: state.future.map(inPage),
+      syncBase: state.syncBase ? { ...state.syncBase, page: inPage(state.syncBase.page) } : null,
+      isRemoteUpdate: true,
+    }));
     // Reset flag after microtask so auto-save subscriber can check it
     queueMicrotask(() => set({ isRemoteUpdate: false }));
   },

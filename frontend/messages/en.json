@@ -399,7 +399,6 @@
     "deleteBlockTitle": "Delete block",
     "deleteBlockMessage": "Delete \"{name}\"? You can undo this action with Ctrl+Z.",
     "restoreVersionSuccess": "Version restored",
-    "restoredByCollaborator": "{name} restored version {number}",
     "publishSuccess": "Page published at {path}",
     "publishError": "The page could not be published. Please try again.",
     "unpublishedChanges": "Unpublished changes",
@@ -754,7 +753,19 @@
     "invite": "Invite",
     "owner": "Owner",
     "removeCollaborator": "Remove collaborator",
-    "empty": "No collaborators yet. Invite someone by email."
+    "empty": "No collaborators yet. Invite someone by email.",
+    "inviteLinkTitle": "Invite with a link",
+    "inviteLinkDescription": "Whoever opens the link can edit the page with you. It expires in 24 hours and works for a few people.",
+    "inviteLinkCreate": "Create invite link",
+    "inviteLinkCreating": "Creating link…",
+    "inviteLinkLabel": "Invite link",
+    "inviteLinkCopy": "Copy link",
+    "inviteLinkCopied": "Link copied",
+    "inviteLinkCopyError": "Could not copy. Select the link and copy it by hand.",
+    "inviteLinkHint": "Open it in an incognito window to try real-time editing.",
+    "inviteLinkError": "Could not create the link. Please try again.",
+    "guestEmailLocked": "Inviting by email needs an account. You can invite with a link.",
+    "notOwner": "Only the owner can invite or remove collaborators."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -872,5 +883,30 @@
     "pagination": "Messages pagination",
     "previous": "Previous",
     "pageOf": "Page {page} of {total}"
+  },
+  "collab": {
+    "lockRejected": "{name} is editing this block",
+    "lockRejectedAnonymous": "Someone else is editing this block",
+    "planLimit": "Real-time editing needs the page owner's Pro plan. Your changes are still saved.",
+    "saveConflict": "Could not save: someone else is changing the page at the same time. It will try again with your next change.",
+    "reconnecting": "Reconnecting…",
+    "offline": "No real time",
+    "offlineHint": "The real-time connection was lost. Your changes are still saved; reload the page to see other people's changes live again.",
+    "revokedTitle": "You no longer have access to this page",
+    "revokedBody": "The owner stopped sharing it with you. Changes you make from now on will not be saved.",
+    "restoredByCollaborator": "{name} restored an earlier version"
+  },
+  "join": {
+    "joining": "Opening the shared page…",
+    "invalidTitle": "This link is not valid",
+    "invalidBody": "It may have expired or been used by too many people. Ask whoever sent it for a new one.",
+    "throttledTitle": "Too many attempts",
+    "throttledBody": "Many sessions were started from this connection. Wait a while and open the link again.",
+    "capacityTitle": "No room right now",
+    "capacityBody": "There are too many guest sessions open. Please try again later.",
+    "errorTitle": "Could not open the page",
+    "errorBody": "Something went wrong. Open the link again in a moment.",
+    "retry": "Try again",
+    "goHome": "Go to home page"
   }
 }

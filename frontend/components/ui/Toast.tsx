@@ -44,7 +44,7 @@ function Toast({ toast, onDismiss }: ToastProps) {
 }
 
 export function ToastContainer({ toasts, onDismiss }: { toasts: ToastData[]; onDismiss: (id: string) => void }) {
-  if (toasts.length === 0) return null;
+  // The live region stays mounted so screen readers announce the first toast too
   return (
     <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2" aria-live="polite">
       {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={onDismiss} />)}

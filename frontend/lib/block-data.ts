@@ -22,7 +22,8 @@ import type {
   TestimonialItem,
   TimelineEvent,
 } from '@/types/block-data';
-import type { Block, BlockBase, BlockOf } from '@/types/blocks';
+import type { Block, BlockBase, BlockOf, BlockStyles, ResponsiveStyles } from '@/types/blocks';
+import { defaultBlockStyles } from '@/types/blocks';
 
 // --- Schema DSL ---
 
@@ -175,6 +176,26 @@ export function makeBlock<K extends BlockType>(base: BlockBase, type: K, rawData
 /** `block` with new data (normalized for its type). */
 export function withBlockData(block: Block, rawData: unknown): Block {
   return makeBlock(block, block.type, rawData);
+}
+
+/**
+ * Styles as the API sends them (per-device overrides inside `responsive`)
+ * split into the editor's base styles and responsive styles.
+ */
+export function splitApiStyles(raw: unknown): { styles: BlockStyles; responsiveStyles?: ResponsiveStyles } {
+  const { responsive, ...base } = isPlainObject(raw) ? raw : {};
+  return {
+    styles: { ...defaultBlockStyles, ...base } as BlockStyles,
+    ...(isPlainObject(responsive) ? { responsiveStyles: responsive as ResponsiveStyles } : {}),
+  };
+}
+
+/** A block's styles in the API's shape: per-device overrides travel inside `responsive`. */
+export function blockStylesToApi(block: Pick<Block, 'styles' | 'responsiveStyles'>): Record<string, unknown> {
+  return {
+    ...block.styles,
+    ...(block.responsiveStyles ? { responsive: block.responsiveStyles } : {}),
+  };
 }
 
 /** Maximum number of items of a list field, or 0 when `key` is not a list. */

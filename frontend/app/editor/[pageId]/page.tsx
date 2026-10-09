@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/editor/TopBar';
@@ -17,8 +17,8 @@ import { ToastContainer } from '@/components/ui/Toast';
 import AnalyticsPanel from '@/components/analytics/AnalyticsPanel';
 import SubmissionsPanel from '@/components/editor/SubmissionsPanel';
 import MobileEditor from '@/components/mobile-editor/MobileEditor';
+import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
 import { useEditorStore } from '@/store/editor-store';
-import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/hooks/useEditorShortcuts';
 import { useIsQuickEditMode } from '@/hooks/useIsQuickEditMode';
 import { usePageSync } from '@/hooks/usePageSync';
@@ -49,27 +49,31 @@ export default function EditorPage() {
   const toasts = useEditorStore((s) => s.toasts);
   const removeToast = useEditorStore((s) => s.removeToast);
   const addToast = useEditorStore((s) => s.addToast);
+  const setMyUserId = useEditorStore((s) => s.setMyUserId);
+  // Who is editing: tells owner-only actions apart and colors this person's selection
+  useEffect(() => {
+    if (user) setMyUserId(user.id);
+  }, [user, setMyUserId]);
   useEditorShortcuts();
-  const { isLoading, error, saveToApi, publishToApi, reloadFromApi } = usePageSync(pageId);
-  useDragManager();
-  useAutoSave(saveToApi);
-  const { sendCursorMove } = useCollaboration(pageId, {
-    onPageRestored: ({ versionNumber, restoredBy, byMe }) => {
-      reloadFromApi().catch((e: unknown) => {
-        addToast(t('editor.restoreVersionError'), 'error');
-        if (process.env.NODE_ENV === 'development') console.error('Failed to reload restored page:', e);
-      });
-      if (!byMe && restoredBy) {
-        addToast(t('editor.restoredByCollaborator', { name: restoredBy, number: versionNumber ?? '' }), 'info');
+  const { isLoading, error, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange } = usePageSync(pageId, {
+    onRemoteMerged: (change) => {
+      // A restore by someone else (not by this person in another tab) is worth a notice
+      if (change.reason === 'restore' && change.by && change.by.userId !== useEditorStore.getState().myUserId) {
+        addToast(t('collab.restoredByCollaborator', { name: change.by.username }), 'info');
       }
     },
+    onSaveFailed: (kind) => {
+      if (kind === 'conflict') addToast(t('collab.saveConflict'), 'error');
+    },
   });
+  useDragManager();
+  useAutoSave(saveToApi);
+  const { sendCursorMove } = useCollaboration(pageId, { onRemoteChange: handleRemoteChange });
 
   const handleRestore = async (versionId: string) => {
     try {
-      await api.versions.restore(pageId, versionId, true);
-      // Take the whole restored page (blocks, theme, tokens, SEO) from the server
-      await reloadFromApi();
+      // The whole restored page (blocks, theme, tokens, SEO) replaces the editor's
+      await restoreVersion(versionId);
       setShowHistory(false);
       setPreviewVersionId(null);
       addToast(t('editor.restoreVersionSuccess'), 'success');
@@ -149,10 +153,11 @@ export default function EditorPage() {
       tabIndex={0}
     >
       <GuestBanner />
+      <AccessRevokedBanner />
       <TopBar
         onSave={saveToApi}
         onPublish={publishToApi}
-        apiError={error}
+        apiError={saveError}
         activeView={activeView}
         onViewChange={setActiveView}
         onOpenHistory={() => setShowHistory((v) => !v)}

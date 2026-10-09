@@ -57,7 +57,7 @@ function RemoteCursors({ containerRef }: { containerRef: React.RefObject<HTMLDiv
 
         return (
           <div
-            key={cursor.userId}
+            key={cursor.connectionId}
             className="absolute pointer-events-none z-50 transition-all duration-100 ease-out"
             style={{ left: screenX, top: screenY }}
           >

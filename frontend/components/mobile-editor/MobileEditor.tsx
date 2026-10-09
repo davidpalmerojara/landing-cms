@@ -21,6 +21,7 @@ import { resolveStyles } from '@/types/blocks';
 import type { BlockType } from '@/types/blocks';
 import BlockContent from '@/components/blocks/BlockContent';
 import { pageThemeVars } from '@/lib/page-theme';
+import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
 import GuestBanner from '@/components/guest/GuestBanner';
 import MobileBlockCard from './MobileBlockCard';
 import MobileBottomSheet from './MobileBottomSheet';
@@ -320,6 +321,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   return (
     <div className="flex flex-col h-dvh bg-surface text-primary">
       <GuestBanner />
+      <AccessRevokedBanner />
       {/* --- Toolbar --- */}
       <header className="flex items-center justify-between px-4 h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
         {/* Left: Back */}

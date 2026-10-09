@@ -49,6 +49,8 @@ export class ApiError extends Error {
   readonly code: string | null;
   /** Field-level validation errors: `{ field: [messages] }` */
   readonly details: Record<string, string[]> | null;
+  /** The parsed JSON body, when it is an object (e.g. the `page` of a 409 VERSION_CONFLICT) */
+  readonly body: Record<string, unknown> | null;
 
   constructor(status: number, body: string) {
     super(`API ${status}: ${body}`);
@@ -64,6 +66,7 @@ export class ApiError extends Error {
     const record = isJsonObject(parsed) ? parsed : null;
     this.code = record && typeof record.code === 'string' ? record.code : null;
     this.details = record && isJsonObject(record.details) ? toFieldErrors(record.details) : null;
+    this.body = record;
   }
 }
 
@@ -79,6 +82,17 @@ function toFieldErrors(details: Record<string, unknown>): Record<string, string[
 /** The backend error code of a failed request (e.g. 'GUEST_CAPACITY'), or null. */
 export function apiErrorCode(error: unknown): string | null {
   return error instanceof ApiError ? error.code : null;
+}
+
+/** The server's current page sent with a 409 VERSION_CONFLICT, or null for any other error. */
+export function conflictPage(error: unknown): ApiPage | null {
+  if (!(error instanceof ApiError) || error.status !== 409 || error.code !== 'VERSION_CONFLICT') return null;
+  const page = error.body?.page;
+  if (!isJsonObject(page) || typeof page.id !== 'string' || typeof page.version !== 'number' || !Array.isArray(page.blocks)) {
+    return null;
+  }
+  // Checked above: an object with the identifying fields of a PageDetail
+  return page as unknown as ApiPage;
 }
 
 // --- Core fetch with one refresh-and-retry on 401 ---
@@ -100,6 +114,11 @@ async function fetchWithRetry<T>(doFetch: () => Promise<Response>): Promise<T> {
 }
 
 // --- Request helpers ---
+
+/** Header that tells the server which collaboration socket made a change, so it can skip the echo. */
+function connectionHeaders(connectionId?: string | null): Record<string, string> {
+  return connectionId ? { 'X-Connection-Id': connectionId } : {};
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
@@ -172,6 +191,8 @@ export interface ApiSeoFields {
 
 export interface ApiPage extends ApiSeoFields {
   id: string;
+  /** Bumped by every write; a PUT must send the version it is based on (409 otherwise) */
+  version: number;
   name: string;
   slug: string;
   status: string;
@@ -398,6 +419,10 @@ export const api = {
     claimGuest: (data: { username: string; email: string; password: string; password2: string }) =>
       request<AuthResponse>('/auth/guest/claim/', { method: 'POST', body: JSON.stringify(data) }),
 
+    /** Opens a page from an invite link: adds the user (a new guest when signed out) as collaborator. */
+    join: (token: string) =>
+      request<{ page_id: string; user: ApiUser }>('/auth/join/', { method: 'POST', body: JSON.stringify({ token }) }),
+
     /** Single-use, 30-second ticket to open the collaboration WebSocket. */
     wsTicket: () => request<{ ticket: string; expires_in: number }>('/auth/ws-ticket/', { method: 'POST' }),
 
@@ -416,8 +441,13 @@ export const api = {
     create: (data: Record<string, unknown>) =>
       request<ApiPage>('/pages/', { method: 'POST', body: JSON.stringify(data) }),
 
-    update: (id: string, data: Record<string, unknown>) =>
-      request<ApiPage>(`/pages/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    /** `data.version` must be the version the edit is based on; a stale one gets 409 VERSION_CONFLICT. */
+    update: (id: string, data: Record<string, unknown>, connectionId?: string | null) =>
+      request<ApiPage>(`/pages/${id}/`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: connectionHeaders(connectionId),
+      }),
 
     delete: (id: string) =>
       request<void>(`/pages/${id}/`, { method: 'DELETE' }),
@@ -426,7 +456,8 @@ export const api = {
       request<ApiPage>(`/pages/${id}/duplicate/`, { method: 'POST' }),
 
     /** Freeze the saved draft as the public page (ADR-017). */
-    publish: (id: string) => request<ApiPage>(`/pages/${id}/publish/`, { method: 'POST' }),
+    publish: (id: string, connectionId?: string | null) =>
+      request<ApiPage>(`/pages/${id}/publish/`, { method: 'POST', headers: connectionHeaders(connectionId) }),
 
     unpublish: (id: string) => request<ApiPage>(`/pages/${id}/unpublish/`, { method: 'POST' }),
 
@@ -441,6 +472,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ user_id: userId }),
       }),
+
+    /** Owner only: a link that lets whoever opens it edit the page (24 h, a few uses). */
+    invite: (id: string) =>
+      request<{ token: string; path: string; expires_at: string }>(`/pages/${id}/invite/`, { method: 'POST' }),
 
     collaborators: (id: string) =>
       request<{
@@ -538,10 +573,11 @@ export const api = {
     delete: (pageId: string, versionId: string) =>
       request<void>(`/pages/${pageId}/versions/${versionId}/`, { method: 'DELETE' }),
 
-    restore: (pageId: string, versionId: string, restoreMetadata?: boolean) => {
+    restore: (pageId: string, versionId: string, restoreMetadata?: boolean, connectionId?: string | null) => {
       const qs = restoreMetadata ? '?restore_metadata=true' : '';
       return request<ApiPage>(`/pages/${pageId}/versions/${versionId}/restore/${qs}`, {
         method: 'POST',
+        headers: connectionHeaders(connectionId),
       });
     },
   },

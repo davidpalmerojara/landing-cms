@@ -7,7 +7,7 @@ import PricingBlock from '@/components/blocks/PricingBlock';
 import { blockAnchorIds } from '@/lib/block-anchors';
 import { render } from '../mobile-editor/test-utils';
 
-const props = { blockId: 'b1', isMobile: false, isTablet: false };
+const props = { blockId: 'b1' };
 
 function hrefs(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '');

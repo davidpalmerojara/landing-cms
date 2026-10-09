@@ -7,15 +7,15 @@ import EditableText from './EditableText';
 
 const IMAGE_KEYS = ['image1', 'image2', 'image3', 'image4', 'image5', 'image6'] as const;
 
-export default function GalleryBlock({ blockId, data, isMobile, isTablet, isPreviewMode }: BlockProps) {
+export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const columns = (data.columns as string) || '3';
   const colsClass =
     columns === '2'
       ? 'grid-cols-2'
       : columns === '4'
-        ? isMobile ? 'grid-cols-2' : isTablet ? 'grid-cols-3' : 'grid-cols-4'
-        : isMobile ? 'grid-cols-2' : 'grid-cols-3';
+        ? 'grid-cols-2 @tablet:grid-cols-3 @desktop:grid-cols-4'
+        : 'grid-cols-2 @tablet:grid-cols-3';
 
   const itemCount = parseInt(columns, 10) * 2;
 
@@ -24,7 +24,7 @@ export default function GalleryBlock({ blockId, data, isMobile, isTablet, isPrev
       aria-label={t('galleryAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-bg)' }}
     >
       <EditableText
@@ -32,9 +32,7 @@ export default function GalleryBlock({ blockId, data, isMobile, isTablet, isPrev
         fieldKey="title"
         value={data.title as string}
         as="h2"
-        className={`text-center mb-4 ${
-          isMobile ? 'text-3xl' : 'text-4xl'
-        }`}
+        className="text-center mb-4 text-3xl @tablet:text-4xl"
         style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
       />
       <EditableText

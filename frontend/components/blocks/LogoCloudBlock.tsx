@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function LogoCloudBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const logoKeys = ['logo1', 'logo2', 'logo3', 'logo4', 'logo5'] as const;
 
@@ -13,7 +13,7 @@ export default function LogoCloudBlock({ blockId, data, isMobile, isPreviewMode 
       aria-label={t('logoCloudAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-12 px-6' : 'py-16 px-8'}`}
+      } py-12 px-6 @tablet:py-16 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-surface)' }}
     >
       <EditableText
@@ -25,9 +25,7 @@ export default function LogoCloudBlock({ blockId, data, isMobile, isPreviewMode 
         style={{ color: 'var(--theme-text-muted)' }}
       />
       <div
-        className={`flex items-center justify-center gap-8 max-w-4xl mx-auto flex-wrap ${
-          isMobile ? 'gap-6' : 'gap-12'
-        }`}
+        className="flex items-center justify-center gap-8 max-w-4xl mx-auto flex-wrap @tablet:gap-12"
       >
         {logoKeys.map((key) => {
           const name = data[key] as string;
@@ -38,9 +36,7 @@ export default function LogoCloudBlock({ blockId, data, isMobile, isPreviewMode 
               blockId={blockId}
               fieldKey={key}
               value={name}
-              className={`font-bold opacity-60 ${
-                isMobile ? 'text-lg' : 'text-xl'
-              }`}
+              className="font-bold opacity-60 text-lg @tablet:text-xl"
               style={{ color: 'var(--theme-text-muted)' }}
             />
           );

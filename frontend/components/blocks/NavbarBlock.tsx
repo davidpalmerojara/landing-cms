@@ -8,7 +8,7 @@ import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function NavbarBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const [menuOpen, setMenuOpen] = useState(false);
   const logoImage = data.logoImage as string;
@@ -32,7 +32,7 @@ export default function NavbarBlock({ blockId, data, isMobile, isPreviewMode }: 
       aria-label={t('navbarAria')}
       className={`relative border-b transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'px-4 py-3' : 'px-8 py-4'}`}
+      } px-4 py-3 @tablet:px-8 @tablet:py-4`}
       style={{ backgroundColor: 'var(--theme-bg)', borderColor: 'var(--theme-border)' }}
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -57,65 +57,61 @@ export default function NavbarBlock({ blockId, data, isMobile, isPreviewMode }: 
           />
         </div>
 
-        {isMobile ? (
-          <>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-expanded={menuOpen}
-              aria-label={t('toggleMenu')}
-              style={{ color: 'var(--theme-text-muted)' }}
-              className="p-2"
-            >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            {menuOpen && (
-              <div
-                className="absolute top-full left-0 right-0 border-b py-4 px-4 flex flex-col gap-3 z-50"
-                style={{ backgroundColor: 'var(--theme-bg)', borderColor: 'var(--theme-border)' }}
-              >
-                {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm'))}
-                {ctaHref ? (
-                  <BlockLink
-                    href={ctaHref}
-                    className="text-white text-sm font-medium px-4 py-2 rounded-lg inline-block text-center"
-                    style={{ backgroundColor: 'var(--theme-primary)' }}
-                  >
-                    {data.ctaText as string}
-                  </BlockLink>
-                ) : (
-                  <button
-                    className="text-white text-sm font-medium px-4 py-2 rounded-lg"
-                    style={{ backgroundColor: 'var(--theme-primary)' }}
-                  >
-                    {data.ctaText as string}
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-6">
-              {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm transition-colors'))}
-            </div>
+        {/* Which of the two shows is decided by CSS (container width), not JS */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-expanded={menuOpen}
+          aria-label={t('toggleMenu')}
+          style={{ color: 'var(--theme-text-muted)' }}
+          className="p-2 @tablet:hidden"
+        >
+          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+        {menuOpen && (
+          <div
+            className="absolute top-full left-0 right-0 border-b py-4 px-4 flex flex-col gap-3 z-50 @tablet:hidden"
+            style={{ backgroundColor: 'var(--theme-bg)', borderColor: 'var(--theme-border)' }}
+          >
+            {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm'))}
             {ctaHref ? (
               <BlockLink
                 href={ctaHref}
-                className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90 inline-block text-center"
+                className="text-white text-sm font-medium px-4 py-2 rounded-lg inline-block text-center"
                 style={{ backgroundColor: 'var(--theme-primary)' }}
               >
-                <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+                {data.ctaText as string}
               </BlockLink>
             ) : (
               <button
-                className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90"
+                className="text-white text-sm font-medium px-4 py-2 rounded-lg"
                 style={{ backgroundColor: 'var(--theme-primary)' }}
               >
-                <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+                {data.ctaText as string}
               </button>
             )}
           </div>
         )}
+        <div className="hidden @tablet:flex items-center gap-8">
+          <div className="flex items-center gap-6">
+            {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm transition-colors'))}
+          </div>
+          {ctaHref ? (
+            <BlockLink
+              href={ctaHref}
+              className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90 inline-block text-center"
+              style={{ backgroundColor: 'var(--theme-primary)' }}
+            >
+              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+            </BlockLink>
+          ) : (
+            <button
+              className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90"
+              style={{ backgroundColor: 'var(--theme-primary)' }}
+            >
+              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );

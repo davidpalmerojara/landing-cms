@@ -11,7 +11,7 @@ const data = { title: 'Escríbenos', subtitle: 'Te leemos', buttonText: 'Mandar 
 function renderBlock(options: { slug: string | null; isPreviewMode?: boolean }): RenderResult {
   return render(
     <ContactFormProvider value={{ slug: options.slug }}>
-      <ContactBlock blockId={BLOCK_ID} data={data} isMobile={false} isTablet={false} isPreviewMode={options.isPreviewMode ?? true} />
+      <ContactBlock blockId={BLOCK_ID} data={data} isPreviewMode={options.isPreviewMode ?? true} />
     </ContactFormProvider>,
   );
 }

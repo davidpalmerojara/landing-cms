@@ -324,12 +324,10 @@ export default function MobileBlockCard({
       >
         {PreviewComponent && (
           <div className="mt-1 rounded-xl border border-default/15 overflow-hidden bg-white">
-            <div className="pointer-events-none select-none" style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', maxHeight: 400 }}>
+            <div className="@container pointer-events-none select-none" style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', maxHeight: 400 }}>
               <PreviewComponent
                 blockId={block.id}
                 data={block.data}
-                isMobile={true}
-                isTablet={false}
                 isPreviewMode={true}
               />
             </div>

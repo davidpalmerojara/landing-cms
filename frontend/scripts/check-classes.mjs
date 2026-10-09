@@ -18,7 +18,8 @@ const SOURCE_DIRS = ['app', 'components', 'hooks', 'lib'];
 
 // Only candidates shaped like a color/spacing utility are checked; the
 // scanner also returns plain words from strings, which are not classes.
-const UTILITY = /^(?:[\w-]+(?:\[[^\]]*\])?:)*!?-?(?:bg|text|border|ring|outline|divide|placeholder|from|via|to|fill|stroke|shadow|decoration|accent|caret)-[a-z0-9[]/;
+// Variants may start with `@` (container queries such as `@tablet:text-lg`).
+const UTILITY = /^(?:[@\w-]+(?:\[[^\]]*\])?:)*!?-?(?:bg|text|border|ring|outline|divide|placeholder|from|via|to|fill|stroke|shadow|decoration|accent|caret)-[a-z0-9[]/;
 
 function listFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

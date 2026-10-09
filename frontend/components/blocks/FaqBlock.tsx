@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function FaqBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -21,7 +21,7 @@ export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: Blo
       aria-label={t('faqAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-bg)' }}
     >
       <EditableText
@@ -29,9 +29,7 @@ export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: Blo
         fieldKey="title"
         value={data.title as string}
         as="h2"
-        className={`text-center mb-12 ${
-          isMobile ? 'text-3xl' : 'text-4xl'
-        }`}
+        className="text-center mb-12 text-3xl @tablet:text-4xl"
         style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
       />
 
@@ -40,12 +38,12 @@ export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: Blo
           const isOpen = !isPreviewMode || openIndex === index;
 
           return (
-            <div key={item.q} className={`${isMobile ? 'py-5' : 'py-6'}`} style={{ borderColor: 'var(--theme-border)' }}>
+            <div key={item.q} className="py-5 @tablet:py-6" style={{ borderColor: 'var(--theme-border)' }}>
               {isPreviewMode ? (
                 <button
                   onClick={() => setOpenIndex(openIndex === index ? null : index)}
                   aria-expanded={openIndex === index}
-                  className={`w-full flex items-center justify-between text-left font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}
+                  className="w-full flex items-center justify-between text-left font-semibold text-base @tablet:text-lg"
                   style={{ color: 'var(--theme-text)' }}
                 >
                   <span>{data[item.q] as string}</span>
@@ -60,7 +58,7 @@ export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: Blo
                   fieldKey={item.q}
                   value={data[item.q] as string}
                   as="h3"
-                  className={`font-semibold mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}
+                  className="font-semibold mb-2 text-base @tablet:text-lg"
                   style={{ color: 'var(--theme-text)' }}
                 />
               )}
@@ -71,7 +69,7 @@ export default function FaqBlock({ blockId, data, isMobile, isPreviewMode }: Blo
                   value={data[item.a] as string}
                   as="p"
                   multiline
-                  className={`leading-relaxed ${isPreviewMode ? 'mt-3' : ''} ${isMobile ? 'text-sm' : 'text-base'}`}
+                  className={`leading-relaxed ${isPreviewMode ? 'mt-3' : ''} text-sm @tablet:text-base`}
                   style={{ color: 'var(--theme-text-muted)' }}
                 />
               )}

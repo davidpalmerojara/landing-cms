@@ -105,6 +105,12 @@
   --border-color-subtle: var(--bp-color-border-subtle);
   --background-color-default: var(--bp-color-border);
   --background-color-subtle: var(--bp-color-border-subtle);
+
+  /* Container-query breakpoints for blocks: a block lays out by the width of
+     its nearest @container ancestor (mobile-first). @tablet: >= 640px,
+     @desktop: >= 1024px. */
+  --container-tablet: 40rem;
+  --container-desktop: 64rem;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */

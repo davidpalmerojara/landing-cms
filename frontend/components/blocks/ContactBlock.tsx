@@ -12,7 +12,7 @@ const FIELD_CLASS = 'w-full px-4 py-3 rounded-lg text-sm focus-visible:outline-2
 const FIELD_STYLE = { backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' };
 
 /** The working form, shown on the page (preview mode). It only sends from a published page. */
-function LiveContactForm({ blockId, data, isMobile }: Pick<BlockProps, 'blockId' | 'data' | 'isMobile'>) {
+function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>) {
   const t = useTranslations('blocks');
   const { slug } = useContactFormContext();
   const { status, errorKind, isSending, submit } = useContactForm(slug, blockId);
@@ -35,7 +35,7 @@ function LiveContactForm({ blockId, data, isMobile }: Pick<BlockProps, 'blockId'
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" aria-busy={isSending}>
-      <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-2 gap-4'}`}>
+      <div className="grid grid-cols-1 @tablet:grid-cols-2 gap-4">
         <div>
           <label htmlFor={`${blockId}-name`} className="sr-only">{t('contactName')}</label>
           <input
@@ -116,14 +116,14 @@ function LiveContactForm({ blockId, data, isMobile }: Pick<BlockProps, 'blockId'
   );
 }
 
-export default function ContactBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   return (
     <section
       aria-label={t('contactAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-surface)' }}
     >
       <div className="max-w-xl mx-auto">
@@ -132,9 +132,7 @@ export default function ContactBlock({ blockId, data, isMobile, isPreviewMode }:
           fieldKey="title"
           value={data.title as string}
           as="h2"
-          className={`text-center mb-4 ${
-            isMobile ? 'text-3xl' : 'text-4xl'
-          }`}
+          className="text-center mb-4 text-3xl @tablet:text-4xl"
           style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
         />
         <EditableText
@@ -147,10 +145,10 @@ export default function ContactBlock({ blockId, data, isMobile, isPreviewMode }:
         />
 
         {isPreviewMode ? (
-          <LiveContactForm blockId={blockId} data={data} isMobile={isMobile} />
+          <LiveContactForm blockId={blockId} data={data} />
         ) : (
         <div className="space-y-4">
-          <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-2 gap-4'}`}>
+          <div className="grid grid-cols-1 @tablet:grid-cols-2 gap-4">
             <div>
               <label htmlFor={`${blockId}-name`} className="sr-only">{t('contactName')}</label>
               <input

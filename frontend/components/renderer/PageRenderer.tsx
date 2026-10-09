@@ -55,8 +55,6 @@ const PageRenderer = ({ blocks, themeVars, liveLinks = false, contactSlug, class
                 <BlockComponent
                   blockId={block.id}
                   data={block.data}
-                  isMobile={false}
-                  isTablet={false}
                   isPreviewMode={true}
                 />
               </div>

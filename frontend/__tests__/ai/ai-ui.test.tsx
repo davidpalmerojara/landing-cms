@@ -101,13 +101,13 @@ describe('AiSavedAnswerNotice', () => {
   afterEach(() => view.unmount());
 
   it('labels a saved page in Spanish', () => {
-    view = renderIn('es', <AiSavedAnswerNotice kind="page" source="demo" demo={{ reason: 'demo_mode', matched: true }} />);
+    view = renderIn('es', <AiSavedAnswerNotice kind="page" source="demo" demo={{ reason: 'demo_mode', origin: 'generated', matched: true }} />);
     const notice = view.container.querySelector('[role="status"]');
     expect(notice?.textContent).toBe('Respuesta de demo cacheada: generada una vez con IA y guardada.');
   });
 
   it('labels a saved page in English', () => {
-    view = renderIn('en', <AiSavedAnswerNotice kind="page" source="demo" demo={{ reason: 'demo_mode', matched: true }} />);
+    view = renderIn('en', <AiSavedAnswerNotice kind="page" source="demo" demo={{ reason: 'demo_mode', origin: 'generated', matched: true }} />);
     expect(view.container.textContent).toBe('Cached demo response: generated once with AI and saved.');
   });
 
@@ -198,7 +198,7 @@ describe('AIGenerateModal', () => {
   it('labels a saved page and waits for the user before opening the editor', async () => {
     await openModal();
     vi.spyOn(api.ai, 'generate').mockResolvedValue(
-      generated({ source: 'demo', demo: { reason: 'demo_mode', fixture_id: 'restaurant', matched: true } }),
+      generated({ source: 'demo', demo: { reason: 'demo_mode', origin: 'placeholder', fixture_id: 'restaurant', matched: true } }),
     );
     typeInto(prompt(), 'Un restaurante');
 
@@ -206,7 +206,7 @@ describe('AIGenerateModal', () => {
     await flush();
 
     expect(view.container.querySelector('[role="status"]')?.textContent)
-      .toBe('Respuesta de demo cacheada: generada una vez con IA y guardada.');
+      .toBe('Página de ejemplo de la demo, escrita a mano: no se ha usado IA. Con tu propia clave, la página se genera a partir de tu texto.');
     expect(onGenerated).not.toHaveBeenCalled();
 
     click(buttonByText(view.container, 'Abrir en el editor'));

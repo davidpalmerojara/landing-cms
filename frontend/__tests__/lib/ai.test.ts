@@ -36,8 +36,18 @@ describe('saved answer labels', () => {
     expect(savedAnswerLabelKeys('block', 'demo', { reason: 'provider_quota' })).toEqual(['ai.saved.block.provider_quota']);
   });
 
+  it('never says a hand-written example was generated with AI', () => {
+    expect(savedAnswerLabelKeys('page', 'demo', { reason: 'demo_mode', origin: 'placeholder', matched: true }))
+      .toEqual(['ai.saved.page.demo_mode_placeholder']);
+    // Older responses without origin: assume hand-written, never claim AI
+    expect(savedAnswerLabelKeys('page', 'demo', { reason: 'demo_mode', matched: true }))
+      .toEqual(['ai.saved.page.demo_mode_placeholder']);
+    expect(savedAnswerLabelKeys('page', 'demo', { reason: 'demo_mode', origin: 'generated', matched: true }))
+      .toEqual(['ai.saved.page.demo_mode']);
+  });
+
   it('adds the unmatched note only for a page that matched no example', () => {
-    expect(savedAnswerLabelKeys('page', 'demo', { reason: 'demo_mode', matched: false }))
+    expect(savedAnswerLabelKeys('page', 'demo', { reason: 'demo_mode', origin: 'generated', matched: false }))
       .toEqual(['ai.saved.page.demo_mode', 'ai.saved.noExampleMatched']);
     expect(savedAnswerLabelKeys('block', 'demo', { reason: 'demo_mode', matched: false })).toEqual(['ai.saved.block.demo_mode']);
   });

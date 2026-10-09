@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 import GuestStartButton from '@/components/guest/GuestStartButton';
 
@@ -37,15 +37,11 @@ export default function RegisterPage() {
       await api.auth.register({ username, email, password, password2 });
       router.replace('/dashboard');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('auth.registerParsingError');
-      // Try to parse DRF validation errors
-      try {
-        const parsed = JSON.parse(msg.replace(/^API \d+: /, ''));
-        const firstError = Object.values(parsed).flat()[0];
-        setError(String(firstError));
-      } catch {
-        setError(t('auth.registerError'));
-      }
+      // Field errors (username taken, weak password...) come in `details`
+      const firstFieldError = err instanceof ApiError && err.details
+        ? Object.values(err.details).flat()[0]
+        : undefined;
+      setError(firstFieldError ?? t('auth.registerError'));
       setIsLoading(false);
     }
   };

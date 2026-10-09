@@ -167,3 +167,11 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se detectó**: Al revisar cómo convivían los dos sistemas de tema antes de unificarlos. En la base de datos de pruebas había una página así, con `theme_id: 'dark'` y tokens claros.
 - **Arreglo**: Un solo sistema (ADR-020). Toda página tiene tokens desde que se crea, y la migración se los dio a las antiguas a partir de su tema. Un test edita un color de una página con la paleta oscura y comprueba que lo demás no cambia.
 - **Lección**: Dos fuentes de verdad para lo mismo acaban discrepando justo en la frontera entre ellas, que es donde nadie mira.
+
+## 21. El registro mostraba "Error de validación" en vez del motivo
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Al registrarse con un nombre de usuario ocupado o una contraseña demasiado común, la página decía solo "Error de validación.". El backend envía los errores de cada campo dentro de `details`, desde que se unificó el formato de errores, pero la página seguía leyendo el formato antiguo y tomaba el mensaje genérico.
+- **Cómo se detectó**: Al construir el formulario para convertir una sesión de invitado en cuenta, que reutiliza las mismas reglas del registro y sí lee `details`.
+- **Arreglo**: El registro lee los errores de campo de `ApiError.details` y muestra el primero.
+- **Lección**: Cuando cambia el formato de los errores de la API, hay que revisar también los formularios que ya existían, no solo los nuevos.

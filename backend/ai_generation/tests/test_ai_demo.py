@@ -160,7 +160,7 @@ class TestDemoGeneration:
         mock_ai.assert_not_called()
         assert resp.data['source'] == 'demo'
         assert resp.data['provider'] is None
-        assert resp.data['demo'] == {'reason': 'demo_mode', 'fixture_id': 'restaurant', 'matched': True}
+        assert resp.data['demo'] == {'reason': 'demo_mode', 'origin': 'placeholder', 'fixture_id': 'restaurant', 'matched': True}
         assert resp.data['tokens'] == {'input': 0, 'output': 0, 'cost_estimate': '0'}
 
         fixture = next(f for f in demo.load_fixtures() if f.id == 'restaurant')
@@ -638,7 +638,7 @@ class TestDemoEdit:
         assert resp.status_code == status.HTTP_200_OK
         mock_ai.assert_not_called()
         assert resp.data['source'] == 'demo'
-        assert resp.data['demo'] == {'reason': 'demo_mode'}
+        assert resp.data['demo'] == {'reason': 'demo_mode', 'origin': 'placeholder'}
         block.refresh_from_db()
         assert block.type == 'hero'
         assert block.data['title'] != FULL_HERO['title']
@@ -795,3 +795,21 @@ class TestGenerateFixturesCommand:
         empty.write_text('', encoding='utf-8')
         with pytest.raises(CommandError, match='GOOGLE_AI_KEY'):
             self.run(empty, capsys)
+
+
+class TestFixtureOrigin:
+    def test_hand_written_fixtures_are_reported_as_placeholders(self):
+        from ai_generation import demo
+        assert {f.origin for f in demo.load_fixtures()} == {demo.ORIGIN_PLACEHOLDER}
+        assert demo.fixtures_origin() == demo.ORIGIN_PLACEHOLDER
+
+    def test_generated_only_when_every_fixture_is_generated(self, monkeypatch):
+        from dataclasses import replace
+        from ai_generation import demo
+        fixtures = demo.load_fixtures()
+        all_generated = tuple(replace(f, origin=demo.ORIGIN_GENERATED) for f in fixtures)
+        monkeypatch.setattr(demo, 'load_fixtures', lambda: all_generated)
+        assert demo.fixtures_origin() == demo.ORIGIN_GENERATED
+        mixed = (replace(fixtures[0], origin=demo.ORIGIN_PLACEHOLDER),) + all_generated[1:]
+        monkeypatch.setattr(demo, 'load_fixtures', lambda: mixed)
+        assert demo.fixtures_origin() == demo.ORIGIN_PLACEHOLDER

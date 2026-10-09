@@ -17,6 +17,8 @@ interface PageRendererProps {
   liveLinks?: boolean;
   /** Slug of the published page; lets the contact form send */
   contactSlug?: string;
+  /** A guest's published page: the contact form explains it doesn't send */
+  guestPage?: boolean;
   className?: string;
   /** Rendered after the blocks, inside the themed area */
   children?: ReactNode;
@@ -30,13 +32,13 @@ interface PageRendererProps {
  * container variants and per-device spacing comes from a stylesheet built
  * from the block styles (blockStylesCss).
  */
-const PageRenderer = ({ blocks, themeVars, liveLinks = false, contactSlug, className, children }: PageRendererProps) => {
+const PageRenderer = ({ blocks, themeVars, liveLinks = false, contactSlug, guestPage = false, className, children }: PageRendererProps) => {
   const anchorIds = blockAnchorIds(blocks);
   const css = blockStylesCss(blocks);
 
   return (
     <LiveLinksProvider value={liveLinks}>
-      <ContactFormProvider value={{ slug: contactSlug ?? null }}>
+      <ContactFormProvider value={{ slug: contactSlug ?? null, guestPage }}>
         <div className={clsx('@container min-h-screen bg-white', className)} style={themeVars}>
           {/* Only numbers, plain colours and validated ids reach this string */}
           {css && <style dangerouslySetInnerHTML={{ __html: css }} />}

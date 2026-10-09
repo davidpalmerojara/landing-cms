@@ -145,6 +145,8 @@ export interface ApiPublicPage {
   published_at: string | null;
   updated_at: string | null;
   show_watermark: boolean;
+  /** Published by a temporary guest: shown with a notice, the form doesn't send */
+  is_guest_page?: boolean;
 }
 
 export interface ApiBlock {

@@ -14,7 +14,7 @@ const FIELD_STYLE = { backgroundColor: 'var(--theme-bg)', border: '1px solid var
 /** The working form, shown on the page (preview mode). It only sends from a published page. */
 function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'blockId' | 'data'>) {
   const t = useTranslations('blocks');
-  const { slug } = useContactFormContext();
+  const { slug, guestPage } = useContactFormContext();
   const { status, errorKind, isSending, submit } = useContactForm(slug, blockId);
   const formRef = useRef<HTMLFormElement>(null);
   const canSend = slug !== null;
@@ -95,7 +95,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
 
       {!canSend && (
         <p className="text-center text-sm" style={{ color: 'var(--theme-text-muted)' }}>
-          {t('contactPreviewNote')}
+          {t(guestPage ? 'contactGuestNote' : 'contactPreviewNote')}
         </p>
       )}
       <div role="status" className="text-center text-sm">

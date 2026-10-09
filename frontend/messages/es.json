@@ -589,7 +589,8 @@
       "rateLimited": "Has enviado varios mensajes seguidos. Espera un minuto e inténtalo de nuevo.",
       "unavailable": "Este formulario ya no está disponible.",
       "generic": "No hemos podido enviar el mensaje. Inténtalo de nuevo en un momento."
-    }
+    },
+    "contactGuestNote": "Las páginas de prueba de la demo no envían mensajes."
   },
   "preview": {
     "backToEditor": "Volver al editor",
@@ -712,7 +713,8 @@
   },
   "publicPage": {
     "empty": "Esta página no tiene contenido.",
-    "madeWith": "Hecho con Paxl"
+    "madeWith": "Hecho con Paxl",
+    "guestNotice": "Página de prueba creada por un invitado en la demo de Paxl. Se borra en 24 horas. No introduzcas datos personales."
   },
   "share": {
     "title": "Compartir página",

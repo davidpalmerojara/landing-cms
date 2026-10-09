@@ -150,3 +150,12 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo** (ADR-018): La cuenta guarda si el email está demostrado. El enlace mágico y Google lo demuestran; registrarse con contraseña no. La primera vez que alguien lo demuestra en una cuenta con contraseña sin confirmar, esa contraseña se desactiva, se cierran todas las sesiones (los refresh tokens van a la lista negra y los access tokens emitidos antes se rechazan, también en el WebSocket) y las páginas dejan de estar compartidas. La persona ve una pantalla que le explica qué ha pasado. Google ya no responde 409: sigue el mismo camino.
 - **Cómo se verificó**: 14 tests reproducen el ataque completo (contraseña, cookie, cabecera Authorization, refresh, WebSocket y colaboradores). Con el arreglo desactivado fallan 9; con el arreglo, pasan todos. Hay otros tests que comprueban que una cuenta ya verificada conserva su contraseña y sus sesiones.
 - **Lección**: Un access token JWT no se puede "borrar": para cerrar sesiones hay que guardar desde cuándo dejan de valer y comprobarlo en cada sitio donde se autentica (HTTP y WebSocket).
+
+## 19. Una página despublicada respondía 200 en lugar de 404
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Al despublicar una página, su dirección seguía respondiendo 200: mostraba la pantalla de "no encontrada", pero con código de éxito y un `noindex`. Pasaba también con slugs que nunca habían existido, y también para Googlebot. Además, cada visita a una página publicada enviaba primero la pantalla de carga de Paxl.
+- **Cómo se detectó**: Lo encontró la prueba de caché de la semana 7, que comprueba que despublicar retira la página al momento. El contenido desaparecía, pero el código seguía siendo 200.
+- **Causa**: `app/loading.tsx`, en la raíz, envuelve todas las rutas en un Suspense. Next envía ese esqueleto con 200 en cuanto empieza a responder, y cuando la página llama a `notFound()` el código ya no se puede cambiar.
+- **Arreglo**: Se quitó ese `loading.tsx`. Las rutas que lo necesitan (dashboard, editor, ajustes) tienen el suyo, y el resto son estáticas o cargan los datos en el cliente.
+- **Lección**: Un `loading.tsx` no es solo una pantalla: decide cuándo se envía la cabecera de la respuesta, y eso afecta a los códigos de estado de todo lo que cuelga de él.

@@ -276,6 +276,9 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1',
 
 # Magic link
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+# Shared with the frontend: lets the backend ask it to drop a cached public
+# page after publishing (ADR-019). Empty: no request is sent.
+REVALIDATE_SECRET = os.environ.get('REVALIDATE_SECRET', '')
 
 
 # AI Generation — server-level fallback keys (users can provide their own)

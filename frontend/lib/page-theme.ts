@@ -21,7 +21,11 @@ interface PageThemeInput {
  * --theme-* colors blocks read, and typography falls back to defaults.
  */
 export function pageThemeVars({ themeId, customTheme, designTokens }: PageThemeInput): CSSProperties {
-  const bpVars = tokensToCssVars(designTokens ?? defaultDesignTokens);
+  const bpVars = {
+    ...tokensToCssVars(designTokens ?? defaultDesignTokens),
+    // Text a block doesn't style itself uses the theme's body font, not the editor's
+    fontFamily: 'var(--bp-font-body)',
+  };
 
   if (designTokens) {
     return { ...bpVars, ...tokensToThemeVars(designTokens) } as CSSProperties;

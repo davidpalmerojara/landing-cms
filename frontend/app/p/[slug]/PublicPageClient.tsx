@@ -1,96 +1,29 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import Script from 'next/script';
 import { useTranslations } from 'next-intl';
-import { blockRegistry } from '@/lib/block-registry';
-import { blockAnchorIds } from '@/lib/block-anchors';
-import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
-import type { Block } from '@/types/blocks';
+import type { ApiPublicPage } from '@/lib/api';
 import { apiToTokens } from '@/lib/design-tokens';
+import { apiBlocksToLocal } from '@/lib/page-mapping';
 import { pageThemeVars } from '@/lib/page-theme';
-import { ContactFormProvider } from '@/components/blocks/contact-form-context';
-import { LiveLinksProvider } from '@/components/blocks/live-links-context';
+import type { ThemeColors } from '@/lib/themes';
+import PageRenderer from '@/components/renderer/PageRenderer';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
-type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-
-const emptySubscribe = () => () => {};
-
-function getDeviceModeSnapshot(): DeviceMode {
-  if (typeof window === 'undefined') {
-    return 'desktop';
-  }
-
-  const width = window.innerWidth;
-  if (width < 640) return 'mobile';
-  if (width < 1024) return 'tablet';
-  return 'desktop';
-}
-
-function subscribeToViewport(callback: () => void) {
-  window.addEventListener('resize', callback);
-  return () => window.removeEventListener('resize', callback);
-}
-
-interface ApiBlock {
-  id: string;
-  type: string;
-  order: number;
-  data: Record<string, unknown>;
-  styles: Record<string, unknown>;
-}
-
-interface ApiPage {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  theme_id?: string;
-  custom_theme?: Record<string, string> | null;
-  design_tokens?: Record<string, unknown> | null;
-  blocks: ApiBlock[];
-  show_watermark?: boolean;
-}
-
-function mapBlocks(apiBlocks: ApiBlock[]): Block[] {
-  return apiBlocks
-    .sort((a, b) => a.order - b.order)
-    .map((b) => {
-      const { responsive, ...baseStyles } = b.styles as Record<string, unknown>;
-      return {
-        id: b.id,
-        type: b.type,
-        name: blockRegistry[b.type]?.label || b.type,
-        data: b.data,
-        styles: { ...defaultBlockStyles, ...baseStyles },
-        responsiveStyles: (responsive as Block['responsiveStyles']) || undefined,
-      };
-    });
-}
-
-export default function PublicPageClient({ page }: { page: ApiPage }) {
+/**
+ * The published page. It is rendered on the server as well, so the full
+ * content is in the HTML: nothing here may depend on the window.
+ */
+export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   const t = useTranslations();
-  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
-  const deviceMode = useSyncExternalStore<DeviceMode>(
-    subscribeToViewport,
-    getDeviceModeSnapshot,
-    () => 'desktop',
-  );
-
-  const blocks = mapBlocks(page.blocks);
-  const anchorIds = blockAnchorIds(blocks);
+  const blocks = apiBlocksToLocal(page.blocks);
   // Convert first: the API sends {} for "no tokens", which is truthy.
   const themeVars = pageThemeVars({
     themeId: page.theme_id,
-    customTheme: page.custom_theme as import('@/lib/themes').ThemeColors | undefined,
+    customTheme: page.custom_theme as ThemeColors | undefined,
     designTokens: apiToTokens(page.design_tokens as Record<string, unknown> | undefined),
   });
-
-  if (!mounted) {
-    return <div className="min-h-screen bg-white" style={themeVars} />;
-  }
 
   if (blocks.length === 0) {
     return (
@@ -101,40 +34,7 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
   }
 
   return (
-    <LiveLinksProvider value={true}>
-    <ContactFormProvider value={{ slug: page.slug }}>
-    <div className="min-h-screen bg-white" style={themeVars}>
-      {blocks.map((block) => {
-        const BlockComponent = blockRegistry[block.type]?.component;
-        if (!BlockComponent) return null;
-
-        const s = resolveStyles(block, deviceMode);
-        const blockStyle: React.CSSProperties = block.type !== 'navbar' ? { overflow: 'hidden' } : {};
-        if (s.paddingTop) blockStyle.paddingTop = s.paddingTop;
-        if (s.paddingBottom) blockStyle.paddingBottom = s.paddingBottom;
-        if (s.paddingLeft) blockStyle.paddingLeft = s.paddingLeft;
-        if (s.paddingRight) blockStyle.paddingRight = s.paddingRight;
-        if (s.marginTop) blockStyle.marginTop = s.marginTop;
-        if (s.marginBottom) blockStyle.marginBottom = s.marginBottom;
-        if (s.bgColor) {
-          blockStyle.backgroundColor = s.bgColor;
-          (blockStyle as Record<string, unknown>)['--theme-bg'] = s.bgColor;
-        }
-        if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
-
-        return (
-          <div key={block.id} id={anchorIds.get(block.id)} data-block-id={block.id} data-block-type={block.type} style={blockStyle}>
-            <BlockComponent
-              blockId={block.id}
-              data={block.data}
-              isMobile={deviceMode === 'mobile'}
-              isTablet={deviceMode === 'tablet'}
-              isPreviewMode={true}
-            />
-          </div>
-        );
-      })}
-
+    <PageRenderer blocks={blocks} themeVars={themeVars} liveLinks contactSlug={page.slug}>
       <Script
         src="/bp-analytics.js"
         strategy="afterInteractive"
@@ -154,8 +54,6 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
           </a>
         </div>
       )}
-    </div>
-    </ContactFormProvider>
-    </LiveLinksProvider>
+    </PageRenderer>
   );
 }

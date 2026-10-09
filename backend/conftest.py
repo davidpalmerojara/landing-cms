@@ -73,3 +73,4 @@ def no_external_secrets(settings):
     settings.ANTHROPIC_API_KEY = ''
     settings.STRIPE_SECRET_KEY = ''
     settings.GOOGLE_CLIENT_ID = ''
+    settings.REVALIDATE_SECRET = ''

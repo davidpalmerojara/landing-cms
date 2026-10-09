@@ -3,14 +3,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
-import { blockRegistry } from '@/lib/block-registry';
-import { defaultBlockStyles } from '@/types/blocks';
 import { isBlockId, newBlockId } from '@/lib/block-factory';
 import type { Page } from '@/types/page';
-import { defaultSeoFields } from '@/types/page';
-import type { Block } from '@/types/blocks';
+import { defaultBlockStyles } from '@/types/blocks';
 import type { ApiPage } from '@/lib/api';
-import { apiToTokens, tokensToApi } from '@/lib/design-tokens';
+import { apiPageToLocal, localPageToApi } from '@/lib/page-mapping';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -19,72 +16,6 @@ function logSyncError(message: string, error: unknown) {
   if (isDev) {
     console.error(message, error);
   }
-}
-
-// --- Mappers ---
-
-export function apiPageToLocal(apiPage: ApiPage): Page {
-  return {
-    id: apiPage.id,
-    name: apiPage.name,
-    status: apiPage.status,
-    slug: apiPage.slug,
-    themeId: apiPage.theme_id || 'default',
-    customTheme: (apiPage.custom_theme as Page['customTheme']) || undefined,
-    designTokens: apiToTokens(apiPage.design_tokens as Record<string, unknown> | undefined),
-    seo: {
-      seoTitle: apiPage.seo_title || '',
-      seoDescription: apiPage.seo_description || '',
-      seoCanonicalUrl: apiPage.seo_canonical_url || '',
-      ogTitle: apiPage.og_title || '',
-      ogDescription: apiPage.og_description || '',
-      ogImage: apiPage.og_image || '',
-      ogType: apiPage.og_type || 'website',
-      noindex: apiPage.noindex ?? false,
-    },
-    publishedAt: apiPage.published_at ?? null,
-    hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
-    blocks: apiPage.blocks.map((b): Block => {
-      const { responsive, ...baseStyles } = b.styles as Record<string, unknown>;
-      return {
-        id: b.id,
-        type: b.type,
-        name: blockRegistry[b.type]?.label || b.type,
-        data: b.data,
-        styles: { ...defaultBlockStyles, ...baseStyles },
-        responsiveStyles: (responsive as Block['responsiveStyles']) || undefined,
-      };
-    }),
-  };
-}
-
-export function localPageToApi(page: Page) {
-  const seo = page.seo || defaultSeoFields;
-  return {
-    name: page.name,
-    // status is not sent: it only changes through publish/unpublish (ADR-017)
-    theme_id: page.themeId || 'default',
-    custom_theme: page.customTheme || {},
-    design_tokens: page.designTokens ? tokensToApi(page.designTokens) : {},
-    seo_title: seo.seoTitle,
-    seo_description: seo.seoDescription,
-    seo_canonical_url: seo.seoCanonicalUrl,
-    og_title: seo.ogTitle,
-    og_description: seo.ogDescription,
-    og_image: seo.ogImage,
-    og_type: seo.ogType,
-    noindex: seo.noindex,
-    blocks: page.blocks.map((b, i) => ({
-      id: b.id,
-      type: b.type,
-      order: i,
-      data: b.data,
-      styles: {
-        ...b.styles,
-        ...(b.responsiveStyles ? { responsive: b.responsiveStyles } : {}),
-      },
-    })),
-  };
 }
 
 // --- Local backup (used only when the API is unreachable) ---

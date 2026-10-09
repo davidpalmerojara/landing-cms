@@ -124,8 +124,8 @@ export function tokensToCssVars(tokens: DesignTokens): Record<string, string> {
     '--bp-color-error': t.colors.error,
 
     // Typography
-    '--bp-font-heading': `'${t.typography.headingFont}', sans-serif`,
-    '--bp-font-body': `'${t.typography.bodyFont}', sans-serif`,
+    '--bp-font-heading': fontStack(t.typography.headingFont),
+    '--bp-font-body': fontStack(t.typography.bodyFont),
     '--bp-font-size-base': `${base}px`,
     '--bp-font-size-sm': `${Math.round(base / r)}px`,
     '--bp-font-size-lg': `${Math.round(base * r)}px`,
@@ -314,6 +314,25 @@ export const googleFonts = [
   'Archivo',
   'Libre Baskerville',
 ];
+
+const serifFonts = new Set(['Playfair Display', 'Merriweather', 'Libre Baskerville']);
+
+/** CSS variable that lib/page-fonts.ts defines for a font of googleFonts. */
+export function fontVariable(name: string): string {
+  return `--font-page-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+}
+
+/**
+ * font-family for a theme font: the self-hosted copy when it is one of
+ * googleFonts, otherwise the name itself (only works if installed locally).
+ */
+export function fontStack(name: string): string {
+  const family = `'${name.replace(/['"\\;{}<>]/g, '')}'`;
+  const generic = serifFonts.has(name) ? 'serif' : 'sans-serif';
+  return googleFonts.includes(name)
+    ? `var(${fontVariable(name)}, ${family}), ${generic}`
+    : `${family}, ${generic}`;
+}
 
 // --- WCAG Contrast Check ---
 

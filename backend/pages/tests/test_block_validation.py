@@ -201,7 +201,7 @@ class TestBlockAllowlist:
     def test_drops_fields_without_a_rule(self):
         serializer = self._save([{
             'type': 'hero',
-            'data': {'title': 'Hola', 'buttonLink': 'javascript:alert(1)', 'onload': 'x'},
+            'data': {'title': 'Hola', 'href': 'javascript:alert(1)', 'onload': 'x'},
             'styles': {},
         }])
         assert serializer.is_valid(), serializer.errors

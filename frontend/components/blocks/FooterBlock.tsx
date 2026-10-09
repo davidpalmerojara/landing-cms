@@ -4,9 +4,18 @@ import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockLink from './BlockLink';
+import { safeHref } from '@/lib/safe-link';
 
 export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
+  const footerLinkClass = 'hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium';
+  const footerLinks = (['link1', 'link2', 'link3'] as const).map((key) => ({
+    key,
+    label: data[`${key}Label`] as string,
+    href: isPreviewMode ? safeHref(data[`${key}Url`]) : null,
+  }));
+
   return (
     <footer
       aria-label={t('footerAria')}
@@ -52,24 +61,21 @@ export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: 
             isMobile ? 'justify-center w-full flex-wrap' : ''
           }`}
         >
-          <EditableText
-            blockId={blockId}
-            fieldKey="link1Label"
-            value={data.link1Label as string}
-            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
-          />
-          <EditableText
-            blockId={blockId}
-            fieldKey="link2Label"
-            value={data.link2Label as string}
-            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
-          />
-          <EditableText
-            blockId={blockId}
-            fieldKey="link3Label"
-            value={data.link3Label as string}
-            className="hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium"
-          />
+          {footerLinks.map(({ key, label, href }) =>
+            href ? (
+              <BlockLink key={key} href={href} className={footerLinkClass}>
+                {label}
+              </BlockLink>
+            ) : (
+              <EditableText
+                key={key}
+                blockId={blockId}
+                fieldKey={`${key}Label`}
+                value={label}
+                className={footerLinkClass}
+              />
+            ),
+          )}
         </div>
       </div>
       <div

@@ -1,4 +1,5 @@
 import html
+import re
 from urllib.parse import urlparse
 
 import bleach
@@ -38,6 +39,16 @@ URL_FIELDS_BY_TYPE = {
     'gallery': {'image1', 'image2', 'image3', 'image4', 'image5', 'image6'},
     'navbar': {'logoImage'},
     'team': {'member1Image', 'member2Image', 'member3Image'},
+}
+
+# Fields holding a link a visitor can follow (href). They accept more than the
+# image URLs above: mailto:, tel:, site paths and in-page anchors.
+LINK_FIELDS_BY_TYPE = {
+    'hero': {'buttonLink', 'secondaryButtonLink'},
+    'cta': {'buttonLink'},
+    'navbar': {'link1Url', 'link2Url', 'link3Url', 'ctaLink'},
+    'footer': {'link1Url', 'link2Url', 'link3Url'},
+    'pricing': {'plan1ButtonLink', 'plan2ButtonLink'},
 }
 
 RICH_TEXT_FIELDS_BY_TYPE = {
@@ -107,6 +118,39 @@ def validate_safe_url(value):
     return value
 
 
+# Whitespace, control characters (incl. NUL, DEL, C1) and backslash anywhere in
+# a link are rejected instead of trimmed: browsers strip tabs/newlines inside
+# a scheme ("java\tscript:") and treat a backslash as a slash ("/\evil.com").
+_LINK_FORBIDDEN_CHARS = re.compile(r'[\s\x00-\x20\x7f-\x9f\\]')
+# A scheme followed by at least one more character (a host for http/https)
+_LINK_ABSOLUTE = re.compile(r'(?:https?://[^/?#].*|mailto:.+|tel:.+)', re.IGNORECASE)
+
+
+def validate_safe_link(value):
+    """Validate an href typed by the user.
+
+    Accepted: http(s)://host..., mailto:..., tel:..., site-relative paths
+    ("/pricing", not "//host") and in-page anchors ("#features"). Empty is
+    allowed. Everything else (javascript:, data:, vbscript:, protocol-relative
+    URLs, any whitespace or control character) is rejected.
+    """
+    if value in (None, ''):
+        return value
+    if not isinstance(value, str):
+        raise serializers.ValidationError('Enlace inválido.')
+    if _LINK_FORBIDDEN_CHARS.search(value):
+        raise serializers.ValidationError('El enlace no puede contener espacios ni caracteres de control.')
+    if value.startswith('#'):
+        return value
+    if value.startswith('/') and not value.startswith('//'):
+        return value
+    if _LINK_ABSOLUTE.fullmatch(value):
+        return value
+    raise serializers.ValidationError(
+        'Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.'
+    )
+
+
 def sanitize_block_data(block_type, data):
     if not isinstance(data, dict):
         return data
@@ -114,8 +158,16 @@ def sanitize_block_data(block_type, data):
     sanitized = {}
     rich_fields = RICH_TEXT_FIELDS_BY_TYPE.get(block_type, set())
     url_fields = URL_FIELDS_BY_TYPE.get(block_type, set())
+    link_fields = LINK_FIELDS_BY_TYPE.get(block_type, set())
 
     for key, value in data.items():
+        if key in link_fields:
+            try:
+                sanitized[key] = validate_safe_link(value)
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError({key: exc.detail}) from exc
+            continue
+
         if key in url_fields:
             try:
                 sanitized[key] = validate_safe_url(value)

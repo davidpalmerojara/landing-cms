@@ -12,6 +12,7 @@ from .block_sanitizers import (
     sanitize_custom_html,
     sanitize_plain_text,
     sanitize_text,
+    validate_safe_link,
     validate_safe_url,
 )
 
@@ -40,6 +41,7 @@ class FieldRule:
     choices: tuple[str, ...] | None = None
     sanitizer: Callable | None = sanitize_plain_text
     safe_url: bool = False
+    safe_link: bool = False
     coerce_to_string: bool = False
 
 
@@ -94,9 +96,10 @@ def _validate_fields(
             if rule.max_length is not None and len(value) > rule.max_length:
                 errors.setdefault(key, []).append(f'Máximo {rule.max_length} caracteres.')
                 continue
-            if rule.safe_url:
+            if rule.safe_url or rule.safe_link:
+                validate_url = validate_safe_link if rule.safe_link else validate_safe_url
                 try:
-                    value = validate_safe_url(value)
+                    value = validate_url(value)
                 except serializers.ValidationError as exc:
                     detail = exc.detail
                     if isinstance(detail, list):
@@ -127,6 +130,8 @@ def _validate_fields(
 # Keep the runtime validators aligned here without mutating the IA schemas in this task.
 
 URL_RULE = FieldRule(max_length=2000, safe_url=True, sanitizer=None)
+# Followable links (buttons, nav items): see validate_safe_link
+LINK_RULE = FieldRule(max_length=2000, safe_link=True, sanitizer=None)
 PLAIN_RULE = FieldRule(max_length=PLAIN_TEXT_MAX)
 RICH_RULE = FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text)
 BUTTON_RULE = FieldRule(max_length=BUTTON_TEXT_MAX)
@@ -141,7 +146,11 @@ def validate_navbar_data(data: dict, *, partial: bool = False) -> dict:
         'link1': PLAIN_RULE,
         'link2': PLAIN_RULE,
         'link3': PLAIN_RULE,
+        'link1Url': LINK_RULE,
+        'link2Url': LINK_RULE,
+        'link3Url': LINK_RULE,
         'ctaText': BUTTON_RULE,
+        'ctaLink': LINK_RULE,
     }, partial=partial)
 
 
@@ -150,8 +159,10 @@ def validate_hero_data(data: dict, *, partial: bool = False) -> dict:
         'title': FieldRule(max_length=PLAIN_TEXT_MAX, allow_null=False),
         'subtitle': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
         'buttonText': BUTTON_RULE,
+        'buttonLink': LINK_RULE,
         'badgeText': BUTTON_RULE,
         'secondaryButtonText': BUTTON_RULE,
+        'secondaryButtonLink': LINK_RULE,
         'backgroundImage': URL_RULE,
         'alignment': FieldRule(
             max_length=10,
@@ -188,6 +199,7 @@ def validate_cta_data(data: dict, *, partial: bool = False) -> dict:
         'title': PLAIN_RULE,
         'subtitle': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
         'buttonText': BUTTON_RULE,
+        'buttonLink': LINK_RULE,
     }, partial=partial)
 
 
@@ -199,6 +211,9 @@ def validate_footer_data(data: dict, *, partial: bool = False) -> dict:
         'link1Label': PLAIN_RULE,
         'link2Label': PLAIN_RULE,
         'link3Label': PLAIN_RULE,
+        'link1Url': LINK_RULE,
+        'link2Url': LINK_RULE,
+        'link3Url': LINK_RULE,
     }, partial=partial)
 
 
@@ -210,10 +225,12 @@ def validate_pricing_data(data: dict, *, partial: bool = False) -> dict:
         'plan1Price': PLAIN_RULE,
         'plan1Features': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
         'plan1ButtonText': BUTTON_RULE,
+        'plan1ButtonLink': LINK_RULE,
         'plan2Name': NAME_RULE,
         'plan2Price': PLAIN_RULE,
         'plan2Features': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
         'plan2ButtonText': BUTTON_RULE,
+        'plan2ButtonLink': LINK_RULE,
         'plan2Highlighted': FieldRule(kind='boolean'),
         'billingPeriod': PLAIN_RULE,
         'popularBadgeText': BUTTON_RULE,

@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import Script from 'next/script';
 import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
+import { blockAnchorIds } from '@/lib/block-anchors';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
 import { apiToTokens } from '@/lib/design-tokens';
@@ -78,6 +79,7 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
   );
 
   const blocks = mapBlocks(page.blocks);
+  const anchorIds = blockAnchorIds(blocks);
   // Convert first: the API sends {} for "no tokens", which is truthy.
   const themeVars = pageThemeVars({
     themeId: page.theme_id,
@@ -119,7 +121,7 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
         if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
 
         return (
-          <div key={block.id} data-block-id={block.id} data-block-type={block.type} style={blockStyle}>
+          <div key={block.id} id={anchorIds.get(block.id)} data-block-id={block.id} data-block-type={block.type} style={blockStyle}>
             <BlockComponent
               blockId={block.id}
               data={block.data}

@@ -47,9 +47,21 @@ class TestBlockUpdatedRelay:
 
         asyncio.run(consumer.handle_block_updated({
             'block_id': str(block.id),
-            'data': {'title': 'Nuevo', 'buttonLink': 'javascript:alert(1)'},
+            'data': {'title': 'Nuevo', 'href': 'javascript:alert(1)'},
         }))
         assert relayed(consumer)['data'] == {'title': 'Nuevo'}
+
+        asyncio.run(consumer.handle_block_updated({
+            'block_id': str(block.id),
+            'data': {'buttonLink': 'javascript:alert(1)'},
+        }))
+        assert consumer.send_json.await_args.args[0]['code'] == 'invalid_block_data'
+
+        asyncio.run(consumer.handle_block_updated({
+            'block_id': str(block.id),
+            'data': {'buttonLink': '/registro'},
+        }))
+        assert relayed(consumer)['data'] == {'buttonLink': '/registro'}
 
         asyncio.run(consumer.handle_block_updated({
             'block_id': str(block.id),

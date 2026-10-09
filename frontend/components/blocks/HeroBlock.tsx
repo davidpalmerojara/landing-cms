@@ -4,6 +4,8 @@ import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockLink from './BlockLink';
+import { safeHref } from '@/lib/safe-link';
 
 export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
@@ -13,6 +15,20 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
   const badgeText = typeof data.badgeText === 'string' ? data.badgeText.trim() : '';
   const secondaryButtonText = typeof data.secondaryButtonText === 'string' ? data.secondaryButtonText.trim() : '';
   const isLeft = alignment === 'left';
+  const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
+  const secondaryButtonHref = isPreviewMode ? safeHref(data.secondaryButtonLink) : null;
+  const primaryButtonClass = `rounded-full font-medium shadow-xl transition-all hover:opacity-90 ${
+    isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
+  }`;
+  const primaryButtonStyle = { backgroundColor: 'var(--theme-primary)', color: '#fff' };
+  const secondaryButtonClass = `rounded-full font-medium border transition-all hover:opacity-80 ${
+    isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
+  }`;
+  const secondaryButtonStyle = {
+    backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
+    color: bgImage ? '#fff' : 'var(--theme-text)',
+    borderColor: bgImage ? 'rgba(255,255,255,0.3)' : 'var(--theme-border)',
+  };
 
   return (
     <section
@@ -81,31 +97,24 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
             isLeft ? 'justify-start' : 'w-full justify-center'
           } ${isMobile ? 'flex-col px-4' : 'flex-row items-center'}`}
         >
-          <button
-            className={`rounded-full font-medium shadow-xl transition-all hover:opacity-90 ${
-              isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
-            }`}
-            style={{
-              backgroundColor: 'var(--theme-primary)',
-              color: '#fff',
-            }}
-          >
-            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
-          </button>
-          {secondaryButtonText && (
-            <button
-              className={`rounded-full font-medium border transition-all hover:opacity-80 ${
-                isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
-              }`}
-              style={{
-                backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
-                color: bgImage ? '#fff' : 'var(--theme-text)',
-                borderColor: bgImage ? 'rgba(255,255,255,0.3)' : 'var(--theme-border)',
-              }}
-            >
-              {secondaryButtonText}
+          {buttonHref ? (
+            <BlockLink href={buttonHref} className={`${primaryButtonClass} inline-block text-center`} style={primaryButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+            </BlockLink>
+          ) : (
+            <button className={primaryButtonClass} style={primaryButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
             </button>
           )}
+          {secondaryButtonText && (secondaryButtonHref ? (
+            <BlockLink href={secondaryButtonHref} className={`${secondaryButtonClass} inline-block text-center`} style={secondaryButtonStyle}>
+              {secondaryButtonText}
+            </BlockLink>
+          ) : (
+            <button className={secondaryButtonClass} style={secondaryButtonStyle}>
+              {secondaryButtonText}
+            </button>
+          ))}
         </div>
       </div>
     </section>

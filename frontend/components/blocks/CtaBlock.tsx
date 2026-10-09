@@ -3,10 +3,19 @@
 import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockLink from './BlockLink';
+import { safeHref } from '@/lib/safe-link';
 
 export default function CtaBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const subtitle = data.subtitle as string;
+  const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
+  const buttonClass = `rounded-full font-bold shadow-xl shadow-black/10 transition-transform ${
+    isMobile
+      ? 'w-full py-4 text-base'
+      : 'px-10 py-4 text-lg hover:scale-105'
+  }`;
+  const buttonStyle = { backgroundColor: 'var(--theme-bg)', color: 'var(--theme-primary)' };
 
   return (
     <section
@@ -43,16 +52,15 @@ export default function CtaBlock({ blockId, data, isMobile, isPreviewMode }: Blo
           />
         )}
         <div className={subtitle ? '' : 'mt-8'}>
-          <button
-            className={`rounded-full font-bold shadow-xl shadow-black/10 transition-transform ${
-              isMobile
-                ? 'w-full py-4 text-base'
-                : 'px-10 py-4 text-lg hover:scale-105'
-            }`}
-            style={{ backgroundColor: 'var(--theme-bg)', color: 'var(--theme-primary)' }}
-          >
-            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
-          </button>
+          {buttonHref ? (
+            <BlockLink href={buttonHref} className={`${buttonClass} inline-block text-center`} style={buttonStyle}>
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+            </BlockLink>
+          ) : (
+            <button className={buttonClass} style={buttonStyle}>
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+            </button>
+          )}
         </div>
       </div>
     </section>

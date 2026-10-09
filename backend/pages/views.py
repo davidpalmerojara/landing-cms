@@ -2,6 +2,7 @@ import logging
 import uuid
 from django.db import transaction
 from django.db.models import Prefetch, Q
+from django.utils import timezone
 from rest_framework import viewsets, status, generics, mixins, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -10,8 +11,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from accounts.permissions import IsNotGuest
 from .block_validators import clean_block_data
-from .models import Page, Block, Asset, PageVersion, CustomDomain, create_version_snapshot
+from .models import Page, Block, Asset, PageVersion, PageInvite, CustomDomain, create_version_snapshot
 from .revalidation import revalidate_public_pages
+from . import sync
 from .serializers import (
     PageListSerializer, PageDetailSerializer, AssetSerializer, PreviewBlockSerializer,
     PageVersionListSerializer, PageVersionDetailSerializer,
@@ -37,6 +39,12 @@ def get_or_create_user_workspace(user):
         name=f"{user.username}'s workspace",
     )
 
+
+RESTORABLE_METADATA_FIELDS = (
+    'name', 'design_tokens',
+    'seo_title', 'seo_description', 'seo_canonical_url',
+    'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
+)
 
 PUBLISHED_METADATA_FIELDS = (
     'name', 'design_tokens',
@@ -127,6 +135,58 @@ class PageViewSet(viewsets.ModelViewSet):
             workspace=get_or_create_user_workspace(self.request.user),
         )
 
+    @staticmethod
+    def _parse_base_version(data):
+        """The version the client's edit is based on, or None if missing or not an integer."""
+        value = data.get('version') if hasattr(data, 'get') else None
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return None
+
+    def update(self, request, *args, **kwargs):
+        """PUT/PATCH /api/pages/{id}/ — save, refused with 409 if the page moved on (ADR-024)."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        base_version = self._parse_base_version(request.data)
+        if base_version is None:
+            return Response(
+                {'error': 'Falta la versión de la página en la que se basa el cambio.', 'code': 'VERSION_REQUIRED'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if base_version != instance.version:
+            return self._version_conflict(instance.pk, request)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                # First statement: the conditional bump decides which of two
+                # simultaneous saves wins and holds the row until we commit.
+                sync.claim_version(instance, base_version)
+                serializer.save()
+        except sync.VersionConflict:
+            return self._version_conflict(instance.pk, request)
+
+        sync.notify_page_updated(instance, sync.REASON_SAVE, request.user, sync.connection_id_from(request))
+        return Response(serializer.data)
+
+    def _version_conflict(self, page_id, request):
+        current = self.get_queryset().get(pk=page_id)
+        logger.info('Version conflict saving page %s (user %s)', page_id, request.user.pk)
+        return Response(
+            {
+                'error': 'La página ha cambiado desde la versión en la que te basas.',
+                'code': 'VERSION_CONFLICT',
+                'page': PageDetailSerializer(current, context={'request': request}).data,
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
     def perform_destroy(self, instance):
         if instance.owner != self.request.user:
             from rest_framework.exceptions import PermissionDenied
@@ -140,7 +200,9 @@ class PageViewSet(viewsets.ModelViewSet):
         """POST /api/pages/{id}/publish/ — freeze the current draft as the public page."""
         page = self.get_object()
         page.publish(request.user)
+        sync.bump_version(page)
         revalidate_public_pages(page.slug)
+        sync.notify_page_updated(page, sync.REASON_PUBLISH, request.user, sync.connection_id_from(request))
         return Response(PageDetailSerializer(page, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
@@ -148,7 +210,9 @@ class PageViewSet(viewsets.ModelViewSet):
         """POST /api/pages/{id}/unpublish/ — take the public page offline."""
         page = self.get_object()
         page.unpublish()
+        sync.bump_version(page)
         revalidate_public_pages(page.slug)
+        sync.notify_page_updated(page, sync.REASON_PUBLISH, request.user, sync.connection_id_from(request))
         return Response(PageDetailSerializer(page, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
@@ -165,6 +229,7 @@ class PageViewSet(viewsets.ModelViewSet):
         original.status = Page.Status.DRAFT
         original.published_version = None
         original.published_at = None
+        original.version = 1
         original.owner = request.user
         original.workspace = get_or_create_user_workspace(request.user)
         original.save()
@@ -282,7 +347,34 @@ class PageViewSet(viewsets.ModelViewSet):
             )
 
         page.collaborators.remove(removed)
+        # Their open editors must stop working now, not at the next reconnect
+        sync.notify_access_revoked(page.pk, removed.pk)
         return Response({'message': f'{removed.username} eliminado como colaborador.'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def invite(self, request, id=None):
+        """POST /api/pages/{id}/invite/ — a link that adds whoever opens it as a collaborator.
+
+        Owner only. Guests may create it (unlike share, it sends no email), so a
+        visitor can open their page in another browser to try collaboration.
+        """
+        page = self.get_object()
+        if page.owner != request.user:
+            return Response(
+                {'error': 'Solo el propietario puede invitar a esta página.', 'code': 'NOT_OWNER'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # Old links stay valid until they expire; only the dead ones are swept
+        PageInvite.objects.filter(page=page, expires_at__lte=timezone.now()).delete()
+        invite = PageInvite.objects.create(page=page, created_by=request.user)
+        return Response(
+            {
+                'token': invite.token,
+                'path': f'/join/{invite.token}',
+                'expires_at': invite.expires_at.isoformat(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class OptimizedPageListSerializer(PageListSerializer):
@@ -465,36 +557,19 @@ class PageVersionViewSet(viewsets.GenericViewSet):
                 )
 
             # Optionally restore page metadata
+            restored_fields = []
             if restore_metadata and version.page_metadata:
                 meta = version.page_metadata
-                for field in ('name', 'design_tokens',
-                              'seo_title', 'seo_description', 'seo_canonical_url',
-                              'og_title', 'og_description', 'og_image', 'og_type', 'noindex'):
+                for field in RESTORABLE_METADATA_FIELDS:
                     if field in meta:
                         setattr(page, field, meta[field])
-                page.save()
+                        restored_fields.append(field)
+            # Only the fields we changed: a full save would write back the version
+            # this request loaded and could undo a bump made in the meantime.
+            page.save(update_fields=[*restored_fields, 'updated_at'])
+            sync.bump_version(page)
 
-        # Broadcast via WebSocket if collaboration is active
-        try:
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
-            channel_layer = get_channel_layer()
-            if channel_layer:
-                async_to_sync(channel_layer.group_send)(
-                    f'page_{page_id}',
-                    {
-                        'type': 'page.restored',
-                        'version_number': version.version_number,
-                        'restored_by': request.user.username,
-                        'restored_by_id': str(request.user.pk),
-                    },
-                )
-        except Exception:
-            import logging
-            logging.getLogger(__name__).warning(
-                'Failed to broadcast version restore via WS for page %s',
-                page_id, exc_info=True,
-            )
+        sync.notify_page_updated(page, sync.REASON_RESTORE, request.user, sync.connection_id_from(request))
 
         # Return updated page
         page.refresh_from_db()

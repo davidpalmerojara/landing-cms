@@ -79,6 +79,6 @@ class TestRevalidation:
     def test_saving_a_draft_does_not_revalidate(self, _plan, revalidation_on, auth_client, user, django_capture_on_commit_callbacks):
         page = PageFactory(owner=user)
         with patch(URLOPEN) as urlopen, django_capture_on_commit_callbacks(execute=True):
-            auth_client.put(f'/api/pages/{page.id}/', {'name': 'Nuevo nombre', 'blocks': []}, format='json')
+            auth_client.put(f'/api/pages/{page.id}/', {'name': 'Nuevo nombre', 'blocks': [], 'version': page.version}, format='json')
 
         urlopen.assert_not_called()

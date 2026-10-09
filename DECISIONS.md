@@ -263,6 +263,20 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-024: Colaboración segura: versión de página, fusión y presencia por conexión
+
+- **Fecha**: 2026-10-09
+- **Contexto**: Cada autoguardado era un PUT completo sin comprobar nada, así que dos editores se pisaban (gana el último), un `{**viejo, **nuevo}` por bloque impedía borrar claves, la presencia y los bloqueos se guardaban por usuario (dos pestañas del mismo usuario se confundían y cerrar una soltaba los bloqueos de la otra) y una conexión rechazada emitía `user_left`.
+- **Decisión**:
+  - El servidor es la fuente de verdad. `Page.version` (empieza en 1) sube con cada escritura que cambia la página: guardar (`save`), restaurar (`restore`), publicar y despublicar (`publish`), generar o editar con IA (`ai`). `PUT/PATCH /api/pages/{id}/` exige `version`: sin ella, `400 VERSION_REQUIRED`; si no coincide, `409 VERSION_CONFLICT` con la página actual completa para que el cliente fusione. La comprobación y la subida son un único `UPDATE ... WHERE version = N` (`pages/sync.py`), la primera sentencia de la transacción: de dos guardados simultáneos con la misma versión pasa uno.
+  - `data` de un bloque se reemplaza (ya no se mezcla): una clave quitada desaparece de verdad. Es seguro porque un cliente con datos viejos recibe 409 antes de llegar ahí.
+  - Tras cada escritura, el servidor envía al grupo `page_updated {version, reason, by, connection_id}`. El cliente puede mandar `X-Connection-Id` (su `connection_id`) para que el socket de origen reconozca su eco. Un fallo al emitir se registra y no hace fallar la escritura. `page_restored` desaparece.
+  - WebSocket: cada conexión es un participante (`connection_id` generado por el servidor). La presencia (`user_id`, `username`) y los bloqueos pertenecen a la conexión; al cerrarse una pestaña solo se liberan sus bloqueos. `connected` trae `connection_id`, usuarios, bloqueos (con su titular) y `version`. Una conexión rechazada no emite nada. Se admite al propietario o a un colaborador siempre que el plan del PROPIETARIO tenga colaboración. `lock_acquire` exige que el bloque sea de la página; los cursores deben ser números finitos y se acotan. Al dejar de compartir una página, el servidor envía `access_revoked` y cierra con 4003 los sockets de ese usuario.
+  - Enlaces de invitación: `POST /api/pages/{id}/invite/` (solo el propietario, invitados incluidos, porque no envía correo) crea un `PageInvite` (token aleatorio, 24 h, 5 usos). `POST /api/auth/join/` lo canjea: un usuario con sesión pasa a colaborador; sin sesión se crea un invitado igual que en `/guest/` (mismo límite por IP y de capacidad, mismas cookies) y pasa a colaborador. Caducado, agotado o desconocido dan la misma respuesta, `404 INVITE_INVALID`. El uso se toma con un `UPDATE` condicional dentro de la misma transacción que crea el invitado.
+- **Consecuencias**: Presencia y bloqueos siguen siendo de un solo proceso (ADR-015); con Redis los bloqueos se comparten pero la lista de presencia no. Un bloqueo que caduca por TTL no se anuncia hasta que alguien lo pide. Los clientes deben fusionar en 409 y reintentar con la versión devuelta.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

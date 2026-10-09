@@ -75,11 +75,14 @@ class PageListSerializer(serializers.ModelSerializer):
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
             'block_count', 'owner_name', 'is_shared', 'preview_blocks',
-            'published_at', 'has_unpublished_changes',
+            'published_at', 'has_unpublished_changes', 'version',
             'created_at', 'updated_at',
         ]
         # status only changes through the publish/unpublish actions
-        read_only_fields = ['id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'version',
+            'created_at', 'updated_at',
+        ]
 
     def get_is_shared(self, obj):
         request = self.context.get('request')
@@ -121,11 +124,16 @@ class PageDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'status', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
-            'blocks', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at',
+            'blocks', 'published_at', 'has_unpublished_changes', 'version', 'created_at', 'updated_at',
         ]
         # status only changes through the publish/unpublish actions, so an
-        # autosave can never publish or unpublish a page
-        read_only_fields = ['id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at']
+        # autosave can never publish or unpublish a page. The version is
+        # checked and bumped by PageViewSet.update (pages/sync.py), never
+        # taken from the payload.
+        read_only_fields = [
+            'id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'version',
+            'created_at', 'updated_at',
+        ]
 
     def create(self, validated_data):
         blocks_data = validated_data.pop('blocks', [])
@@ -156,12 +164,13 @@ class PageDetailSerializer(serializers.ModelSerializer):
                     block_id = str(block_data.get('id', '')) if block_data.get('id') else ''
 
                     if block_id and block_id in existing_ids:
-                        # Update existing block
+                        # Update existing block. data is replaced, not merged: a
+                        # key the editor removed must really go (ADR-024). A stale
+                        # payload can no longer drop keys it did not know about
+                        # because it is refused with 409 before it gets here.
                         block = instance.blocks.get(id=block_id)
                         for attr, value in block_data.items():
                             if attr != 'id':
-                                if attr == 'data' and isinstance(value, dict):
-                                    value = {**block.data, **value}
                                 setattr(block, attr, value)
                         block.save()
                         incoming_ids.add(block_id)

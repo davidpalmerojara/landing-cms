@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from collaboration.consumers import PageConsumer, clean_styles
+from collaboration.locks import InMemoryLockManager
 from tests.factories import BlockFactory, PageFactory, UserFactory
 
 
@@ -13,9 +14,12 @@ def make_consumer(page, user):
     consumer.page_id = str(page.id)
     consumer.group_name = f'page_{page.id}'
     consumer.channel_name = 'test-channel'
+    consumer.connection_id = 'conn-1'
+    consumer.entry = {'connection_id': 'conn-1', 'user_id': str(user.pk), 'username': user.username}
+    consumer._joined = True
     consumer.send_json = AsyncMock()
     consumer.channel_layer = MagicMock(group_send=AsyncMock())
-    consumer._lock_manager = MagicMock(get_lock_holder=MagicMock(return_value=str(user.pk)))
+    consumer._lock_manager = MagicMock(spec=InMemoryLockManager, get_lock_holder=MagicMock(return_value='conn-1'))
     return consumer
 
 

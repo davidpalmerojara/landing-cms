@@ -7,8 +7,14 @@ Two implementations with the same interface:
   set, i.e. a single Daphne process (local development, free hosting).
 
 Each lock is a Redis key with format: lock:page:{page_id}:block:{block_id}
-Value is the user_id who holds the lock. TTL is 30 seconds — the frontend
-must renew periodically (every ~10s) to keep the lock alive.
+Value is the holder: an opaque string that identifies who holds the lock. The
+consumer passes the WebSocket connection id, so two tabs of one user are two
+holders and closing one tab releases only its own locks. TTL is 30 seconds —
+the frontend must renew periodically (every ~10s) to keep the lock alive.
+
+The Redis implementation makes blocking network calls; async callers must run
+it in a thread (see PageConsumer._lock_call). The in-memory one is just a dict
+behind a mutex and is safe to call from the event loop.
 """
 
 import threading
@@ -55,46 +61,46 @@ class LockManager:
         self._release_script = self._redis.register_script(RELEASE_SCRIPT)
         self._renew_script = self._redis.register_script(RENEW_SCRIPT)
 
-    def acquire(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def acquire(self, page_id: str, block_id: str, holder: str) -> bool:
         """
         Try to acquire a lock on a block.
-        Returns True if acquired, False if already locked by another user.
+        Returns True if acquired, False if already locked by another holder.
         """
         key = _lock_key(page_id, block_id)
         # SET NX: only set if key doesn't exist
-        acquired = self._redis.set(key, user_id, nx=True, ex=LOCK_TTL)
+        acquired = self._redis.set(key, holder, nx=True, ex=LOCK_TTL)
         if acquired:
             return True
 
         # Check if it's already ours (re-acquire = renew)
         current = self._redis.get(key)
-        if current and current.decode('utf-8') == user_id:
+        if current and current.decode('utf-8') == holder:
             self._redis.expire(key, LOCK_TTL)
             return True
 
         return False
 
-    def release(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def release(self, page_id: str, block_id: str, holder: str) -> bool:
         """
-        Release a lock only if it belongs to the given user.
+        Release a lock only if it belongs to the given holder.
         Returns True if released, False otherwise.
         """
         key = _lock_key(page_id, block_id)
-        result = self._release_script(keys=[key], args=[user_id])
+        result = self._release_script(keys=[key], args=[holder])
         return bool(result)
 
-    def renew(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def renew(self, page_id: str, block_id: str, holder: str) -> bool:
         """
-        Extend a lock's TTL only if it belongs to the given user.
+        Extend a lock's TTL only if it belongs to the given holder.
         Returns True if renewed, False otherwise.
         """
         key = _lock_key(page_id, block_id)
-        result = self._renew_script(keys=[key], args=[user_id, LOCK_TTL])
+        result = self._renew_script(keys=[key], args=[holder, LOCK_TTL])
         return bool(result)
 
     def get_locks(self, page_id: str) -> dict:
         """
-        Return all current locks for a page as {block_id: user_id}.
+        Return all current locks for a page as {block_id: holder}.
         """
         pattern = f'{LOCK_PREFIX}{page_id}:block:*'
         locks = {}
@@ -106,24 +112,23 @@ class LockManager:
                 locks[block_id] = value.decode('utf-8')
         return locks
 
-    def release_all_for_user(self, page_id: str, user_id: str) -> list:
+    def release_all_for_user(self, page_id: str, holder: str) -> list:
         """
-        Release all locks held by a user on a page.
+        Release all locks held by a holder on a page.
         Returns list of block_ids that were released.
         """
         pattern = f'{LOCK_PREFIX}{page_id}:block:*'
         released = []
         for key in self._redis.scan_iter(match=pattern, count=100):
-            value = self._redis.get(key)
-            if value and value.decode('utf-8') == user_id:
-                self._redis.delete(key)
-                key_str = key.decode('utf-8')
-                block_id = key_str.rsplit(':block:', 1)[-1]
+            # The script deletes only if the value is still ours, so a lock another
+            # holder took in between is never removed
+            if self._release_script(keys=[key], args=[holder]):
+                block_id = key.decode('utf-8').rsplit(':block:', 1)[-1]
                 released.append(block_id)
         return released
 
     def get_lock_holder(self, page_id: str, block_id: str) -> str | None:
-        """Return the user_id holding the lock, or None."""
+        """Return the holder of the lock, or None."""
         key = _lock_key(page_id, block_id)
         value = self._redis.get(key)
         return value.decode('utf-8') if value else None
@@ -140,42 +145,45 @@ class InMemoryLockManager:
         entry = self._locks.get((page_id, block_id))
         if entry is None:
             return None
-        user_id, expires_at = entry
+        current, expires_at = entry
         if expires_at <= time.monotonic():
             del self._locks[(page_id, block_id)]
             return None
-        return user_id
+        return current
 
-    def acquire(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def acquire(self, page_id: str, block_id: str, holder: str) -> bool:
         with self._mutex:
-            holder = self._holder(page_id, block_id)
-            if holder not in (None, user_id):
+            current = self._holder(page_id, block_id)
+            if current not in (None, holder):
                 return False
-            self._locks[(page_id, block_id)] = (user_id, time.monotonic() + LOCK_TTL)
+            self._locks[(page_id, block_id)] = (holder, time.monotonic() + LOCK_TTL)
             return True
 
-    def release(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def release(self, page_id: str, block_id: str, holder: str) -> bool:
         with self._mutex:
-            if self._holder(page_id, block_id) != user_id:
+            if self._holder(page_id, block_id) != holder:
                 return False
             del self._locks[(page_id, block_id)]
             return True
 
-    def renew(self, page_id: str, block_id: str, user_id: str) -> bool:
+    def renew(self, page_id: str, block_id: str, holder: str) -> bool:
         with self._mutex:
-            if self._holder(page_id, block_id) != user_id:
+            if self._holder(page_id, block_id) != holder:
                 return False
-            self._locks[(page_id, block_id)] = (user_id, time.monotonic() + LOCK_TTL)
+            self._locks[(page_id, block_id)] = (holder, time.monotonic() + LOCK_TTL)
             return True
 
     def get_locks(self, page_id: str) -> dict:
         with self._mutex:
             keys = [key for key in self._locks if key[0] == page_id]
-            return {block_id: holder for (_, block_id) in keys if (holder := self._holder(page_id, block_id))}
+            return {block_id: current for (_, block_id) in keys if (current := self._holder(page_id, block_id))}
 
-    def release_all_for_user(self, page_id: str, user_id: str) -> list:
+    def release_all_for_user(self, page_id: str, holder: str) -> list:
         with self._mutex:
-            mine = [key for key, (holder, _) in self._locks.items() if key[0] == page_id and holder == user_id]
+            mine = [
+                key for key, (current, expires_at) in self._locks.items()
+                if key[0] == page_id and current == holder and expires_at > time.monotonic()
+            ]
             for key in mine:
                 del self._locks[key]
             return [block_id for (_, block_id) in mine]

@@ -90,6 +90,7 @@ class TestPageCRUD:
         data = {
             'name': 'Updated Name',
             'blocks': [],
+            'version': page.version,
         }
         resp = auth_client.put(page_detail_url(page.id), data, format='json')
         assert resp.status_code == status.HTTP_200_OK
@@ -126,6 +127,7 @@ class TestNestedBlocks:
 
         data = {
             'name': page.name,
+            'version': page.version,
             'blocks': [
                 {'id': hero_id, 'type': 'hero', 'order': 0, 'data': {'title': 'Updated'}, 'styles': {}},
                 {'type': 'cta', 'order': 1, 'data': {}, 'styles': {}},
@@ -145,7 +147,7 @@ class TestNestedBlocks:
 
     def test_update_with_empty_blocks_clears_all(self, auth_client, page_with_blocks):
         page = page_with_blocks
-        data = {'name': page.name, 'blocks': []}
+        data = {'name': page.name, 'blocks': [], 'version': page.version}
         resp = auth_client.put(page_detail_url(page.id), data, format='json')
         assert resp.status_code == status.HTTP_200_OK
         assert page.blocks.count() == 0
@@ -302,8 +304,10 @@ class TestPublish:
 
     def _put_title(self, client, page, title):
         hero = page.blocks.get(type='hero')
+        page.refresh_from_db()
         return client.put(page_detail_url(page.id), {
             'name': page.name,
+            'version': page.version,
             'blocks': [
                 {'id': str(b.id), 'type': b.type, 'order': b.order,
                  'data': {**b.data, 'title': title} if b.id == hero.id else b.data, 'styles': b.styles}
@@ -339,7 +343,7 @@ class TestPublish:
     @patch(GET_PLAN, return_value=_mock_plan())
     def test_autosave_cannot_change_the_status(self, _plan, auth_client, page_with_blocks):
         page = page_with_blocks
-        auth_client.put(page_detail_url(page.id), {'name': page.name, 'status': 'published', 'blocks': []}, format='json')
+        auth_client.put(page_detail_url(page.id), {'name': page.name, 'status': 'published', 'blocks': [], 'version': page.version}, format='json')
         page.refresh_from_db()
         assert page.status == 'draft'
         assert page.published_version is None
@@ -460,7 +464,7 @@ class TestEdgeCases:
     def test_partial_update_page(self, auth_client, page):
         resp = auth_client.patch(
             page_detail_url(page.id),
-            {'name': 'Patched'},
+            {'name': 'Patched', 'version': page.version},
             format='json',
         )
         assert resp.status_code == status.HTTP_200_OK

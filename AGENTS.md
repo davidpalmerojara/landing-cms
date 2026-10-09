@@ -167,24 +167,24 @@ Relaciones relevantes:
 - `AIGenerationLog` registra uso y coste estimado de IA.
 
 Block schemas:
-- En backend, `BlockSerializer` trata `data` como JSON genérico; los schemas efectivos viven en `backend/ai_generation/block_schemas.py` y `frontend/lib/block-registry.ts`.
+- En backend, `clean_block_data` (`backend/pages/block_validators.py`) valida `data` por tipo, listas incluidas; la IA (`backend/ai_generation/block_schemas.py`) y la restauración de versiones pasan por ella. En frontend, `frontend/lib/block-registry.ts` define los campos del inspector (tipo `list` para las listas).
 - Tipos soportados: `navbar`, `hero`, `features`, `testimonials`, `cta`, `footer`, `pricing`, `faq`, `logoCloud`, `gallery`, `contact`, `customHtml`, `team`, `stats`, `timeline`.
-- Campos `data` por tipo:
-  - `navbar`: `brandName`, `logoImage`, `link1`, `link2`, `link3`, `ctaText`
-  - `hero`: `title`, `subtitle`, `buttonText`, `badgeText`, `secondaryButtonText`, `backgroundImage`, `alignment`
-  - `features`: `title`, `feature1Title`, `feature1Desc`, `feature2Title`, `feature2Desc`
-  - `testimonials`: `title`, `quote1`, `author1`, `role1`, `quote2`, `author2`, `role2`
-  - `cta`: `title`, `subtitle`, `buttonText`
-  - `footer`: `brandName`, `description`, `copyright`, `link1Label`, `link2Label`, `link3Label`
-  - `pricing`: `title`, `subtitle`, `plan1Name`, `plan1Price`, `plan1Features`, `plan1ButtonText`, `plan2Name`, `plan2Price`, `plan2Features`, `plan2ButtonText`, `plan2Highlighted`, `billingPeriod`, `popularBadgeText`
-  - `faq`: `title`, `q1`, `a1`, `q2`, `a2`, `q3`, `a3`
-  - `logoCloud`: `title`, `logo1`, `logo2`, `logo3`, `logo4`, `logo5`
-  - `gallery`: `title`, `subtitle`, `columns`, `image1`, `image2`, `image3`, `image4`, `image5`, `image6`
-  - `contact`: `title`, `subtitle`, `buttonText`, `namePlaceholder`, `emailPlaceholder`, `messagePlaceholder`
-  - `customHtml`: `html`
-  - `team`: `title`, `subtitle`, `member1Name`, `member1Role`, `member1Image`, `member2Name`, `member2Role`, `member2Image`, `member3Name`, `member3Role`, `member3Image`
-  - `stats`: `title`, `subtitle`, `stat1Value`, `stat1Label`, `stat2Value`, `stat2Label`, `stat3Value`, `stat3Label`, `stat4Value`, `stat4Label`
-  - `timeline`: `title`, `item1Date`, `item1Title`, `item1Desc`, `item2Date`, `item2Title`, `item2Desc`, `item3Date`, `item3Title`, `item3Desc`
+- Campos `data` por tipo (las listas son arrays de objetos, ADR-021; tipos en `frontend/types/block-data.ts`):
+  - `hero`: title, subtitle, buttonText, buttonLink, badgeText, secondaryButtonText, secondaryButtonLink, backgroundImage, alignment
+  - `features`: title, features[] {title, description} (max 6)
+  - `testimonials`: title, testimonials[] {quote, author, role} (max 6)
+  - `cta`: title, subtitle, buttonText, buttonLink
+  - `footer`: brandName, description, copyright, links[] {label, url} (max 6)
+  - `pricing`: title, subtitle, billingPeriod, popularBadgeText, plans[] {name, price, features (una por linea), buttonText, buttonLink, highlighted} (max 4)
+  - `faq`: title, questions[] {question, answer} (max 12)
+  - `logoCloud`: title, logos[] {name} (max 12)
+  - `gallery`: title, subtitle, columns ('2'|'3'|'4'), images[] {src, alt} (max 12)
+  - `contact`: title, subtitle, buttonText, namePlaceholder, emailPlaceholder, messagePlaceholder
+  - `customHtml`: html (iframe sandbox, ADR-016)
+  - `navbar`: brandName, logoImage, links[] {label, url} (max 6), ctaText, ctaLink
+  - `team`: title, subtitle, members[] {name, role, image} (max 8)
+  - `stats`: title, subtitle, stats[] {value, label} (max 6)
+  - `timeline`: title, events[] {date, title, description} (max 10)
 
 ## Endpoints De La API
 Públicos:

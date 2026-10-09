@@ -221,23 +221,25 @@ Estas decisiones estan tomadas y no deben cuestionarse ni cambiarse sin discusio
 
 15 bloques registrados en `lib/block-registry.ts`:
 
-| Tipo | Label | Campos principales de `data` |
+| Tipo | Label | Campos de `data` |
 |---|---|---|
-| `hero` | Hero Section | title, subtitle, buttonText, badgeText, secondaryButtonText, backgroundImage, alignment |
-| `features` | Features Grid | title, feature1Title, feature1Desc, feature2Title, feature2Desc |
-| `testimonials` | Testimonials | title, quote1, author1, role1, quote2, author2, role2 |
-| `cta` | Call to Action | title, subtitle, buttonText |
-| `footer` | Footer Simple | brandName, description, copyright, link1Label, link2Label, link3Label |
-| `pricing` | Pricing Table | title, plan1Name, plan1Price, plan1Features, plan2Name, plan2Price, plan2Features, billingPeriod, popularBadgeText |
-| `faq` | FAQ Accordion | title, q1, a1, q2, a2, q3, a3 |
-| `logoCloud` | Logo Cloud | title, logos (array) |
-| `gallery` | Gallery Grid | title, images (array) |
-| `contact` | Contact Form | title, subtitle, namePlaceholder, emailPlaceholder, messagePlaceholder, buttonText |
-| `customHtml` | Custom HTML | html |
-| `navbar` | Navigation Bar | brandName, links, ctaText |
-| `team` | Team Members | title, members (array con name, role, image) |
-| `stats` | Statistics | title, stats (array con label, value) |
-| `timeline` | Timeline | title, events (array con date, title, description) |
+| `hero` | Hero | title, subtitle, buttonText, buttonLink, badgeText, secondaryButtonText, secondaryButtonLink, backgroundImage, alignment |
+| `features` | Features | title, features[] {title, description} (max 6) |
+| `testimonials` | Testimonials | title, testimonials[] {quote, author, role} (max 6) |
+| `cta` | Call to Action | title, subtitle, buttonText, buttonLink |
+| `footer` | Footer | brandName, description, copyright, links[] {label, url} (max 6) |
+| `pricing` | Pricing | title, subtitle, billingPeriod, popularBadgeText, plans[] {name, price, features (una por linea), buttonText, buttonLink, highlighted} (max 4) |
+| `faq` | FAQ | title, questions[] {question, answer} (max 12) |
+| `logoCloud` | Logo Cloud | title, logos[] {name} (max 12) |
+| `gallery` | Gallery | title, subtitle, columns ('2'|'3'|'4'), images[] {src, alt} (max 12) |
+| `contact` | Contact Form | title, subtitle, buttonText, namePlaceholder, emailPlaceholder, messagePlaceholder |
+| `customHtml` | Custom HTML | html (iframe sandbox, ADR-016) |
+| `navbar` | Navigation Bar | brandName, logoImage, links[] {label, url} (max 6), ctaText, ctaLink |
+| `team` | Team | title, subtitle, members[] {name, role, image} (max 8) |
+| `stats` | Statistics | title, subtitle, stats[] {value, label} (max 6) |
+| `timeline` | Timeline | title, events[] {date, title, description} (max 10) |
+
+Las listas son arrays de objetos (ADR-021). Los tipos viven en `types/block-data.ts` (union discriminada por `type`); `normalizeBlockData()` en `lib/block-data.ts` convierte los datos de la API al tipo de cada bloque, y el backend los valida en `clean_block_data` (`pages/block_validators.py`), el unico camino para REST, WebSocket, IA y restauracion de versiones.
 
 Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, y seguir la interfaz `BlockProps` (`blockId`, `data`, `isPreviewMode`).
 

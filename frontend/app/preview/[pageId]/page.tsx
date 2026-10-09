@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
+import { blockAnchorIds } from '@/lib/block-anchors';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import type { Page } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
@@ -179,6 +180,7 @@ export default function PreviewPage() {
   }
 
   const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
+  const anchorIds = blockAnchorIds(page.blocks);
 
   return (
     <div className="min-h-screen bg-white" style={themeVars}>
@@ -203,7 +205,7 @@ export default function PreviewPage() {
         if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
 
         return (
-          <div key={block.id} style={blockStyle}>
+          <div key={block.id} id={anchorIds.get(block.id)} style={blockStyle}>
             <BlockComponent
               blockId={block.id}
               data={block.data}

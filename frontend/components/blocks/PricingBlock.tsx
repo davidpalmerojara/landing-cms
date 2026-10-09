@@ -4,12 +4,22 @@ import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockLink from './BlockLink';
+import { safeHref } from '@/lib/safe-link';
 
 export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const plan1Features = ((data.plan1Features as string) || '').split('\n').filter(Boolean);
   const plan2Features = ((data.plan2Features as string) || '').split('\n').filter(Boolean);
   const isHighlighted = data.plan2Highlighted as boolean;
+  const plan1Href = isPreviewMode ? safeHref(data.plan1ButtonLink) : null;
+  const plan2Href = isPreviewMode ? safeHref(data.plan2ButtonLink) : null;
+  const plan1ButtonClass = 'w-full py-3 rounded-lg border font-medium hover:opacity-80 transition-colors';
+  const plan1ButtonStyle = { borderColor: 'var(--theme-border)', color: 'var(--theme-text)' };
+  const plan2ButtonClass = 'w-full py-3 rounded-lg font-medium transition-colors hover:opacity-90';
+  const plan2ButtonStyle = isHighlighted
+    ? { backgroundColor: 'var(--theme-primary)', color: 'white' }
+    : { borderColor: 'var(--theme-border)', color: 'var(--theme-text)', border: '1px solid var(--theme-border)' };
 
   return (
     <section
@@ -78,12 +88,15 @@ export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }:
               </li>
             ))}
           </ul>
-          <button
-            className="w-full py-3 rounded-lg border font-medium hover:opacity-80 transition-colors"
-            style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}
-          >
-            <EditableText blockId={blockId} fieldKey="plan1ButtonText" value={data.plan1ButtonText as string} />
-          </button>
+          {plan1Href ? (
+            <BlockLink href={plan1Href} className={`${plan1ButtonClass} block text-center`} style={plan1ButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="plan1ButtonText" value={data.plan1ButtonText as string} />
+            </BlockLink>
+          ) : (
+            <button className={plan1ButtonClass} style={plan1ButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="plan1ButtonText" value={data.plan1ButtonText as string} />
+            </button>
+          )}
         </div>
 
         {/* Plan 2 */}
@@ -139,15 +152,15 @@ export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }:
               </li>
             ))}
           </ul>
-          <button
-            className="w-full py-3 rounded-lg font-medium transition-colors hover:opacity-90"
-            style={isHighlighted
-              ? { backgroundColor: 'var(--theme-primary)', color: 'white' }
-              : { borderColor: 'var(--theme-border)', color: 'var(--theme-text)', border: '1px solid var(--theme-border)' }
-            }
-          >
-            <EditableText blockId={blockId} fieldKey="plan2ButtonText" value={data.plan2ButtonText as string} />
-          </button>
+          {plan2Href ? (
+            <BlockLink href={plan2Href} className={`${plan2ButtonClass} block text-center`} style={plan2ButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="plan2ButtonText" value={data.plan2ButtonText as string} />
+            </BlockLink>
+          ) : (
+            <button className={plan2ButtonClass} style={plan2ButtonStyle}>
+              <EditableText blockId={blockId} fieldKey="plan2ButtonText" value={data.plan2ButtonText as string} />
+            </button>
+          )}
         </div>
       </div>
     </section>

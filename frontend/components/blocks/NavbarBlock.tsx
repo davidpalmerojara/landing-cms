@@ -5,11 +5,27 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockLink from './BlockLink';
+import { safeHref } from '@/lib/safe-link';
 
 export default function NavbarBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const [menuOpen, setMenuOpen] = useState(false);
   const logoImage = data.logoImage as string;
+  const navLinks = (['link1', 'link2', 'link3'] as const).map((key) => ({
+    key,
+    label: data[key] as string,
+    href: isPreviewMode ? safeHref(data[`${key}Url`]) : null,
+  }));
+  const ctaHref = isPreviewMode ? safeHref(data.ctaLink) : null;
+
+  const renderNavLink = (key: 'link1' | 'link2' | 'link3', label: string, href: string | null, className: string) => {
+    const style = { color: 'var(--theme-text-muted)' };
+    if (href) {
+      return <BlockLink key={key} href={href} className={className} style={style}>{label}</BlockLink>;
+    }
+    return <EditableText key={key} blockId={blockId} fieldKey={key} value={label} as="span" className={className} style={style} />;
+  };
 
   return (
     <nav
@@ -57,31 +73,47 @@ export default function NavbarBlock({ blockId, data, isMobile, isPreviewMode }: 
                 className="absolute top-full left-0 right-0 border-b py-4 px-4 flex flex-col gap-3 z-50"
                 style={{ backgroundColor: 'var(--theme-bg)', borderColor: 'var(--theme-border)' }}
               >
-                <EditableText blockId={blockId} fieldKey="link1" value={data.link1 as string} as="span" className="text-sm" style={{ color: 'var(--theme-text-muted)' }} />
-                <EditableText blockId={blockId} fieldKey="link2" value={data.link2 as string} as="span" className="text-sm" style={{ color: 'var(--theme-text-muted)' }} />
-                <EditableText blockId={blockId} fieldKey="link3" value={data.link3 as string} as="span" className="text-sm" style={{ color: 'var(--theme-text-muted)' }} />
-                <button
-                  className="text-white text-sm font-medium px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: 'var(--theme-primary)' }}
-                >
-                  {data.ctaText as string}
-                </button>
+                {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm'))}
+                {ctaHref ? (
+                  <BlockLink
+                    href={ctaHref}
+                    className="text-white text-sm font-medium px-4 py-2 rounded-lg inline-block text-center"
+                    style={{ backgroundColor: 'var(--theme-primary)' }}
+                  >
+                    {data.ctaText as string}
+                  </BlockLink>
+                ) : (
+                  <button
+                    className="text-white text-sm font-medium px-4 py-2 rounded-lg"
+                    style={{ backgroundColor: 'var(--theme-primary)' }}
+                  >
+                    {data.ctaText as string}
+                  </button>
+                )}
               </div>
             )}
           </>
         ) : (
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-6">
-              <EditableText blockId={blockId} fieldKey="link1" value={data.link1 as string} as="span" className="text-sm transition-colors" style={{ color: 'var(--theme-text-muted)' }} />
-              <EditableText blockId={blockId} fieldKey="link2" value={data.link2 as string} as="span" className="text-sm transition-colors" style={{ color: 'var(--theme-text-muted)' }} />
-              <EditableText blockId={blockId} fieldKey="link3" value={data.link3 as string} as="span" className="text-sm transition-colors" style={{ color: 'var(--theme-text-muted)' }} />
+              {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm transition-colors'))}
             </div>
-            <button
-              className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90"
-              style={{ backgroundColor: 'var(--theme-primary)' }}
-            >
-              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
-            </button>
+            {ctaHref ? (
+              <BlockLink
+                href={ctaHref}
+                className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90 inline-block text-center"
+                style={{ backgroundColor: 'var(--theme-primary)' }}
+              >
+                <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+              </BlockLink>
+            ) : (
+              <button
+                className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90"
+                style={{ backgroundColor: 'var(--theme-primary)' }}
+              >
+                <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+              </button>
+            )}
           </div>
         )}
       </div>

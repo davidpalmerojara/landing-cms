@@ -28,7 +28,9 @@ function translateExactFieldLabel(fieldKey: string, locale: string) {
     subtitle: 'Subtitle',
     buttonText: 'Button text',
     badgeText: 'Badge text',
+    buttonLink: 'Button link',
     secondaryButtonText: 'Secondary button text',
+    secondaryButtonLink: 'Secondary button link',
     backgroundImage: 'Background image',
     alignment: 'Alignment',
     brandName: 'Brand name',
@@ -36,7 +38,11 @@ function translateExactFieldLabel(fieldKey: string, locale: string) {
     link1: 'Link 1',
     link2: 'Link 2',
     link3: 'Link 3',
+    link1Url: 'Link 1 destination',
+    link2Url: 'Link 2 destination',
+    link3Url: 'Link 3 destination',
     ctaText: 'CTA text',
+    ctaLink: 'CTA link',
     description: 'Description',
     copyright: 'Copyright',
     link1Label: 'Link 1 label',
@@ -62,13 +68,14 @@ function translatePatternFieldLabel(fieldKey: string, locale: string) {
     return `Feature ${featureMatch[1]} ${featureMatch[2] === 'Title' ? 'title' : 'description'}`;
   }
 
-  const planMatch = fieldKey.match(/^plan(\d)(Name|Price|Features|ButtonText)$/);
+  const planMatch = fieldKey.match(/^plan(\d)(Name|Price|Features|ButtonText|ButtonLink)$/);
   if (planMatch) {
     const suffixMap: Record<string, string> = {
       Name: 'name',
       Price: 'price',
       Features: 'features (one per line)',
       ButtonText: 'button text',
+      ButtonLink: 'button link',
     };
     return `Plan ${planMatch[1]} ${suffixMap[planMatch[2]]}`;
   }

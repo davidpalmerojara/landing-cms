@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from pages.models import Page
 from .models import AnalyticsEvent
+from .privacy import daily_visitor_hash, referrer_origin, sanitize_event_data
 from .serializers import EventBatchSerializer
 
 logger = logging.getLogger(__name__)
@@ -54,19 +55,21 @@ class CollectView(APIView):
         if page.status != Page.Status.PUBLISHED:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+        # Cookieless visitor id: computed here, never sent by the browser.
+        visitor_id = daily_visitor_hash(request, page.pk)
+
         # Build event objects
         now = timezone.now()
         event_objects = []
         for evt in data['events']:
             event_objects.append(AnalyticsEvent(
                 page=page,
-                visitor_id=evt['visitor_id'],
+                visitor_id=visitor_id,
                 event_type=evt['event_type'],
                 block_id=evt.get('block_id'),
                 block_type=evt.get('block_type'),
-                event_data=evt.get('event_data', {}),
-                referrer=evt.get('referrer') or None,
-                user_agent=evt.get('user_agent') or None,
+                event_data=sanitize_event_data(evt['event_type'], evt.get('event_data')),
+                referrer=referrer_origin(evt.get('referrer')),
                 screen_size=evt.get('screen_size') or None,
                 utm_source=evt.get('utm_source') or None,
                 utm_medium=evt.get('utm_medium') or None,
@@ -181,6 +184,7 @@ class PageAnalyticsView(APIView):
 
         # ── Key metrics ──────────────────────────────────
         total_views = qs.filter(event_type='pageview').count()
+        # Distinct daily hashes: a visitor returning on another day counts again.
         unique_visitors = qs.filter(event_type='pageview').values('visitor_id').distinct().count()
 
         # Average time on page: compute in Python to avoid SQLite JSON aggregation issues.

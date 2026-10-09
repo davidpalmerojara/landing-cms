@@ -189,7 +189,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **Plan**: name, max_pages, max_ai_generations_per_hour, feature flags
 - **Subscription**: workspace FK, plan FK, stripe_subscription_id, status, billing_cycle
 - **AnalyticsEvent**: page FK, event_type, visitor_id (hash diario calculado en servidor, sin cookies), block_id, event_data (JSON filtrado por tipo), referrer (solo origen), UTM params, screen_size
-- **AIGenerationLog**: user FK, page FK, prompt, mode, token counts, cost
+- **AIGenerationLog**: user FK, page FK, prompt, mode, source (demo / live / own_key), token counts, cost
 
 ---
 
@@ -298,8 +298,9 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | GET/POST | `/api/assets/` | Si | Listar/subir assets |
 | GET/POST/DELETE | `/api/domains/` | Si (Pro) | CRUD dominios custom |
 | POST | `/api/domains/{id}/verify/` | Si | Verificar DNS |
-| POST | `/api/pages/{id}/generate/` | Si | Generar pagina con IA |
-| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA |
+| GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |
+| POST | `/api/pages/{id}/generate/` | Si | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |
+| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque) |
 | POST | `/api/analytics/collect/` | No | Trackear evento |
 | GET | `/api/pages/{id}/analytics/` | Si | Analitica de pagina |
 | GET | `/api/billing/plans/` | No | Planes disponibles |

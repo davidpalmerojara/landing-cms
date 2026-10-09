@@ -685,7 +685,7 @@
     "setupKey": "Usar mi propia clave",
     "generatePage": "Generar página",
     "generatingAction": "Generando...",
-    "keyHelpText": "Necesitas una API key para usar la generación con IA. Consigue una gratis en",
+    "keyHelpText": "Con tu propia clave, la IA genera de verdad. Consigue una gratis en",
     "providerGemini": "Google Gemini (gratis)",
     "providerAnthropic": "Anthropic Claude",
     "blockEditTitle": "Editar con IA",
@@ -702,9 +702,36 @@
     "creativeTone": "Creativo",
     "minimalistTone": "Minimalista",
     "corporateTone": "Corporativo",
-    "keyNotStored": "Tu clave se usa solo para esta generación y no se guarda en ningún sitio.",
+    "keyNotStored": "Tu clave se usa solo para esta petición y no se guarda en ningún sitio.",
     "providerLabel": "Proveedor de IA",
-    "keyLabel": "Tu clave de API"
+    "keyLabel": "Tu clave de API",
+    "suggestionsLabel": "Ejemplos para probar",
+    "openEditor": "Abrir en el editor",
+    "blockEditSend": "Enviar instrucción",
+    "errorNoVariant": "La demo no tiene una variante guardada para este tipo de bloque. Con tu propia clave, la IA lo edita de verdad.",
+    "errorKeyQuota": "Tu clave ha agotado su cuota. Inténtalo más tarde o prueba con otra clave.",
+    "saved": {
+      "page": {
+        "demo_mode": "Respuesta de demo cacheada: generada una vez con IA y guardada.",
+        "daily_limit": "Se ha alcanzado el límite diario de la demo: esta es una respuesta guardada.",
+        "provider_quota": "El servicio de IA ha agotado su cuota por ahora: esta es una respuesta guardada."
+      },
+      "block": {
+        "demo_mode": "En la demo la edición con IA devuelve una variante guardada del bloque y no sigue tu instrucción. Con tu propia clave, sí.",
+        "daily_limit": "Se ha alcanzado el límite diario de la demo: esta es una variante guardada del bloque y no sigue tu instrucción.",
+        "provider_quota": "El servicio de IA ha agotado su cuota por ahora: esta es una variante guardada del bloque y no sigue tu instrucción."
+      },
+      "noExampleMatched": "Tu descripción no coincide con ninguno de los ejemplos, así que se ha elegido uno. Con tu propia clave, la página se genera a partir de tu texto."
+    },
+    "notice": {
+      "demo": "Modo demo: tu texto no se envía a ningún servicio de IA y recibirás una página guardada. Con tu propia clave sí se genera de verdad.",
+      "live": "Tu descripción se envía a Google Gemini para generar la página. No incluyas datos personales. Límite: {count} al día por persona; después se usan respuestas guardadas.",
+      "unavailable": "La IA del servidor no está disponible ahora. Puedes usar tu propia clave.",
+      "ownKey": {
+        "gemini": "Tu descripción se envía a Google Gemini con tu clave. No incluyas datos personales.",
+        "anthropic": "Tu descripción se envía a Anthropic con tu clave. No incluyas datos personales."
+      }
+    }
   },
   "upgrade": {
     "compact": "{feature} - Actualizar a Pro",

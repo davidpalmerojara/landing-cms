@@ -215,6 +215,57 @@ export interface ApiAsset {
   created_at: string;
 }
 
+// --- AI ---
+
+/** Where an AI answer came from: a saved demo response, the server's key, or the user's own key. */
+export type AiSource = 'demo' | 'live' | 'own_key';
+
+/** Why a saved response was served. */
+export type AiDemoReason = 'demo_mode' | 'daily_limit' | 'provider_quota';
+
+export interface AiDemoInfo {
+  reason: AiDemoReason;
+  /** Page generation only: the saved page served, and whether the text matched it (false: a fallback) */
+  fixture_id?: string;
+  matched?: boolean;
+}
+
+export interface AiOwnKey {
+  provider?: 'gemini' | 'anthropic';
+  api_key?: string;
+}
+
+export interface AiPromptSuggestion {
+  id: string;
+  title: string;
+  prompt: string;
+  language: 'es' | 'en';
+}
+
+export interface AiOptions {
+  mode: 'demo' | 'live' | 'unavailable';
+  live_user_daily_limit: number;
+  prompts: AiPromptSuggestion[];
+}
+
+interface AiAnswer {
+  source: AiSource;
+  provider: string | null;
+  /** Only when source is "demo" */
+  demo?: AiDemoInfo;
+  tokens: { input: number; output: number; cost_estimate: string };
+}
+
+export interface AiGenerateResponse extends AiAnswer {
+  page_id: string;
+  block_count: number;
+  blocks: Array<{ id: string; type: string; order: number; data: Record<string, unknown>; styles: Record<string, unknown> }>;
+}
+
+export interface AiEditBlockResponse extends AiAnswer {
+  block: { id: string; type: string; order: number; data: Record<string, unknown>; styles: Record<string, unknown> };
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -397,27 +448,21 @@ export const api = {
   },
 
   ai: {
+    /** How AI answers right now, and the saved prompts offered as suggestions (titled in `language`). */
+    options: (language: 'es' | 'en') =>
+      request<AiOptions>(`/ai/options/?language=${language}`),
+
     /** provider/api_key: the user's own key, used for this request only (never stored). */
-    generate: (pageId: string, data: { prompt: string; tone?: string; language?: 'es' | 'en'; provider?: 'gemini' | 'anthropic'; api_key?: string }) =>
-      request<{
-        page_id: string;
-        block_count: number;
-        blocks: Array<{ id: string; type: string; order: number; data: Record<string, unknown>; styles: Record<string, unknown> }>;
-        provider: string;
-        tokens: { input: number; output: number; cost_estimate: string };
-      }>(`/pages/${pageId}/generate/`, {
+    generate: (pageId: string, data: { prompt: string; tone?: string; language?: 'es' | 'en' } & AiOwnKey) =>
+      request<AiGenerateResponse>(`/pages/${pageId}/generate/`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),
 
-    editBlock: (pageId: string, blockId: string, instruction: string) =>
-      request<{
-        block: { id: string; type: string; order: number; data: Record<string, unknown>; styles: Record<string, unknown> };
-        provider: string;
-        tokens: { input: number; output: number; cost_estimate: string };
-      }>(`/pages/${pageId}/blocks/${blockId}/edit-ai/`, {
+    editBlock: (pageId: string, blockId: string, instruction: string, ownKey?: AiOwnKey) =>
+      request<AiEditBlockResponse>(`/pages/${pageId}/blocks/${blockId}/edit-ai/`, {
         method: 'POST',
-        body: JSON.stringify({ instruction }),
+        body: JSON.stringify({ instruction, ...ownKey }),
       }),
   },
 

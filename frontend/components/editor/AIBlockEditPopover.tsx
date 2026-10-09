@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Loader2, X, Send } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { Sparkles, Loader2, X, Send, Key } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import type { AiDemoInfo, AiSource } from '@/lib/api';
+import { aiErrorMessageKey, parseApiError } from '@/lib/ai';
+import { useAiOptions } from '@/hooks/useAiOptions';
 import { useEditorStore } from '@/store/editor-store';
+import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
+import AiSavedAnswerNotice from '@/components/ai/AiSavedAnswerNotice';
 
 interface AIBlockEditPopoverProps {
   blockId: string;
@@ -12,13 +17,28 @@ interface AIBlockEditPopoverProps {
   onClose: () => void;
 }
 
+interface SavedResult {
+  source: AiSource;
+  demo?: AiDemoInfo;
+}
+
 export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlockEditPopoverProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const [instruction, setInstruction] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A saved variant stays on screen with its label until the user closes the popover
+  const [savedResult, setSavedResult] = useState<SavedResult | null>(null);
+  const [showKeySetup, setShowKeySetup] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
+  const [aiKey, setAiKey] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const replaceBlockData = useEditorStore((s) => s.replaceBlockData);
+  const { options } = useAiOptions(locale === 'en' ? 'en' : 'es');
+  const ownKey = aiKey.trim();
+  // Without their own key, in demo mode the instruction cannot be followed
+  const demoEditsAhead = options?.mode === 'demo' && !ownKey;
   const suggestions = [
     t('ai.blockSuggestion1'),
     t('ai.blockSuggestion2'),
@@ -46,27 +66,29 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
     setIsLoading(true);
     setError(null);
+    setSavedResult(null);
 
     try {
-      const result = await api.ai.editBlock(pageId, blockId, value);
+      const result = await api.ai.editBlock(
+        pageId,
+        blockId,
+        value,
+        ownKey ? { provider: aiProvider, api_key: ownKey } : undefined,
+      );
       if (!replaceBlockData(blockId, result.block.type, result.block.data)) {
         // The server answered with a block type this editor does not know
         setError(t('ai.blockEditError'));
         return;
       }
+      if (result.source === 'demo') {
+        setSavedResult({ source: result.source, demo: result.demo });
+        return;
+      }
       onClose();
     } catch (e) {
-      let msg = e instanceof Error ? e.message : t('ai.blockEditError');
-      try {
-        const match = msg.match(/API \d+: (.+)/);
-        if (match) {
-          const parsed = JSON.parse(match[1]);
-          msg = parsed.error || msg;
-        }
-      } catch {
-        // Use raw message
-      }
-      setError(msg);
+      const { message, code } = parseApiError(e, t('ai.blockEditError'));
+      const translatedKey = aiErrorMessageKey(code);
+      setError(translatedKey ? t(translatedKey) : message);
     } finally {
       setIsLoading(false);
     }
@@ -78,16 +100,21 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="bg-surface border border-subtle rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
+      <div
+        role="dialog"
+        aria-labelledby="ai-block-edit-title"
+        className="bg-surface border border-subtle rounded-xl shadow-2xl shadow-black/40 overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-subtle/80">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-            <span className="text-xs font-medium text-secondary">{t('ai.blockEditTitle')}</span>
+            <span id="ai-block-edit-title" className="text-xs font-medium text-secondary">{t('ai.blockEditTitle')}</span>
           </div>
           <button
             onClick={onClose}
             disabled={isLoading}
+            aria-label={t('common.close')}
             className="p-1 rounded text-muted hover:text-secondary hover:bg-surface-card transition-colors disabled:opacity-50"
           >
             <X className="w-3.5 h-3.5" />
@@ -96,6 +123,10 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
         {/* Input */}
         <div className="p-3">
+          {demoEditsAhead && !savedResult && (
+            <p id="ai-block-demo-note" className="text-xs text-muted mb-2.5">{t('ai.saved.block.demo_mode')}</p>
+          )}
+
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -106,13 +137,16 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
                 if (e.key === 'Enter') handleSubmit();
               }}
               placeholder={t('ai.blockEditPlaceholder')}
+              aria-label={t('ai.blockEditTitle')}
+              aria-describedby={demoEditsAhead ? 'ai-block-demo-note' : undefined}
               maxLength={500}
               disabled={isLoading}
-              className="flex-1 bg-surface-elevated border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 disabled:opacity-50"
+              className="flex-1 min-w-0 bg-surface-elevated border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 disabled:opacity-50"
             />
             <button
               onClick={() => handleSubmit()}
               disabled={isLoading || !instruction.trim()}
+              aria-label={t('ai.blockEditSend')}
               className="bg-violet-600 hover:bg-violet-500 text-white p-2 rounded-lg transition-colors disabled:opacity-50 shrink-0"
             >
               {isLoading ? (
@@ -125,11 +159,24 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
           {/* Error */}
           {error && (
-            <p className="text-xs text-red-400 mt-2 px-1">{error}</p>
+            <p className="text-xs text-red-400 mt-2 px-1" role="alert">{error}</p>
+          )}
+
+          {/* A saved variant says so */}
+          {savedResult && (
+            <div className="mt-2.5 space-y-2">
+              <AiSavedAnswerNotice kind="block" source={savedResult.source} demo={savedResult.demo} />
+              <button
+                onClick={onClose}
+                className="w-full text-xs font-medium text-secondary hover:text-primary px-3 py-2 rounded-lg bg-surface-elevated border border-subtle transition-colors"
+              >
+                {t('common.close')}
+              </button>
+            </div>
           )}
 
           {/* Quick suggestions */}
-          {!isLoading && !error && (
+          {!isLoading && !error && !savedResult && (
             <div className="flex flex-wrap gap-1.5 mt-2.5">
               {suggestions.map((s) => (
                 <button
@@ -148,10 +195,38 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
           {/* Loading state */}
           {isLoading && (
-            <p className="text-xs text-violet-400 mt-2 px-1 flex items-center gap-1.5">
+            <p className="text-xs text-violet-400 mt-2 px-1 flex items-center gap-1.5" role="status">
               <Loader2 className="w-3 h-3 animate-spin" />
               {t('ai.blockEditing')}
             </p>
+          )}
+
+          {/* Own key: kept in memory only */}
+          {!savedResult && (
+            <div className="mt-2.5 space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowKeySetup((value) => !value)}
+                aria-expanded={showKeySetup}
+                aria-controls="ai-block-own-key"
+                disabled={isLoading}
+                className="text-[11px] text-violet-400 hover:text-violet-300 underline flex items-center gap-1 disabled:opacity-50"
+              >
+                <Key className="w-3 h-3" aria-hidden="true" />
+                {t('ai.setupKey')}
+              </button>
+              {showKeySetup && (
+                <div id="ai-block-own-key">
+                  <AiKeyFields
+                    provider={aiProvider}
+                    onProviderChange={setAiProvider}
+                    apiKey={aiKey}
+                    onKeyChange={setAiKey}
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

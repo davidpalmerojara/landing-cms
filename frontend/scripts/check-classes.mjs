@@ -21,6 +21,10 @@ const SOURCE_DIRS = ['app', 'components', 'hooks', 'lib'];
 // Variants may start with `@` (container queries such as `@tablet:text-lg`).
 const UTILITY = /^(?:[@\w-]+(?:\[[^\]]*\])?:)*!?-?(?:bg|text|border|ring|outline|divide|placeholder|from|via|to|fill|stroke|shadow|decoration|accent|caret)-[a-z0-9[]/;
 
+// CSS property names that look like utilities when they appear in strings
+// (lib/block-styles-css.ts writes declarations by hand). Not classes.
+const CSS_PROPERTY_NAMES = new Set(['border-radius', 'background-color']);
+
 function listFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
@@ -38,7 +42,7 @@ for (const file of SOURCE_DIRS.flatMap((dir) => listFiles(path.join(root, dir)))
   const content = fs.readFileSync(file, 'utf8');
   const extension = path.extname(file).slice(1);
   for (const { candidate, position } of scanner.getCandidatesWithPositions({ content, extension })) {
-    if (!UTILITY.test(candidate)) continue;
+    if (!UTILITY.test(candidate) || CSS_PROPERTY_NAMES.has(candidate)) continue;
     const line = content.slice(0, position).split('\n').length;
     const where = `${path.relative(root, file)}:${line}`;
     usages.set(candidate, [...(usages.get(candidate) ?? []), where]);

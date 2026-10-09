@@ -68,12 +68,14 @@ landing-cms/
       dashboard/                 # Lista de paginas del usuario
       editor/[pageId]/           # Editor visual
       preview/[pageId]/          # Preview de pagina
-      p/[slug]/                  # Pagina publica (SSR + SEO)
+      p/[slug]/                  # Pagina publica (render en servidor, cache con revalidacion, SEO)
+      revalidate/                # POST que llama Django al publicar/despublicar/borrar (ADR-019)
       auth/magic/[token]/        # Verificacion magic link
       settings/                  # Settings hub, dominios, billing
     components/
       editor/                    # TopBar, LeftSidebar, CanvasViewport, BlockWrapper, etc.
       blocks/                    # 15 componentes de bloque
+      renderer/                  # PageRenderer: pagina publica y vista previa (ADR-019)
       inspector/                 # Inspector de propiedades por bloque
       ui/                        # Primitivos UI (Button, Input, Panel, Tabs, etc.)
       analytics/                 # Componentes de analitica
@@ -237,7 +239,9 @@ Estas decisiones estan tomadas y no deben cuestionarse ni cambiarse sin discusio
 | `stats` | Statistics | title, stats (array con label, value) |
 | `timeline` | Timeline | title, events (array con date, title, description) |
 
-Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, y seguir la interfaz `BlockProps` (`blockId`, `data`, `isMobile`, `isTablet`, `isPreviewMode`).
+Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, y seguir la interfaz `BlockProps` (`blockId`, `data`, `isPreviewMode`).
+
+Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mobile-first con las variantes de container query `@tablet:` (>= 640px) y `@desktop:` (>= 1024px); cada superficie que pinta bloques (canvas, vista previa, pagina publica, miniaturas) pone `@container` en su raiz. Nada en un bloque puede depender de `window`, porque la pagina publica se renderiza en el servidor (ADR-019).
 
 ---
 
@@ -348,7 +352,7 @@ Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en 
 - Auth: JWT + Google OAuth + Magic Links con httpOnly cookies
 - Dashboard con sidebar, stats, cards de paginas
 - Auto-save con debounce 3s
-- Paginas publicas en `/p/[slug]` con SSR + SEO metadata
+- Paginas publicas en `/p/[slug]` renderizadas en el servidor con SEO metadata; datos en cache de Next que Django invalida al publicar (`REVALIDATE_SECRET`, ADR-019); fuentes del tema autoalojadas con next/font
 - Version history con snapshots y restore
 - Temas predefinidos (8, los usan las plantillas via `theme_id`) + Design Tokens custom (color, tipografia, spacing, borders) editables en la vista Estilos. Ambos se resuelven en `lib/page-theme.ts`
 - Responsive styles por bloque (tablet/mobile overrides)

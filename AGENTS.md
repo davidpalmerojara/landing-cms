@@ -232,7 +232,7 @@ Rutas App Router principales:
 - `/editor` redirección al primer page o creación inicial
 - `/editor/[pageId]` editor principal
 - `/preview/[pageId]` preview autenticado
-- `/p/[slug]` página pública
+- `/p/[slug]` página pública: se renderiza en el servidor con `components/renderer/PageRenderer.tsx` y cachea los datos hasta que Django llama a `POST /revalidate` al publicar, despublicar o borrar (ADR-019). Los bloques usan container queries (`@tablet:`, `@desktop:`), no `isMobile`/`isTablet`.
 - `/settings`, `/settings/billing`, `/settings/domains`
 
 ## Decisiones De Arquitectura Que NO Debes Cambiar

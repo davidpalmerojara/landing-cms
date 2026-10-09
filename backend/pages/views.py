@@ -6,8 +6,9 @@ from rest_framework import viewsets, status, generics, mixins, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from accounts.permissions import IsNotGuest
 from .block_validators import clean_block_data
 from .models import Page, Block, Asset, PageVersion, CustomDomain, create_version_snapshot
 from .revalidation import revalidate_public_pages
@@ -71,15 +72,20 @@ class PublicPageView(generics.RetrieveAPIView):
         meta = version.page_metadata
         published = page.published_at.isoformat() if page.published_at else None
         plan = get_user_plan(page.owner)
+        # A guest's page is a demo: never indexed, always with the watermark
+        is_guest_page = page.owner.is_guest if page.owner else False
+        seo = {field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS}
+        if is_guest_page:
+            seo['noindex'] = True
         return Response({
             'id': str(page.id),
             'slug': page.slug,
             'status': page.status,
-            **{field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS},
+            **seo,
             'blocks': sorted(version.snapshot, key=lambda b: b.get('order', 0)),
             'published_at': published,
             'updated_at': published,
-            'show_watermark': not getattr(plan, 'remove_watermark', False),
+            'show_watermark': is_guest_page or not getattr(plan, 'remove_watermark', False),
         })
 
 
@@ -165,7 +171,7 @@ class PageViewSet(viewsets.ModelViewSet):
         serializer = PageDetailSerializer(original)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsNotGuest])
     def share(self, request, id=None):
         """POST /api/pages/{id}/share/ — add a collaborator by email."""
         from django.contrib.auth import get_user_model
@@ -510,7 +516,7 @@ class SitemapView(generics.GenericAPIView):
         pages = Page.objects.filter(
             status=Page.Status.PUBLISHED,
             published_version__page_metadata__noindex=False,
-        ).values('slug', 'published_at').order_by('-published_at')
+        ).exclude(owner__is_guest=True).values('slug', 'published_at').order_by('-published_at')
 
         from django.conf import settings as django_settings
         frontend_url = django_settings.FRONTEND_URL.rstrip('/')
@@ -594,7 +600,7 @@ class SitemapDataView(generics.GenericAPIView):
         pages = Page.objects.filter(
             status=Page.Status.PUBLISHED,
             published_version__page_metadata__noindex=False,
-        ).values('slug', 'published_at', 'published_version__page_metadata').order_by('-published_at')
+        ).exclude(owner__is_guest=True).values('slug', 'published_at', 'published_version__page_metadata').order_by('-published_at')
 
         data = [
             {
@@ -620,6 +626,7 @@ class CustomDomainViewSet(viewsets.ModelViewSet):
     """
     serializer_class = CustomDomainSerializer
     lookup_field = 'id'
+    permission_classes = [IsAuthenticated, IsNotGuest]
 
     MAX_DOMAINS_PER_USER = 5
 
@@ -766,6 +773,12 @@ class AssetViewSet(
     serializer_class = AssetSerializer
     lookup_field = 'id'
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def get_permissions(self):
+        # Guests cannot upload: checked before the file is read, so a refused upload costs nothing
+        if self.action == 'create':
+            return [IsAuthenticated(), IsNotGuest()]
+        return super().get_permissions()
 
     def get_queryset(self):
         return Asset.objects.filter(owner=self.request.user)

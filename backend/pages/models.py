@@ -268,6 +268,9 @@ def create_version_snapshot(page, user, trigger, label=''):
     # Enforce plan-based version limit
     plan = get_user_plan(page.owner)
     max_versions = getattr(plan, 'max_version_history', 5)
+    if getattr(page.owner, 'is_guest', False):
+        from accounts.guests import GUEST_MAX_VERSIONS
+        max_versions = GUEST_MAX_VERSIONS
     if max_versions != -1:
         version_ids = list(
             page.versions.order_by('-version_number')

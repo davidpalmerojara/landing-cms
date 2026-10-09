@@ -16,10 +16,12 @@ Usage in views:
 
 import logging
 
+from django.conf import settings
 from django.core.cache import cache
 from rest_framework.exceptions import APIException
 from rest_framework import status as http_status
 
+from accounts.guests import GuestPageLimitExceeded
 from pages.models import Page
 
 logger = logging.getLogger(__name__)
@@ -127,6 +129,12 @@ def _free_plan_fallback():
 
 def check_page_limit(user):
     """Check if the user can create another page. Raises PlanLimitExceeded if not."""
+    if user.is_guest:
+        # Guests have the Pro plan for the demo, but a small fixed page quota
+        if Page.objects.filter(owner=user).count() >= settings.GUEST_MAX_PAGES:
+            raise GuestPageLimitExceeded(settings.GUEST_MAX_PAGES)
+        return
+
     plan = get_user_plan(user)
     if plan.max_pages == -1:
         return  # unlimited

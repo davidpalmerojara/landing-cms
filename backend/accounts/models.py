@@ -18,12 +18,16 @@ class User(AbstractUser):
     email_verified = models.BooleanField(default=False)
     # Tokens issued before this instant are rejected (see accounts/sessions.py)
     sessions_revoked_at = models.DateTimeField(null=True, blank=True)
+    # Temporary "try it without signing up" account (see accounts/guests.py).
+    # It is deleted GUEST_LIFETIME_HOURS after created_at unless it is claimed.
+    is_guest = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['is_guest', 'created_at'], name='user_guest_created_idx')]
 
     def __str__(self):
         return self.email or self.username

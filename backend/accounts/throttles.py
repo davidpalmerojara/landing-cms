@@ -26,3 +26,12 @@ class LoginUsernameThrottle(CurrentRatesMixin, SimpleRateThrottle):
         if not isinstance(username, str) or not username.strip():
             return None
         return self.cache_format % {'scope': self.scope, 'ident': username.strip().lower()}
+
+
+class GuestCreationThrottle(CurrentRatesMixin, SimpleRateThrottle):
+    """Per-IP limit on starting guest sessions. Uses DRF's get_ident, so it
+    honours NUM_PROXIES and a spoofed X-Forwarded-For does not reset it."""
+    scope = 'guest'
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}

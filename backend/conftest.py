@@ -15,6 +15,7 @@ def disable_throttling(settings):
             'auth': '10000/minute',
             'login_username': '10000/minute',
             'contact': '10000/minute',
+            'guest': '10000/hour',
         },
     }
 

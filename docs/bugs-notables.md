@@ -159,3 +159,11 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Causa**: `app/loading.tsx`, en la raíz, envuelve todas las rutas en un Suspense. Next envía ese esqueleto con 200 en cuanto empieza a responder, y cuando la página llama a `notFound()` el código ya no se puede cambiar.
 - **Arreglo**: Se quitó ese `loading.tsx`. Las rutas que lo necesitan (dashboard, editor, ajustes) tienen el suyo, y el resto son estáticas o cargan los datos en el cliente.
 - **Lección**: Un `loading.tsx` no es solo una pantalla: decide cuándo se envía la cabecera de la respuesta, y eso afecta a los códigos de estado de todo lo que cuelga de él.
+
+## 20. Editar un color convertía una página oscura en clara
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Las páginas creadas desde una plantilla oscura usaban el tema antiguo (`theme_id: 'dark'`) y no tenían design tokens. El panel de Estilos partía de los tokens por defecto, que son claros. Al tocar un solo color se guardaban todos los demás claros, y la página entera cambiaba de aspecto.
+- **Cómo se detectó**: Al revisar cómo convivían los dos sistemas de tema antes de unificarlos. En la base de datos de pruebas había una página así, con `theme_id: 'dark'` y tokens claros.
+- **Arreglo**: Un solo sistema (ADR-020). Toda página tiene tokens desde que se crea, y la migración se los dio a las antiguas a partir de su tema. Un test edita un color de una página con la paleta oscura y comprueba que lo demás no cambia.
+- **Lección**: Dos fuentes de verdad para lo mismo acaban discrepando justo en la frontera entre ellas, que es donde nadie mira.

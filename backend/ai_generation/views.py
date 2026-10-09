@@ -16,7 +16,7 @@ from .serializers import GeneratePageSerializer, EditBlockSerializer
 from .validators import (
     parse_blocks_json,
     validate_blocks,
-    sanitize_blocks,
+    finalize_blocks,
     BlockValidationError,
 )
 
@@ -146,6 +146,8 @@ class GeneratePageView(APIView):
                 errors = validate_blocks(blocks_data)
                 if errors:
                     raise BlockValidationError(errors)
+                # Same validation as the REST API; failing it also retries
+                sanitized = finalize_blocks(blocks_data)
                 last_error = None
                 break
             except BlockValidationError as e:
@@ -178,9 +180,7 @@ class GeneratePageView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        # 7. Sanitize and persist blocks
-        sanitized = sanitize_blocks(blocks_data)
-
+        # 7. Persist the blocks (already validated and sanitized above)
         # Auto-snapshot before AI replaces all blocks
         if page.blocks.exists():
             from pages.models import create_version_snapshot
@@ -336,11 +336,8 @@ class EditBlockView(APIView):
             if errors:
                 raise BlockValidationError(errors)
 
-            sanitized = sanitize_blocks([result])
-            if not sanitized:
-                raise ValueError('Block sanitization failed')
-
-            new_block_data = sanitized[0]
+            # Same validation as the REST API (sanitizing, links, limits)
+            new_block_data = finalize_blocks([result])[0]
         except (json.JSONDecodeError, ValueError, BlockValidationError) as e:
             logger.warning(f'AI edit block validation error: {e}')
             return Response(

@@ -3,6 +3,11 @@ Validates AI-generated block JSON against the block schemas.
 """
 
 import json
+
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
+from pages.block_validators import clean_block_data
+
 from .block_schemas import BLOCK_SCHEMAS, VALID_BLOCK_TYPES
 
 
@@ -40,6 +45,54 @@ def parse_blocks_json(raw: str) -> list[dict]:
     return parsed
 
 
+def _validate_field(errors: list[str], where: str, name: str, spec: dict, value) -> None:
+    """Append to `errors` what is wrong with one field value (recursing into list items)."""
+    expected_type = spec['type']
+
+    if expected_type == 'list':
+        if value is None:
+            if spec.get('required'):
+                errors.append(f"{where}: required field '{name}' is missing.")
+            return
+        if not isinstance(value, list):
+            errors.append(f"{where}: '{name}' must be a list, got {type(value).__name__}.")
+            return
+        if len(value) < spec['min_items'] or len(value) > spec['max_items']:
+            errors.append(
+                f"{where}: '{name}' must have {spec['min_items']} to {spec['max_items']} items, got {len(value)}."
+            )
+            return
+        for index, item in enumerate(value):
+            item_where = f"{where}, {name}[{index}]"
+            if not isinstance(item, dict):
+                errors.append(f"{item_where}: must be an object, got {type(item).__name__}.")
+                continue
+            for item_name, item_spec in spec['items'].items():
+                _validate_field(errors, item_where, item_name, item_spec, item.get(item_name))
+        return
+
+    if spec.get('required') and (value is None or value == ''):
+        errors.append(f"{where}: required field '{name}' is missing or empty.")
+        return
+
+    if value is None:
+        return
+
+    if expected_type == 'string' and not isinstance(value, str):
+        errors.append(f"{where}: '{name}' must be a string, got {type(value).__name__}.")
+        return
+
+    if expected_type == 'boolean' and not isinstance(value, bool):
+        errors.append(f"{where}: '{name}' must be a boolean, got {type(value).__name__}.")
+        return
+
+    if isinstance(value, str) and 'max_length' in spec and len(value) > spec['max_length']:
+        errors.append(f"{where}: '{name}' exceeds max length ({len(value)} > {spec['max_length']}).")
+
+    if isinstance(value, str) and 'options' in spec and value not in spec['options']:
+        errors.append(f"{where}: '{name}' must be one of {spec['options']}, got '{value}'.")
+
+
 def validate_blocks(blocks: list[dict]) -> list[str]:
     """Validate a list of block dicts against the schemas.
     Returns a list of error messages (empty = valid).
@@ -75,40 +128,35 @@ def validate_blocks(blocks: list[dict]) -> list[str]:
             errors.append(f"{prefix} ({btype}): missing or invalid 'data' field.")
             continue
 
-        schema = BLOCK_SCHEMAS[btype]
-        for field_name, field_spec in schema['fields'].items():
-            value = data.get(field_name)
-
-            if field_spec.get('required') and (value is None or value == ''):
-                errors.append(f"{prefix} ({btype}): required field '{field_name}' is missing or empty.")
-                continue
-
-            if value is None:
-                continue
-
-            expected_type = field_spec['type']
-            if expected_type == 'string' and not isinstance(value, str):
-                errors.append(f"{prefix} ({btype}): '{field_name}' must be a string, got {type(value).__name__}.")
-                continue
-
-            if expected_type == 'boolean' and not isinstance(value, bool):
-                errors.append(f"{prefix} ({btype}): '{field_name}' must be a boolean, got {type(value).__name__}.")
-                continue
-
-            if isinstance(value, str) and 'max_length' in field_spec:
-                if len(value) > field_spec['max_length']:
-                    errors.append(
-                        f"{prefix} ({btype}): '{field_name}' exceeds max length "
-                        f"({len(value)} > {field_spec['max_length']})."
-                    )
-
-            if isinstance(value, str) and 'options' in field_spec:
-                if value not in field_spec['options']:
-                    errors.append(
-                        f"{prefix} ({btype}): '{field_name}' must be one of {field_spec['options']}, got '{value}'."
-                    )
+        for field_name, field_spec in BLOCK_SCHEMAS[btype]['fields'].items():
+            _validate_field(errors, f"{prefix} ({btype})", field_name, field_spec, data.get(field_name))
 
     return errors
+
+
+def _default_for(spec: dict):
+    if 'default' in spec:
+        return spec['default']
+    if spec['type'] == 'list':
+        return []
+    return '' if spec['type'] == 'string' else False
+
+
+def _sanitize_field(spec: dict, value):
+    """Defaults for empty values, strings cut to max_length, unknown item keys removed."""
+    if spec['type'] == 'list':
+        if not isinstance(value, list):
+            return _default_for(spec)
+        return [
+            {name: _sanitize_field(item_spec, item.get(name)) for name, item_spec in spec['items'].items()}
+            for item in value[:spec['max_items']]
+            if isinstance(item, dict)
+        ]
+    if value is None or (isinstance(value, str) and value == '' and not spec.get('required')):
+        return _default_for(spec)
+    if isinstance(value, str) and 'max_length' in spec:
+        return value[:spec['max_length']]
+    return value
 
 
 def sanitize_blocks(blocks: list[dict]) -> list[dict]:
@@ -120,23 +168,40 @@ def sanitize_blocks(blocks: list[dict]) -> list[dict]:
         if btype not in VALID_BLOCK_TYPES:
             continue
 
-        schema = BLOCK_SCHEMAS[btype]
         data = block.get('data', {})
-        clean_data = {}
-
-        for field_name, field_spec in schema['fields'].items():
-            value = data.get(field_name)
-            if value is None or (isinstance(value, str) and value == '' and not field_spec.get('required')):
-                clean_data[field_name] = field_spec.get('default', '' if field_spec['type'] == 'string' else False)
-            else:
-                # Truncate strings that are too long
-                if isinstance(value, str) and 'max_length' in field_spec:
-                    value = value[:field_spec['max_length']]
-                clean_data[field_name] = value
-
         sanitized.append({
             'type': btype,
-            'data': clean_data,
+            'data': {
+                field_name: _sanitize_field(field_spec, data.get(field_name))
+                for field_name, field_spec in BLOCK_SCHEMAS[btype]['fields'].items()
+            },
         })
 
     return sanitized
+
+
+def _flatten_errors(detail) -> str:
+    if isinstance(detail, dict):
+        return '; '.join(f"{key}: {_flatten_errors(value)}" for key, value in detail.items())
+    if isinstance(detail, list):
+        return ' '.join(_flatten_errors(item) for item in detail)
+    return str(detail)
+
+
+def finalize_blocks(blocks: list[dict]) -> list[dict]:
+    """Turn model output that passed validate_blocks into what gets saved:
+    defaults and truncation first, then the same validation as the REST API
+    (pages.block_validators.clean_block_data: sanitizing, link and URL checks,
+    limits). Raises BlockValidationError if the editor's rules reject it."""
+    cleaned = []
+    errors = []
+    for index, block in enumerate(sanitize_blocks(blocks)):
+        try:
+            data = clean_block_data(block['type'], block['data'])
+        except DRFValidationError as exc:
+            errors.append(f"Block {index} ({block['type']}): {_flatten_errors(exc.detail)}")
+            continue
+        cleaned.append({'type': block['type'], 'data': data})
+    if errors:
+        raise BlockValidationError(errors)
+    return cleaned

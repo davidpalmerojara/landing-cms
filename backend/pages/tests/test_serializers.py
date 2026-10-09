@@ -182,13 +182,13 @@ class TestBlockSanitization:
         # page show "&lt;10ms" instead of "<10ms".
         serializer = PageDetailSerializer(data={
             'name': 'Stats',
-            'blocks': [{'type': 'stats', 'data': {'stat1Value': text}, 'styles': {}}],
+            'blocks': [{'type': 'stats', 'data': {'stats': [{'value': text, 'label': ''}]}, 'styles': {}}],
         })
         assert serializer.is_valid(), serializer.errors
 
         page = serializer.save(owner=UserFactory())
         expected = '5 < 6' if text == '5 &lt; 6' else text
-        assert page.blocks.first().data['stat1Value'] == expected
+        assert page.blocks.first().data['stats'][0]['value'] == expected
 
     def test_custom_html_strips_event_handlers(self):
         serializer = PageDetailSerializer(data={

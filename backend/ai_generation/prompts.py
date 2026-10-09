@@ -21,11 +21,12 @@ Your job is to generate landing page blocks based on the user's description.
 6. Content must be relevant, professional, and in the SAME LANGUAGE as the user's prompt.
 7. Generate realistic, specific content — not generic placeholder text. Use names, numbers, and details that fit the business described.
 8. For pricing plans, use realistic prices with currency symbols matching the user's language/region.
-9. For the "pricing" block, "plan1Features" and "plan2Features" use newline characters (\\n) to separate each feature.
-10. Image fields (backgroundImage, logoImage, memberXImage, imageX) should always be empty strings "".
-11. A well-structured landing page typically follows this order: navbar → hero → social proof/stats → features → more detail sections → pricing/cta → faq → contact → footer.
-12. Generate between 5 and 12 blocks depending on the complexity of the request.
-13. Always include a "navbar" as the first block and a "footer" as the last block.
+9. Repeated content (features, testimonials, plans, questions, logos, images, members, stats, events, links) is a JSON array of objects, as shown in the schema. Respect the item counts. Never number the keys of items.
+10. For the "pricing" block, the "features" of each plan use newline characters (\\n) to separate each feature.
+11. Image fields (backgroundImage, logoImage, the "image" of each team member, the "src" of each gallery image) should always be empty strings "".
+12. A well-structured landing page typically follows this order: navbar → hero → social proof/stats → features → more detail sections → pricing/cta → faq → contact → footer.
+13. Generate between 5 and 12 blocks depending on the complexity of the request.
+14. Always include a "navbar" as the first block and a "footer" as the last block.
 
 ## Available Block Types
 
@@ -43,9 +44,11 @@ Response:
     "data": {{
       "brandName": "Café Luna",
       "logoImage": "",
-      "link1": "Carta",
-      "link2": "Sobre Nosotros",
-      "link3": "Reservas",
+      "links": [
+        {{ "label": "Carta", "url": "#carta" }},
+        {{ "label": "Sobre Nosotros", "url": "#nosotros" }},
+        {{ "label": "Reservas", "url": "#reservas" }}
+      ],
       "ctaText": "Reservar Mesa"
     }}
   }},
@@ -63,22 +66,38 @@ Response:
     "type": "features",
     "data": {{
       "title": "Lo que nos hace únicos",
-      "feature1Title": "Granos de origen único",
-      "feature1Desc": "Seleccionamos cuidadosamente granos de Colombia, Etiopía y Guatemala. Tostados artesanalmente cada semana en nuestro obrador.",
-      "feature2Title": "Repostería casera",
-      "feature2Desc": "Tartas, croissants y cookies horneados cada mañana. Sin conservantes, con ingredientes de proximidad y mucho amor."
+      "features": [
+        {{
+          "title": "Granos de origen único",
+          "description": "Seleccionamos cuidadosamente granos de Colombia, Etiopía y Guatemala. Tostados artesanalmente cada semana en nuestro obrador."
+        }},
+        {{
+          "title": "Repostería casera",
+          "description": "Tartas, croissants y cookies horneados cada mañana. Sin conservantes, con ingredientes de proximidad y mucho amor."
+        }},
+        {{
+          "title": "Un rincón para quedarse",
+          "description": "Mesas amplias, enchufes y wifi rápido. Trabaja, lee o charla con amigos todo el tiempo que quieras."
+        }}
+      ]
     }}
   }},
   {{
     "type": "testimonials",
     "data": {{
       "title": "Lo que dicen nuestros clientes",
-      "quote1": "El mejor flat white de Madrid, sin discusión. El ambiente es acogedor y el personal siempre te recibe con una sonrisa.",
-      "author1": "Laura Fernández",
-      "role1": "Clienta habitual desde 2023",
-      "quote2": "Descubrí Café Luna por casualidad y ahora vengo cada mañana antes del trabajo. Sus tostadas con aguacate son adictivas.",
-      "author2": "Miguel Ángel Torres",
-      "role2": "Vecino de Malasaña"
+      "testimonials": [
+        {{
+          "quote": "El mejor flat white de Madrid, sin discusión. El ambiente es acogedor y el personal siempre te recibe con una sonrisa.",
+          "author": "Laura Fernández",
+          "role": "Clienta habitual desde 2023"
+        }},
+        {{
+          "quote": "Descubrí Café Luna por casualidad y ahora vengo cada mañana antes del trabajo. Sus tostadas con aguacate son adictivas.",
+          "author": "Miguel Ángel Torres",
+          "role": "Vecino de Malasaña"
+        }}
+      ]
     }}
   }},
   {{
@@ -95,9 +114,11 @@ Response:
       "brandName": "Café Luna",
       "description": "Café de especialidad y repostería artesanal en el barrio de Malasaña, Madrid. Abierto de lunes a domingo, 8:00–20:00.",
       "copyright": "© 2026 Café Luna. Todos los derechos reservados.",
-      "link1Label": "Carta",
-      "link2Label": "Instagram",
-      "link3Label": "Contacto"
+      "links": [
+        {{ "label": "Carta", "url": "#carta" }},
+        {{ "label": "Instagram", "url": "" }},
+        {{ "label": "Contacto", "url": "#reservas" }}
+      ]
     }}
   }}
 ]
@@ -112,9 +133,11 @@ Response:
     "data": {{
       "brandName": "FlowBoard",
       "logoImage": "",
-      "link1": "Features",
-      "link2": "Pricing",
-      "link3": "FAQ",
+      "links": [
+        {{ "label": "Features", "url": "#features" }},
+        {{ "label": "Pricing", "url": "#pricing" }},
+        {{ "label": "FAQ", "url": "#faq" }}
+      ],
       "ctaText": "Start Free"
     }}
   }},
@@ -132,11 +155,13 @@ Response:
     "type": "logoCloud",
     "data": {{
       "title": "Trusted by 500+ startup teams",
-      "logo1": "TechCrunch",
-      "logo2": "Y Combinator",
-      "logo3": "Stripe",
-      "logo4": "Vercel",
-      "logo5": "Linear"
+      "logos": [
+        {{ "name": "TechCrunch" }},
+        {{ "name": "Y Combinator" }},
+        {{ "name": "Stripe" }},
+        {{ "name": "Vercel" }},
+        {{ "name": "Linear" }}
+      ]
     }}
   }},
   {{
@@ -144,24 +169,32 @@ Response:
     "data": {{
       "title": "Built for speed",
       "subtitle": "Numbers that speak for themselves.",
-      "stat1Value": "500+",
-      "stat1Label": "Teams onboarded",
-      "stat2Value": "99.9%",
-      "stat2Label": "Uptime SLA",
-      "stat3Value": "2.3s",
-      "stat3Label": "Avg. load time",
-      "stat4Value": "4.8/5",
-      "stat4Label": "G2 rating"
+      "stats": [
+        {{ "value": "500+", "label": "Teams onboarded" }},
+        {{ "value": "99.9%", "label": "Uptime SLA" }},
+        {{ "value": "2.3s", "label": "Avg. load time" }},
+        {{ "value": "4.8/5", "label": "G2 rating" }}
+      ]
     }}
   }},
   {{
     "type": "features",
     "data": {{
       "title": "Everything your team needs",
-      "feature1Title": "Kanban & Sprint Boards",
-      "feature1Desc": "Drag-and-drop cards, custom columns, WIP limits, and automatic sprint velocity tracking. Works the way your team thinks.",
-      "feature2Title": "Real-Time Collaboration",
-      "feature2Desc": "See who's working on what, leave comments on tasks, and get instant notifications. No more status meetings."
+      "features": [
+        {{
+          "title": "Kanban & Sprint Boards",
+          "description": "Drag-and-drop cards, custom columns, WIP limits, and automatic sprint velocity tracking. Works the way your team thinks."
+        }},
+        {{
+          "title": "Real-Time Collaboration",
+          "description": "See who's working on what, leave comments on tasks, and get instant notifications. No more status meetings."
+        }},
+        {{
+          "title": "Powerful Integrations",
+          "description": "Connect GitHub, Slack, and Figma in a few clicks. Every pull request and design update lands on the right card."
+        }}
+      ]
     }}
   }},
   {{
@@ -169,27 +202,42 @@ Response:
     "data": {{
       "title": "Simple, transparent pricing",
       "subtitle": "No hidden fees. Cancel anytime.",
-      "plan1Name": "Starter",
-      "plan1Price": "$0",
-      "plan1Features": "Up to 5 team members\\nUnlimited boards\\n5 GB storage\\nBasic integrations",
-      "plan1ButtonText": "Get Started",
-      "plan2Name": "Pro",
-      "plan2Price": "$12/user/mo",
-      "plan2Features": "Unlimited members\\nAdvanced analytics\\n100 GB storage\\nPriority support\\nCustom workflows\\nAPI access",
-      "plan2ButtonText": "Start Pro Trial",
-      "plan2Highlighted": true
+      "plans": [
+        {{
+          "name": "Starter",
+          "price": "$0",
+          "features": "Up to 5 team members\\nUnlimited boards\\n5 GB storage\\nBasic integrations",
+          "buttonText": "Get Started",
+          "highlighted": false
+        }},
+        {{
+          "name": "Pro",
+          "price": "$12/user/mo",
+          "features": "Unlimited members\\nAdvanced analytics\\n100 GB storage\\nPriority support\\nCustom workflows\\nAPI access",
+          "buttonText": "Start Pro Trial",
+          "highlighted": true
+        }}
+      ]
     }}
   }},
   {{
     "type": "faq",
     "data": {{
       "title": "Frequently asked questions",
-      "q1": "Is there a free plan?",
-      "a1": "Yes! Our Starter plan is free forever for teams of up to 5. No credit card required to get started.",
-      "q2": "Can I import from Jira or Trello?",
-      "a2": "Absolutely. We have one-click importers for Jira, Trello, Asana, and Linear. Your data migrates in minutes.",
-      "q3": "What happens when my trial ends?",
-      "a3": "Your workspace automatically moves to the free Starter plan. No data is lost and you can upgrade again anytime."
+      "questions": [
+        {{
+          "question": "Is there a free plan?",
+          "answer": "Yes! Our Starter plan is free forever for teams of up to 5. No credit card required to get started."
+        }},
+        {{
+          "question": "Can I import from Jira or Trello?",
+          "answer": "Absolutely. We have one-click importers for Jira, Trello, Asana, and Linear. Your data migrates in minutes."
+        }},
+        {{
+          "question": "What happens when my trial ends?",
+          "answer": "Your workspace automatically moves to the free Starter plan. No data is lost and you can upgrade again anytime."
+        }}
+      ]
     }}
   }},
   {{
@@ -206,9 +254,11 @@ Response:
       "brandName": "FlowBoard",
       "description": "Project management built for startups that move fast. From idea to shipped — in record time.",
       "copyright": "© 2026 FlowBoard Inc. All rights reserved.",
-      "link1Label": "Features",
-      "link2Label": "Pricing",
-      "link3Label": "Contact"
+      "links": [
+        {{ "label": "Features", "url": "#features" }},
+        {{ "label": "Pricing", "url": "#pricing" }},
+        {{ "label": "Contact", "url": "" }}
+      ]
     }}
   }}
 ]
@@ -241,6 +291,7 @@ Your job is to EDIT a single existing block based on the user's instructions.
 6. Content must be in the SAME LANGUAGE as the existing block content, unless the user asks for translation.
 7. Generate realistic, specific content — not generic placeholders.
 8. Image fields should remain as-is (don't modify image URLs or paths).
+9. Repeated content is an array of objects (features, testimonials, plans, questions, logos, images, members, stats, events, links). When you change an item, return the complete array with every item, keeping the items you were not asked to change exactly as they are. Never number the keys of items.
 
 ## Available Block Types
 

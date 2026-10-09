@@ -6,6 +6,37 @@ Used both for the LLM system prompt and for validating generated output.
 
 # Maps block type -> { "fields": { field_name: field_spec }, "description": str }
 # field_spec: { "type": str, "required": bool, "max_length": int|None, "options": list|None, "default": any }
+#
+# A list field has type "list" and, instead of max_length, "min_items", "max_items" and
+# "items" (the field specs of one item, same format as above). Lists must match the block
+# data shapes the editor stores (see pages/block_validators.py). These schemas only drive
+# the prompt and a first check of the model output; what is saved goes through
+# pages.block_validators.clean_block_data, the same path as the REST API.
+
+
+def _str(max_length, *, required=True, default=None):
+    spec = {"type": "string", "required": required, "max_length": max_length}
+    if default is not None:
+        spec["default"] = default
+    return spec
+
+
+def _list(description, items, *, min_items, max_items):
+    return {
+        "type": "list",
+        "required": True,
+        "description": description,
+        "min_items": min_items,
+        "max_items": max_items,
+        "items": items,
+    }
+
+
+# Navbar and footer share the same menu item shape
+MENU_LINK_ITEMS = {
+    "label": _str(30),
+    "url": _str(200, required=False, default=""),
+}
 
 BLOCK_SCHEMAS = {
     "navbar": {
@@ -13,9 +44,10 @@ BLOCK_SCHEMAS = {
         "fields": {
             "brandName": {"type": "string", "required": True, "max_length": 50},
             "logoImage": {"type": "string", "required": False, "default": ""},
-            "link1": {"type": "string", "required": True, "max_length": 30},
-            "link2": {"type": "string", "required": True, "max_length": 30},
-            "link3": {"type": "string", "required": True, "max_length": 30},
+            "links": _list(
+                "Menu links; url is an in-page anchor such as #features, or empty",
+                MENU_LINK_ITEMS, min_items=3, max_items=5,
+            ),
             "ctaText": {"type": "string", "required": True, "max_length": 30},
         },
     },
@@ -30,25 +62,24 @@ BLOCK_SCHEMAS = {
         },
     },
     "features": {
-        "description": "Grid showing 2 key features with titles and descriptions.",
+        "description": "Grid showing 3 to 6 key features with titles and descriptions.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
-            "feature1Title": {"type": "string", "required": True, "max_length": 60},
-            "feature1Desc": {"type": "string", "required": True, "max_length": 200},
-            "feature2Title": {"type": "string", "required": True, "max_length": 60},
-            "feature2Desc": {"type": "string", "required": True, "max_length": 200},
+            "features": _list("The features", {
+                "title": _str(60),
+                "description": _str(200),
+            }, min_items=3, max_items=6),
         },
     },
     "testimonials": {
-        "description": "Section with 2 customer testimonials including quotes, names, and roles.",
+        "description": "Section with 2 to 4 customer testimonials including quotes, names, and roles.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
-            "quote1": {"type": "string", "required": True, "max_length": 300},
-            "author1": {"type": "string", "required": True, "max_length": 50},
-            "role1": {"type": "string", "required": True, "max_length": 60},
-            "quote2": {"type": "string", "required": True, "max_length": 300},
-            "author2": {"type": "string", "required": True, "max_length": 50},
-            "role2": {"type": "string", "required": True, "max_length": 60},
+            "testimonials": _list("The testimonials", {
+                "quote": _str(300),
+                "author": _str(50),
+                "role": _str(60),
+            }, min_items=2, max_items=4),
         },
     },
     "cta": {
@@ -65,62 +96,53 @@ BLOCK_SCHEMAS = {
             "brandName": {"type": "string", "required": True, "max_length": 50},
             "description": {"type": "string", "required": True, "max_length": 200},
             "copyright": {"type": "string", "required": True, "max_length": 100},
-            "link1Label": {"type": "string", "required": True, "max_length": 30},
-            "link2Label": {"type": "string", "required": True, "max_length": 30},
-            "link3Label": {"type": "string", "required": True, "max_length": 30},
+            "links": _list(
+                "Footer links; url is an in-page anchor such as #pricing, or empty",
+                MENU_LINK_ITEMS, min_items=2, max_items=5,
+            ),
         },
     },
     "pricing": {
-        "description": "Pricing section with 2 plans. Each plan has name, price, features (newline-separated), and a button.",
+        "description": "Pricing section with 2 to 3 plans. Each plan has name, price, features (newline-separated), and a button. Highlight at most one plan.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
             "subtitle": {"type": "string", "required": False, "max_length": 200, "default": ""},
-            "plan1Name": {"type": "string", "required": True, "max_length": 30},
-            "plan1Price": {"type": "string", "required": True, "max_length": 20},
-            "plan1Features": {"type": "string", "required": True, "max_length": 500},
-            "plan1ButtonText": {"type": "string", "required": True, "max_length": 30},
-            "plan2Name": {"type": "string", "required": True, "max_length": 30},
-            "plan2Price": {"type": "string", "required": True, "max_length": 20},
-            "plan2Features": {"type": "string", "required": True, "max_length": 500},
-            "plan2ButtonText": {"type": "string", "required": True, "max_length": 30},
-            "plan2Highlighted": {"type": "boolean", "required": False, "default": True},
+            "plans": _list("The plans", {
+                "name": _str(30),
+                "price": _str(20),
+                "features": _str(500),
+                "buttonText": _str(30),
+                "highlighted": {"type": "boolean", "required": False, "default": False},
+            }, min_items=2, max_items=3),
         },
     },
     "faq": {
-        "description": "FAQ section with 3 questions and answers.",
+        "description": "FAQ section with 3 to 6 questions and answers.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
-            "q1": {"type": "string", "required": True, "max_length": 150},
-            "a1": {"type": "string", "required": True, "max_length": 500},
-            "q2": {"type": "string", "required": True, "max_length": 150},
-            "a2": {"type": "string", "required": True, "max_length": 500},
-            "q3": {"type": "string", "required": True, "max_length": 150},
-            "a3": {"type": "string", "required": True, "max_length": 500},
+            "questions": _list("The questions", {
+                "question": _str(150),
+                "answer": _str(500),
+            }, min_items=3, max_items=6),
         },
     },
     "logoCloud": {
-        "description": "Logo cloud showing names of 5 partner/client companies.",
+        "description": "Logo cloud showing names of 4 to 8 partner/client companies.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
-            "logo1": {"type": "string", "required": True, "max_length": 40},
-            "logo2": {"type": "string", "required": True, "max_length": 40},
-            "logo3": {"type": "string", "required": True, "max_length": 40},
-            "logo4": {"type": "string", "required": True, "max_length": 40},
-            "logo5": {"type": "string", "required": True, "max_length": 40},
+            "logos": _list("The company names", {"name": _str(40)}, min_items=4, max_items=8),
         },
     },
     "gallery": {
-        "description": "Image gallery section with title, subtitle, and column layout. Images are left empty (user uploads later).",
+        "description": "Image gallery section with title, subtitle, and column layout. Image sources are left empty (user uploads later); give 2 x columns items.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
             "subtitle": {"type": "string", "required": False, "max_length": 200, "default": ""},
             "columns": {"type": "string", "required": False, "options": ["2", "3", "4"], "default": "3"},
-            "image1": {"type": "string", "required": False, "default": ""},
-            "image2": {"type": "string", "required": False, "default": ""},
-            "image3": {"type": "string", "required": False, "default": ""},
-            "image4": {"type": "string", "required": False, "default": ""},
-            "image5": {"type": "string", "required": False, "default": ""},
-            "image6": {"type": "string", "required": False, "default": ""},
+            "images": _list("The image slots; src is always empty", {
+                "src": {"type": "string", "required": False, "default": ""},
+                "alt": _str(100, required=False, default=""),
+            }, min_items=4, max_items=8),
         },
     },
     "contact": {
@@ -132,54 +154,58 @@ BLOCK_SCHEMAS = {
         },
     },
     "team": {
-        "description": "Team section showing 3 members with names, roles, and optional photos.",
+        "description": "Team section showing 3 to 6 members with names, roles, and optional photos.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
             "subtitle": {"type": "string", "required": False, "max_length": 200, "default": ""},
-            "member1Name": {"type": "string", "required": True, "max_length": 50},
-            "member1Role": {"type": "string", "required": True, "max_length": 60},
-            "member1Image": {"type": "string", "required": False, "default": ""},
-            "member2Name": {"type": "string", "required": True, "max_length": 50},
-            "member2Role": {"type": "string", "required": True, "max_length": 60},
-            "member2Image": {"type": "string", "required": False, "default": ""},
-            "member3Name": {"type": "string", "required": True, "max_length": 50},
-            "member3Role": {"type": "string", "required": True, "max_length": 60},
-            "member3Image": {"type": "string", "required": False, "default": ""},
+            "members": _list("The team members", {
+                "name": _str(50),
+                "role": _str(60),
+                "image": {"type": "string", "required": False, "default": ""},
+            }, min_items=3, max_items=6),
         },
     },
     "stats": {
-        "description": "Statistics section with 4 key metrics (value + label).",
+        "description": "Statistics section with 3 to 4 key metrics (value + label).",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
             "subtitle": {"type": "string", "required": False, "max_length": 200, "default": ""},
-            "stat1Value": {"type": "string", "required": True, "max_length": 20},
-            "stat1Label": {"type": "string", "required": True, "max_length": 40},
-            "stat2Value": {"type": "string", "required": True, "max_length": 20},
-            "stat2Label": {"type": "string", "required": True, "max_length": 40},
-            "stat3Value": {"type": "string", "required": True, "max_length": 20},
-            "stat3Label": {"type": "string", "required": True, "max_length": 40},
-            "stat4Value": {"type": "string", "required": True, "max_length": 20},
-            "stat4Label": {"type": "string", "required": True, "max_length": 40},
+            "stats": _list("The metrics", {
+                "value": _str(20),
+                "label": _str(40),
+            }, min_items=3, max_items=4),
         },
     },
     "timeline": {
-        "description": "Timeline section with 3 chronological events.",
+        "description": "Timeline section with 3 to 6 chronological events.",
         "fields": {
             "title": {"type": "string", "required": True, "max_length": 80},
-            "item1Date": {"type": "string", "required": True, "max_length": 30},
-            "item1Title": {"type": "string", "required": True, "max_length": 60},
-            "item1Desc": {"type": "string", "required": True, "max_length": 200},
-            "item2Date": {"type": "string", "required": True, "max_length": 30},
-            "item2Title": {"type": "string", "required": True, "max_length": 60},
-            "item2Desc": {"type": "string", "required": True, "max_length": 200},
-            "item3Date": {"type": "string", "required": True, "max_length": 30},
-            "item3Title": {"type": "string", "required": True, "max_length": 60},
-            "item3Desc": {"type": "string", "required": True, "max_length": 200},
+            "events": _list("The events, oldest first", {
+                "date": _str(30),
+                "title": _str(60),
+                "description": _str(200),
+            }, min_items=3, max_items=6),
         },
     },
 }
 
 VALID_BLOCK_TYPES = set(BLOCK_SCHEMAS.keys())
+
+
+def _field_hint(fspec: dict) -> str:
+    req = '(required)' if fspec.get('required') else '(optional)'
+    hint = f'{fspec["type"]} {req}'
+    if 'max_length' in fspec:
+        hint += f', max {fspec["max_length"]} chars'
+    if 'options' in fspec:
+        hint += f', one of: {fspec["options"]}'
+    if 'default' in fspec:
+        default_val = fspec['default']
+        if isinstance(default_val, str):
+            hint += f', default: "{default_val}"'
+        else:
+            hint += f', default: {default_val}'
+    return hint
 
 
 def build_schema_reference() -> str:
@@ -194,20 +220,18 @@ def build_schema_reference() -> str:
         lines.append('  "data": {')
         field_lines = []
         for fname, fspec in schema['fields'].items():
-            req = '(required)' if fspec.get('required') else '(optional)'
-            ftype = fspec['type']
-            constraint = ''
-            if 'max_length' in fspec:
-                constraint = f', max {fspec["max_length"]} chars'
-            if 'options' in fspec:
-                constraint += f', one of: {fspec["options"]}'
-            if 'default' in fspec:
-                default_val = fspec['default']
-                if isinstance(default_val, str):
-                    constraint += f', default: "{default_val}"'
-                else:
-                    constraint += f', default: {default_val}'
-            field_lines.append(f'    "{fname}": "{ftype} {req}{constraint}"')
+            if fspec['type'] == 'list':
+                item_lines = ',\n'.join(
+                    f'        "{iname}": "{_field_hint(ispec)}"'
+                    for iname, ispec in fspec['items'].items()
+                )
+                field_lines.append(
+                    f'    "{fname}": [  // array of objects, {fspec["min_items"]} to {fspec["max_items"]} items: {fspec["description"]}\n'
+                    f'      {{\n{item_lines}\n      }}\n'
+                    f'    ]'
+                )
+            else:
+                field_lines.append(f'    "{fname}": "{_field_hint(fspec)}"')
         lines.append(',\n'.join(field_lines))
         lines.append('  }')
         lines.append('}')

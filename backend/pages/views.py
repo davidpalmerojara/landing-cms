@@ -1,3 +1,4 @@
+import logging
 import uuid
 from django.db import transaction
 from django.db.models import Prefetch, Q
@@ -7,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from .block_validators import clean_block_data
 from .models import Page, Block, Asset, PageVersion, CustomDomain, create_version_snapshot
 from .revalidation import revalidate_public_pages
 from .serializers import (
@@ -14,6 +16,12 @@ from .serializers import (
     PageVersionListSerializer, PageVersionDetailSerializer,
     CustomDomainSerializer, SharePageSerializer, UnsharePageSerializer, VersionLabelSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+class InvalidVersionData(Exception):
+    """A version snapshot holds data the editor would not accept."""
 
 
 def get_or_create_user_workspace(user):
@@ -380,6 +388,23 @@ class PageVersionViewSet(viewsets.GenericViewSet):
         version.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @staticmethod
+    def _clean_snapshot(version):
+        """The snapshot's blocks with their data run through clean_block_data.
+        Raises InvalidVersionData naming the first block that does not pass."""
+        cleaned = []
+        for index, block_data in enumerate(version.snapshot):
+            try:
+                data = clean_block_data(block_data['type'], block_data.get('data', {}))
+            except (KeyError, TypeError, AttributeError) as exc:
+                logger.warning('Version %s has a malformed block at %s', version.pk, index, exc_info=True)
+                raise InvalidVersionData(index) from exc
+            except ValidationError as exc:
+                logger.warning('Version %s block %s failed validation: %s', version.pk, index, exc.detail)
+                raise InvalidVersionData(index) from exc
+            cleaned.append({**block_data, 'data': data})
+        return cleaned
+
     @action(detail=True, methods=['post'])
     def restore(self, request, page_id=None, id=None):
         """POST /{version_id}/restore/ — restore page to this version's state."""
@@ -390,6 +415,20 @@ class PageVersionViewSet(viewsets.GenericViewSet):
             raise NotFound('Versión no encontrada.')
 
         restore_metadata = request.query_params.get('restore_metadata', '').lower() == 'true'
+
+        # Old snapshots go through the same validation as any save, before
+        # anything is deleted: a version with data the editor would reject
+        # (stale shape, unsafe link) is not restored.
+        try:
+            restored_blocks = self._clean_snapshot(version)
+        except InvalidVersionData as exc:
+            return Response(
+                {
+                    'error': f'La versión contiene datos que el editor no acepta (bloque {exc.args[0] + 1}).',
+                    'code': 'INVALID_VERSION_DATA',
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
         with transaction.atomic():
             # Snapshot current state before restoring
@@ -404,12 +443,12 @@ class PageVersionViewSet(viewsets.GenericViewSet):
             page.blocks.all().delete()
 
             # Recreate blocks from the snapshot (new UUIDs)
-            for i, block_data in enumerate(version.snapshot):
+            for i, block_data in enumerate(restored_blocks):
                 Block.objects.create(
                     page=page,
                     type=block_data['type'],
                     order=block_data.get('order', i),
-                    data=block_data.get('data', {}),
+                    data=block_data['data'],
                     styles=block_data.get('styles', {}),
                 )
 

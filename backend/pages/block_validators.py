@@ -25,6 +25,7 @@ NAME_MAX = 100
 QUOTE_MAX = 500
 FAQ_QUESTION_MAX = 200
 FAQ_ANSWER_MAX = 1000
+ALT_TEXT_MAX = 300
 COPYRIGHT_MAX = 200
 CUSTOM_HTML_MAX = 50_000
 # Whole data object of one block, serialized (custom HTML is the largest field)
@@ -43,6 +44,10 @@ class FieldRule:
     safe_url: bool = False
     safe_link: bool = False
     coerce_to_string: bool = False
+    # kind='list': a list of objects. item_rules is the allowlist of fields of
+    # each item (same rule kinds as the block's own fields), max_items the cap.
+    item_rules: dict[str, 'FieldRule'] | None = None
+    max_items: int | None = None
 
 
 def _validate_fields(
@@ -73,10 +78,16 @@ def _validate_fields(
 
         value = data[key]
         if value is None:
-            if not rule.allow_null:
+            if not rule.allow_null or rule.kind == 'list':
                 errors.setdefault(key, []).append('Este campo no puede ser null.')
             else:
                 validated[key] = None
+            continue
+
+        if rule.kind == 'list':
+            items = _validate_list(block_type, key, rule, value, errors)
+            if items is not None:
+                validated[key] = items
             continue
 
         if rule.kind == 'boolean':
@@ -124,10 +135,50 @@ def _validate_fields(
     return validated
 
 
-# TODO: Divergence with ai_generation.block_schemas: the runtime editor includes
-# extra fields like hero.badgeText, hero.secondaryButtonText, pricing.billingPeriod,
-# pricing.popularBadgeText, contact placeholders, and the customHtml block itself.
-# Keep the runtime validators aligned here without mutating the IA schemas in this task.
+def _item_default(rule: FieldRule):
+    return False if rule.kind == 'boolean' else ''
+
+
+def _validate_list(
+    block_type: str,
+    key: str,
+    rule: FieldRule,
+    value,
+    errors: dict[str, list[str]],
+) -> list[dict] | None:
+    """Validate a list of objects. Every item is checked against rule.item_rules
+    (unknown item keys dropped, wrong types rejected) and comes out with all its
+    keys: a missing or null field gets its default ('' or False). Errors go to
+    `errors` under "key[index].field". Returns None when there are errors."""
+    if not isinstance(value, list):
+        errors.setdefault(key, []).append('Debe ser una lista.')
+        return None
+    if rule.max_items is not None and len(value) > rule.max_items:
+        errors.setdefault(key, []).append(f'Máximo {rule.max_items} elementos.')
+        return None
+
+    items: list[dict] = []
+    failed = False
+    for index, item in enumerate(value):
+        path = f'{key}[{index}]'
+        if not isinstance(item, dict):
+            errors.setdefault(path, []).append('Cada elemento debe ser un objeto.')
+            failed = True
+            continue
+        present = {name: field for name, field in item.items() if field is not None}
+        try:
+            clean = _validate_fields(f'{block_type}.{path}', present, rule.item_rules or {}, partial=False)
+        except serializers.ValidationError as exc:
+            for name, messages in exc.detail.items():
+                errors.setdefault(f'{path}.{name}', []).extend(str(message) for message in messages)
+            failed = True
+            continue
+        items.append({
+            name: clean[name] if name in clean else _item_default(item_rule)
+            for name, item_rule in (rule.item_rules or {}).items()
+        })
+    return None if failed else items
+
 
 URL_RULE = FieldRule(max_length=2000, safe_url=True, sanitizer=None)
 # Followable links (buttons, nav items): see validate_safe_link
@@ -137,18 +188,18 @@ RICH_RULE = FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text)
 BUTTON_RULE = FieldRule(max_length=BUTTON_TEXT_MAX)
 PLACEHOLDER_RULE = FieldRule(max_length=PLACEHOLDER_MAX)
 NAME_RULE = FieldRule(max_length=NAME_MAX)
+# Navbar and footer share the same menu item shape
+LINKS_RULE = FieldRule(kind='list', max_items=6, item_rules={
+    'label': PLAIN_RULE,
+    'url': LINK_RULE,
+})
 
 
 def validate_navbar_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('navbar', data, {
         'brandName': NAME_RULE,
         'logoImage': URL_RULE,
-        'link1': PLAIN_RULE,
-        'link2': PLAIN_RULE,
-        'link3': PLAIN_RULE,
-        'link1Url': LINK_RULE,
-        'link2Url': LINK_RULE,
-        'link3Url': LINK_RULE,
+        'links': LINKS_RULE,
         'ctaText': BUTTON_RULE,
         'ctaLink': LINK_RULE,
     }, partial=partial)
@@ -175,22 +226,21 @@ def validate_hero_data(data: dict, *, partial: bool = False) -> dict:
 def validate_features_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('features', data, {
         'title': FieldRule(max_length=PLAIN_TEXT_MAX, allow_null=True),
-        'feature1Title': PLAIN_RULE,
-        'feature1Desc': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'feature2Title': PLAIN_RULE,
-        'feature2Desc': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
+        'features': FieldRule(kind='list', max_items=6, item_rules={
+            'title': PLAIN_RULE,
+            'description': RICH_RULE,
+        }),
     }, partial=partial)
 
 
 def validate_testimonials_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('testimonials', data, {
         'title': PLAIN_RULE,
-        'quote1': FieldRule(max_length=QUOTE_MAX, sanitizer=sanitize_text),
-        'author1': NAME_RULE,
-        'role1': PLAIN_RULE,
-        'quote2': FieldRule(max_length=QUOTE_MAX, sanitizer=sanitize_text),
-        'author2': NAME_RULE,
-        'role2': PLAIN_RULE,
+        'testimonials': FieldRule(kind='list', max_items=6, item_rules={
+            'quote': FieldRule(max_length=QUOTE_MAX, sanitizer=sanitize_text),
+            'author': NAME_RULE,
+            'role': PLAIN_RULE,
+        }),
     }, partial=partial)
 
 
@@ -208,12 +258,7 @@ def validate_footer_data(data: dict, *, partial: bool = False) -> dict:
         'brandName': NAME_RULE,
         'description': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
         'copyright': FieldRule(max_length=COPYRIGHT_MAX),
-        'link1Label': PLAIN_RULE,
-        'link2Label': PLAIN_RULE,
-        'link3Label': PLAIN_RULE,
-        'link1Url': LINK_RULE,
-        'link2Url': LINK_RULE,
-        'link3Url': LINK_RULE,
+        'links': LINKS_RULE,
     }, partial=partial)
 
 
@@ -221,17 +266,14 @@ def validate_pricing_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('pricing', data, {
         'title': PLAIN_RULE,
         'subtitle': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'plan1Name': NAME_RULE,
-        'plan1Price': PLAIN_RULE,
-        'plan1Features': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
-        'plan1ButtonText': BUTTON_RULE,
-        'plan1ButtonLink': LINK_RULE,
-        'plan2Name': NAME_RULE,
-        'plan2Price': PLAIN_RULE,
-        'plan2Features': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
-        'plan2ButtonText': BUTTON_RULE,
-        'plan2ButtonLink': LINK_RULE,
-        'plan2Highlighted': FieldRule(kind='boolean'),
+        'plans': FieldRule(kind='list', max_items=4, item_rules={
+            'name': NAME_RULE,
+            'price': PLAIN_RULE,
+            'features': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
+            'buttonText': BUTTON_RULE,
+            'buttonLink': LINK_RULE,
+            'highlighted': FieldRule(kind='boolean'),
+        }),
         'billingPeriod': PLAIN_RULE,
         'popularBadgeText': BUTTON_RULE,
     }, partial=partial)
@@ -240,23 +282,17 @@ def validate_pricing_data(data: dict, *, partial: bool = False) -> dict:
 def validate_faq_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('faq', data, {
         'title': PLAIN_RULE,
-        'q1': FieldRule(max_length=FAQ_QUESTION_MAX),
-        'a1': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
-        'q2': FieldRule(max_length=FAQ_QUESTION_MAX),
-        'a2': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
-        'q3': FieldRule(max_length=FAQ_QUESTION_MAX),
-        'a3': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
+        'questions': FieldRule(kind='list', max_items=12, item_rules={
+            'question': FieldRule(max_length=FAQ_QUESTION_MAX),
+            'answer': FieldRule(max_length=FAQ_ANSWER_MAX, sanitizer=sanitize_text),
+        }),
     }, partial=partial)
 
 
 def validate_logo_cloud_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('logoCloud', data, {
         'title': PLAIN_RULE,
-        'logo1': NAME_RULE,
-        'logo2': NAME_RULE,
-        'logo3': NAME_RULE,
-        'logo4': NAME_RULE,
-        'logo5': NAME_RULE,
+        'logos': FieldRule(kind='list', max_items=12, item_rules={'name': NAME_RULE}),
     }, partial=partial)
 
 
@@ -270,12 +306,10 @@ def validate_gallery_data(data: dict, *, partial: bool = False) -> dict:
             sanitizer=sanitize_plain_text,
             coerce_to_string=True,
         ),
-        'image1': URL_RULE,
-        'image2': URL_RULE,
-        'image3': URL_RULE,
-        'image4': URL_RULE,
-        'image5': URL_RULE,
-        'image6': URL_RULE,
+        'images': FieldRule(kind='list', max_items=12, item_rules={
+            'src': URL_RULE,
+            'alt': FieldRule(max_length=ALT_TEXT_MAX),
+        }),
     }, partial=partial)
 
 
@@ -300,15 +334,11 @@ def validate_team_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('team', data, {
         'title': PLAIN_RULE,
         'subtitle': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'member1Name': NAME_RULE,
-        'member1Role': PLAIN_RULE,
-        'member1Image': URL_RULE,
-        'member2Name': NAME_RULE,
-        'member2Role': PLAIN_RULE,
-        'member2Image': URL_RULE,
-        'member3Name': NAME_RULE,
-        'member3Role': PLAIN_RULE,
-        'member3Image': URL_RULE,
+        'members': FieldRule(kind='list', max_items=8, item_rules={
+            'name': NAME_RULE,
+            'role': PLAIN_RULE,
+            'image': URL_RULE,
+        }),
     }, partial=partial)
 
 
@@ -316,29 +346,21 @@ def validate_stats_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('stats', data, {
         'title': PLAIN_RULE,
         'subtitle': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'stat1Value': PLAIN_RULE,
-        'stat1Label': PLAIN_RULE,
-        'stat2Value': PLAIN_RULE,
-        'stat2Label': PLAIN_RULE,
-        'stat3Value': PLAIN_RULE,
-        'stat3Label': PLAIN_RULE,
-        'stat4Value': PLAIN_RULE,
-        'stat4Label': PLAIN_RULE,
+        'stats': FieldRule(kind='list', max_items=6, item_rules={
+            'value': PLAIN_RULE,
+            'label': PLAIN_RULE,
+        }),
     }, partial=partial)
 
 
 def validate_timeline_data(data: dict, *, partial: bool = False) -> dict:
     return _validate_fields('timeline', data, {
         'title': PLAIN_RULE,
-        'item1Date': PLAIN_RULE,
-        'item1Title': PLAIN_RULE,
-        'item1Desc': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'item2Date': PLAIN_RULE,
-        'item2Title': PLAIN_RULE,
-        'item2Desc': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
-        'item3Date': PLAIN_RULE,
-        'item3Title': PLAIN_RULE,
-        'item3Desc': FieldRule(max_length=RICH_TEXT_MAX, sanitizer=sanitize_text),
+        'events': FieldRule(kind='list', max_items=10, item_rules={
+            'date': PLAIN_RULE,
+            'title': PLAIN_RULE,
+            'description': RICH_RULE,
+        }),
     }, partial=partial)
 
 

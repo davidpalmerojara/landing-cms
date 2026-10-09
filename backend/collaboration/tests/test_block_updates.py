@@ -69,6 +69,30 @@ class TestBlockUpdatedRelay:
         }))
         assert consumer.send_json.await_args.args[0]['code'] == 'invalid_block_data'
 
+    def test_list_items_are_validated_before_being_relayed(self):
+        user = UserFactory()
+        page = PageFactory(owner=user)
+        block = BlockFactory(page=page, type='navbar', data={'brandName': 'Acme'})
+        consumer = make_consumer(page, user)
+
+        asyncio.run(consumer.handle_block_updated({
+            'block_id': str(block.id),
+            'data': {'links': [{'label': 'Docs', 'url': '/docs', 'onclick': 'x()'}]},
+        }))
+        assert relayed(consumer)['data'] == {'links': [{'label': 'Docs', 'url': '/docs'}]}
+
+        asyncio.run(consumer.handle_block_updated({
+            'block_id': str(block.id),
+            'data': {'links': [{'label': 'Docs', 'url': 'javascript:alert(1)'}]},
+        }))
+        assert consumer.send_json.await_args.args[0]['code'] == 'invalid_block_data'
+
+        asyncio.run(consumer.handle_block_updated({
+            'block_id': str(block.id),
+            'data': {'links': 'not a list'},
+        }))
+        assert consumer.send_json.await_args.args[0]['code'] == 'invalid_block_data'
+
     def test_blocks_of_other_pages_are_rejected(self):
         user = UserFactory()
         page = PageFactory(owner=user)

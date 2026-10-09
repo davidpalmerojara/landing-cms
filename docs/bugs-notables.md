@@ -126,7 +126,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Fecha**: 2026-10-08
 - **Qué pasaba**: Alguien podía registrarse con el email de otra persona, ya que el registro no verifica el email. Cuando la víctima entraba después con Google, el sistema vinculaba su Google a esa cuenta ya existente, y el atacante seguía entrando con su contraseña.
 - **Arreglo**: Google solo se vincula a cuentas sin contraseña (las creadas por enlace mágico, que sí demuestra el control del email). Si la cuenta tiene contraseña, responde 409 y pide entrar con usuario y contraseña. El test anterior comprobaba justo el comportamiento vulnerable y se sustituyó.
-- **Pendiente conocido**: El enlace mágico tiene el mismo problema de fondo: no hay verificación de email en el registro. Queda cerrado porque Google y el enlace mágico salen de la demo, tal como estaba planificado.
+- **Pendiente conocido**: El enlace mágico tenía el mismo problema de fondo. Se cerró en la entrada 18, que sustituye también el 409 de Google.
 
 ## 16. Un HTML subido como si fuera una imagen
 
@@ -142,3 +142,11 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se detectó**: Al integrar el trabajo de los enlaces, que también tocaba esa página, buscando en todo el frontend cualquier otro sitio que escribiera `status`.
 - **Arreglo**: La vista previa usa el endpoint `/publish/`, igual que el editor.
 - **Lección**: Al cambiar un contrato de la API, buscar todos sus usos (`grep`) además de confiar en los tests: el código sin tests es justo donde se esconden estas roturas.
+
+## 18. El enlace mágico abría una cuenta que otra persona también controlaba
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Es la otra mitad de la entrada 15. Alguien se registra con el email de otra persona y una contraseña suya. Cuando la dueña del email entra con un enlace mágico, el sistema la mete en esa cuenta. Ella trabaja ahí creyendo que la cuenta es suya, y el atacante sigue entrando con su contraseña, con las sesiones que ya tenía abiertas y a través de las páginas que hubiera compartido con otra cuenta suya.
+- **Arreglo** (ADR-018): La cuenta guarda si el email está demostrado. El enlace mágico y Google lo demuestran; registrarse con contraseña no. La primera vez que alguien lo demuestra en una cuenta con contraseña sin confirmar, esa contraseña se desactiva, se cierran todas las sesiones (los refresh tokens van a la lista negra y los access tokens emitidos antes se rechazan, también en el WebSocket) y las páginas dejan de estar compartidas. La persona ve una pantalla que le explica qué ha pasado. Google ya no responde 409: sigue el mismo camino.
+- **Cómo se verificó**: 14 tests reproducen el ataque completo (contraseña, cookie, cabecera Authorization, refresh, WebSocket y colaboradores). Con el arreglo desactivado fallan 9; con el arreglo, pasan todos. Hay otros tests que comprueban que una cuenta ya verificada conserva su contraseña y sus sesiones.
+- **Lección**: Un access token JWT no se puede "borrar": para cerrar sesiones hay que guardar desde cuándo dejan de valer y comprobarlo en cada sitio donde se autentica (HTTP y WebSocket).

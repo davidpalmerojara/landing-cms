@@ -156,7 +156,7 @@ Jerarquía principal:
 - `Block` -> pertenece a `Page`; guarda `type`, `order`, `data` y `styles` en JSON.
 
 Relaciones relevantes:
-- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan.
+- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan. `email_verified` se marca al entrar con enlace mágico o Google; si había una contraseña sin confirmar, se desactiva y `sessions_revoked_at` invalida todas las sesiones previas (ADR-018).
 - `Page.collaborators` permite edición compartida.
 - `PageVersion` guarda snapshots completos de bloques y metadata de página.
 - `Asset` representa media subida por usuario/workspace.

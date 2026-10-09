@@ -116,8 +116,6 @@ function BlockRenderer({ block, diffStatus, showDiff }: { block: SnapshotBlock; 
       <BlockComponent
         blockId={block.id}
         data={block.data}
-        isMobile={false}
-        isTablet={false}
         isPreviewMode={true}
       />
     </div>
@@ -139,7 +137,7 @@ function PageColumn({ title, blocks, diffBlocks, showDiff, themeVars }: {
       <div className="px-4 py-2 bg-surface-elevated/80 border-b border-surface-elevated/80 shrink-0">
         <span className="text-xs font-medium text-secondary">{title}</span>
       </div>
-      <div className="flex-1 overflow-y-auto bg-white" style={themeVars}>
+      <div className="@container flex-1 overflow-y-auto bg-white" style={themeVars}>
         {items.map((item, i) => (
           <BlockRenderer
             key={`${item.block.type}-${i}`}
@@ -307,7 +305,7 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-white" style={versionThemeVars}>
+        <div className="@container flex-1 overflow-y-auto bg-white" style={versionThemeVars}>
           {versionDiff.map((item, i) => (
             <BlockRenderer
               key={`${item.block.type}-${i}`}

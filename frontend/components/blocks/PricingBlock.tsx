@@ -7,7 +7,7 @@ import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function PricingBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const plan1Features = ((data.plan1Features as string) || '').split('\n').filter(Boolean);
   const plan2Features = ((data.plan2Features as string) || '').split('\n').filter(Boolean);
@@ -26,7 +26,7 @@ export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }:
       aria-label={t('pricingAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-bg)' }}
     >
       <EditableText
@@ -34,9 +34,7 @@ export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }:
         fieldKey="title"
         value={data.title as string}
         as="h2"
-        className={`text-center mb-4 ${
-          isMobile ? 'text-3xl' : 'text-4xl'
-        }`}
+        className="text-center mb-4 text-3xl @tablet:text-4xl"
         style={{
           color: 'var(--theme-text)',
           fontFamily: 'var(--bp-font-heading)',
@@ -53,9 +51,7 @@ export default function PricingBlock({ blockId, data, isMobile, isPreviewMode }:
       />
 
       <div
-        className={`grid gap-6 max-w-4xl mx-auto ${
-          isMobile ? 'grid-cols-1' : 'grid-cols-2'
-        }`}
+        className="grid gap-6 max-w-4xl mx-auto grid-cols-1 @tablet:grid-cols-2"
       >
         {/* Plan 1 */}
         <div

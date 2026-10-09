@@ -6,7 +6,7 @@ const evil = '<p>Hola</p><img src=x onerror="alert(1)"><script>alert(2)</script>
 
 describe('CustomHtmlBlock', () => {
   it('renders user HTML inside a sandboxed iframe, never into the page DOM', () => {
-    const view = render(<CustomHtmlBlock blockId="b1" data={{ html: evil }} isMobile={false} isTablet={false} isPreviewMode />);
+    const view = render(<CustomHtmlBlock blockId="b1" data={{ html: evil }} isPreviewMode />);
 
     const frame = view.container.querySelector('iframe');
     expect(frame).not.toBeNull();
@@ -22,7 +22,7 @@ describe('CustomHtmlBlock', () => {
   });
 
   it('shows the source as text in the editor', () => {
-    const view = render(<CustomHtmlBlock blockId="b1" data={{ html: evil }} isMobile={false} isTablet={false} isPreviewMode={false} />);
+    const view = render(<CustomHtmlBlock blockId="b1" data={{ html: evil }} isPreviewMode={false} />);
     expect(view.container.querySelector('iframe, img, script')).toBeNull();
     expect(view.container.textContent).toContain('<script>alert(2)</script>');
     view.unmount();

@@ -268,7 +268,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
         }}
       >
         <BrowserFrame ref={browserFrameRef}>
-          <div style={themeVars}>
+          <div className="@container" style={themeVars}>
           {page.blocks.map((block, index) => {
             const BlockContentComponent = blockRegistry[block.type]?.component;
             if (!BlockContentComponent) return null;
@@ -292,8 +292,6 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
                   <BlockContentComponent
                     blockId={block.id}
                     data={block.data}
-                    isMobile={deviceMode === 'mobile'}
-                    isTablet={deviceMode === 'tablet'}
                     isPreviewMode={isPreviewMode}
                   />
                 </div>

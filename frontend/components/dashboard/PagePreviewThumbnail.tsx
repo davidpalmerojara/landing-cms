@@ -59,7 +59,7 @@ export default function PagePreviewThumbnail({ blocks, themeId }: PagePreviewThu
       {scale > 0 && (
         <div
           inert
-          className="origin-top-left pointer-events-none select-none"
+          className="@container origin-top-left pointer-events-none select-none"
           style={{
             width: `${VIRTUAL_WIDTH}px`,
             transform: `scale(${scale})`,
@@ -76,8 +76,6 @@ export default function PagePreviewThumbnail({ blocks, themeId }: PagePreviewThu
                 <BlockComponent
                   blockId={block.id}
                   data={block.data}
-                  isMobile={false}
-                  isTablet={false}
                   isPreviewMode={true}
                 />
               </div>

@@ -59,7 +59,5 @@ export interface BlockDefinition {
 export interface BlockProps {
   blockId: string;
   data: Record<string, unknown>;
-  isMobile: boolean;
-  isTablet: boolean;
   isPreviewMode: boolean;
 }

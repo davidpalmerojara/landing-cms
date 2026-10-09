@@ -7,7 +7,7 @@ import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreviewMode }: BlockProps) {
+export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const bgImage = data.backgroundImage as string;
   const alignment = (data.alignment as string) || 'center';
@@ -17,13 +17,9 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
   const isLeft = alignment === 'left';
   const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
   const secondaryButtonHref = isPreviewMode ? safeHref(data.secondaryButtonLink) : null;
-  const primaryButtonClass = `rounded-full font-medium shadow-xl transition-all hover:opacity-90 ${
-    isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
-  }`;
+  const primaryButtonClass = `rounded-full font-medium shadow-xl transition-all hover:opacity-90 w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
   const primaryButtonStyle = { backgroundColor: 'var(--theme-primary)', color: '#fff' };
-  const secondaryButtonClass = `rounded-full font-medium border transition-all hover:opacity-80 ${
-    isMobile ? 'w-full py-4 text-lg' : 'px-8 py-4'
-  }`;
+  const secondaryButtonClass = `rounded-full font-medium border transition-all hover:opacity-80 w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
   const secondaryButtonStyle = {
     backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
     color: bgImage ? '#fff' : 'var(--theme-text)',
@@ -37,7 +33,7 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
         isLeft ? 'items-start' : 'items-center'
       } justify-center ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-32 px-8'}`}
+      } py-16 px-6 @tablet:py-32 @tablet:px-8`}
       style={{
         backgroundColor: bgImage ? undefined : 'var(--theme-bg)',
         ...(bgImage ? {
@@ -53,7 +49,7 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
       <div className={`${isLeft ? 'max-w-5xl mx-auto w-full' : ''}`}>
         {badgeText && (
           <div
-            className={`relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm`}
+            className="relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm"
             style={{
               backgroundColor: bgImage ? 'rgba(255,255,255,0.15)' : 'var(--theme-surface)',
               color: bgImage ? '#fff' : 'var(--theme-text-muted)',
@@ -69,7 +65,7 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
           as="h1"
           className={`relative z-10 tracking-tight mb-8 max-w-4xl leading-tight transition-all ${
             isLeft ? 'text-left' : 'text-center'
-          } ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-7xl'}`}
+          } text-4xl @tablet:text-5xl @desktop:text-7xl`}
           style={{
             color: bgImage ? '#fff' : 'var(--theme-text)',
             fontFamily: 'var(--bp-font-heading)',
@@ -85,7 +81,7 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
           multiline
           className={`relative z-10 max-w-2xl mb-12 transition-all ${
             isLeft ? 'text-left' : 'text-center mx-auto'
-          } ${isMobile ? 'text-lg' : 'text-xl'}`}
+          } text-lg @tablet:text-xl`}
           style={{
             color: bgImage ? 'rgba(255,255,255,0.85)' : 'var(--theme-text-muted)',
             fontFamily: 'var(--bp-font-body)',
@@ -95,7 +91,7 @@ export default function HeroBlock({ blockId, data, isMobile, isTablet, isPreview
         <div
           className={`relative z-10 flex gap-4 transition-all ${
             isLeft ? 'justify-start' : 'w-full justify-center'
-          } ${isMobile ? 'flex-col px-4' : 'flex-row items-center'}`}
+          } flex-col px-4 @tablet:flex-row @tablet:items-center @tablet:px-0`}
         >
           {buttonHref ? (
             <BlockLink href={buttonHref} className={`${primaryButtonClass} inline-block text-center`} style={primaryButtonStyle}>

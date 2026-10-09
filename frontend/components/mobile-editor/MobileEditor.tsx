@@ -585,7 +585,7 @@ function MobilePreview({
   return (
     <div className="fixed inset-0 z-80 bg-white">
       <div
-        className="h-full overflow-y-auto"
+        className="@container h-full overflow-y-auto"
         style={themeVars}
         onClick={(e) => {
           // Only toggle bar when clicking empty areas, not interactive block elements
@@ -621,8 +621,6 @@ function MobilePreview({
               <Component
                 blockId={block.id}
                 data={block.data}
-                isMobile={true}
-                isTablet={false}
                 isPreviewMode={true}
               />
             </div>

@@ -7,7 +7,7 @@ import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const footerLinkClass = 'hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium';
   const footerLinks = (['link1', 'link2', 'link3'] as const).map((key) => ({
@@ -21,16 +21,14 @@ export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: 
       aria-label={t('footerAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-12 px-6' : 'py-16 px-8'}`}
+      } py-12 px-6 @tablet:py-16 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-text)', color: 'var(--theme-text-muted)' }}
     >
       <div
-        className={`max-w-5xl mx-auto flex transition-all ${
-          isMobile ? 'flex-col gap-8 text-center' : 'flex-row justify-between items-center'
-        } mb-12`}
+        className="max-w-5xl mx-auto flex transition-all flex-col gap-8 text-center @tablet:flex-row @tablet:justify-between @tablet:items-center @tablet:gap-0 @tablet:text-left mb-12"
       >
-        <div className={isMobile ? 'w-full' : 'max-w-sm'}>
-          <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+        <div className="w-full @tablet:w-auto @tablet:max-w-sm">
+          <div className="flex items-center justify-center @tablet:justify-start gap-2 mb-4">
             <div
               className="w-6 h-6 rounded flex items-center justify-center text-white"
               style={{ backgroundColor: 'var(--theme-primary)' }}
@@ -57,9 +55,7 @@ export default function FooterBlock({ blockId, data, isMobile, isPreviewMode }: 
           />
         </div>
         <div
-          className={`flex gap-6 ${
-            isMobile ? 'justify-center w-full flex-wrap' : ''
-          }`}
+          className="flex gap-6 justify-center w-full flex-wrap @tablet:w-auto @tablet:flex-nowrap @tablet:justify-start"
         >
           {footerLinks.map(({ key, label, href }) =>
             href ? (

@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function TimelineBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function TimelineBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const items = [
     { dateKey: 'item1Date', titleKey: 'item1Title', descKey: 'item1Desc' },
@@ -17,7 +17,7 @@ export default function TimelineBlock({ blockId, data, isMobile, isPreviewMode }
       aria-label={t('timelineAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-bg)' }}
     >
       <div className="max-w-3xl mx-auto">
@@ -26,9 +26,7 @@ export default function TimelineBlock({ blockId, data, isMobile, isPreviewMode }
           fieldKey="title"
           value={data.title as string}
           as="h2"
-          className={`text-center mb-12 ${
-            isMobile ? 'text-3xl' : 'text-4xl'
-          }`}
+          className="text-center mb-12 text-3xl @tablet:text-4xl"
           style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
         />
         <div className="relative">

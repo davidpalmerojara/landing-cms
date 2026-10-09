@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import type { BlockProps } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function TeamBlock({ blockId, data, isMobile, isPreviewMode }: BlockProps) {
+export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps) {
   const t = useTranslations('blocks');
   const member1Image = data.member1Image as string;
   const member2Image = data.member2Image as string;
@@ -21,7 +21,7 @@ export default function TeamBlock({ blockId, data, isMobile, isPreviewMode }: Bl
       aria-label={t('teamAria')}
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
-      } ${isMobile ? 'py-16 px-6' : 'py-24 px-8'}`}
+      } py-16 px-6 @tablet:py-24 @tablet:px-8`}
       style={{ backgroundColor: 'var(--theme-bg)' }}
     >
       <div className="max-w-5xl mx-auto">
@@ -30,9 +30,7 @@ export default function TeamBlock({ blockId, data, isMobile, isPreviewMode }: Bl
           fieldKey="title"
           value={data.title as string}
           as="h2"
-          className={`text-center mb-4 transition-all ${
-            isMobile ? 'text-3xl' : 'text-4xl'
-          }`}
+          className="text-center mb-4 transition-all text-3xl @tablet:text-4xl"
           style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
         />
         <EditableText
@@ -41,12 +39,10 @@ export default function TeamBlock({ blockId, data, isMobile, isPreviewMode }: Bl
           value={data.subtitle as string}
           as="p"
           multiline
-          className={`text-center max-w-2xl mx-auto mb-12 ${
-            isMobile ? 'text-base' : 'text-lg'
-          }`}
+          className="text-center max-w-2xl mx-auto mb-12 text-base @tablet:text-lg"
           style={{ color: 'var(--theme-text-muted)' }}
         />
-        <div className={`grid gap-8 ${isMobile ? 'grid-cols-1' : 'grid-cols-3'}`}>
+        <div className="grid gap-8 grid-cols-1 @tablet:grid-cols-3">
           {members.map((m) => (
             <div key={m.nameKey} className="flex flex-col items-center text-center">
               {m.image ? (

@@ -225,6 +225,8 @@ export type AiDemoReason = 'demo_mode' | 'daily_limit' | 'provider_quota';
 
 export interface AiDemoInfo {
   reason: AiDemoReason;
+  /** Where the saved answers come from: real model output, or written by hand */
+  origin?: 'generated' | 'placeholder';
   /** Page generation only: the saved page served, and whether the text matched it (false: a fallback) */
   fixture_id?: string;
   matched?: boolean;

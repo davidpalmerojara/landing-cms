@@ -714,7 +714,8 @@
       "page": {
         "demo_mode": "Cached demo response: generated once with AI and saved.",
         "daily_limit": "The demo's daily limit has been reached: this is a saved response.",
-        "provider_quota": "The AI service has run out of quota for now: this is a saved response."
+        "provider_quota": "The AI service has run out of quota for now: this is a saved response.",
+        "demo_mode_placeholder": "Demo example page, written by hand: no AI was used. With your own key, the page is generated from your text."
       },
       "block": {
         "demo_mode": "In the demo, AI editing returns a saved variant of the block and does not follow your instruction. With your own key, it does.",

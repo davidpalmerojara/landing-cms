@@ -714,7 +714,8 @@
       "page": {
         "demo_mode": "Respuesta de demo cacheada: generada una vez con IA y guardada.",
         "daily_limit": "Se ha alcanzado el límite diario de la demo: esta es una respuesta guardada.",
-        "provider_quota": "El servicio de IA ha agotado su cuota por ahora: esta es una respuesta guardada."
+        "provider_quota": "El servicio de IA ha agotado su cuota por ahora: esta es una respuesta guardada.",
+        "demo_mode_placeholder": "Página de ejemplo de la demo, escrita a mano: no se ha usado IA. Con tu propia clave, la página se genera a partir de tu texto."
       },
       "block": {
         "demo_mode": "En la demo la edición con IA devuelve una variante guardada del bloque y no sigue tu instrucción. Con tu propia clave, sí.",

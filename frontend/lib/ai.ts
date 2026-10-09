@@ -44,7 +44,9 @@ export function aiErrorMessageKey(code: string | null): string | null {
 export function savedAnswerLabelKeys(kind: AiAnswerKind, source: AiSource, demo: AiDemoInfo | undefined): string[] {
   if (source !== 'demo') return [];
   const reason = demo?.reason ?? 'demo_mode';
-  const keys = [`ai.saved.${kind}.${reason}`];
+  // Never say "generated with AI" about pages a person wrote
+  const handWritten = kind === 'page' && reason === 'demo_mode' && demo?.origin !== 'generated';
+  const keys = [handWritten ? 'ai.saved.page.demo_mode_placeholder' : `ai.saved.${kind}.${reason}`];
   if (kind === 'page' && demo?.matched === false) keys.push('ai.saved.noExampleMatched');
   return keys;
 }

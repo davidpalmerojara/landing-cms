@@ -176,7 +176,7 @@ def _provider_error_response(route: Route, error: Exception) -> Response:
 
 
 def _demo_details(route: Route, fixture_id: str | None = None, matched: bool | None = None) -> dict:
-    details: dict = {'reason': route.reason}
+    details: dict = {'reason': route.reason, 'origin': demo.fixtures_origin()}
     if fixture_id is not None:
         details['fixture_id'] = fixture_id
         details['matched'] = matched

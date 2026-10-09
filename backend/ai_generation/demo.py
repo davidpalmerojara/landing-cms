@@ -18,6 +18,8 @@ from pathlib import Path
 
 FIXTURES_DIR = Path(__file__).resolve().parent / 'demo_fixtures'
 LANGUAGES = ('es', 'en')
+ORIGIN_GENERATED = 'generated'
+ORIGIN_PLACEHOLDER = 'placeholder'
 DEFAULT_LANGUAGE = 'es'
 
 
@@ -29,6 +31,8 @@ class DemoFixture:
     title: dict[str, str]
     keywords: tuple[str, ...]
     blocks: tuple[dict, ...]
+    # 'generated': real model output (generate_ai_fixtures); 'placeholder': written by hand
+    origin: str = ORIGIN_PLACEHOLDER
 
     def title_for(self, language: str) -> str:
         return self.title.get(language) or self.title.get(self.language) or self.id
@@ -59,8 +63,18 @@ def load_fixtures() -> tuple[DemoFixture, ...]:
             title=raw['title'],
             keywords=tuple(raw['keywords']),
             blocks=tuple(raw['blocks']),
+            origin=raw.get('origin', ORIGIN_PLACEHOLDER),
         ))
     return tuple(fixtures)
+
+
+def fixtures_origin() -> str:
+    """'generated' only when every saved page came from the model, so the UI
+    never claims AI wrote something a person wrote."""
+    fixtures = load_fixtures()
+    if fixtures and all(f.origin == ORIGIN_GENERATED for f in fixtures):
+        return ORIGIN_GENERATED
+    return ORIGIN_PLACEHOLDER
 
 
 def list_prompts(language: str) -> list[dict]:

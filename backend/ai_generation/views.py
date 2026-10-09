@@ -1,32 +1,56 @@
+import json
 import logging
+import time
+from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from pages.models import Page, Block
+from pages.models import Page, Block, create_version_snapshot
+from . import demo, providers
+from .merge import merge_block_data
 from .models import AIGenerationLog
-from .prompts import get_system_prompt, get_user_message, get_edit_block_system_prompt, get_edit_block_user_message
-from .providers import resolve_provider, call_ai
-from .serializers import GeneratePageSerializer, EditBlockSerializer
-from .validators import (
-    parse_blocks_json,
-    validate_blocks,
-    finalize_blocks,
-    BlockValidationError,
-)
+from .pipeline import generate_blocks, InvalidOutputError, ProviderCallError
+from .prompts import get_edit_block_system_prompt, get_edit_block_user_message
+from .providers import resolve_provider, ProviderQuotaError
+from .serializers import GeneratePageSerializer, EditBlockSerializer, OptionsQuerySerializer
+from .validators import validate_blocks, finalize_blocks, BlockValidationError
 
 logger = logging.getLogger(__name__)
+
+Source = AIGenerationLog.Source
+
+# Why a saved response was served (the frontend words the label from this)
+REASON_DEMO_MODE = 'demo_mode'
+REASON_DAILY_LIMIT = 'daily_limit'
+REASON_PROVIDER_QUOTA = 'provider_quota'
 
 # Cost estimates per 1M tokens
 COST_TABLE = {
     'anthropic': {'input': Decimal('3.00'), 'output': Decimal('15.00')},
     'gemini': {'input': Decimal('0.0'), 'output': Decimal('0.0')},  # Free tier
 }
+NO_COST = Decimal('0')
+
+
+@dataclass(frozen=True)
+class Route:
+    """Where an AI request is answered from."""
+    source: str
+    provider: str = ''
+    api_key: str = ''
+    reason: str = REASON_DEMO_MODE  # only meaningful for Source.DEMO
+
+
+def _error(message: str, code: str, http_status: int, **extra) -> Response:
+    return Response({'error': message, 'code': code, **extra}, status=http_status)
+
 
 def _check_rate_limit(user) -> str | None:
     """Returns error message if rate limited, None otherwise. Uses plan-based limits."""
@@ -47,11 +71,21 @@ def _check_rate_limit(user) -> str | None:
     recent_count = AIGenerationLog.objects.filter(
         user=user,
         created_at__gte=one_hour_ago,
-        used_own_key=False,
+        source=Source.LIVE,
     ).count()
     if recent_count >= max_generations:
         return f'Has alcanzado el límite de {max_generations} generaciones por hora. Inténtalo más tarde.'
     return None
+
+
+def _live_cap_reached(user) -> bool:
+    """True when today's (UTC) calls with the server key reached the global or the per-user limit."""
+    today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    live_today = AIGenerationLog.objects.filter(source=Source.LIVE, created_at__gte=today)
+    return (
+        live_today.count() >= settings.AI_LIVE_DAILY_LIMIT
+        or live_today.filter(user=user).count() >= settings.AI_LIVE_USER_DAILY_LIMIT
+    )
 
 
 def _calculate_cost(tokens_in: int, tokens_out: int, provider: str) -> Decimal:
@@ -60,20 +94,169 @@ def _calculate_cost(tokens_in: int, tokens_out: int, provider: str) -> Decimal:
             Decimal(tokens_out) / Decimal('1000000') * costs['output'])
 
 
+def choose_route(user, data: dict) -> Route | Response:
+    """Decide how a request is answered, in this order:
+
+    1. A key sent with the request: call that provider. No plan check: it is not our quota.
+    2. Demo mode (the default): a saved response, never the server key.
+    3. The server key, subject to the plan and the daily caps. Past a cap, a saved response.
+    """
+    own_provider = data.get('provider')
+    own_key = data.get('api_key')
+    if own_provider and own_key:
+        return Route(Source.OWN_KEY, own_provider, own_key)
+
+    if settings.AI_DEMO_MODE:
+        return Route(Source.DEMO)
+
+    try:
+        provider, api_key, _ = resolve_provider(own_provider, own_key)
+    except ValueError as exc:
+        return _error(str(exc), 'AI_NOT_CONFIGURED', status.HTTP_400_BAD_REQUEST)
+
+    rate_error = _check_rate_limit(user)
+    if rate_error:
+        return _error(rate_error, 'AI_PLAN_LIMIT', status.HTTP_429_TOO_MANY_REQUESTS)
+
+    if _live_cap_reached(user):
+        return Route(Source.DEMO, reason=REASON_DAILY_LIMIT)
+    return Route(Source.LIVE, provider, api_key)
+
+
+def _fall_back_to_demo(route: Route, error: ProviderQuotaError) -> Route | Response:
+    """The provider has no quota left. With the server key that means a saved response;
+    with the user's own key the user has to know it is their key's quota."""
+    if route.source == Source.OWN_KEY:
+        logger.warning('AI quota exhausted for a user key (%s)', route.provider)
+        return _error(
+            f'Tu clave de {route.provider} ha agotado su cuota. Prueba más tarde o con otra clave.',
+            'AI_KEY_QUOTA',
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    logger.warning('AI quota exhausted for the server key (%s): %s', route.provider, error)
+    return Route(Source.DEMO, reason=REASON_PROVIDER_QUOTA)
+
+
+def _wait_like_a_call() -> None:
+    """A saved response arrives after a short wait, like a generated one would."""
+    delay = settings.AI_DEMO_DELAY_SECONDS
+    if delay > 0:
+        time.sleep(delay)
+
+
+def _log(user, page, route: Route, mode: str, prompt: str, tokens_in: int = 0, tokens_out: int = 0) -> Decimal:
+    """Record one request. A saved response costs nothing and counts toward no limit."""
+    cost = NO_COST if route.source == Source.DEMO else _calculate_cost(tokens_in, tokens_out, route.provider)
+    AIGenerationLog.objects.create(
+        user=user,
+        source=route.source,
+        page=page,
+        prompt=prompt,
+        mode=mode,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        cost_estimate=cost,
+    )
+    return cost
+
+
+def _provider_error_response(route: Route, error: Exception) -> Response:
+    message = str(error).lower()
+    if route.source == Source.OWN_KEY and ('auth' in message or 'key' in message or '401' in message or '403' in message):
+        return _error(
+            f'API key inválida para {route.provider}. Verifica tu clave en Configuración > IA.',
+            'AI_INVALID_KEY',
+            status.HTTP_401_UNAUTHORIZED,
+        )
+    return _error(
+        'Error al comunicarse con el servicio de IA. Intenta de nuevo o usa una plantilla.',
+        'AI_PROVIDER_ERROR',
+        status.HTTP_502_BAD_GATEWAY,
+    )
+
+
+def _demo_details(route: Route, fixture_id: str | None = None, matched: bool | None = None) -> dict:
+    details: dict = {'reason': route.reason}
+    if fixture_id is not None:
+        details['fixture_id'] = fixture_id
+        details['matched'] = matched
+    return details
+
+
+def _source_fields(route: Route, **demo_extra) -> dict:
+    fields: dict = {'source': route.source, 'provider': route.provider or None}
+    if route.source == Source.DEMO:
+        fields['demo'] = _demo_details(route, **demo_extra)
+    return fields
+
+
+class AIOptionsView(APIView):
+    """GET /api/ai/options/?language=es — how AI answers right now and the suggested prompts."""
+
+    def get(self, request):
+        query = OptionsQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        language = query.validated_data['language']
+
+        if settings.AI_DEMO_MODE:
+            mode = 'demo'
+        elif settings.GOOGLE_AI_KEY or settings.ANTHROPIC_API_KEY:
+            mode = 'live'
+        else:
+            mode = 'unavailable'
+
+        return Response({
+            'mode': mode,
+            'live_user_daily_limit': settings.AI_LIVE_USER_DAILY_LIMIT,
+            'prompts': demo.list_prompts(language),
+        })
+
+
+def _get_page(user, page_id) -> Page | None:
+    return Page.objects.filter(
+        Q(owner=user) | Q(collaborators=user)
+    ).distinct().filter(pk=page_id).first()
+
+
+def _replace_page_blocks(page: Page, user, sanitized: list[dict]) -> list[dict]:
+    """Snapshot the page, then replace its blocks with the validated ones."""
+    # Auto-snapshot before AI replaces all blocks
+    if page.blocks.exists():
+        create_version_snapshot(
+            page=page,
+            user=user,
+            trigger='auto_ai_generation',
+            label='Antes de generación IA',
+        )
+
+    page.blocks.all().delete()
+
+    created_blocks = []
+    for i, block_data in enumerate(sanitized):
+        block = Block.objects.create(
+            page=page,
+            type=block_data['type'],
+            order=i,
+            data=block_data['data'],
+            styles={},
+        )
+        created_blocks.append({
+            'id': str(block.id),
+            'type': block.type,
+            'order': block.order,
+            'data': block.data,
+            'styles': block.styles,
+        })
+    return created_blocks
+
+
 class GeneratePageView(APIView):
     """POST /api/pages/{page_id}/generate/ — generate blocks with AI."""
 
     def post(self, request, page_id):
-        # 1. Validate page access
-        try:
-            page = Page.objects.filter(
-                Q(owner=request.user) | Q(collaborators=request.user)
-            ).distinct().get(pk=page_id)
-        except Page.DoesNotExist:
-            return Response(
-                {'error': 'Página no encontrada.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        page = _get_page(request.user, page_id)
+        if page is None:
+            return _error('Página no encontrada.', 'NOT_FOUND', status.HTTP_404_NOT_FOUND)
 
         input_serializer = GeneratePageSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -81,272 +264,151 @@ class GeneratePageView(APIView):
         tone = input_serializer.validated_data.get('tone', '')
         language = input_serializer.validated_data['language']
 
-        # 3. Resolve the key first: the plan limit only applies to the server's key
-        try:
-            provider, api_key, uses_server_key = resolve_provider(
-                input_serializer.validated_data.get('provider'),
-                input_serializer.validated_data.get('api_key'),
-            )
-        except ValueError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        route = choose_route(request.user, input_serializer.validated_data)
+        if isinstance(route, Response):
+            return route
 
-        # 4. Rate limit (plan-based, server key only)
-        if uses_server_key:
-            rate_error = _check_rate_limit(request.user)
-            if rate_error:
-                return Response(
-                    {'error': rate_error},
-                    status=status.HTTP_429_TOO_MANY_REQUESTS,
-                )
+        tokens_in = 0
+        tokens_out = 0
+        demo_extra: dict = {}
+        sanitized: list[dict] | None = None
 
-        # 5. Build prompts
-        system_prompt = get_system_prompt()
-        user_message = get_user_message(prompt, tone=tone, language=language)
+        if route.source != Source.DEMO:
+            outcome = self._generate_with_provider(request.user, page, route, prompt, tone, language)
+            if isinstance(outcome, Response):
+                return outcome
+            if isinstance(outcome, Route):
+                route = outcome  # the provider had no quota left: serve a saved page
+            else:
+                sanitized, tokens_in, tokens_out = outcome
 
-        # 6. Call AI (with 1 retry on validation failure)
-        total_tokens_in = 0
-        total_tokens_out = 0
-        last_error = None
-
-        for attempt in range(2):
+        if sanitized is None:
+            _wait_like_a_call()
+            match = demo.match_fixture(prompt, language)
             try:
-                ai_response = call_ai(system_prompt, user_message, provider, api_key)
-                total_tokens_in += ai_response.tokens_in
-                total_tokens_out += ai_response.tokens_out
-            except Exception as e:
-                logger.error(f'AI API error ({provider}): {e}')
-                AIGenerationLog.objects.create(
-                    user=request.user,
-                    used_own_key=not uses_server_key,
-                    page=page,
-                    prompt=prompt,
-                    mode=AIGenerationLog.Mode.FULL_PAGE,
-                    tokens_in=total_tokens_in,
-                    tokens_out=total_tokens_out,
-                    cost_estimate=_calculate_cost(total_tokens_in, total_tokens_out, provider),
-                )
-                error_msg = str(e)
-                # Give a helpful message if it's an auth error
-                if 'auth' in error_msg.lower() or 'key' in error_msg.lower() or '401' in error_msg or '403' in error_msg:
-                    return Response(
-                        {'error': f'API key inválida para {provider}. Verifica tu clave en Configuración > IA.'},
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
-                return Response(
-                    {'error': 'Error al comunicarse con el servicio de IA. Intenta de nuevo o usa una plantilla.'},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
+                sanitized = finalize_blocks(list(match.fixture.blocks))
+            except BlockValidationError as exc:
+                logger.error('Saved demo page %s no longer passes validation: %s', match.fixture.id, exc.errors)
+                return _error('No se pudo cargar la página de demo.', 'DEMO_FIXTURE_INVALID',
+                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+            demo_extra = {'fixture_id': match.fixture.id, 'matched': match.matched}
 
-            # Parse and validate
-            try:
-                blocks_data = parse_blocks_json(ai_response.text)
-                errors = validate_blocks(blocks_data)
-                if errors:
-                    raise BlockValidationError(errors)
-                # Same validation as the REST API; failing it also retries
-                sanitized = finalize_blocks(blocks_data)
-                last_error = None
-                break
-            except BlockValidationError as e:
-                last_error = e
-                if attempt == 0:
-                    user_message = (
-                        f'{user_message}\n\n'
-                        f'IMPORTANT: Your previous response had validation errors:\n'
-                        f'{chr(10).join(e.errors)}\n\n'
-                        f'Please fix these errors and respond with a valid JSON array.'
-                    )
-                    logger.warning(f'AI generation retry ({provider}): {e.errors}')
-
-        if last_error:
-            AIGenerationLog.objects.create(
-                user=request.user,
-                used_own_key=not uses_server_key,
-                page=page,
-                prompt=prompt,
-                mode=AIGenerationLog.Mode.FULL_PAGE,
-                tokens_in=total_tokens_in,
-                tokens_out=total_tokens_out,
-                cost_estimate=_calculate_cost(total_tokens_in, total_tokens_out, provider),
-            )
-            return Response(
-                {
-                    'error': 'La IA generó contenido inválido tras 2 intentos. Prueba con otra descripción o usa una plantilla.',
-                    'details': last_error.errors[:5],
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        # 7. Persist the blocks (already validated and sanitized above)
-        # Auto-snapshot before AI replaces all blocks
-        if page.blocks.exists():
-            from pages.models import create_version_snapshot
-            create_version_snapshot(
-                page=page,
-                user=request.user,
-                trigger='auto_ai_generation',
-                label='Antes de generación IA',
-            )
-
-        page.blocks.all().delete()
-
-        created_blocks = []
-        for i, block_data in enumerate(sanitized):
-            block = Block.objects.create(
-                page=page,
-                type=block_data['type'],
-                order=i,
-                data=block_data['data'],
-                styles={},
-            )
-            created_blocks.append({
-                'id': str(block.id),
-                'type': block.type,
-                'order': block.order,
-                'data': block.data,
-                'styles': block.styles,
-            })
-
-        # 8. Log usage
-        cost = _calculate_cost(total_tokens_in, total_tokens_out, provider)
-        AIGenerationLog.objects.create(
-            user=request.user,
-            used_own_key=not uses_server_key,
-            page=page,
-            prompt=prompt,
-            mode=AIGenerationLog.Mode.FULL_PAGE,
-            tokens_in=total_tokens_in,
-            tokens_out=total_tokens_out,
-            cost_estimate=cost,
-        )
+        created_blocks = _replace_page_blocks(page, request.user, sanitized)
+        cost = _log(request.user, page, route, AIGenerationLog.Mode.FULL_PAGE, prompt, tokens_in, tokens_out)
 
         logger.info(
-            f'AI generation: user={request.user.username} page={page.pk} '
-            f'provider={provider} blocks={len(created_blocks)} '
-            f'tokens_in={total_tokens_in} tokens_out={total_tokens_out} cost=${cost}'
+            'AI generation: user=%s page=%s source=%s provider=%s blocks=%d tokens_in=%d tokens_out=%d cost=$%s',
+            request.user.username, page.pk, route.source, route.provider or '-', len(created_blocks),
+            tokens_in, tokens_out, cost,
         )
 
         return Response({
             'page_id': str(page.pk),
             'block_count': len(created_blocks),
             'blocks': created_blocks,
-            'provider': provider,
+            **_source_fields(route, **demo_extra),
             'tokens': {
-                'input': total_tokens_in,
-                'output': total_tokens_out,
+                'input': tokens_in,
+                'output': tokens_out,
                 'cost_estimate': str(cost),
             },
         }, status=status.HTTP_200_OK)
+
+    def _generate_with_provider(self, user, page, route: Route, prompt: str, tone: str, language: str):
+        """Returns (sanitized blocks, tokens_in, tokens_out), a Response to send back as an
+        error, or a demo Route when the server key's quota is exhausted."""
+        try:
+            generated = generate_blocks(prompt, tone, language, route.provider, route.api_key)
+        except ProviderQuotaError as exc:
+            return _fall_back_to_demo(route, exc)
+        except ProviderCallError as exc:
+            logger.error('AI API error (%s): %s', route.provider, exc.cause)
+            _log(user, page, route, AIGenerationLog.Mode.FULL_PAGE, prompt, exc.tokens_in, exc.tokens_out)
+            return _provider_error_response(route, exc.cause)
+        except InvalidOutputError as exc:
+            _log(user, page, route, AIGenerationLog.Mode.FULL_PAGE, prompt, exc.tokens_in, exc.tokens_out)
+            return Response(
+                {
+                    'error': 'La IA generó contenido inválido tras 2 intentos. Prueba con otra descripción o usa una plantilla.',
+                    'code': 'AI_INVALID_OUTPUT',
+                    'details': exc.errors[:5],
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        return generated.blocks, generated.tokens_in, generated.tokens_out
+
+
+def _strip_code_fences(text: str) -> str:
+    text = text.strip()
+    if text.startswith('```'):
+        lines = text.split('\n')[1:]
+        if lines and lines[-1].strip() == '```':
+            lines = lines[:-1]
+        text = '\n'.join(lines).strip()
+    return text
+
+
+def _clean_edit_result(result: dict) -> dict:
+    """Validate one block the model returned, like the REST API would (raises BlockValidationError)."""
+    errors = validate_blocks([result])
+    if errors:
+        raise BlockValidationError(errors)
+    return finalize_blocks([result])[0]
 
 
 class EditBlockView(APIView):
     """POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/ — edit a single block with AI."""
 
     def post(self, request, page_id, block_id):
-        # 1. Validate page access
-        try:
-            page = Page.objects.filter(
-                Q(owner=request.user) | Q(collaborators=request.user)
-            ).distinct().get(pk=page_id)
-        except Page.DoesNotExist:
-            return Response(
-                {'error': 'Página no encontrada.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        page = _get_page(request.user, page_id)
+        if page is None:
+            return _error('Página no encontrada.', 'NOT_FOUND', status.HTTP_404_NOT_FOUND)
 
-        # 2. Find block
         try:
             block = page.blocks.get(pk=block_id)
         except Block.DoesNotExist:
-            return Response(
-                {'error': 'Bloque no encontrado.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return _error('Bloque no encontrado.', 'NOT_FOUND', status.HTTP_404_NOT_FOUND)
 
         input_serializer = EditBlockSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         instruction = input_serializer.validated_data['instruction']
 
-        # 4. Resolve the key first: the plan limit only applies to the server's key
-        try:
-            provider, api_key, uses_server_key = resolve_provider(
-                input_serializer.validated_data.get('provider'),
-                input_serializer.validated_data.get('api_key'),
-            )
-        except ValueError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        route = choose_route(request.user, input_serializer.validated_data)
+        if isinstance(route, Response):
+            return route
 
-        # 5. Rate limit (plan-based, server key only)
-        if uses_server_key:
-            rate_error = _check_rate_limit(request.user)
-            if rate_error:
-                return Response(
-                    {'error': rate_error},
-                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+        tokens_in = 0
+        tokens_out = 0
+        new_type = block.type
+        new_data: dict | None = None
+
+        if route.source != Source.DEMO:
+            outcome = self._edit_with_provider(request.user, page, block, route, instruction)
+            if isinstance(outcome, Response):
+                return outcome
+            if isinstance(outcome, Route):
+                route = outcome
+            else:
+                new_type, new_data, tokens_in, tokens_out = outcome
+
+        if new_data is None:
+            _wait_like_a_call()
+            variant = demo.pick_variant(block.type, f'{block.pk}:{instruction}', exclude=[block.data])
+            if variant is None:
+                return _error(
+                    'La demo no tiene una variante guardada para este tipo de bloque.',
+                    'DEMO_NO_VARIANT',
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
+            try:
+                cleaned = _clean_edit_result({'type': block.type, 'data': variant})
+            except BlockValidationError as exc:
+                logger.error('Saved demo block (%s) no longer passes validation: %s', block.type, exc.errors)
+                return _error('No se pudo cargar la variante de demo.', 'DEMO_FIXTURE_INVALID',
+                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+            new_data = merge_block_data(block.data, variant, cleaned['data'])
 
-        # 6. Build prompts
-        system_prompt = get_edit_block_system_prompt()
-        user_message = get_edit_block_user_message(block.type, block.data, instruction)
-
-        # 7. Call AI
-        try:
-            ai_response = call_ai(system_prompt, user_message, provider, api_key)
-        except Exception as e:
-            logger.error(f'AI edit block error ({provider}): {e}')
-            AIGenerationLog.objects.create(
-                user=request.user,
-                used_own_key=not uses_server_key,
-                page=page,
-                prompt=instruction,
-                mode=AIGenerationLog.Mode.EDIT_BLOCK,
-                tokens_in=0,
-                tokens_out=0,
-                cost_estimate=Decimal('0'),
-            )
-            return Response(
-                {'error': 'Error al comunicarse con el servicio de IA.'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        # 8. Parse and validate single block
-        import json
-        try:
-            text = ai_response.text.strip()
-            # Strip code fences
-            if text.startswith('```'):
-                lines = text.split('\n')
-                lines = lines[1:]
-                if lines and lines[-1].strip() == '```':
-                    lines = lines[:-1]
-                text = '\n'.join(lines).strip()
-
-            result = json.loads(text)
-            if not isinstance(result, dict) or 'type' not in result or 'data' not in result:
-                raise ValueError('Invalid block structure')
-
-            # Validate using existing validators
-            errors = validate_blocks([result])
-            if errors:
-                raise BlockValidationError(errors)
-
-            # Same validation as the REST API (sanitizing, links, limits)
-            new_block_data = finalize_blocks([result])[0]
-        except (json.JSONDecodeError, ValueError, BlockValidationError) as e:
-            logger.warning(f'AI edit block validation error: {e}')
-            return Response(
-                {'error': 'La IA generó una respuesta inválida. Intenta con otra instrucción.'},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        # 9. Auto-snapshot before AI edits block
-        from pages.models import create_version_snapshot
+        # Auto-snapshot before AI edits block
         create_version_snapshot(
             page=page,
             user=request.user,
@@ -354,27 +416,15 @@ class EditBlockView(APIView):
             label=f'Antes de editar bloque {block.type} con IA',
         )
 
-        # 10. Update block in DB
-        block.type = new_block_data['type']
-        block.data = new_block_data['data']
+        block.type = new_type
+        block.data = new_data
         block.save()
 
-        # 10. Log usage
-        cost = _calculate_cost(ai_response.tokens_in, ai_response.tokens_out, provider)
-        AIGenerationLog.objects.create(
-            user=request.user,
-            used_own_key=not uses_server_key,
-            page=page,
-            prompt=instruction,
-            mode=AIGenerationLog.Mode.EDIT_BLOCK,
-            tokens_in=ai_response.tokens_in,
-            tokens_out=ai_response.tokens_out,
-            cost_estimate=cost,
-        )
+        cost = _log(request.user, page, route, AIGenerationLog.Mode.EDIT_BLOCK, instruction, tokens_in, tokens_out)
 
         logger.info(
-            f'AI edit block: user={request.user.username} page={page.pk} block={block.pk} '
-            f'provider={provider} tokens_in={ai_response.tokens_in} tokens_out={ai_response.tokens_out}'
+            'AI edit block: user=%s page=%s block=%s source=%s provider=%s tokens_in=%d tokens_out=%d',
+            request.user.username, page.pk, block.pk, route.source, route.provider or '-', tokens_in, tokens_out,
         )
 
         return Response({
@@ -385,10 +435,43 @@ class EditBlockView(APIView):
                 'data': block.data,
                 'styles': block.styles,
             },
-            'provider': provider,
+            **_source_fields(route),
             'tokens': {
-                'input': ai_response.tokens_in,
-                'output': ai_response.tokens_out,
+                'input': tokens_in,
+                'output': tokens_out,
                 'cost_estimate': str(cost),
             },
         }, status=status.HTTP_200_OK)
+
+    def _edit_with_provider(self, user, page, block, route: Route, instruction: str):
+        """Returns (type, data, tokens_in, tokens_out), a Response for an error, or a demo
+        Route when the server key's quota is exhausted."""
+        system_prompt = get_edit_block_system_prompt()
+        user_message = get_edit_block_user_message(block.type, block.data, instruction)
+
+        try:
+            ai_response = providers.call_ai(system_prompt, user_message, route.provider, route.api_key)
+        except ProviderQuotaError as exc:
+            return _fall_back_to_demo(route, exc)
+        except Exception as exc:  # noqa: BLE001 - any provider failure is reported the same way
+            logger.error('AI edit block error (%s): %s', route.provider, exc)
+            _log(user, page, route, AIGenerationLog.Mode.EDIT_BLOCK, instruction)
+            return _error('Error al comunicarse con el servicio de IA.', 'AI_PROVIDER_ERROR',
+                          status.HTTP_502_BAD_GATEWAY)
+
+        try:
+            result = json.loads(_strip_code_fences(ai_response.text))
+            if not isinstance(result, dict) or 'type' not in result or 'data' not in result:
+                raise ValueError('Invalid block structure')
+            cleaned = _clean_edit_result(result)
+        except (json.JSONDecodeError, ValueError, BlockValidationError) as exc:
+            logger.warning('AI edit block validation error: %s', exc)
+            return _error('La IA generó una respuesta inválida. Intenta con otra instrucción.',
+                          'AI_INVALID_OUTPUT', status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        if cleaned['type'] == block.type:
+            # The schema covers only part of the block's fields: keep the rest as it is
+            data = merge_block_data(block.data, result['data'], cleaned['data'])
+        else:
+            data = cleaned['data']
+        return cleaned['type'], data, ai_response.tokens_in, ai_response.tokens_out

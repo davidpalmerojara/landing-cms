@@ -43,3 +43,7 @@ class GeneratePageSerializer(OwnKeyMixin, serializers.Serializer):
 
 class EditBlockSerializer(OwnKeyMixin, serializers.Serializer):
     instruction = serializers.CharField(max_length=1000, trim_whitespace=True)
+
+
+class OptionsQuerySerializer(serializers.Serializer):
+    language = serializers.ChoiceField(choices=LANGUAGE_CHOICES, required=False, default='es')

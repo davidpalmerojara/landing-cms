@@ -11,7 +11,13 @@ from tests.factories import PageFactory, BlockFactory, UserFactory
 
 GET_PLAN = 'billing.permissions.get_user_plan'
 RESOLVE_PROVIDER = 'ai_generation.views.resolve_provider'
-CALL_AI = 'ai_generation.views.call_ai'
+CALL_AI = 'ai_generation.providers.call_ai'
+
+
+@pytest.fixture(autouse=True)
+def live_mode(settings):
+    """These tests exercise the provider path; demo mode has its own tests."""
+    settings.AI_DEMO_MODE = False
 
 
 def mock_plan():
@@ -186,7 +192,7 @@ class TestOwnApiKey:
         assert resp.status_code == status.HTTP_200_OK
         assert mock_ai.call_args.args[2:] == ('gemini', 'user-own-key-123')
         log = AIGenerationLog.objects.get(user=user)
-        assert log.used_own_key is True
+        assert log.source == AIGenerationLog.Source.OWN_KEY
 
     @patch(GET_PLAN, return_value=free_plan())
     @patch(CALL_AI)

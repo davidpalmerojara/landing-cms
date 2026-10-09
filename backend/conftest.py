@@ -75,3 +75,9 @@ def no_external_secrets(settings):
     settings.STRIPE_SECRET_KEY = ''
     settings.GOOGLE_CLIENT_ID = ''
     settings.REVALIDATE_SECRET = ''
+
+
+@pytest.fixture(autouse=True)
+def no_demo_delay(settings):
+    """Saved AI responses arrive after a pause in production; tests do not wait."""
+    settings.AI_DEMO_DELAY_SECONDS = 0

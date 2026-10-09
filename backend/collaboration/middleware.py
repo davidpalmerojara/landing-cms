@@ -19,6 +19,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
 from accounts.cookies import ACCESS_COOKIE
+from accounts.guests import is_expired_guest
 from accounts.sessions import issued_before_revocation
 
 User = get_user_model()
@@ -41,7 +42,9 @@ def get_user_from_token(token_str: str):
     try:
         validated = AccessToken(token_str)
         user = User.objects.get(pk=validated['user_id'])
-        return AnonymousUser() if issued_before_revocation(user, validated) else user
+        if issued_before_revocation(user, validated) or is_expired_guest(user):
+            return AnonymousUser()
+        return user
     except (TokenError, KeyError, User.DoesNotExist):
         return AnonymousUser()
 
@@ -54,7 +57,11 @@ def get_user_from_ticket(ticket: str):
     if user_id is None:
         return AnonymousUser()
     cache.delete(key)
-    return User.objects.filter(pk=user_id).first() or AnonymousUser()
+    user = User.objects.filter(pk=user_id).first()
+    # Same rule as HTTP: an expired guest has no session left, even before the sweep deletes it
+    if user is None or is_expired_guest(user):
+        return AnonymousUser()
+    return user
 
 
 def ticket_from_scope(scope) -> str | None:

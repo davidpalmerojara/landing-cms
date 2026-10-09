@@ -224,6 +224,7 @@ class PageViewSet(viewsets.ModelViewSet):
         blocks = list(original.blocks.all())
 
         original.pk = None
+        original._state.adding = True  # a new row, not an update of the original
         original.slug = ''
         original.name = f'{original.name} (copy)'
         original.status = Page.Status.DRAFT

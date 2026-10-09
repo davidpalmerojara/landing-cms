@@ -231,7 +231,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ('pages', '0013_freeze_published_pages'),
+        ('pages', '0014_block_lists_to_arrays'),
     ]
 
     operations = [

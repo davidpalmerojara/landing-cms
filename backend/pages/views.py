@@ -38,7 +38,7 @@ def get_or_create_user_workspace(user):
 
 
 PUBLISHED_METADATA_FIELDS = (
-    'name', 'theme_id', 'custom_theme', 'design_tokens',
+    'name', 'design_tokens',
     'seo_title', 'seo_description', 'seo_canonical_url',
     'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
 )
@@ -455,7 +455,7 @@ class PageVersionViewSet(viewsets.GenericViewSet):
             # Optionally restore page metadata
             if restore_metadata and version.page_metadata:
                 meta = version.page_metadata
-                for field in ('name', 'theme_id', 'custom_theme', 'design_tokens',
+                for field in ('name', 'design_tokens',
                               'seo_title', 'seo_description', 'seo_canonical_url',
                               'og_title', 'og_description', 'og_image', 'og_type', 'noindex'):
                     if field in meta:

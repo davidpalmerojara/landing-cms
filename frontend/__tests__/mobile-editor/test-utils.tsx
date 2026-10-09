@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/editor-store';
 import { MESSAGES } from '@/lib/i18n';
 import { defaultBlockStyles, type Block } from '@/types/blocks';
 import { defaultSeoFields, type Page } from '@/types/page';
+import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 
 export type RenderResult = {
   container: HTMLDivElement;
@@ -63,7 +64,7 @@ export function makePage(blocks: Block[] = [], overrides: Partial<Page> = {}): P
     name: 'Test Page',
     status: 'draft',
     slug: 'test-page',
-    themeId: 'default',
+    designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks,
     ...overrides,

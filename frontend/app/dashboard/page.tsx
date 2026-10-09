@@ -13,6 +13,7 @@ import type { ApiPageListItem } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { pageTemplates, instantiateTemplate } from '@/lib/templates';
+import { apiToTokens, defaultDesignTokens, tokensToApi } from '@/lib/design-tokens';
 import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
 import AIGenerateModal from '@/components/dashboard/AIGenerateModal';
 import PagePreviewThumbnail from '@/components/dashboard/PagePreviewThumbnail';
@@ -81,10 +82,10 @@ export default function DashboardPage() {
       if (templateId) {
         const template = pageTemplates.find((t) => t.id === templateId);
         if (template) {
-          const { blocks, themeId, name } = instantiateTemplate(template);
+          const { blocks, designTokens, name } = instantiateTemplate(template);
           payload = {
             name,
-            theme_id: themeId,
+            design_tokens: tokensToApi(designTokens),
             blocks: blocks.map((b, i) => ({
               id: b.id,
               type: b.type,
@@ -94,10 +95,10 @@ export default function DashboardPage() {
             })),
           };
         } else {
-          payload = { name: t('dashboard.createUntitled'), blocks: [] };
+          payload = { name: t('dashboard.createUntitled'), design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
         }
       } else {
-        payload = { name: t('dashboard.createUntitled'), blocks: [] };
+        payload = { name: t('dashboard.createUntitled'), design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
       }
 
       const page = await api.pages.create(payload);
@@ -399,7 +400,7 @@ export default function DashboardPage() {
                     onClick={() => router.push(`/editor/${page.id}`)}
                   >
                     <div className="w-full h-full">
-                      <PagePreviewThumbnail blocks={page.preview_blocks || []} themeId={page.theme_id} />
+                      <PagePreviewThumbnail blocks={page.preview_blocks || []} designTokens={apiToTokens(page.design_tokens)} />
                     </div>
                     {/* Status badge */}
                     <div className="absolute top-4 left-4 z-10">

@@ -3,6 +3,7 @@ from rest_framework import serializers
 import re
 from .models import Page, Block, Asset, PageVersion, CustomDomain
 from .block_validators import BLOCK_VALIDATORS, clean_block_data
+from .design_tokens import clean_design_tokens
 
 
 class AssetSerializer(serializers.ModelSerializer):
@@ -70,7 +71,7 @@ class PageListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Page
         fields = [
-            'id', 'name', 'slug', 'status', 'theme_id', 'custom_theme', 'design_tokens',
+            'id', 'name', 'slug', 'status', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
             'block_count', 'owner_name', 'is_shared', 'preview_blocks',
@@ -98,6 +99,9 @@ class PageListSerializer(serializers.ModelSerializer):
 class PageDetailSerializer(serializers.ModelSerializer):
     blocks = BlockSerializer(many=True)
 
+    def validate_design_tokens(self, value):
+        return clean_design_tokens(value)
+
     def validate_blocks(self, blocks):
         """Client-generated ids must be unique and must not belong to another page."""
         ids = [str(b['id']) for b in blocks if b.get('id')]
@@ -114,7 +118,7 @@ class PageDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Page
         fields = [
-            'id', 'name', 'slug', 'status', 'theme_id', 'custom_theme', 'design_tokens',
+            'id', 'name', 'slug', 'status', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
             'blocks', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at',

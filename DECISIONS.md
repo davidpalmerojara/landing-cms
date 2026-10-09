@@ -203,6 +203,21 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-020: Un solo sistema de tema: design tokens
+
+- **Fecha**: 2026-10-09
+- **Contexto**: Cada página tenía dos temas. El heredado (`theme_id` + `custom_theme`, 8 paletas fijas en `lib/themes.ts`) y los design tokens (`design_tokens`, `{}` si no había). Ninguna pantalla elegía ya el heredado, pero seguían usándolo las plantillas, el alta de páginas y las páginas antiguas. Tener dos daba un bug (la primera edición de un token en una página con tema `dark` la volvía clara, porque el panel partía de los tokens por defecto) y obligaba a `pageThemeVars` a resolver dos caminos. Además los tokens emitían `--bp-color-*`, el mismo espacio de nombres que la interfaz del editor (`globals.css`, ADR-012), así que el editor dentro del lienzo se pintaba con los colores de la página. Y el servidor no validaba nada de lo que acabaría dentro de un atributo `style`.
+- **Decisión**:
+  - El tema de una página son sus `design_tokens` y nada más. Las 8 paletas heredadas son presets (con los mismos ids) en la lista única `tokenPresets`, junto a los 6 que ya existían. `textOnPrimary` es blanco si alcanza 4,5:1 sobre el primario, y si no el de mayor contraste entre blanco y casi negro; éxito y error son los valores por defecto. `defaultDesignTokens` es el preset `default`, que se ve igual que el tema por defecto de antes.
+  - La migración `0014_design_tokens_only` da a toda página sin tokens los equivalentes a su tema, hace lo mismo con el `page_metadata` de cada `PageVersion` (las copias publicadas incluidas), completa los tokens parciales con los valores por defecto de entonces, quita los colores a medio escribir y elimina `theme_id` y `custom_theme`. Lleva copia propia de las paletas, para que nada la cambie después. Una prueba comprueba que cada tema se renderiza con las mismas variables `--theme-*` que antes.
+  - `pageThemeVars(tokens)` tiene un solo camino. Los colores salen como `--theme-*` (lo que leen los bloques) y ya no como `--bp-color-*`; la tipografía, el espaciado y los bordes siguen como `--bp-*`, que no chocan con el editor.
+  - El serializador valida `design_tokens`: solo grupos y claves conocidos (el resto se descarta), colores `#rgb`/`#rrggbb`/`#rrggbbaa`, fuentes de la lista de `googleFonts` (copia en `pages/design_tokens.py`, vigilada por una prueba del frontend), números en rango, escala tipográfica de la lista y medidas CSS simples. Lo inválido responde 400 con `{error, code, details}`.
+  - Los clientes que aún envíen `theme_id` o `custom_theme` no fallan: DRF ignora los campos que no conoce.
+- **Alternativas**: Dejar `theme_id` como alias de un preset (un segundo sitio donde mirar el tema, justo lo que se quería quitar); convertir los temas al cargar la página en el cliente (las copias publicadas seguirían dependiendo de código que acabaría borrándose); rechazar los tokens parciales (rompería las copias ya guardadas).
+- **Consecuencias**: El tema de una página no se puede volver a perder por una edición. Las páginas antiguas conservan su aspecto, salvo los colores que ya eran inválidos, que pasan al valor por defecto. Marcha atrás de la migración: recrea las columnas con sus valores por defecto y el código anterior usa los tokens, que ahora existen siempre. Una copia local (localStorage) de antes del cambio no tiene tokens y se abre con los de por defecto. Los bloques no consumen `textOnPrimary` todavía.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useEditorStore, HISTORY_COALESCE_MS } from '@/store/editor-store';
 import { defaultBlockStyles } from '@/types/blocks';
 import { defaultSeoFields } from '@/types/page';
+import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Page } from '@/types/page';
 
 function makePage(id: string, title = 'Start'): Page {
@@ -10,7 +11,7 @@ function makePage(id: string, title = 'Start'): Page {
     name: 'Test',
     status: 'draft',
     slug: 'test',
-    themeId: 'default',
+    designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks: [{ id: 'b1', type: 'hero', name: 'Hero', data: { title, subtitle: '' }, styles: { ...defaultBlockStyles } }],
   };

@@ -34,9 +34,7 @@ export function apiPageToLocal(apiPage: ApiPage): Page {
     name: apiPage.name,
     status: apiPage.status,
     slug: apiPage.slug,
-    themeId: apiPage.theme_id || 'default',
-    customTheme: (apiPage.custom_theme as Page['customTheme']) || undefined,
-    designTokens: apiToTokens(apiPage.design_tokens as Record<string, unknown> | undefined),
+    designTokens: apiToTokens(apiPage.design_tokens),
     seo: {
       seoTitle: apiPage.seo_title || '',
       seoDescription: apiPage.seo_description || '',
@@ -58,9 +56,7 @@ export function localPageToApi(page: Page) {
   return {
     name: page.name,
     // status is not sent: it only changes through publish/unpublish (ADR-017)
-    theme_id: page.themeId || 'default',
-    custom_theme: page.customTheme || {},
-    design_tokens: page.designTokens ? tokensToApi(page.designTokens) : {},
+    design_tokens: tokensToApi(page.designTokens),
     seo_title: seo.seoTitle,
     seo_description: seo.seoDescription,
     seo_canonical_url: seo.seoCanonicalUrl,

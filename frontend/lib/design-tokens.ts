@@ -53,16 +53,17 @@ export interface DesignTokens {
 
 // --- Defaults ---
 
+/** The colors of the 'default' preset: what a page looked like before it chose anything. */
 export const defaultColorTokens: ColorTokens = {
   primary: '#4f46e5',
-  secondary: '#7c3aed',
-  accent: '#f59e0b',
+  secondary: '#8b5cf6',
+  accent: '#6366f1',
   background: '#ffffff',
-  surface: '#f8fafc',
-  textPrimary: '#0f172a',
-  textSecondary: '#64748b',
+  surface: '#f9fafb',
+  textPrimary: '#18181b',
+  textSecondary: '#71717a',
   textOnPrimary: '#ffffff',
-  border: '#e2e8f0',
+  border: '#e4e4e7',
   success: '#10b981',
   error: '#ef4444',
 };
@@ -98,10 +99,22 @@ export const defaultDesignTokens: DesignTokens = {
   borders: { ...defaultBorderTokens },
 };
 
+export function cloneDesignTokens(tokens: DesignTokens): DesignTokens {
+  return {
+    colors: { ...tokens.colors },
+    typography: { ...tokens.typography },
+    spacing: { ...tokens.spacing },
+    borders: { ...tokens.borders },
+  };
+}
+
 // --- CSS Custom Properties ---
 
 /**
- * Convert DesignTokens to a flat Record of CSS custom properties.
+ * Convert DesignTokens to a flat Record of CSS custom properties for
+ * typography, spacing and borders. Colors are not here: they go out as
+ * --theme-* (tokensToThemeVars), because --bp-color-* is the editor
+ * chrome's namespace (app/globals.css) and a page must not repaint it.
  * These are injected as style= on the canvas/page container.
  */
 export function tokensToCssVars(tokens: DesignTokens): Record<string, string> {
@@ -110,19 +123,6 @@ export function tokensToCssVars(tokens: DesignTokens): Record<string, string> {
   const r = t.typography.scaleRatio;
 
   return {
-    // Colors
-    '--bp-color-primary': t.colors.primary,
-    '--bp-color-secondary': t.colors.secondary,
-    '--bp-color-accent': t.colors.accent,
-    '--bp-color-background': t.colors.background,
-    '--bp-color-surface': t.colors.surface,
-    '--bp-color-text-primary': t.colors.textPrimary,
-    '--bp-color-text-secondary': t.colors.textSecondary,
-    '--bp-color-text-on-primary': t.colors.textOnPrimary,
-    '--bp-color-border': t.colors.border,
-    '--bp-color-success': t.colors.success,
-    '--bp-color-error': t.colors.error,
-
     // Typography
     '--bp-font-heading': fontStack(t.typography.headingFont),
     '--bp-font-body': fontStack(t.typography.bodyFont),
@@ -150,13 +150,11 @@ export function tokensToCssVars(tokens: DesignTokens): Record<string, string> {
   };
 }
 
-// --- Bridge: generate old theme vars from design tokens ---
-// This keeps backward compat with blocks that use --theme-* vars.
+// --- Page colors: the --theme-* variables blocks read ---
 
 export function tokensToThemeVars(tokens: DesignTokens): Record<string, string> {
   return {
     '--theme-primary': tokens.colors.primary,
-    '--theme-primary-hover': tokens.colors.secondary, // best approximation
     '--theme-secondary': tokens.colors.secondary,
     '--theme-bg': tokens.colors.background,
     '--theme-surface': tokens.colors.surface,
@@ -278,7 +276,155 @@ export const tokenPresets: TokenPreset[] = [
       error: '#ef4444',
     },
   },
+  // The former fixed themes (theme_id), now presets like any other. Their ids
+  // are the old theme ids, so a template or an old page can name one.
+  {
+    id: 'default',
+    name: 'Predeterminado',
+    colors: {
+      primary: '#4f46e5',
+      secondary: '#8b5cf6',
+      accent: '#6366f1',
+      background: '#ffffff',
+      surface: '#f9fafb',
+      textPrimary: '#18181b',
+      textSecondary: '#71717a',
+      textOnPrimary: '#ffffff',
+      border: '#e4e4e7',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'ocean',
+    name: 'Mar',
+    colors: {
+      primary: '#0891b2',
+      secondary: '#06b6d4',
+      accent: '#14b8a6',
+      background: '#ffffff',
+      surface: '#f0fdfa',
+      textPrimary: '#134e4a',
+      textSecondary: '#5eead4',
+      textOnPrimary: '#0f172a',
+      border: '#ccfbf1',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'sunset',
+    name: 'Atardecer',
+    colors: {
+      primary: '#ea580c',
+      secondary: '#f97316',
+      accent: '#f59e0b',
+      background: '#fffbeb',
+      surface: '#fef3c7',
+      textPrimary: '#78350f',
+      textSecondary: '#92400e',
+      textOnPrimary: '#0f172a',
+      border: '#fde68a',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'forest',
+    name: 'Bosque',
+    colors: {
+      primary: '#16a34a',
+      secondary: '#22c55e',
+      accent: '#4ade80',
+      background: '#ffffff',
+      surface: '#f0fdf4',
+      textPrimary: '#14532d',
+      textSecondary: '#166534',
+      textOnPrimary: '#0f172a',
+      border: '#bbf7d0',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'dark',
+    name: 'Oscuro',
+    colors: {
+      primary: '#818cf8',
+      secondary: '#a78bfa',
+      accent: '#c084fc',
+      background: '#18181b',
+      surface: '#27272a',
+      textPrimary: '#fafafa',
+      textSecondary: '#a1a1aa',
+      textOnPrimary: '#0f172a',
+      border: '#3f3f46',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'slate',
+    name: 'Pizarra',
+    colors: {
+      primary: '#14b8a6',
+      secondary: '#06b6d4',
+      accent: '#2dd4bf',
+      background: '#0f172a',
+      surface: '#1e293b',
+      textPrimary: '#f1f5f9',
+      textSecondary: '#94a3b8',
+      textOnPrimary: '#0f172a',
+      border: '#334155',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'ember',
+    name: 'Brasa',
+    colors: {
+      primary: '#ea580c',
+      secondary: '#f59e0b',
+      accent: '#fb923c',
+      background: '#0c0a09',
+      surface: '#1c1917',
+      textPrimary: '#fafaf9',
+      textSecondary: '#a8a29e',
+      textOnPrimary: '#0f172a',
+      border: '#292524',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
+  {
+    id: 'rose',
+    name: 'Rosa',
+    colors: {
+      primary: '#e11d48',
+      secondary: '#f43f5e',
+      accent: '#fb7185',
+      background: '#ffffff',
+      surface: '#fff1f2',
+      textPrimary: '#1c1917',
+      textSecondary: '#78716c',
+      textOnPrimary: '#ffffff',
+      border: '#fecdd3',
+      success: '#10b981',
+      error: '#ef4444',
+    },
+  },
 ];
+
+export function getPresetById(id: string): TokenPreset | undefined {
+  return tokenPresets.find((preset) => preset.id === id);
+}
+
+/** Full tokens for a preset: its colors, the default typography, spacing and borders. */
+export function presetTokens(id: string): DesignTokens {
+  const preset = getPresetById(id);
+  return { ...cloneDesignTokens(defaultDesignTokens), colors: { ...(preset ? preset.colors : defaultColorTokens) } };
+}
 
 // --- Scale Ratio Presets ---
 
@@ -417,9 +563,12 @@ export function tokensToApi(tokens: DesignTokens): Record<string, unknown> {
   };
 }
 
-/** Convert backend snake_case JSON to frontend camelCase tokens */
-export function apiToTokens(raw: Record<string, unknown> | null | undefined): DesignTokens | undefined {
-  if (!raw || Object.keys(raw).length === 0) return undefined;
+/**
+ * Convert backend snake_case JSON to frontend camelCase tokens. Missing keys
+ * get the defaults, so `{}` (a page that never saved tokens) is the default theme.
+ */
+export function apiToTokens(raw: Record<string, unknown> | null | undefined): DesignTokens {
+  if (!raw || Object.keys(raw).length === 0) return cloneDesignTokens(defaultDesignTokens);
   const c = raw.colors as Record<string, string> | undefined;
   const t = raw.typography as Record<string, unknown> | undefined;
   const s = raw.spacing as Record<string, string> | undefined;

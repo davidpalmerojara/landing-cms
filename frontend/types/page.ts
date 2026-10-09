@@ -1,5 +1,4 @@
 import type { Block } from './blocks';
-import type { ThemeColors } from '@/lib/themes';
 import type { DesignTokens } from '@/lib/design-tokens';
 
 export interface SeoFields {
@@ -29,9 +28,7 @@ export interface Page {
   name: string;
   status: string;
   slug: string;
-  themeId: string;
-  customTheme?: ThemeColors;
-  designTokens?: DesignTokens;
+  designTokens: DesignTokens;
   seo: SeoFields;
   blocks: Block[];
   /** When the public copy was last frozen (ADR-017). Read-only, from the server. */

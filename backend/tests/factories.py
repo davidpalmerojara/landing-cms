@@ -31,7 +31,6 @@ class PageFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: f'Page {n}')
     slug = factory.LazyAttribute(lambda obj: f'page-{uuid.uuid4().hex[:8]}')
     status = Page.Status.DRAFT
-    theme_id = 'default'
 
 
 class BlockFactory(DjangoModelFactory):

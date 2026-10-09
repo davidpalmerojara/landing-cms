@@ -10,7 +10,6 @@ import type { ApiPageVersionDetail } from '@/lib/api';
 import { useEditorStore } from '@/store/editor-store';
 import { apiToTokens } from '@/lib/design-tokens';
 import { pageThemeVars } from '@/lib/page-theme';
-import type { ThemeColors } from '@/lib/themes';
 
 interface VersionPreviewModalProps {
   pageId: string;
@@ -168,8 +167,8 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
   const currentBlocks = useEditorStore((s) => s.page.blocks);
   const currentPage = useEditorStore((s) => s.page);
   const currentThemeVars = useMemo(
-    () => pageThemeVars({ themeId: currentPage.themeId, customTheme: currentPage.customTheme, designTokens: currentPage.designTokens }),
-    [currentPage.themeId, currentPage.customTheme, currentPage.designTokens],
+    () => pageThemeVars(currentPage.designTokens),
+    [currentPage.designTokens],
   );
 
   useEffect(() => {
@@ -198,14 +197,10 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
   );
 
   const versionSnapshot = version?.snapshot || [];
-  const versionThemeVars = useMemo(() => {
-    const meta = version?.page_metadata;
-    return pageThemeVars({
-      themeId: meta?.theme_id,
-      customTheme: (meta?.custom_theme as ThemeColors | null) ?? undefined,
-      designTokens: apiToTokens(meta?.design_tokens),
-    });
-  }, [version]);
+  const versionThemeVars = useMemo(
+    () => pageThemeVars(apiToTokens(version?.page_metadata.design_tokens)),
+    [version],
+  );
 
   const { currentDiff, versionDiff } = useMemo(
     () => computeDiff(currentSnapshot, versionSnapshot),

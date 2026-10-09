@@ -101,10 +101,11 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
           if (!interactionState.isSpacePressed && !isDragging && !isLockedByOther) selectBlock(block.id);
         }}
       >
+        {/* Floating tooltips are editor UI inside the themed canvas: they keep the app font */}
         {/* Floating tooltip — locked by other user */}
         {isLockedByOther && (
           <div
-            className="absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-medium rounded-full shadow-lg z-30 flex items-center opacity-100 scale-100"
+            className="absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg z-30 flex items-center opacity-100 scale-100"
             style={{ backgroundColor: otherColor ? `${otherColor.hex}` : '#f59e0b' }}
           >
             <div className="px-3 h-full flex items-center gap-1.5 rounded-full">
@@ -118,7 +119,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
         {/* Floating tooltip — own selection / hover */}
         {!isLockedByOther && (
           <div
-            className={`absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-medium rounded-full shadow-lg z-30 flex items-center transition-all duration-200 ${
+            className={`absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg z-30 flex items-center transition-all duration-200 ${
               isSelected && !interactionState.isSpacePressed && !isDragging
                 ? 'opacity-100 scale-100'
                 : isDragging

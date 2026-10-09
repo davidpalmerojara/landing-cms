@@ -4,12 +4,13 @@ import { useState, useCallback } from 'react';
 import { ChevronDown, Layout } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
-import { blockRegistry } from '@/lib/block-registry';
+import { blockRegistry, getBlockFields } from '@/lib/block-registry';
+import BlockFields from '@/components/inspector/BlockFields';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { translateFieldDefinition, translateStyleField, translateStyleGroupLabel } from '@/lib/editor-i18n';
 import { resolveStyles } from '@/types/blocks';
 import type { BlockStyles } from '@/types/blocks';
-import type { FieldDefinition } from '@/types/inspector';
+import type { ScalarFieldDefinition } from '@/types/inspector';
 import { styleGroups, getStyleFieldsByGroup } from '@/lib/block-styles-config';
 
 // --- Theme colors for color picker grid ---
@@ -30,7 +31,6 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
   const t = useTranslations();
   const locale = useLocale();
   const block = useEditorStore((s) => s.page.blocks.find((b) => b.id === blockId));
-  const updateBlock = useEditorStore((s) => s.updateBlock);
   const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
   const [openSection, setOpenSection] = useState<Section>('content');
 
@@ -41,7 +41,7 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
   if (!block) return null;
 
   const config = blockRegistry[block.type];
-  const fields = (config?.fields || []).map((field) => translateFieldDefinition(field, locale));
+  const fields = getBlockFields(block.type).map((field) => translateFieldDefinition(field, locale));
   const BlockIcon = config?.icon || Layout;
   const styles = resolveStyles(block, 'desktop');
 
@@ -69,14 +69,16 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
         onToggle={() => toggleSection('content')}
       >
         <div className="space-y-5 px-5 pb-5">
-          {fields.map((field) => (
-            <MobileField
-              key={field.key}
-              field={field}
-              value={block.data[field.key]}
-              onChange={(value) => updateBlock(blockId, field.key, value)}
-            />
-          ))}
+          <BlockFields
+            key={block.id}
+            block={block}
+            fields={fields}
+            idPrefix="mobile-field"
+            variant="mobile"
+            renderScalar={(field, value, onChange, inputId) => (
+              <MobileField field={field} value={value} onChange={onChange} id={inputId} />
+            )}
+          />
         </div>
       </SectionAccordion>
 
@@ -173,12 +175,14 @@ function MobileField({
   field,
   value,
   onChange,
+  id: fieldId,
 }: {
-  field: FieldDefinition;
+  field: ScalarFieldDefinition;
   value: unknown;
   onChange: (value: unknown) => void;
+  id: string;
 }) {
-  const fieldId = `mobile-field-${field.key}`;
+  const text = typeof value === 'string' ? value : '';
 
   switch (field.type) {
     case 'text':
@@ -190,7 +194,7 @@ function MobileField({
           <input
             id={fieldId}
             type="text"
-            value={(value as string) || ''}
+            value={text}
             onChange={(e) => onChange(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
           />
@@ -205,7 +209,7 @@ function MobileField({
           </label>
           <textarea
             id={fieldId}
-            value={(value as string) || ''}
+            value={text}
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all resize-none"
@@ -221,11 +225,11 @@ function MobileField({
           </label>
           <select
             id={fieldId}
-            value={(value as string) || ''}
+            value={text}
             onChange={(e) => onChange(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all appearance-auto"
           >
-            {(field.options || []).map((opt) => (
+            {field.options.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -244,7 +248,7 @@ function MobileField({
             id={fieldId}
             type="checkbox"
             role="switch"
-            checked={!!value}
+            checked={value === true}
             onChange={(e) => onChange(e.target.checked)}
             className="w-11 h-6 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 checked:bg-primary bg-surface-card
               before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform before:duration-200 checked:before:translate-x-5"
@@ -256,7 +260,7 @@ function MobileField({
       return (
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-secondary">{field.label}</label>
-          <MobileColorPicker value={(value as string) || ''} onChange={onChange} />
+          <MobileColorPicker value={text} onChange={onChange} />
         </div>
       );
 
@@ -269,37 +273,21 @@ function MobileField({
           <input
             id={fieldId}
             type="url"
-            value={(value as string) || ''}
+            value={text}
             onChange={(e) => onChange(e.target.value)}
             placeholder="https://..."
             className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
           />
-          {typeof value === 'string' && value && (
+          {text && (
             <div className="w-full h-24 rounded-lg bg-surface-card border border-default/15 overflow-hidden">
               <img
-                src={value as string}
+                src={text}
                 alt=""
                 className="w-full h-full object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
           )}
-        </div>
-      );
-
-    default:
-      return (
-        <div className="space-y-1.5">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
-            {field.label}
-          </label>
-          <input
-            id={fieldId}
-            type="text"
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all"
-          />
         </div>
       );
   }

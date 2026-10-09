@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
 import { defaultBlockStyles } from '@/types/blocks';
+import { makeBlock } from '@/lib/block-data';
 import { defaultSeoFields } from '@/types/page';
 import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Page } from '@/types/page';
@@ -10,13 +11,9 @@ import type { Page } from '@/types/page';
 // Instead of rendering the hook (which needs React), we replicate its subscription logic.
 
 function makePage(id: string, blockCount = 1): Page {
-  const blocks = Array.from({ length: blockCount }, (_, i) => ({
-    id: `blk_${i}`,
-    type: 'hero',
-    name: 'Hero',
-    data: { title: `Title ${i}` },
-    styles: { ...defaultBlockStyles },
-  }));
+  const blocks = Array.from({ length: blockCount }, (_, i) =>
+    makeBlock({ id: `blk_${i}`, name: 'Hero', styles: { ...defaultBlockStyles } }, 'hero', { title: `Title ${i}` }),
+  );
   return {
     id,
     name: 'Test',

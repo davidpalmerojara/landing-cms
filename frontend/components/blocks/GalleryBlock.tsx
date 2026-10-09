@@ -2,22 +2,17 @@
 
 import { Image as ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, GalleryData } from '@/types/blocks';
 import EditableText from './EditableText';
 
-const IMAGE_KEYS = ['image1', 'image2', 'image3', 'image4', 'image5', 'image6'] as const;
+const COLUMN_CLASSES: Record<GalleryData['columns'], string> = {
+  '2': 'grid-cols-2',
+  '3': 'grid-cols-2 @tablet:grid-cols-3',
+  '4': 'grid-cols-2 @tablet:grid-cols-3 @desktop:grid-cols-4',
+};
 
-export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProps<GalleryData>) {
   const t = useTranslations('blocks');
-  const columns = (data.columns as string) || '3';
-  const colsClass =
-    columns === '2'
-      ? 'grid-cols-2'
-      : columns === '4'
-        ? 'grid-cols-2 @tablet:grid-cols-3 @desktop:grid-cols-4'
-        : 'grid-cols-2 @tablet:grid-cols-3';
-
-  const itemCount = parseInt(columns, 10) * 2;
 
   return (
     <section
@@ -30,7 +25,7 @@ export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProp
       <EditableText
         blockId={blockId}
         fieldKey="title"
-        value={data.title as string}
+        value={data.title}
         as="h2"
         className="text-center mb-4 text-3xl @tablet:text-4xl"
         style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
@@ -38,30 +33,34 @@ export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProp
       <EditableText
         blockId={blockId}
         fieldKey="subtitle"
-        value={data.subtitle as string}
+        value={data.subtitle}
         as="p"
         className="text-center mb-12 max-w-2xl mx-auto"
         style={{ color: 'var(--theme-text-muted)' }}
       />
 
-      <div className={`grid ${colsClass} gap-4 max-w-5xl mx-auto`}>
-        {Array.from({ length: itemCount }).map((_, i) => {
-          const imageUrl = data[IMAGE_KEYS[i]] as string | undefined;
-          return (
+      {data.images.length > 0 && (
+        <div className={`grid ${COLUMN_CLASSES[data.columns]} gap-4 max-w-5xl mx-auto`}>
+          {data.images.map((image, i) => (
             <div
               key={i}
               className="aspect-[4/3] rounded-xl border overflow-hidden flex items-center justify-center hover:opacity-80 transition-colors"
               style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
             >
-              {imageUrl ? (
-                <img src={imageUrl} alt={t('galleryImageAlt', { index: i + 1 })} className="w-full h-full object-cover" />
+              {image.src ? (
+                <img
+                  src={image.src}
+                  alt={image.alt || t('galleryImageAlt', { index: i + 1 })}
+                  className="w-full h-full object-cover"
+                />
               ) : (
+                // Slot without an image yet: placeholder
                 <ImageIcon className="w-8 h-8" style={{ color: 'var(--theme-text-muted)', opacity: 0.4 }} />
               )}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

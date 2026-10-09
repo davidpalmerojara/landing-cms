@@ -18,6 +18,8 @@ import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { resolveStyles } from '@/types/blocks';
+import type { BlockType } from '@/types/blocks';
+import BlockContent from '@/components/blocks/BlockContent';
 import { pageThemeVars } from '@/lib/page-theme';
 import MobileBlockCard from './MobileBlockCard';
 import MobileBottomSheet from './MobileBottomSheet';
@@ -213,9 +215,8 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   }, [requestDeleteBlock]);
 
   // --- Add block with scroll ---
-  const handleAddBlock = useCallback((type: string) => {
+  const handleAddBlock = useCallback((type: BlockType) => {
     const def = blockRegistry[type];
-    if (!def) return;
     const translatedLabel = getTranslatedBlockLabel(type, t, def.label);
     addBlock(type, translatedLabel, null, def.initialData);
     setShowAddSheet(false);
@@ -313,6 +314,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
     ...block,
     label: getTranslatedBlockLabel(block.type, t, block.label),
   }));
+  const editingBlock = page.blocks.find((b) => b.id === editingBlockId);
 
   return (
     <div className="flex flex-col h-dvh bg-surface text-primary">
@@ -474,9 +476,9 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
           editingBlockId
             ? t('mobile.editBlock', {
                 name: getTranslatedBlockLabel(
-                  page.blocks.find((b) => b.id === editingBlockId)?.type || '',
+                  editingBlock?.type || '',
                   t,
-                  blockRegistry[page.blocks.find((b) => b.id === editingBlockId)?.type || '']?.label || t('editor.components'),
+                  editingBlock ? blockRegistry[editingBlock.type].label : t('editor.components'),
                 ),
               })
             : undefined
@@ -596,10 +598,6 @@ function MobilePreview({
         }}
       >
         {page.blocks.map((block) => {
-          const def = blockRegistry[block.type];
-          if (!def?.component) return null;
-          const Component = def.component;
-
           // Apply block-level styles (padding, margin, bgColor, borderRadius)
           const s = resolveStyles(block, 'mobile');
           const needsOverflow = block.type === 'navbar';
@@ -618,11 +616,7 @@ function MobilePreview({
 
           return (
             <div key={block.id} style={blockStyle}>
-              <Component
-                blockId={block.id}
-                data={block.data}
-                isPreviewMode={true}
-              />
+              <BlockContent block={block} isPreviewMode={true} />
             </div>
           );
         })}

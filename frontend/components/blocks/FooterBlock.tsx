@@ -2,19 +2,22 @@
 
 import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, FooterData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps<FooterData>) {
   const t = useTranslations('blocks');
   const footerLinkClass = 'hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium';
-  const footerLinks = (['link1', 'link2', 'link3'] as const).map((key) => ({
-    key,
-    label: data[`${key}Label`] as string,
-    href: isPreviewMode ? safeHref(data[`${key}Url`]) : null,
-  }));
+  // Links without a label are not shown; `index` points into data.links for editing
+  const footerLinks = data.links
+    .map((link, index) => ({
+      index,
+      label: link.label,
+      href: isPreviewMode ? safeHref(link.url) : null,
+    }))
+    .filter((link) => link.label);
 
   return (
     <footer
@@ -38,7 +41,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
             <EditableText
               blockId={blockId}
               fieldKey="brandName"
-              value={data.brandName as string}
+              value={data.brandName}
               as="h3"
               className="text-xl font-bold tracking-wide"
               style={{ color: 'var(--theme-bg)' }}
@@ -47,7 +50,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
           <EditableText
             blockId={blockId}
             fieldKey="description"
-            value={data.description as string}
+            value={data.description}
             as="p"
             multiline
             className="leading-relaxed text-sm"
@@ -57,16 +60,16 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
         <div
           className="flex gap-6 justify-center w-full flex-wrap @tablet:w-auto @tablet:flex-nowrap @tablet:justify-start"
         >
-          {footerLinks.map(({ key, label, href }) =>
+          {footerLinks.map(({ index, label, href }) =>
             href ? (
-              <BlockLink key={key} href={href} className={footerLinkClass}>
+              <BlockLink key={index} href={href} className={footerLinkClass}>
                 {label}
               </BlockLink>
             ) : (
               <EditableText
-                key={key}
+                key={index}
                 blockId={blockId}
-                fieldKey={`${key}Label`}
+                fieldKey={['links', index, 'label']}
                 value={label}
                 className={footerLinkClass}
               />
@@ -78,7 +81,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
         className="max-w-5xl mx-auto pt-8 border-t text-sm text-center"
         style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}
       >
-        <EditableText blockId={blockId} fieldKey="copyright" value={data.copyright as string} />
+        <EditableText blockId={blockId} fieldKey="copyright" value={data.copyright} />
       </div>
     </footer>
   );

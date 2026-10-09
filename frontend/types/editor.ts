@@ -1,3 +1,5 @@
+import type { BlockType } from './block-data';
+
 export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
 
 export interface ViewportState {
@@ -14,8 +16,9 @@ export interface InteractionState {
 
 export interface DragSource {
   action: 'add' | 'reorder';
-  type: string;
+  type: BlockType;
   label: string;
   sourceIndex: number | null;
-  initialData?: Record<string, unknown>;
+  /** Data of the block to add (normalized by addBlock). */
+  initialData?: unknown;
 }

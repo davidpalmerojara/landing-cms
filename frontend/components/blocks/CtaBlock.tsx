@@ -1,14 +1,14 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, CtaData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function CtaBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function CtaBlock({ blockId, data, isPreviewMode }: BlockProps<CtaData>) {
   const t = useTranslations('blocks');
-  const subtitle = data.subtitle as string;
+  const subtitle = data.subtitle;
   const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
   const buttonClass = `rounded-full font-bold shadow-xl shadow-black/10 transition-transform w-full py-4 text-base @tablet:w-auto @tablet:px-10 @tablet:text-lg @tablet:hover:scale-105`;
   const buttonStyle = { backgroundColor: 'var(--theme-bg)', color: 'var(--theme-primary)' };
@@ -25,7 +25,7 @@ export default function CtaBlock({ blockId, data, isPreviewMode }: BlockProps) {
         <EditableText
           blockId={blockId}
           fieldKey="title"
-          value={data.title as string}
+          value={data.title}
           as="h2"
           className="text-white mb-4 leading-tight transition-all text-3xl @tablet:text-5xl"
           style={{
@@ -46,11 +46,11 @@ export default function CtaBlock({ blockId, data, isPreviewMode }: BlockProps) {
         <div className={subtitle ? '' : 'mt-8'}>
           {buttonHref ? (
             <BlockLink href={buttonHref} className={`${buttonClass} inline-block text-center`} style={buttonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
             </BlockLink>
           ) : (
             <button className={buttonClass} style={buttonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
             </button>
           )}
         </div>

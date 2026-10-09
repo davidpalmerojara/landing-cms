@@ -20,9 +20,9 @@ const page: ApiPublicPage = {
     id: blockIds[order],
     type,
     order,
-    data: type === 'hero'
+    data: (type === 'hero'
       ? { ...definition.initialData, title: 'Lanza tu producto hoy', buttonLink: '#pricing' }
-      : definition.initialData,
+      : { ...definition.initialData }) as Record<string, unknown>,
     styles: type === 'hero'
       ? { paddingTop: 96, responsive: { mobile: { paddingTop: 32 } } }
       : {},

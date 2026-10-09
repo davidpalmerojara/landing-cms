@@ -6,12 +6,13 @@ import {
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
-import { blockRegistry } from '@/lib/block-registry';
+import { blockRegistry, getBlockFields } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { translateFieldDefinition, translateStyleField, translateStyleGroupLabel } from '@/lib/editor-i18n';
 import { resolveStyles } from '@/types/blocks';
 import type { BlockStyles } from '@/types/blocks';
 import FieldRenderer from './FieldRenderer';
+import BlockFields from './BlockFields';
 import SpacingField from './SpacingField';
 import ColorField from './ColorField';
 import { styleGroups, getStyleFieldsByGroup } from '@/lib/block-styles-config';
@@ -24,7 +25,6 @@ export default function Inspector() {
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const inspectorSections = useEditorStore((s) => s.inspectorSections);
   const toggleInspectorSection = useEditorStore((s) => s.toggleInspectorSection);
-  const updateBlock = useEditorStore((s) => s.updateBlock);
   const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
   const updateBlockResponsiveStyle = useEditorStore((s) => s.updateBlockResponsiveStyle);
   const requestDeleteBlock = useEditorStore((s) => s.requestDeleteBlock);
@@ -56,7 +56,7 @@ export default function Inspector() {
   }
 
   const blockConfig = blockRegistry[selectedBlock.type];
-  const blockFields = blockConfig ? blockConfig.fields.map((field) => translateFieldDefinition(field, locale)) : [];
+  const blockFields = getBlockFields(selectedBlock.type).map((field) => translateFieldDefinition(field, locale));
   const BlockIcon = blockConfig?.icon || Layout;
 
   return (
@@ -109,14 +109,15 @@ export default function Inspector() {
                 </button>
                 {inspectorSections.content && (
                   <div id="inspector-section-content" className="px-5 pb-6 space-y-6">
-                    {blockFields.map((field) => (
-                      <FieldRenderer
-                        key={field.key}
-                        field={field}
-                        value={selectedBlock.data[field.key]}
-                        onChange={(value) => updateBlock(selectedBlock.id, field.key, value)}
-                      />
-                    ))}
+                    <BlockFields
+                      key={selectedBlock.id}
+                      block={selectedBlock}
+                      fields={blockFields}
+                      idPrefix="field"
+                      renderScalar={(field, value, onChange, inputId) => (
+                        <FieldRenderer field={field} value={value} onChange={onChange} id={inputId} />
+                      )}
+                    />
                   </div>
                 )}
               </div>

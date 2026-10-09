@@ -2,18 +2,18 @@
 
 import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, HeroData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<HeroData>) {
   const t = useTranslations('blocks');
-  const bgImage = data.backgroundImage as string;
-  const alignment = (data.alignment as string) || 'center';
+  const bgImage = data.backgroundImage;
+  const alignment = data.alignment;
   // Optional: an empty field hides the element (no placeholder text on real pages)
-  const badgeText = typeof data.badgeText === 'string' ? data.badgeText.trim() : '';
-  const secondaryButtonText = typeof data.secondaryButtonText === 'string' ? data.secondaryButtonText.trim() : '';
+  const badgeText = data.badgeText.trim();
+  const secondaryButtonText = data.secondaryButtonText.trim();
   const isLeft = alignment === 'left';
   const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
   const secondaryButtonHref = isPreviewMode ? safeHref(data.secondaryButtonLink) : null;
@@ -61,7 +61,7 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps) 
         <EditableText
           blockId={blockId}
           fieldKey="title"
-          value={data.title as string}
+          value={data.title}
           as="h1"
           className={`relative z-10 tracking-tight mb-8 max-w-4xl leading-tight transition-all ${
             isLeft ? 'text-left' : 'text-center'
@@ -76,7 +76,7 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps) 
         <EditableText
           blockId={blockId}
           fieldKey="subtitle"
-          value={data.subtitle as string}
+          value={data.subtitle}
           as="p"
           multiline
           className={`relative z-10 max-w-2xl mb-12 transition-all ${
@@ -95,11 +95,11 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps) 
         >
           {buttonHref ? (
             <BlockLink href={buttonHref} className={`${primaryButtonClass} inline-block text-center`} style={primaryButtonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
             </BlockLink>
           ) : (
             <button className={primaryButtonClass} style={primaryButtonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
             </button>
           )}
           {secondaryButtonText && (secondaryButtonHref ? (

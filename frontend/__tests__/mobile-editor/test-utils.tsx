@@ -4,7 +4,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { vi } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
 import { MESSAGES } from '@/lib/i18n';
-import { defaultBlockStyles, type Block } from '@/types/blocks';
+import { defaultBlockStyles, type Block, type BlockType } from '@/types/blocks';
+import { makeBlock as buildBlock } from '@/lib/block-data';
 import { defaultSeoFields, type Page } from '@/types/page';
 import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 
@@ -47,15 +48,21 @@ export function render(ui: ReactElement): RenderResult {
   };
 }
 
-export function makeBlock(type: string, data: Record<string, unknown> = {}, overrides: Partial<Block> = {}): Block {
-  return {
-    id: `blk_${Math.random().toString(36).slice(2, 9)}`,
+/** A block of `type` with `data` normalized (missing keys empty). */
+export function makeBlock(
+  type: BlockType,
+  data: Record<string, unknown> = {},
+  overrides: Partial<Pick<Block, 'id' | 'name'>> = {},
+): Block {
+  return buildBlock(
+    {
+      id: overrides.id ?? `blk_${Math.random().toString(36).slice(2, 9)}`,
+      name: overrides.name || type,
+      styles: { ...defaultBlockStyles },
+    },
     type,
-    name: overrides.name || type,
     data,
-    styles: { ...defaultBlockStyles },
-    ...overrides,
-  };
+  );
 }
 
 export function makePage(blocks: Block[] = [], overrides: Partial<Page> = {}): Page {

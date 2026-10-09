@@ -5,7 +5,8 @@ import { Layout } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import type { CursorPosition } from '@/store/editor-store';
-import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
+import { getAvailableBlocks } from '@/lib/block-registry';
+import BlockContent from '@/components/blocks/BlockContent';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import { pageThemeVars } from '@/lib/page-theme';
@@ -270,9 +271,6 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
         <BrowserFrame ref={browserFrameRef}>
           <div className="@container" style={themeVars}>
           {page.blocks.map((block, index) => {
-            const BlockContentComponent = blockRegistry[block.type]?.component;
-            if (!BlockContentComponent) return null;
-
             const s = resolveStyles(block, deviceMode);
             const blockStyle: React.CSSProperties = {
               ...(s.paddingTop ? { paddingTop: s.paddingTop } : {}),
@@ -289,11 +287,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
             return (
               <BlockWrapper key={block.id} block={block} index={index}>
                 <div style={blockStyle}>
-                  <BlockContentComponent
-                    blockId={block.id}
-                    data={block.data}
-                    isPreviewMode={isPreviewMode}
-                  />
+                  <BlockContent block={block} isPreviewMode={isPreviewMode} />
                 </div>
               </BlockWrapper>
             );

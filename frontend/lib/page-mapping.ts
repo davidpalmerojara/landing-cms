@@ -3,6 +3,7 @@
  * editor, the preview and the public page so all three read blocks the same way.
  */
 import { blockRegistry } from '@/lib/block-registry';
+import { isBlockType, makeBlock } from '@/lib/block-data';
 import { apiToTokens, tokensToApi } from '@/lib/design-tokens';
 import type { ApiBlock, ApiPage } from '@/lib/api';
 import { defaultBlockStyles } from '@/types/blocks';
@@ -10,20 +11,24 @@ import type { Block } from '@/types/blocks';
 import type { Page } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
 
-/** API blocks in page order; per-device overrides travel inside styles.responsive. */
+/**
+ * API blocks in page order; per-device overrides travel inside styles.responsive.
+ * Data is normalized for its type (the API is a trust boundary). Blocks of an
+ * unknown type are dropped: the server rejects them, so none should arrive.
+ */
 export function apiBlocksToLocal(apiBlocks: Pick<ApiBlock, 'id' | 'type' | 'order' | 'data' | 'styles'>[]): Block[] {
   return [...apiBlocks]
     .sort((a, b) => a.order - b.order)
-    .map((b) => {
+    .flatMap((b) => {
+      if (!isBlockType(b.type)) return [];
       const { responsive, ...baseStyles } = b.styles as Record<string, unknown>;
-      return {
+      const base = {
         id: b.id,
-        type: b.type,
-        name: blockRegistry[b.type]?.label || b.type,
-        data: b.data,
+        name: blockRegistry[b.type].label,
         styles: { ...defaultBlockStyles, ...baseStyles },
         responsiveStyles: (responsive as Block['responsiveStyles']) || undefined,
       };
+      return [makeBlock(base, b.type, b.data)];
     });
 }
 

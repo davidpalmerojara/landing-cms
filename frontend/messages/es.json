@@ -723,7 +723,18 @@
     "top": "Arriba",
     "right": "Derecha",
     "bottom": "Abajo",
-    "left": "Izquierda"
+    "left": "Izquierda",
+    "listItemTitle": "{item} {position}",
+    "listCount": "{count} de {max}",
+    "listEmpty": "Esta lista todavía no tiene elementos.",
+    "listAdd": "Añadir {item}",
+    "listMaxReached": "Has llegado al máximo de {max}.",
+    "listMoveUp": "Mover {item} {position} arriba",
+    "listMoveDown": "Mover {item} {position} abajo",
+    "listRemove": "Eliminar {item} {position}",
+    "listAnnounceAdded": "Nuevo elemento: {item} {position}",
+    "listAnnounceRemoved": "Elemento eliminado: {item} {position}",
+    "listAnnounceMoved": "{item} ahora está en la posición {position}"
   },
   "assets": {
     "loadError": "Error al cargar recursos",

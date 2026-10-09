@@ -1,4 +1,4 @@
-import type { FieldDefinition } from '@/types/inspector';
+import type { ScalarFieldDefinition } from '@/types/inspector';
 import TextField from './TextField';
 import TextAreaField from './TextAreaField';
 import SelectField from './SelectField';
@@ -7,35 +7,31 @@ import ToggleField from './ToggleField';
 import ImageField from './ImageField';
 
 interface FieldRendererProps {
-  field: FieldDefinition;
+  field: ScalarFieldDefinition;
   value: unknown;
   onChange: (value: unknown) => void;
+  /** Id of the input; defaults to one derived from the field key. */
+  id?: string;
 }
 
-export default function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
-  const fieldId = `field-${field.key}`;
+export default function FieldRenderer({ field, value, onChange, id }: FieldRendererProps) {
+  const fieldId = id ?? `field-${field.key}`;
+  const text = typeof value === 'string' ? value : '';
 
   const renderField = () => {
     switch (field.type) {
       case 'textarea':
-        return <TextAreaField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
+        return <TextAreaField id={fieldId} value={text} onChange={onChange} />;
       case 'select':
-        return (
-          <SelectField
-            id={fieldId}
-            value={(value as string) || ''}
-            options={field.options || []}
-            onChange={onChange}
-          />
-        );
+        return <SelectField id={fieldId} value={text} options={field.options} onChange={onChange} />;
       case 'color':
-        return <ColorField id={fieldId} value={(value as string) || '#ffffff'} onChange={onChange} />;
+        return <ColorField id={fieldId} value={text || '#ffffff'} onChange={onChange} />;
       case 'toggle':
-        return <ToggleField id={fieldId} value={!!value} onChange={onChange} />;
+        return <ToggleField id={fieldId} value={value === true} onChange={onChange} />;
       case 'image':
-        return <ImageField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
+        return <ImageField id={fieldId} value={text} onChange={onChange} />;
       default:
-        return <TextField id={fieldId} value={(value as string) || ''} onChange={onChange} />;
+        return <TextField id={fieldId} value={text} onChange={onChange} />;
     }
   };
 

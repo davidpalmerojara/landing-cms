@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import type { BlockType } from '@/types/blocks';
 
 export default function LeftSidebar() {
   const t = useTranslations();
@@ -60,9 +61,9 @@ export default function LeftSidebar() {
 
   const handleComponentPointerDown = (
     e: React.PointerEvent,
-    type: string,
+    type: BlockType,
     label: string,
-    initialData: Record<string, unknown>
+    initialData: unknown
   ) => {
     if (e.button !== 0) return;
     initDrag(
@@ -74,7 +75,7 @@ export default function LeftSidebar() {
   const handleLayerPointerDown = (
     e: React.PointerEvent,
     index: number,
-    block: { type: string; name: string }
+    block: { type: BlockType; name: string }
   ) => {
     if (e.button !== 0) return;
     initDrag(

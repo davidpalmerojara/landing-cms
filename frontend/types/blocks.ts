@@ -1,6 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ComponentType } from 'react';
-import type { FieldDefinition } from './inspector';
+import type { BlockDataMap, BlockType } from './block-data';
+import type { TypedFieldDefinition } from './inspector';
+
+export type * from './block-data';
 
 export interface BlockStyles {
   paddingTop: number;
@@ -29,14 +32,21 @@ export interface ResponsiveStyles {
   mobile?: Partial<BlockStyles>;
 }
 
-export interface Block {
+export interface BlockBase {
   id: string;
-  type: string;
   name: string;
-  data: Record<string, unknown>;
   styles: BlockStyles;
   responsiveStyles?: ResponsiveStyles;
 }
+
+/** A block of one type, its data typed accordingly. */
+export interface BlockOf<K extends BlockType> extends BlockBase {
+  type: K;
+  data: BlockDataMap[K];
+}
+
+/** Any block: a union discriminated by `type` (checking `type` narrows `data`). */
+export type Block = { [K in BlockType]: BlockOf<K> }[BlockType];
 
 /** Resolve styles for a given device mode by merging base + overrides. */
 export function resolveStyles(block: Block, deviceMode: 'desktop' | 'tablet' | 'mobile'): BlockStyles {
@@ -47,17 +57,21 @@ export function resolveStyles(block: Block, deviceMode: 'desktop' | 'tablet' | '
   return { ...base, ...overrides };
 }
 
-export interface BlockDefinition {
-  type: string;
+export interface BlockDefinition<K extends BlockType> {
+  type: K;
   label: string;
   icon: LucideIcon;
-  initialData: Record<string, unknown>;
-  fields: FieldDefinition[];
-  component: ComponentType<BlockProps>;
+  /** Content of a block added from the editor. */
+  initialData: BlockDataMap[K];
+  fields: TypedFieldDefinition<BlockDataMap[K]>[];
+  component: ComponentType<BlockProps<BlockDataMap[K]>>;
 }
 
-export interface BlockProps {
+/** One definition per block type; indexing with a type gives that type's definition. */
+export type BlockRegistry = { [K in BlockType]: BlockDefinition<K> };
+
+export interface BlockProps<T> {
   blockId: string;
-  data: Record<string, unknown>;
+  data: T;
   isPreviewMode: boolean;
 }

@@ -723,7 +723,18 @@
     "top": "Top",
     "right": "Right",
     "bottom": "Bottom",
-    "left": "Left"
+    "left": "Left",
+    "listItemTitle": "{item} {position}",
+    "listCount": "{count} of {max}",
+    "listEmpty": "This list has no items yet.",
+    "listAdd": "Add {item}",
+    "listMaxReached": "You have reached the maximum of {max}.",
+    "listMoveUp": "Move {item} {position} up",
+    "listMoveDown": "Move {item} {position} down",
+    "listRemove": "Remove {item} {position}",
+    "listAnnounceAdded": "New item: {item} {position}",
+    "listAnnounceRemoved": "Item removed: {item} {position}",
+    "listAnnounceMoved": "{item} is now in position {position}"
   },
   "assets": {
     "loadError": "Could not load assets",

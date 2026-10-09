@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect, type ElementType } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import type { DataPath } from '@/types/block-data';
 
 interface EditableTextProps {
   blockId: string;
-  fieldKey: string;
+  /** Top-level key ('title') or the path of a list item field (['features', 0, 'title']). */
+  fieldKey: string | DataPath;
   value: string;
   as?: ElementType;
   className?: string;
@@ -24,7 +26,7 @@ export default function EditableText({
 }: EditableTextProps) {
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
-  const updateBlock = useEditorStore((s) => s.updateBlock);
+  const updateBlockField = useEditorStore((s) => s.updateBlockField);
 
   const [isEditing, setIsEditing] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -65,7 +67,7 @@ export default function EditableText({
         onBlur={(e: React.FocusEvent<HTMLElement>) => {
           const newValue = e.currentTarget.innerText || '';
           if (newValue !== value) {
-            updateBlock(blockId, fieldKey, newValue);
+            updateBlockField(blockId, typeof fieldKey === 'string' ? [fieldKey] : fieldKey, newValue);
           }
           setIsEditing(false);
         }}

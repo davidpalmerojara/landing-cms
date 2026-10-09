@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, RotateCcw, Columns2, Maximize2, Loader2 } from 'lucide-react';
-import { blockRegistry } from '@/lib/block-registry';
+import { UntypedBlockContent } from '@/components/blocks/BlockContent';
+import { isBlockType } from '@/lib/block-data';
 import { defaultBlockStyles } from '@/types/blocks';
 import { api } from '@/lib/api';
 import type { ApiPageVersionDetail } from '@/lib/api';
@@ -22,7 +23,7 @@ interface SnapshotBlock {
   id: string;
   type: string;
   order: number;
-  data: Record<string, unknown>;
+  data: unknown;
   styles: Record<string, unknown>;
 }
 
@@ -86,8 +87,7 @@ const DIFF_LABELS: Record<DiffStatus, { color: string } | null> = {
 
 function BlockRenderer({ block, diffStatus, showDiff }: { block: SnapshotBlock; diffStatus?: DiffStatus; showDiff: boolean }) {
   const t = useTranslations('versionPreview');
-  const BlockComponent = blockRegistry[block.type]?.component;
-  if (!BlockComponent) return null;
+  if (!isBlockType(block.type)) return null;
 
   const s = { ...defaultBlockStyles, ...block.styles };
   const blockStyle: React.CSSProperties = {
@@ -112,11 +112,7 @@ function BlockRenderer({ block, diffStatus, showDiff }: { block: SnapshotBlock; 
           {diffStatus ? t(diffStatus) : null}
         </div>
       )}
-      <BlockComponent
-        blockId={block.id}
-        data={block.data}
-        isPreviewMode={true}
-      />
+      <UntypedBlockContent block={block} isPreviewMode={true} />
     </div>
   );
 }

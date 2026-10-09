@@ -1,17 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, StatsData } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function StatsBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function StatsBlock({ blockId, data, isPreviewMode }: BlockProps<StatsData>) {
   const t = useTranslations('blocks');
-  const stats = [
-    { valueKey: 'stat1Value', labelKey: 'stat1Label' },
-    { valueKey: 'stat2Value', labelKey: 'stat2Label' },
-    { valueKey: 'stat3Value', labelKey: 'stat3Label' },
-    { valueKey: 'stat4Value', labelKey: 'stat4Label' },
-  ];
 
   return (
     <section
@@ -25,7 +19,7 @@ export default function StatsBlock({ blockId, data, isPreviewMode }: BlockProps)
         <EditableText
           blockId={blockId}
           fieldKey="title"
-          value={data.title as string}
+          value={data.title}
           as="h2"
           className="text-center mb-4 text-3xl @tablet:text-4xl"
           style={{ color: 'var(--theme-bg)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
@@ -33,34 +27,36 @@ export default function StatsBlock({ blockId, data, isPreviewMode }: BlockProps)
         <EditableText
           blockId={blockId}
           fieldKey="subtitle"
-          value={data.subtitle as string}
+          value={data.subtitle}
           as="p"
           multiline
           className="text-center max-w-2xl mx-auto mb-12 opacity-60 text-base @tablet:text-lg"
           style={{ color: 'var(--theme-bg)' }}
         />
-        <div className="grid gap-8 grid-cols-2 @tablet:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.valueKey} className="text-center">
-              <EditableText
-                blockId={blockId}
-                fieldKey={s.valueKey}
-                value={data[s.valueKey] as string}
-                as="div"
-                className="font-bold mb-2 text-3xl @tablet:text-4xl"
-                style={{ color: 'var(--theme-accent)' }}
-              />
-              <EditableText
-                blockId={blockId}
-                fieldKey={s.labelKey}
-                value={data[s.labelKey] as string}
-                as="div"
-                className="text-sm uppercase tracking-wider font-medium opacity-60"
-                style={{ color: 'var(--theme-bg)' }}
-              />
-            </div>
-          ))}
-        </div>
+        {data.stats.length > 0 && (
+          <div className="grid gap-8 grid-cols-2 @tablet:grid-cols-4">
+            {data.stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <EditableText
+                  blockId={blockId}
+                  fieldKey={['stats', index, 'value']}
+                  value={stat.value}
+                  as="div"
+                  className="font-bold mb-2 text-3xl @tablet:text-4xl"
+                  style={{ color: 'var(--theme-accent)' }}
+                />
+                <EditableText
+                  blockId={blockId}
+                  fieldKey={['stats', index, 'label']}
+                  value={stat.label}
+                  as="div"
+                  className="text-sm uppercase tracking-wider font-medium opacity-60"
+                  style={{ color: 'var(--theme-bg)' }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

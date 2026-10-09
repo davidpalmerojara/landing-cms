@@ -362,7 +362,8 @@
     "publishSuccess": "Page published at {path}",
     "publishError": "The page could not be published. Please try again.",
     "unpublishedChanges": "Unpublished changes",
-    "publishChanges": "Publish changes"
+    "publishChanges": "Publish changes",
+    "viewMessages": "Messages"
   },
   "versionHistory": {
     "title": "Version history",
@@ -537,7 +538,17 @@
     "footerAria": "Footer",
     "featuresAria": "Features",
     "customHtmlTitle": "Custom HTML",
-    "customHtmlEmpty": "<!-- Write your HTML in the inspector -->"
+    "customHtmlEmpty": "<!-- Write your HTML in the inspector -->",
+    "contactSend": "Send",
+    "contactSending": "Sending...",
+    "contactSuccess": "Message sent. Thanks for writing.",
+    "contactPreviewNote": "This form only sends messages from the published page.",
+    "contactError": {
+      "invalid": "Check your name, email and message, and try again.",
+      "rateLimited": "You have sent several messages in a row. Wait a minute and try again.",
+      "unavailable": "This form is no longer available.",
+      "generic": "We couldn't send your message. Please try again in a moment."
+    }
   },
   "preview": {
     "backToEditor": "Back to editor",
@@ -762,5 +773,22 @@
     "noDeviceData": "No device data",
     "noReferrers": "No referrer data",
     "pageviewsStep": "Pageviews"
+  },
+  "submissions": {
+    "title": "Messages",
+    "description": "What people write to you through the contact form on your published page.",
+    "listLabel": "Received messages",
+    "count": "{count, plural, one {# message} other {# messages}}",
+    "emptyTitle": "No messages yet",
+    "emptyDescription": "When someone fills in the contact form on your published page, their message will show up here.",
+    "loadError": "Couldn't load the messages.",
+    "deleteLabel": "Delete the message from {name}",
+    "deleteTitle": "Delete message",
+    "deleteMessage": "The message from {name} will be deleted. This cannot be undone.",
+    "deleted": "Message deleted",
+    "deleteError": "Couldn't delete the message. Please try again.",
+    "pagination": "Messages pagination",
+    "previous": "Previous",
+    "pageOf": "Page {page} of {total}"
   }
 }

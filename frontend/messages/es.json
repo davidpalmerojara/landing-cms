@@ -362,7 +362,8 @@
     "publishSuccess": "Página publicada en {path}",
     "publishError": "No se ha podido publicar. Inténtalo de nuevo.",
     "unpublishedChanges": "Cambios sin publicar",
-    "publishChanges": "Publicar cambios"
+    "publishChanges": "Publicar cambios",
+    "viewMessages": "Mensajes"
   },
   "versionHistory": {
     "title": "Historial de versiones",
@@ -537,7 +538,17 @@
     "footerAria": "Pie de página",
     "featuresAria": "Características",
     "customHtmlTitle": "HTML personalizado",
-    "customHtmlEmpty": "<!-- Escribe tu HTML en el inspector -->"
+    "customHtmlEmpty": "<!-- Escribe tu HTML en el inspector -->",
+    "contactSend": "Enviar",
+    "contactSending": "Enviando...",
+    "contactSuccess": "Mensaje enviado. Gracias por escribir.",
+    "contactPreviewNote": "Este formulario solo envía mensajes desde la página publicada.",
+    "contactError": {
+      "invalid": "Revisa el nombre, el email y el mensaje, y vuelve a intentarlo.",
+      "rateLimited": "Has enviado varios mensajes seguidos. Espera un minuto e inténtalo de nuevo.",
+      "unavailable": "Este formulario ya no está disponible.",
+      "generic": "No hemos podido enviar el mensaje. Inténtalo de nuevo en un momento."
+    }
   },
   "preview": {
     "backToEditor": "Volver al editor",
@@ -762,5 +773,22 @@
     "noDeviceData": "Sin datos de dispositivos",
     "noReferrers": "Sin datos de referencia",
     "pageviewsStep": "Pageview"
+  },
+  "submissions": {
+    "title": "Mensajes",
+    "description": "Lo que te escriben desde el formulario de contacto de tu página publicada.",
+    "listLabel": "Mensajes recibidos",
+    "count": "{count, plural, one {# mensaje} other {# mensajes}}",
+    "emptyTitle": "Todavía no hay mensajes",
+    "emptyDescription": "Cuando alguien rellene el formulario de contacto de tu página publicada, su mensaje aparecerá aquí.",
+    "loadError": "No se han podido cargar los mensajes.",
+    "deleteLabel": "Eliminar el mensaje de {name}",
+    "deleteTitle": "Eliminar mensaje",
+    "deleteMessage": "Se eliminará el mensaje de {name}. No se puede deshacer.",
+    "deleted": "Mensaje eliminado",
+    "deleteError": "No se ha podido eliminar el mensaje. Inténtalo de nuevo.",
+    "pagination": "Paginación de mensajes",
+    "previous": "Anterior",
+    "pageOf": "Página {page} de {total}"
   }
 }

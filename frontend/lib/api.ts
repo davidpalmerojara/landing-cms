@@ -150,6 +150,62 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+export interface ApiFormSubmission {
+  id: string;
+  block_id: string | null;
+  name: string;
+  email: string;
+  message: string;
+  created_at: string;
+}
+
+export interface ContactFormPayload {
+  name: string;
+  email: string;
+  message: string;
+  /** Honeypot: humans never fill it in. */
+  website: string;
+  block_id?: string;
+}
+
+/** Failure of the public contact form, with the HTTP status and the backend's error code. */
+export class ContactSubmitError extends Error {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = 'ContactSubmitError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Public request: no cookies, so a logged-in owner and a visitor are treated alike. */
+async function submitContactRequest(slug: string, payload: ContactFormPayload): Promise<void> {
+  const res = await fetch(`${API_BASE}/public/pages/${encodeURIComponent(slug)}/contact/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'omit',
+  });
+  if (res.ok) return;
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // The error body is optional; the status alone is enough to react
+  }
+  const message = isRecord(body) && typeof body.error === 'string' ? body.error : `API ${res.status}`;
+  const code = isRecord(body) && typeof body.code === 'string' ? body.code : 'ERROR';
+  throw new ContactSubmitError(res.status, code, message);
+}
+
 // --- API methods ---
 
 async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
@@ -392,6 +448,15 @@ export const api = {
 
   public: {
     getBySlug: (slug: string) => publicRequest<ApiPage>(`/public/pages/${slug}/`),
+    submitContact: submitContactRequest,
+  },
+
+  submissions: {
+    list: (pageId: string, page = 1) =>
+      request<PaginatedResponse<ApiFormSubmission>>(`/pages/${pageId}/submissions/?page=${page}`),
+
+    delete: (pageId: string, submissionId: string) =>
+      request<void>(`/pages/${pageId}/submissions/${submissionId}/`, { method: 'DELETE' }),
   },
 };
 

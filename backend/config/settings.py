@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'ai_generation',
     'analytics',
     'billing',
+    'submissions',
 ]
 
 
@@ -199,6 +200,7 @@ REST_FRAMEWORK = {
         'user': '120/minute',
         'auth': '10/minute',
         'login_username': '5/minute',
+        'contact': '5/minute',
     },
     # Number of trusted proxies in front of the app. With the default (unset)
     # DRF used the whole X-Forwarded-For header as the client id, so any

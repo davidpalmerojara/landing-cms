@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Tablet,
   Eye, Save, CheckCircle2,
   AlertCircle,
-  Loader2, Globe, Share2, BarChart3, Search,
+  Loader2, Globe, Share2, BarChart3, Search, MessageSquare,
   Pencil, History, X, Check, Palette,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -16,7 +16,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import { api } from '@/lib/api';
 
-type EditorView = 'design' | 'styles' | 'seo' | 'analytics';
+type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
 interface TopBarProps {
   onSave: () => Promise<boolean>;
@@ -197,6 +197,20 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span className="hidden xl:inline">{t('editor.viewAnalytics')}</span>
+            </button>
+            <button
+              role="radio"
+              aria-checked={activeView === 'messages'}
+              onClick={() => onViewChange('messages')}
+              title={t('editor.viewMessages')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                activeView === 'messages'
+                  ? 'bg-surface-card text-primary shadow-sm'
+                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">{t('editor.viewMessages')}</span>
             </button>
           </div>
         )}

@@ -15,6 +15,7 @@ import DesignTokensPanel from '@/components/editor/DesignTokensPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { ToastContainer } from '@/components/ui/Toast';
 import AnalyticsPanel from '@/components/analytics/AnalyticsPanel';
+import SubmissionsPanel from '@/components/editor/SubmissionsPanel';
 import MobileEditor from '@/components/mobile-editor/MobileEditor';
 import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
@@ -26,7 +27,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useAuth } from '@/hooks/useAuth';
 
-type EditorView = 'design' | 'styles' | 'seo' | 'analytics';
+type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
 export default function EditorPage() {
   const t = useTranslations();
@@ -156,6 +157,10 @@ export default function EditorPage() {
       {activeView === 'analytics' ? (
         <main className="flex-1 overflow-hidden">
           <AnalyticsPanel pageId={pageId} pageStatus={page.status} />
+        </main>
+      ) : activeView === 'messages' ? (
+        <main className="flex flex-1 overflow-hidden">
+          <SubmissionsPanel pageId={pageId} />
         </main>
       ) : (
         <>

@@ -70,6 +70,17 @@ class Page(models.Model):
     og_type = models.CharField(max_length=50, default='website', blank=True)
     noindex = models.BooleanField(default=False)
 
+    # What the public sees: a frozen copy taken when the page was published.
+    # Edits (and autosaves) change the draft, not this, until the next publish.
+    published_version = models.ForeignKey(
+        'PageVersion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -84,6 +95,34 @@ class Page(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def has_unpublished_changes(self) -> bool:
+        """The draft was edited after the last publish."""
+        if self.status != self.Status.PUBLISHED or self.published_at is None:
+            return False
+        return self.updated_at > self.published_at
+
+    def publish(self, user):
+        """Freeze the current draft as the public version."""
+        from django.core.cache import cache
+        from django.utils import timezone
+
+        version = create_version_snapshot(self, user, PageVersion.Trigger.AUTO_PUBLISH, label='Publicación')
+        self.published_version = version
+        self.published_at = timezone.now()
+        self.status = self.Status.PUBLISHED
+        # update_fields leaves updated_at alone, so the draft counts as published
+        self.save(update_fields=['published_version', 'published_at', 'status'])
+        cache.delete('sitemap_xml')
+        return version
+
+    def unpublish(self):
+        from django.core.cache import cache
+
+        self.status = self.Status.DRAFT
+        self.save(update_fields=['status'])
+        cache.delete('sitemap_xml')
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -235,6 +274,7 @@ def create_version_snapshot(page, user, trigger, label=''):
     if max_versions != -1:
         version_ids = list(
             page.versions.order_by('-version_number')
+            .exclude(id=page.published_version_id)  # never prune what the public is seeing
             .values_list('id', flat=True)[max_versions:]
         )
         if version_ids:

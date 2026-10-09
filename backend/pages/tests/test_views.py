@@ -295,21 +295,82 @@ class TestPageShare:
 
 @pytest.mark.django_db
 class TestPublish:
-    def test_update_status_to_published(self, auth_client, page_with_blocks):
-        page = page_with_blocks
-        data = {
+    """Publishing freezes a copy; the public page never shows the live draft (ADR-017)."""
+
+    def _public(self, client, page):
+        return client.get(f'/api/public/pages/{page.slug}/')
+
+    def _put_title(self, client, page, title):
+        hero = page.blocks.get(type='hero')
+        return client.put(page_detail_url(page.id), {
             'name': page.name,
-            'status': 'published',
             'blocks': [
-                {'id': str(b.id), 'type': b.type, 'order': b.order, 'data': b.data, 'styles': b.styles}
-                for b in page.blocks.all()
+                {'id': str(b.id), 'type': b.type, 'order': b.order,
+                 'data': {**b.data, 'title': title} if b.id == hero.id else b.data, 'styles': b.styles}
+                for b in page.blocks.order_by('order')
             ],
-        }
-        with patch(GET_PLAN, return_value=_mock_plan()):
-            resp = auth_client.put(page_detail_url(page.id), data, format='json')
+        }, format='json')
+
+    @patch(GET_PLAN, return_value=_mock_plan())
+    def test_publish_freezes_a_copy(self, _plan, auth_client, api_client, page_with_blocks):
+        page = page_with_blocks
+        resp = auth_client.post(f'/api/pages/{page.id}/publish/')
+
         assert resp.status_code == status.HTTP_200_OK
+        assert resp.data['status'] == 'published'
+        assert resp.data['has_unpublished_changes'] is False
         page.refresh_from_db()
-        assert page.status == 'published'
+        assert page.published_version.trigger == 'auto_publish'
+        assert self._public(api_client, page).status_code == status.HTTP_200_OK
+
+    @patch(GET_PLAN, return_value=_mock_plan())
+    def test_draft_edits_do_not_reach_the_public_page_until_republished(self, _plan, auth_client, api_client, page_with_blocks):
+        page = page_with_blocks
+        auth_client.post(f'/api/pages/{page.id}/publish/')
+        public_title = self._public(api_client, page).data['blocks'][0]['data'].get('title')
+
+        resp = self._put_title(auth_client, page, 'Borrador sin publicar')
+        assert resp.data['has_unpublished_changes'] is True
+        assert self._public(api_client, page).data['blocks'][0]['data'].get('title') == public_title
+
+        auth_client.post(f'/api/pages/{page.id}/publish/')
+        assert self._public(api_client, page).data['blocks'][0]['data']['title'] == 'Borrador sin publicar'
+
+    @patch(GET_PLAN, return_value=_mock_plan())
+    def test_autosave_cannot_change_the_status(self, _plan, auth_client, page_with_blocks):
+        page = page_with_blocks
+        auth_client.put(page_detail_url(page.id), {'name': page.name, 'status': 'published', 'blocks': []}, format='json')
+        page.refresh_from_db()
+        assert page.status == 'draft'
+        assert page.published_version is None
+
+    @patch(GET_PLAN, return_value=_mock_plan())
+    def test_unpublish_takes_the_page_offline(self, _plan, auth_client, api_client, page_with_blocks):
+        page = page_with_blocks
+        auth_client.post(f'/api/pages/{page.id}/publish/')
+        assert auth_client.post(f'/api/pages/{page.id}/unpublish/').data['status'] == 'draft'
+        assert self._public(api_client, page).status_code == status.HTTP_404_NOT_FOUND
+
+    def test_version_limit_never_prunes_the_published_version(self, user, page_with_blocks):
+        from pages.models import create_version_snapshot
+        page = page_with_blocks
+        plan = _mock_plan()
+        plan.max_version_history = 2
+        with patch(GET_PLAN, return_value=plan):
+            published = page.publish(user)
+            for _ in range(4):
+                create_version_snapshot(page, user, 'manual')
+        page.refresh_from_db()
+        assert page.published_version_id == published.id
+        assert page.versions.filter(id=published.id).exists()
+
+    @patch(GET_PLAN, return_value=_mock_plan())
+    def test_duplicate_starts_unpublished(self, _plan, auth_client, page_with_blocks):
+        page = page_with_blocks
+        auth_client.post(f'/api/pages/{page.id}/publish/')
+        copy = auth_client.post(f'/api/pages/{page.id}/duplicate/').data
+        assert copy['status'] == 'draft'
+        assert copy['published_at'] is None
 
 
 # ── Version History Tests ────────────────────────────────────────────────────

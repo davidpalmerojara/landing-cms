@@ -28,34 +28,50 @@ def get_or_create_user_workspace(user):
     )
 
 
+PUBLISHED_METADATA_FIELDS = (
+    'name', 'theme_id', 'custom_theme', 'design_tokens',
+    'seo_title', 'seo_description', 'seo_canonical_url',
+    'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
+)
+
+
 class PublicPageView(generics.RetrieveAPIView):
     """
-    GET /api/public/pages/{slug}/ — public access, only published pages.
+    GET /api/public/pages/{slug}/ — public access to the published version.
+
+    Serves the frozen copy taken at publish time (blocks, theme, tokens and
+    SEO), never the live draft, so edits only reach visitors when the owner
+    publishes again (ADR-017).
     """
     permission_classes = [AllowAny]
     authentication_classes = []
-    serializer_class = PageDetailSerializer
     lookup_field = 'slug'
 
     def get_queryset(self):
         return (
             Page.objects
-            .filter(status=Page.Status.PUBLISHED)
-            .select_related('owner')
-            .prefetch_related(Prefetch('blocks', queryset=Block.objects.order_by('order')))
+            .filter(status=Page.Status.PUBLISHED, published_version__isnull=False)
+            .select_related('owner', 'published_version')
         )
 
     def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        data = serializer.data
-
-        # Add watermark flag based on owner's plan
         from billing.permissions import get_user_plan
-        plan = get_user_plan(instance.owner)
-        data['show_watermark'] = not getattr(plan, 'remove_watermark', False)
 
-        return Response(data)
+        page = self.get_object()
+        version = page.published_version
+        meta = version.page_metadata
+        published = page.published_at.isoformat() if page.published_at else None
+        plan = get_user_plan(page.owner)
+        return Response({
+            'id': str(page.id),
+            'slug': page.slug,
+            'status': page.status,
+            **{field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS},
+            'blocks': sorted(version.snapshot, key=lambda b: b.get('order', 0)),
+            'published_at': published,
+            'updated_at': published,
+            'show_watermark': not getattr(plan, 'remove_watermark', False),
+        })
 
 
 class PageViewSet(viewsets.ModelViewSet):
@@ -97,6 +113,20 @@ class PageViewSet(viewsets.ModelViewSet):
         instance.delete()
 
     @action(detail=True, methods=['post'])
+    def publish(self, request, id=None):
+        """POST /api/pages/{id}/publish/ — freeze the current draft as the public page."""
+        page = self.get_object()
+        page.publish(request.user)
+        return Response(PageDetailSerializer(page, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, id=None):
+        """POST /api/pages/{id}/unpublish/ — take the public page offline."""
+        page = self.get_object()
+        page.unpublish()
+        return Response(PageDetailSerializer(page, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
     def duplicate(self, request, id=None):
         """POST /api/pages/{id}/duplicate/ — clone a page with all its blocks."""
         from billing.permissions import check_page_limit
@@ -108,6 +138,8 @@ class PageViewSet(viewsets.ModelViewSet):
         original.slug = ''
         original.name = f'{original.name} (copy)'
         original.status = Page.Status.DRAFT
+        original.published_version = None
+        original.published_at = None
         original.owner = request.user
         original.workspace = get_or_create_user_workspace(request.user)
         original.save()
@@ -433,8 +465,8 @@ class SitemapView(generics.GenericAPIView):
 
         pages = Page.objects.filter(
             status=Page.Status.PUBLISHED,
-            noindex=False,
-        ).values('slug', 'updated_at').order_by('-updated_at')
+            published_version__page_metadata__noindex=False,
+        ).values('slug', 'published_at').order_by('-published_at')
 
         from django.conf import settings as django_settings
         frontend_url = django_settings.FRONTEND_URL.rstrip('/')
@@ -447,7 +479,7 @@ class SitemapView(generics.GenericAPIView):
         for p in pages:
             safe_slug = xml_escape(p['slug'])
             loc = f'{frontend_url}/p/{safe_slug}'
-            lastmod = p['updated_at'].strftime('%Y-%m-%d')
+            lastmod = p['published_at'].strftime('%Y-%m-%d')
             lines.append(f'  <url>')
             lines.append(f'    <loc>{loc}</loc>')
             lines.append(f'    <lastmod>{lastmod}</lastmod>')
@@ -517,14 +549,14 @@ class SitemapDataView(generics.GenericAPIView):
     def get(self, request):
         pages = Page.objects.filter(
             status=Page.Status.PUBLISHED,
-            noindex=False,
-        ).values('slug', 'updated_at', 'seo_canonical_url').order_by('-updated_at')
+            published_version__page_metadata__noindex=False,
+        ).values('slug', 'published_at', 'published_version__page_metadata').order_by('-published_at')
 
         data = [
             {
                 'slug': p['slug'],
-                'updated_at': p['updated_at'].isoformat(),
-                'seo_canonical_url': p['seo_canonical_url'] or '',
+                'updated_at': p['published_at'].isoformat(),
+                'seo_canonical_url': (p['published_version__page_metadata'] or {}).get('seo_canonical_url') or '',
             }
             for p in pages
         ]

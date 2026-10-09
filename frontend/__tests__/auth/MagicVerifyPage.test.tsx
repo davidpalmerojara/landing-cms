@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const user: ApiUser = {
-  id: 'u1', email: 'ana@example.com', username: 'ana', avatar: '', created_at: '2026-10-01T10:00:00Z',
+  id: 'u1', email: 'ana@example.com', username: 'ana', avatar: '', created_at: '2026-10-01T10:00:00Z', is_guest: false, expires_at: null,
 };
 
 async function renderWith(response: AuthResponse): Promise<RenderResult> {

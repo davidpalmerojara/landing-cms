@@ -10,6 +10,7 @@ import {
 import { api } from '@/lib/api';
 import type { ApiCustomDomain, ApiPageListItem } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
 
 type DomainWithError = ApiCustomDomain & { dns_error?: string };
 
@@ -203,7 +204,7 @@ function AddDomainModal({
 export default function DomainsSettingsPage() {
   const t = useTranslations();
   const router = useRouter();
-  const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
+  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
   const [domains, setDomains] = useState<DomainWithError[]>([]);
   const [pages, setPages] = useState<ApiPageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -236,8 +237,9 @@ export default function DomainsSettingsPage() {
   }, [t]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // Guest sessions cannot have domains: the API refuses them, so do not ask
+    if (user && !user.is_guest) loadData();
+  }, [user, loadData]);
 
   const handleAdd = async (domain: string, pageId: string | undefined) => {
     const payload: { domain: string; page?: string } = { domain };
@@ -275,6 +277,17 @@ export default function DomainsSettingsPage() {
       <div className="flex items-center justify-center min-h-screen bg-surface text-secondary">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (user.is_guest) {
+    return (
+      <GuestSettingsScreen
+        user={user}
+        onClaimed={setUser}
+        title={t('guest.domainsTitle')}
+        description={t('guest.domainsBody')}
+      />
     );
   }
 

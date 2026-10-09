@@ -2,8 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, apiErrorCode } from '@/lib/api';
 import type { ApiUser } from '@/lib/api';
+
+/** Adds `guest=expired` to a redirect target so the login page can explain the session ended. */
+function withGuestExpiredHint(path: string): string {
+  return `${path}${path.includes('?') ? '&' : '?'}guest=expired`;
+}
 
 export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
   const router = useRouter();
@@ -17,9 +22,9 @@ export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
         // an expired access token is refreshed once inside the API client.
         const me = await api.auth.me();
         setUser(me);
-      } catch {
-        // No valid session
-        if (redirectTo) router.replace(redirectTo);
+      } catch (e) {
+        // No valid session; a guest whose 24 h ran out is told why
+        if (redirectTo) router.replace(apiErrorCode(e) === 'GUEST_EXPIRED' ? withGuestExpiredHint(redirectTo) : redirectTo);
       } finally {
         setIsLoading(false);
       }
@@ -38,5 +43,5 @@ export function useAuth({ redirectTo }: { redirectTo?: string } = {}) {
     router.replace('/login');
   }, [router]);
 
-  return { user, isLoading, logout };
+  return { user, setUser, isLoading, logout };
 }

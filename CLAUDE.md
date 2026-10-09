@@ -177,7 +177,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 
 ### Modelo de datos (Django)
 
-- **User** (AbstractUser): UUID pk, email unico, google_id. Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
+- **User** (AbstractUser): UUID pk, email unico, google_id, is_guest (cuenta temporal, ADR-022). Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
 - **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), design_tokens (JSON, el tema completo de la pagina, ADR-020), SEO fields (seo_title, seo_description, og_*, noindex)
@@ -260,6 +260,8 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/google/` | No | Login con Google ID token |
 | POST | `/magic/request/` | No | Enviar magic link |
 | POST | `/magic/verify/` | No | Verificar magic token |
+| POST | `/guest/` | No | Sesión de invitado temporal, 24 h (ADR-022) |
+| POST | `/guest/claim/` | Si (invitado) | Convertir el invitado en cuenta normal y conservar sus páginas |
 | GET | `/me/` | Si | Usuario actual |
 
 ### Pages (`/api/pages/`)

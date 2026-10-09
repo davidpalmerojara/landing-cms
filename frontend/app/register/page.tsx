@@ -7,6 +7,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
+import GuestStartButton from '@/components/guest/GuestStartButton';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -165,6 +166,14 @@ export default function RegisterPage() {
             </div>
           </>
         )}
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-subtle" />
+          <span className="text-xs text-muted">{t('common.or')}</span>
+          <div className="flex-1 h-px bg-subtle" />
+        </div>
+
+        <GuestStartButton variant="form" />
 
         <p className="text-center text-sm text-muted mt-6">
           {t('auth.haveAccount')}{' '}

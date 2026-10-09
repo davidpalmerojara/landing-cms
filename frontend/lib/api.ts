@@ -34,6 +34,53 @@ function refreshSession(): Promise<boolean> {
   return refreshPromise;
 }
 
+// --- Errors ---
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A non-2xx API response. `message` keeps the historical `API <status>: <body>`
+ * format; `code` and `details` come from the backend's `{ error, code, details }` body.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  /** Field-level validation errors: `{ field: [messages] }` */
+  readonly details: Record<string, string[]> | null;
+
+  constructor(status: number, body: string) {
+    super(`API ${status}: ${body}`);
+    this.name = 'ApiError';
+    this.status = status;
+
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      // The body is not JSON (a proxy page, plain text): only the status is known
+    }
+    const record = isJsonObject(parsed) ? parsed : null;
+    this.code = record && typeof record.code === 'string' ? record.code : null;
+    this.details = record && isJsonObject(record.details) ? toFieldErrors(record.details) : null;
+  }
+}
+
+function toFieldErrors(details: Record<string, unknown>): Record<string, string[]> {
+  const fields: Record<string, string[]> = {};
+  for (const [field, value] of Object.entries(details)) {
+    const messages = Array.isArray(value) ? value : [value];
+    fields[field] = messages.filter((m): m is string => typeof m === 'string');
+  }
+  return fields;
+}
+
+/** The backend error code of a failed request (e.g. 'GUEST_CAPACITY'), or null. */
+export function apiErrorCode(error: unknown): string | null {
+  return error instanceof ApiError ? error.code : null;
+}
+
 // --- Core fetch with one refresh-and-retry on 401 ---
 
 async function fetchWithRetry<T>(doFetch: () => Promise<Response>): Promise<T> {
@@ -45,7 +92,7 @@ async function fetchWithRetry<T>(doFetch: () => Promise<Response>): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, text);
   }
 
   if (res.status === 204) return undefined as T;
@@ -67,6 +114,10 @@ export interface ApiUser {
   username: string;
   avatar: string;
   created_at: string;
+  /** Temporary "try it without signing up" account */
+  is_guest: boolean;
+  /** When a guest session is deleted (ISO date); null for normal accounts */
+  expires_at: string | null;
 }
 
 export interface AuthResponse {
@@ -237,7 +288,7 @@ async function publicRequest<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, text);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -284,6 +335,13 @@ export const api = {
     },
 
     me: () => request<ApiUser>('/auth/me/'),
+
+    /** Starts a temporary guest session (httpOnly cookies, like any login). */
+    guest: () => request<AuthResponse>('/auth/guest/', { method: 'POST', body: '{}' }),
+
+    /** A guest signs up and keeps its pages; the session cookies are replaced. */
+    claimGuest: (data: { username: string; email: string; password: string; password2: string }) =>
+      request<AuthResponse>('/auth/guest/claim/', { method: 'POST', body: JSON.stringify(data) }),
 
     /** Single-use, 30-second ticket to open the collaboration WebSocket. */
     wsTicket: () => request<{ ticket: string; expires_in: number }>('/auth/ws-ticket/', { method: 'POST' }),

@@ -31,7 +31,6 @@ class AnalyticsEvent(models.Model):
     block_type = models.CharField(max_length=50, null=True, blank=True)
     event_data = models.JSONField(default=dict, blank=True)
     referrer = models.URLField(max_length=2048, null=True, blank=True)
-    user_agent = models.CharField(max_length=512, null=True, blank=True)
     screen_size = models.CharField(max_length=20, null=True, blank=True)
     utm_source = models.CharField(max_length=200, null=True, blank=True)
     utm_medium = models.CharField(max_length=200, null=True, blank=True)

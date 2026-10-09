@@ -2,6 +2,8 @@
  * BuilderPro Analytics Pixel — lightweight tracking script (< 3KB gzip).
  *
  * Injected into published pages at /p/[slug].
+ * Cookieless: stores nothing on the visitor's device and sends no visitor
+ * identifier. The server derives a daily anonymous hash from the request.
  * Captures: pageview, click, scroll_depth, time_on_page, cta_conversion.
  * Sends batched events via navigator.sendBeacon (fallback: fetch POST).
  *
@@ -26,31 +28,6 @@
   var HEARTBEAT_INTERVAL = 15000; // 15s
   var SCROLL_THRESHOLDS = [25, 50, 75, 100];
 
-  // ── Visitor ID (anonymous fingerprint, no PII) ──────────
-  function getVisitorId() {
-    var stored = null;
-    try { stored = localStorage.getItem('bp_vid'); } catch (e) { /* private mode */ }
-    if (stored) return stored;
-
-    var raw = [
-      screen.width, screen.height, screen.colorDepth,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      navigator.language
-    ].join('|');
-
-    // Simple hash (djb2)
-    var hash = 5381;
-    for (var i = 0; i < raw.length; i++) {
-      hash = ((hash << 5) + hash + raw.charCodeAt(i)) >>> 0;
-    }
-    var vid = 'v_' + hash.toString(36) + '_' + Date.now().toString(36);
-
-    try { localStorage.setItem('bp_vid', vid); } catch (e) { /* ignore */ }
-    return vid;
-  }
-
-  var VISITOR_ID = getVisitorId();
-
   // ── UTM params ──────────────────────────────────────────
   function getUtmParams() {
     var params = {};
@@ -66,9 +43,32 @@
 
   var UTM = getUtmParams();
 
+  // ── Referrer (origin only, never the full URL) ─────────
+  function getReferrerOrigin() {
+    if (!document.referrer) return null;
+    try {
+      var u = new URL(document.referrer);
+      return u.protocol + '//' + u.host;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ── Link target (http(s) or relative only, no query/fragment) ──
+  function getSafeHref(raw) {
+    if (!raw) return null;
+    try {
+      var u = new URL(raw, location.href);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      if (u.origin === location.origin) return u.pathname;
+      return u.origin + u.pathname;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ── Screen info ─────────────────────────────────────────
   var SCREEN_SIZE = screen.width + 'x' + screen.height;
-  var UA = navigator.userAgent || '';
 
   // ── Event buffer & flush ────────────────────────────────
   var buffer = [];
@@ -110,10 +110,8 @@
   function pushEvent(type, extra) {
     var evt = {
       event_type: type,
-      visitor_id: VISITOR_ID,
-      user_agent: UA,
       screen_size: SCREEN_SIZE,
-      referrer: document.referrer || null,
+      referrer: getReferrerOrigin(),
       timestamp: new Date().toISOString()
     };
 
@@ -138,7 +136,7 @@
 
   // ── 1. Pageview ─────────────────────────────────────────
   pushEvent('pageview', {
-    event_data: { url: location.href }
+    event_data: { path: location.pathname }
   });
 
   // ── 2. Click tracking ──────────────────────────────────
@@ -163,8 +161,7 @@
 
     var blockId = blockEl.dataset.blockId;
     var blockType = blockEl.dataset.blockType || null;
-    var text = (interactive.textContent || '').trim().substring(0, 100);
-    var href = interactive.getAttribute('href') || null;
+    var href = getSafeHref(interactive.getAttribute('href'));
 
     // Check if it's a CTA conversion
     var isCta = blockEl.dataset.blockType === 'cta' || blockEl.dataset.blockType === 'hero';
@@ -174,7 +171,6 @@
       block_id: blockId,
       block_type: blockType,
       event_data: {
-        text: text,
         href: href
       }
     });

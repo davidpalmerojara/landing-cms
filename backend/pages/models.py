@@ -142,6 +142,13 @@ class Page(models.Model):
                 slug = f'{base_slug}-{counter}'
                 counter += 1
             self.slug = slug
+        is_update = not self._state.adding and self.pk is not None and not kwargs.get('force_insert')
+        if is_update and kwargs.get('update_fields') is None:
+            # `version` only moves through atomic UPDATEs in pages/sync.py. A page
+            # loaded earlier and saved later must not write its old version back.
+            kwargs['update_fields'] = [
+                f.name for f in self._meta.concrete_fields if not f.primary_key and f.name != 'version'
+            ]
         super().save(*args, **kwargs)
 
 

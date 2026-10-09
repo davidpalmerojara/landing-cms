@@ -348,3 +348,19 @@ class TestAIWrites:
         assert send.call_args.args[1]['reason'] == 'ai'
         page.refresh_from_db()
         assert page.version == 2
+
+
+@pytest.mark.django_db
+def test_saving_a_stale_instance_never_writes_its_old_version_back():
+    """version only moves through atomic UPDATEs; a full save() of an object
+    loaded before a bump must not undo the bump."""
+    from pages.sync import bump_version
+    page = PageFactory()
+    stale = Page.objects.get(pk=page.pk)
+    bump_version(page)
+    stale.name = 'Renombrada'
+    stale.save()
+
+    fresh = Page.objects.get(pk=page.pk)
+    assert fresh.version == 2
+    assert fresh.name == 'Renombrada'

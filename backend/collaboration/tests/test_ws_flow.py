@@ -96,6 +96,24 @@ class TestConnecting:
         assert await communicator.connect() == (False, 4001)
 
     @async_test
+    async def test_expired_guest_is_refused_with_ticket_and_cookie(self, owner, page):
+        """Same rule as HTTP: a guest past 24 h has no session, even before the sweep."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from accounts.models import User
+
+        def expired_guest_collaborator():
+            guest = make_user('pro')
+            User.objects.filter(pk=guest.pk).update(is_guest=True, created_at=timezone.now() - timedelta(hours=25))
+            page.collaborators.add(guest)
+            return User.objects.get(pk=guest.pk)
+
+        guest = await sync_to_async(expired_guest_collaborator)()
+        for via in ('ticket', 'cookie'):
+            communicator = new_communicator(page.id, guest, via=via)
+            assert await communicator.connect() == (False, 4001), via
+
+    @async_test
     async def test_a_ticket_works_once(self, owner, page):
         first = new_communicator(page.id, owner)
         # Same URL again: the ticket was consumed by the first handshake

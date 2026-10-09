@@ -7,6 +7,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -224,6 +225,10 @@ SIMPLE_JWT = {
 
 
 # CORS — allow frontend dev server
+
+# The editor tags its writes with its WebSocket connection id (ADR-024), so
+# a direct (non-rewritten) call needs it allowed in the CORS preflight.
+CORS_ALLOW_HEADERS = (*default_headers, 'x-connection-id')
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     'CORS_ALLOWED_ORIGINS',

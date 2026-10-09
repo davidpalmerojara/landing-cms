@@ -291,7 +291,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 REVALIDATE_SECRET = os.environ.get('REVALIDATE_SECRET', '')
 
 
-# --- AI generation (ADR-022) ---
+# --- AI generation (ADR-023) ---
 # Server-level keys (users can send their own with each request; those are never stored)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 GOOGLE_AI_KEY = os.environ.get('GOOGLE_AI_KEY', '')

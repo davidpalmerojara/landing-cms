@@ -1,5 +1,5 @@
 """
-Saved AI responses for the demo (ADR-022).
+Saved AI responses for the demo (ADR-023).
 
 Each file in demo_fixtures/ is a complete page generated once with the real
 pipeline (see the generate_ai_fixtures command): the prompt, its language,

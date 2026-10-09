@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Sparkles, Loader2, AlertCircle, Key } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import type { AiDemoInfo, AiPromptSuggestion, AiSource } from '@/lib/api';
+import { aiErrorMessageKey, parseApiError } from '@/lib/ai';
+import { useAiOptions } from '@/hooks/useAiOptions';
+import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
+import AiModeNotice from '@/components/ai/AiModeNotice';
+import AiSavedAnswerNotice from '@/components/ai/AiSavedAnswerNotice';
+import AiSuggestions from '@/components/ai/AiSuggestions';
 
 interface AIGenerateModalProps {
   open: boolean;
@@ -17,21 +24,34 @@ const LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English' },
 ];
 
+/** Errors that mean the server's AI is not available to this user: their own key is the way forward */
+const NEEDS_KEY_CODES = new Set(['AI_NOT_CONFIGURED', 'AI_PLAN_LIMIT', 'AI_INVALID_KEY']);
+
+interface SavedResult {
+  pageId: string;
+  source: AiSource;
+  demo?: AiDemoInfo;
+}
+
 export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenerateModalProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('');
-  const [language, setLanguage] = useState<'es' | 'en'>('es');
+  const [language, setLanguage] = useState<'es' | 'en'>(locale === 'en' ? 'en' : 'es');
+  const { options } = useAiOptions(language, open);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [needsKey, setNeedsKey] = useState(false);
+  // A saved answer says so (and why) before the editor opens
+  const [savedResult, setSavedResult] = useState<SavedResult | null>(null);
 
   // The user's own key: kept in memory while the modal is open, sent with
   // the request and never stored (neither here nor on the server)
   const [showKeySetup, setShowKeySetup] = useState(false);
-  const [aiProvider, setAiProvider] = useState<'gemini' | 'anthropic'>('gemini');
+  const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
   const [aiKey, setAiKey] = useState('');
+  const ownKey = aiKey.trim();
 
   const toneOptions = [
     { value: '', label: t('ai.defaultTone') },
@@ -46,10 +66,15 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
     // Reset state when opening
     setError(null);
     setStatusMsg(null);
-    setNeedsKey(false);
     setShowKeySetup(false);
     setAiKey('');
+    setSavedResult(null);
   }, [open]);
+
+  const pickSuggestion = (suggestion: AiPromptSuggestion) => {
+    setPrompt(suggestion.prompt);
+    setLanguage(suggestion.language);
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -64,7 +89,6 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
       setStatusMsg(t('ai.generatingContent'));
 
       // Then generate blocks
-      const ownKey = aiKey.trim();
       const result = await api.ai.generate(page.id, {
         prompt: prompt.trim(),
         tone,
@@ -73,49 +97,54 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
       });
       setStatusMsg(t('ai.generatedBlocks', { count: result.block_count }));
 
-      // Navigate to editor
-      onGenerated(page.id);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t('ai.generateError');
-      // Parse API error JSON
-      let friendlyError = msg;
-      try {
-        const match = msg.match(/API \d+: (.+)/);
-        if (match) {
-          const parsed = JSON.parse(match[1]);
-          friendlyError = parsed.error || msg;
-          // No server key, or the plan doesn't include AI: the user's own key works
-          if (/clave|API key|plan Pro/i.test(friendlyError)) {
-            setNeedsKey(true);
-          }
-        }
-      } catch {
-        // Use raw message
+      if (result.source === 'demo') {
+        setSavedResult({ pageId: page.id, source: result.source, demo: result.demo });
+        setStatusMsg(null);
+      } else {
+        onGenerated(page.id);
       }
-      setError(friendlyError);
+    } catch (e) {
+      const { message, code } = parseApiError(e, t('ai.generateError'));
+      const translatedKey = aiErrorMessageKey(code);
+      // No server key, or the plan doesn't include AI: the user's own key works
+      if (code && NEEDS_KEY_CODES.has(code)) setShowKeySetup(true);
+      setError(translatedKey ? t(translatedKey) : message);
       setStatusMsg(null);
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // The page already exists and has its blocks: closing after a result opens it
+  const dismiss = useCallback(() => {
+    if (savedResult) onGenerated(savedResult.pageId);
+    else onClose();
+  }, [savedResult, onGenerated, onClose]);
+
   // Close on Escape
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isGenerating) onClose();
+      if (e.key === 'Escape' && !isGenerating) dismiss();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, isGenerating, onClose]);
+  }, [open, isGenerating, dismiss]);
 
   if (!open) return null;
 
+  const isLocked = isGenerating || savedResult !== null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isGenerating ? undefined : onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isGenerating ? undefined : dismiss} />
 
-      <div className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-2xl mx-4 flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-generate-title"
+        className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-2xl mx-4 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80">
           <div className="flex items-center gap-2">
@@ -123,13 +152,14 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-primary">{t('ai.title')}</h2>
+              <h2 id="ai-generate-title" className="text-lg font-semibold text-primary">{t('ai.title')}</h2>
               <p className="text-xs text-muted">{t('ai.subtitle')}</p>
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={dismiss}
             disabled={isGenerating}
+            aria-label={t('common.close')}
             className="p-1.5 rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
@@ -138,20 +168,32 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
+          {!savedResult && options && (
+            <AiSuggestions prompts={options.prompts} onPick={pickSuggestion} disabled={isGenerating} />
+          )}
+
           {/* Prompt */}
           <div>
-            <label className="text-xs font-medium text-secondary mb-1.5 block">{t('ai.descriptionLabel')}</label>
+            <label htmlFor="ai-prompt" className="text-xs font-medium text-secondary mb-1.5 block">{t('ai.descriptionLabel')}</label>
             <textarea
+              id="ai-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={t('ai.placeholder')}
+              aria-describedby="ai-mode-notice"
               rows={5}
               maxLength={2000}
-              disabled={isGenerating}
+              disabled={isLocked}
               className="w-full bg-surface-elevated border border-subtle rounded-xl px-4 py-3 text-sm text-primary placeholder-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 disabled:opacity-50"
             />
-            <div className="flex justify-end mt-1">
-              <span className="text-[10px] text-muted">{prompt.length}/2000</span>
+            <div className="flex items-start justify-between gap-3 mt-1">
+              <AiModeNotice
+                id="ai-mode-notice"
+                mode={options?.mode ?? null}
+                ownKeyProvider={showKeySetup && ownKey ? aiProvider : null}
+                liveUserDailyLimit={options?.live_user_daily_limit ?? 0}
+              />
+              <span className="text-[10px] text-muted shrink-0">{prompt.length}/2000</span>
             </div>
           </div>
 
@@ -162,7 +204,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
-                disabled={isGenerating}
+                disabled={isLocked}
                 className="w-full bg-surface-elevated border border-subtle rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
               >
                 {toneOptions.map((o) => (
@@ -175,7 +217,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as 'es' | 'en')}
-                disabled={isGenerating}
+                disabled={isLocked}
                 className="w-full bg-surface-elevated border border-subtle rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
               >
                 {LANGUAGE_OPTIONS.map((o) => (
@@ -185,54 +227,45 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
             </div>
           </div>
 
+          {/* Own key: always available, kept in memory only */}
+          {!savedResult && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowKeySetup((value) => !value)}
+                aria-expanded={showKeySetup}
+                aria-controls="ai-own-key"
+                disabled={isGenerating}
+                className="text-xs text-primary-color hover:text-primary-color/80 underline flex items-center gap-1 min-h-11 md:min-h-0 disabled:opacity-50"
+              >
+                <Key className="w-3 h-3" aria-hidden="true" />
+                {t('ai.setupKey')}
+              </button>
+              {showKeySetup && (
+                <div id="ai-own-key">
+                  <AiKeyFields
+                    provider={aiProvider}
+                    onProviderChange={setAiProvider}
+                    apiKey={aiKey}
+                    onKeyChange={setAiKey}
+                    disabled={isGenerating}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div className="flex items-start gap-2 text-error text-sm bg-error/10 border border-error/20 rounded-lg px-4 py-3" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <p>{error}</p>
-                {needsKey && !showKeySetup && (
-                  <button
-                    onClick={() => setShowKeySetup(true)}
-                    className="mt-2 text-xs text-primary-color hover:text-primary-color/80 underline flex items-center gap-1"
-                  >
-                    <Key className="w-3 h-3" />
-                    {t('ai.setupKey')}
-                  </button>
-                )}
-              </div>
+              <p>{error}</p>
             </div>
           )}
 
-          {/* Inline key setup */}
-          {showKeySetup && (
-            <div className="bg-surface-elevated/50 border border-subtle rounded-xl p-4 space-y-3">
-              <p className="text-xs text-secondary">
-                {t('ai.keyHelpText')}{' '}
-                <span className="text-primary-color">aistudio.google.com</span>
-              </p>
-              <div className="flex gap-2">
-                <select
-                  value={aiProvider}
-                  onChange={(e) => setAiProvider(e.target.value as 'gemini' | 'anthropic')}
-                  aria-label={t('ai.providerLabel')}
-                  className="bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary focus:outline-none"
-                >
-                  <option value="gemini">{t('ai.providerGemini')}</option>
-                  <option value="anthropic">{t('ai.providerAnthropic')}</option>
-                </select>
-                <input
-                  type="password"
-                  value={aiKey}
-                  onChange={(e) => setAiKey(e.target.value)}
-                  aria-label={t('ai.keyLabel')}
-                  autoComplete="off"
-                  placeholder={aiProvider === 'gemini' ? 'AIzaSy...' : 'sk-ant-...'}
-                  className="flex-1 bg-surface-card border border-default rounded-lg px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <p className="text-xs text-muted">{t('ai.keyNotStored')}</p>
-            </div>
+          {/* A saved answer says so before the editor opens */}
+          {savedResult && (
+            <AiSavedAnswerNotice kind="page" source={savedResult.source} demo={savedResult.demo} />
           )}
 
           {/* Generating status */}
@@ -246,26 +279,38 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80">
-          <button
-            onClick={onClose}
-            disabled={isGenerating}
-            className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 rounded-lg hover:bg-surface-card transition-colors disabled:opacity-50"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
-            className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-          >
-            {isGenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
-            {isGenerating ? t('ai.generatingAction') : t('ai.generatePage')}
-          </button>
+          {savedResult ? (
+            <button
+              onClick={dismiss}
+              className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+            >
+              {t('ai.openEditor')}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                disabled={isGenerating}
+                className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 rounded-lg hover:bg-surface-card transition-colors disabled:opacity-50"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !prompt.trim()}
+                className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {isGenerating ? t('ai.generatingAction') : t('ai.generatePage')}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

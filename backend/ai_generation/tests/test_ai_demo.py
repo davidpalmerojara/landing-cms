@@ -1,4 +1,4 @@
-"""Demo mode, own key, live caps and the block edit merge (ADR-022). No test calls a real provider."""
+"""Demo mode, own key, live caps and the block edit merge (ADR-023). No test calls a real provider."""
 import json
 import re
 from datetime import timedelta

@@ -685,7 +685,7 @@
     "setupKey": "Use my own key",
     "generatePage": "Generate page",
     "generatingAction": "Generating...",
-    "keyHelpText": "You need an API key to use AI generation. Get one for free at",
+    "keyHelpText": "With your own key, AI generates for real. Get one for free at",
     "providerGemini": "Google Gemini (free)",
     "providerAnthropic": "Anthropic Claude",
     "blockEditTitle": "Edit with AI",
@@ -702,9 +702,36 @@
     "creativeTone": "Creative",
     "minimalistTone": "Minimalist",
     "corporateTone": "Corporate",
-    "keyNotStored": "Your key is used for this generation only and is not stored anywhere.",
+    "keyNotStored": "Your key is used for this request only and is not stored anywhere.",
     "providerLabel": "AI provider",
-    "keyLabel": "Your API key"
+    "keyLabel": "Your API key",
+    "suggestionsLabel": "Examples to try",
+    "openEditor": "Open in the editor",
+    "blockEditSend": "Send instruction",
+    "errorNoVariant": "The demo has no saved variant for this type of block. With your own key, AI edits it for real.",
+    "errorKeyQuota": "Your key has run out of quota. Try again later or use another key.",
+    "saved": {
+      "page": {
+        "demo_mode": "Cached demo response: generated once with AI and saved.",
+        "daily_limit": "The demo's daily limit has been reached: this is a saved response.",
+        "provider_quota": "The AI service has run out of quota for now: this is a saved response."
+      },
+      "block": {
+        "demo_mode": "In the demo, AI editing returns a saved variant of the block and does not follow your instruction. With your own key, it does.",
+        "daily_limit": "The demo's daily limit has been reached: this is a saved variant of the block and does not follow your instruction.",
+        "provider_quota": "The AI service has run out of quota for now: this is a saved variant of the block and does not follow your instruction."
+      },
+      "noExampleMatched": "Your description does not match any of the examples, so one was picked for you. With your own key, the page is generated from your text."
+    },
+    "notice": {
+      "demo": "Demo mode: your text is not sent to any AI service and you will get a saved page. With your own key, the page is really generated.",
+      "live": "Your description is sent to Google Gemini to generate the page. Do not include personal data. Limit: {count} a day per person; after that, saved responses are used.",
+      "unavailable": "The server's AI is not available right now. You can use your own key.",
+      "ownKey": {
+        "gemini": "Your description is sent to Google Gemini with your key. Do not include personal data.",
+        "anthropic": "Your description is sent to Anthropic with your key. Do not include personal data."
+      }
+    }
   },
   "upgrade": {
     "compact": "{feature} - Upgrade to Pro",

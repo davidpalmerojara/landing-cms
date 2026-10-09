@@ -1,11 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useEditorStore } from '@/store/editor-store';
+import { countOtherConnections, useEditorStore } from '@/store/editor-store';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-const AUTO_SAVE_DELAY = 3000;
+export const AUTO_SAVE_DELAY = 3000;
+/** Shorter while someone else edits the page, so they see changes sooner and conflicts stay small. */
+export const COLLAB_AUTO_SAVE_DELAY = 800;
+
+/** Debounce for the next autosave: shorter while another socket (person or tab) is on the page. */
+export function autoSaveDelay(otherConnections: number): number {
+  return otherConnections > 0 ? COLLAB_AUTO_SAVE_DELAY : AUTO_SAVE_DELAY;
+}
 
 export function useAutoSave(saveToApi: () => Promise<boolean>) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -55,7 +62,7 @@ export function useAutoSave(saveToApi: () => Promise<boolean>) {
               }
             }, 2000);
           }
-        }, AUTO_SAVE_DELAY);
+        }, autoSaveDelay(countOtherConnections(useEditorStore.getState())));
       },
     );
 

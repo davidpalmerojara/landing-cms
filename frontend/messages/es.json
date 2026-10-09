@@ -399,7 +399,6 @@
     "deleteBlockTitle": "Eliminar bloque",
     "deleteBlockMessage": "¿Eliminar \"{name}\"? Esta acción se puede deshacer con Ctrl+Z.",
     "restoreVersionSuccess": "Versión restaurada",
-    "restoredByCollaborator": "{name} ha restaurado la versión {number}",
     "publishSuccess": "Página publicada en {path}",
     "publishError": "No se ha podido publicar. Inténtalo de nuevo.",
     "unpublishedChanges": "Cambios sin publicar",
@@ -754,7 +753,19 @@
     "invite": "Invitar",
     "owner": "Propietario",
     "removeCollaborator": "Eliminar colaborador",
-    "empty": "Sin colaboradores. Invita a alguien por email."
+    "empty": "Sin colaboradores. Invita a alguien por email.",
+    "inviteLinkTitle": "Invitar con un enlace",
+    "inviteLinkDescription": "Quien abra el enlace podrá editar la página contigo. Caduca en 24 horas y sirve para pocas personas.",
+    "inviteLinkCreate": "Crear enlace de invitación",
+    "inviteLinkCreating": "Creando enlace…",
+    "inviteLinkLabel": "Enlace de invitación",
+    "inviteLinkCopy": "Copiar enlace",
+    "inviteLinkCopied": "Enlace copiado",
+    "inviteLinkCopyError": "No se pudo copiar. Selecciona el enlace y cópialo a mano.",
+    "inviteLinkHint": "Ábrelo en una ventana de incógnito para probar la edición en tiempo real.",
+    "inviteLinkError": "No se pudo crear el enlace. Inténtalo de nuevo.",
+    "guestEmailLocked": "Invitar por email necesita una cuenta. Puedes invitar con un enlace.",
+    "notOwner": "Solo el propietario puede invitar o quitar colaboradores."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -872,5 +883,30 @@
     "pagination": "Paginación de mensajes",
     "previous": "Anterior",
     "pageOf": "Página {page} de {total}"
+  },
+  "collab": {
+    "lockRejected": "{name} está editando este bloque",
+    "lockRejectedAnonymous": "Otra persona está editando este bloque",
+    "planLimit": "La edición en tiempo real necesita el plan Pro del propietario de la página. Tus cambios se siguen guardando.",
+    "saveConflict": "No se pudo guardar: otra persona está cambiando la página a la vez. Se volverá a intentar con tu próximo cambio.",
+    "reconnecting": "Reconectando…",
+    "offline": "Sin tiempo real",
+    "offlineHint": "Se ha perdido la conexión en tiempo real. Tus cambios se siguen guardando; recarga la página para volver a ver los de los demás al momento.",
+    "revokedTitle": "Ya no tienes acceso a esta página",
+    "revokedBody": "El propietario ha dejado de compartirla contigo. Los cambios que hagas a partir de ahora no se guardarán.",
+    "restoredByCollaborator": "{name} ha restaurado una versión anterior"
+  },
+  "join": {
+    "joining": "Abriendo la página compartida…",
+    "invalidTitle": "Este enlace no es válido",
+    "invalidBody": "Puede que haya caducado o que ya lo haya usado demasiada gente. Pide un enlace nuevo a quien te lo envió.",
+    "throttledTitle": "Demasiados intentos",
+    "throttledBody": "Se han abierto muchas sesiones desde esta conexión. Espera un rato y vuelve a abrir el enlace.",
+    "capacityTitle": "Ahora mismo no hay sitio",
+    "capacityBody": "Hay demasiadas sesiones de invitado abiertas. Inténtalo más tarde.",
+    "errorTitle": "No se pudo abrir la página",
+    "errorBody": "Ha ocurrido un error. Vuelve a abrir el enlace dentro de un momento.",
+    "retry": "Reintentar",
+    "goHome": "Ir al inicio"
   }
 }

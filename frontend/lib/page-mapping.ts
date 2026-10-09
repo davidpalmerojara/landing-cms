@@ -3,10 +3,9 @@
  * editor, the preview and the public page so all three read blocks the same way.
  */
 import { blockRegistry } from '@/lib/block-registry';
-import { isBlockType, makeBlock } from '@/lib/block-data';
+import { blockStylesToApi, isBlockType, makeBlock, splitApiStyles } from '@/lib/block-data';
 import { apiToTokens, tokensToApi } from '@/lib/design-tokens';
 import type { ApiBlock, ApiPage } from '@/lib/api';
-import { defaultBlockStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
 import type { Page } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
@@ -21,13 +20,7 @@ export function apiBlocksToLocal(apiBlocks: Pick<ApiBlock, 'id' | 'type' | 'orde
     .sort((a, b) => a.order - b.order)
     .flatMap((b) => {
       if (!isBlockType(b.type)) return [];
-      const { responsive, ...baseStyles } = b.styles as Record<string, unknown>;
-      const base = {
-        id: b.id,
-        name: blockRegistry[b.type].label,
-        styles: { ...defaultBlockStyles, ...baseStyles },
-        responsiveStyles: (responsive as Block['responsiveStyles']) || undefined,
-      };
+      const base = { id: b.id, name: blockRegistry[b.type].label, ...splitApiStyles(b.styles) };
       return [makeBlock(base, b.type, b.data)];
     });
 }
@@ -75,10 +68,7 @@ export function localPageToApi(page: Page) {
       type: b.type,
       order: i,
       data: b.data,
-      styles: {
-        ...b.styles,
-        ...(b.responsiveStyles ? { responsive: b.responsiveStyles } : {}),
-      },
+      styles: blockStylesToApi(b),
     })),
   };
 }

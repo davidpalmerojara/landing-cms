@@ -27,16 +27,17 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
   const initDrag = useEditorStore((s) => s.initDrag);
   const lockHolder = useEditorStore((s) => s.blockLocks[block.id]);
-  const connectedUsers = useEditorStore((s) => s.connectedUsers);
+  const myConnectionId = useEditorStore((s) => s.myConnectionId);
   const myUserId = useEditorStore((s) => s.myUserId);
   const pageId = useEditorStore((s) => s.page.id);
-  const lockedByOther = lockHolder && lockHolder !== myUserId && connectedUsers.find((u) => u.id === lockHolder);
+  // Held by another connection: another person, or this person in another tab
+  const lockedByOther = lockHolder && lockHolder.connectionId !== myConnectionId ? lockHolder : null;
   const isLockedByOther = !!lockedByOther;
   const [showAIEdit, setShowAIEdit] = useState(false);
 
   // Color for the user who has this block selected/locked
   const myColor = myUserId ? getUserColor(myUserId) : null;
-  const otherColor = lockedByOther ? getUserColor(lockedByOther.id) : null;
+  const otherColor = lockedByOther ? getUserColor(lockedByOther.userId) : null;
 
   if (isPreviewMode) {
     return (

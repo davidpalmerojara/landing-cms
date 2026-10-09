@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Monitor, Smartphone, Tablet,
   Eye, Save, CheckCircle2,
@@ -10,12 +10,12 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ShareModal from './ShareModal';
-import { useEditorStore, getUserColor } from '@/store/editor-store';
-import type { CollabUser } from '@/store/editor-store';
+import ConnectionIndicator from './ConnectionIndicator';
+import { useEditorStore, getUserColor, uniquePresenceUsers } from '@/store/editor-store';
+import type { PresenceEntry } from '@/store/editor-store';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import { api } from '@/lib/api';
-import { useGuestSession } from '@/components/guest/GuestSessionProvider';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
@@ -35,9 +35,10 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
   const setDeviceMode = useEditorStore((s) => s.setDeviceMode);
   const isSaved = useEditorStore((s) => s.isSaved);
   const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
-  const connectedUsers = useEditorStore((s) => s.connectedUsers);
-  const { isGuest } = useGuestSession();
-  const addToast = useEditorStore((s) => s.addToast);
+  const presence = useEditorStore((s) => s.presence);
+  const myUserId = useEditorStore((s) => s.myUserId);
+  const presentUsers = useMemo(() => uniquePresenceUsers(presence), [presence]);
+  const someoneElseHere = presentUsers.some((u) => u.userId !== myUserId);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -137,6 +138,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
                 {t('editor.offline')}
               </span>
             )}
+            <ConnectionIndicator />
           </div>
         </div>
       </div>
@@ -262,8 +264,8 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
       </div>
 
       <div className="flex items-center justify-end gap-1.5 xl:gap-3 shrink-0">
-        {connectedUsers.length > 1 && (
-          <PresenceAvatars users={connectedUsers} />
+        {someoneElseHere && (
+          <PresenceAvatars users={presentUsers} />
         )}
         {!page.id.startsWith('page_') && (
           <>
@@ -321,11 +323,10 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
               </button>
             )}
             <button
-              onClick={() => (isGuest ? addToast(t('guest.shareLocked'), 'info') : setShowShareModal(true))}
+              onClick={() => setShowShareModal(true)}
               aria-label={t('editor.share')}
-              aria-disabled={isGuest || undefined}
-              className={`text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors hover:bg-surface-card/50 ${isGuest ? 'text-muted' : 'text-secondary hover:text-primary'}`}
-              title={isGuest ? t('guest.shareLocked') : t('editor.share')}
+              className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors hover:bg-surface-card/50 text-secondary hover:text-primary"
+              title={t('editor.share')}
             >
               <Share2 className="w-4 h-4" />
             </button>
@@ -399,7 +400,7 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
   );
 }
 
-function PresenceAvatars({ users }: { users: CollabUser[] }) {
+function PresenceAvatars({ users }: { users: PresenceEntry[] }) {
   const maxShow = 4;
   const visible = users.slice(0, maxShow);
   const overflow = users.length - maxShow;
@@ -407,19 +408,17 @@ function PresenceAvatars({ users }: { users: CollabUser[] }) {
   return (
     <div className="flex items-center -space-x-2">
       {visible.map((user) => {
-        const color = getUserColor(user.id);
+        const color = getUserColor(user.userId);
         return (
           <div
-            key={user.id}
+            key={user.userId}
+            role="img"
+            aria-label={user.username}
             className="w-7 h-7 rounded-full border-2 border-surface flex items-center justify-center text-[10px] font-bold text-white ring-1 ring-white/10"
             style={{ backgroundColor: color.hex }}
             title={user.username}
           >
-            {user.avatar ? (
-              <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover" />
-            ) : (
-              user.username.charAt(0).toUpperCase()
-            )}
+            {user.username.charAt(0).toUpperCase()}
           </div>
         );
       })}

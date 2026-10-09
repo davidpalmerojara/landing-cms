@@ -1,110 +1,64 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
-import { isBlockId, newBlockId } from '@/lib/block-factory';
-import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
-import { isBlockType, makeBlock } from '@/lib/block-data';
-import type { Page } from '@/types/page';
-import { defaultBlockStyles } from '@/types/blocks';
-import type { ApiPage } from '@/lib/api';
-import { apiPageToLocal, localPageToApi } from '@/lib/page-mapping';
+import { logSyncError, readBackup } from '@/lib/page-backup';
+import { PageSyncController } from '@/lib/page-sync';
+import type { PageSyncCallbacks, RemotePageChange } from '@/lib/page-sync';
 
-const isDev = process.env.NODE_ENV === 'development';
+export type { RemotePageChange } from '@/lib/page-sync';
 
-function logSyncError(message: string, error: unknown) {
-  // TODO: replace with centralized client-side error logging when available.
-  if (isDev) {
-    console.error(message, error);
-  }
-}
-
-// --- Local backup (used only when the API is unreachable) ---
-
-const backupKey = (pageId: string) => `paxl-page-backup:${pageId}`;
-
-function writeBackup(page: Page) {
-  try {
-    localStorage.setItem(backupKey(page.id), JSON.stringify(page));
-  } catch (e) {
-    logSyncError('Could not write local page backup:', e);
-  }
-}
-
-function readBackup(pageId: string): Page | null {
-  try {
-    const raw = localStorage.getItem(backupKey(pageId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Page;
-    if (parsed?.id !== pageId || !Array.isArray(parsed.blocks)) return null;
-    return {
-      ...parsed,
-      // Backups written before design tokens were the only theme have none
-      designTokens: parsed.designTokens ?? cloneDesignTokens(defaultDesignTokens),
-      // Backups written before ADR-014 may hold non-UUID block ids, and older
-      // ones numbered list keys: data is normalized like API data.
-      blocks: parsed.blocks.flatMap((b) => {
-        if (!isBlockType(b.type)) return [];
-        const base = {
-          id: isBlockId(b.id) ? b.id : newBlockId(),
-          name: b.name,
-          styles: b.styles || { ...defaultBlockStyles },
-          responsiveStyles: b.responsiveStyles,
-        };
-        return [makeBlock(base, b.type, b.data)];
-      }),
-    };
-  } catch (e) {
-    logSyncError('Could not read local page backup:', e);
-    return null;
-  }
-}
-
-/** Apply read-only publication fields from the server without an undo step or autosave. */
-function applyPublication(apiPage: ApiPage) {
-  const page = useEditorStore.getState().page;
-  useEditorStore.setState({
-    isRemoteUpdate: true,
-    page: {
-      ...page,
-      status: apiPage.status,
-      publishedAt: apiPage.published_at ?? null,
-      hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
-    },
-  });
-  queueMicrotask(() => useEditorStore.setState({ isRemoteUpdate: false }));
-}
-
-// --- Hook ---
-
-export function usePageSync(pageId?: string) {
+/**
+ * Loads the page and keeps it in sync with the server through one
+ * PageSyncController per page (versioned saves, merges, remote changes).
+ */
+export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) {
   const page = useEditorStore((s) => s.page);
   const loadedPageIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /** The page could not be loaded */
   const [error, setError] = useState<string | null>(null);
+  /** The last save failed (the editor keeps working; shown in the top bar) */
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const callbacksRef = useRef(callbacks);
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  });
+
+  // One controller per page; the callbacks are read when they fire
+  const sync = useMemo(() => new PageSyncController(pageId ?? '', () => ({
+    onRemoteMerged: (change) => callbacksRef.current.onRemoteMerged?.(change),
+    onSaveFailed: (kind, e) => {
+      // A conflict is not a connection problem: the autosave status and a toast explain it
+      if (kind === 'request') setSaveError(e instanceof Error ? e.message : kind);
+      callbacksRef.current.onSaveFailed?.(kind, e);
+    },
+  })), [pageId]);
 
   // Load page from API on mount or pageId change
   useEffect(() => {
     if (loadedPageIdRef.current === (pageId ?? '__no_page__')) return;
     loadedPageIdRef.current = pageId ?? '__no_page__';
 
-    async function loadPage() {
+    async function loadPage(controller: PageSyncController) {
       try {
         if (pageId) {
-          const apiPage = await api.pages.get(pageId);
-          useEditorStore.getState().loadPage(apiPageToLocal(apiPage));
+          await controller.load(() => api.pages.get(pageId));
         } else {
           // Load first available page, or keep the default page from the store
           const response = await api.pages.list();
           if (response.results.length > 0) {
-            const apiPage = await api.pages.get(response.results[0].id);
-            useEditorStore.getState().loadPage(apiPageToLocal(apiPage));
+            const firstId = response.results[0].id;
+            await controller.load(() => api.pages.get(firstId));
           }
         }
       } catch (e) {
         logSyncError('Failed to load page from API, using local backup if any:', e);
         setError(e instanceof Error ? e.message : 'Error al cargar');
+        // Nothing known about the server's copy: the first save fetches it before sending
+        useEditorStore.getState().setSyncBase(null);
         const backup = pageId ? readBackup(pageId) : null;
         if (backup) useEditorStore.getState().loadPage(backup);
       } finally {
@@ -112,64 +66,27 @@ export function usePageSync(pageId?: string) {
       }
     }
 
-    loadPage();
-  }, [pageId]);
+    loadPage(sync);
+  }, [pageId, sync]);
 
-  // Save to API
   const saveToApi = useCallback(async () => {
-    const currentPage = useEditorStore.getState().page;
-    try {
-      setError(null);
-      const payload = localPageToApi(currentPage);
+    setSaveError(null);
+    return sync.save();
+  }, [sync]);
 
-      if (currentPage.id.startsWith('page_')) {
-        // Local-only page, create on backend — must update page with real ID
-        const created = await api.pages.create(payload);
-        useEditorStore.setState({
-          page: apiPageToLocal(created),
-          isSaved: true,
-        });
-      } else {
-        // Block ids are generated client-side and kept by the server (ADR-014),
-        // so the response needs no reconciliation with local state.
-        const updated = await api.pages.update(currentPage.id, payload);
-        const unchanged = useEditorStore.getState().page === currentPage;
-        applyPublication(updated);
-        if (unchanged) useEditorStore.setState({ isSaved: true });
-      }
-
-      writeBackup(useEditorStore.getState().page);
-      return true;
-    } catch (e) {
-      logSyncError('Failed to save to API:', e);
-      setError(e instanceof Error ? e.message : 'Error al guardar');
-      writeBackup(currentPage);
-      return false;
-    }
-  }, []);
-
-  // Publish: save the draft, then freeze it as the public page
   const publishToApi = useCallback(async () => {
-    if (useEditorStore.getState().page.id.startsWith('page_')) return false;
-    const saved = await saveToApi();
-    if (!saved) return false;
-    try {
-      const published = await api.pages.publish(useEditorStore.getState().page.id);
-      applyPublication(published);
-      return true;
-    } catch (e) {
-      logSyncError('Failed to publish:', e);
-      setError(e instanceof Error ? e.message : 'Error al publicar');
-      return false;
-    }
-  }, [saveToApi]);
+    return sync.publish();
+  }, [sync]);
 
-  /** Replace the editor state with the server's copy (e.g. after restoring a version). */
-  const reloadFromApi = useCallback(async () => {
-    const current = useEditorStore.getState().page;
-    const fresh = await api.pages.get(current.id);
-    useEditorStore.getState().loadPage(apiPageToLocal(fresh));
-  }, []);
+  /** Restore a version for everyone; rejects when the server refuses it. */
+  const restoreVersion = useCallback(async (versionId: string) => {
+    await sync.restoreVersion(versionId);
+  }, [sync]);
 
-  return { isLoading, error, saveToApi, publishToApi, reloadFromApi, page };
+  /** A version announced by the collaboration socket (page_updated, reconnect). */
+  const handleRemoteChange = useCallback((change: RemotePageChange) => {
+    void sync.handleRemoteChange(change);
+  }, [sync]);
+
+  return { isLoading, error, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange, page };
 }

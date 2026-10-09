@@ -141,9 +141,9 @@ describe('structural list actions', () => {
 describe('data from outside the editor', () => {
   beforeEach(() => loadFaq(['Q1']));
 
-  it('normalizes remote updates', () => {
+  it('normalizes remote updates, which replace the data (a key left out is emptied)', () => {
     useEditorStore.getState().applyRemoteBlockUpdate(BLOCK, { questions: [{ question: 'Remote' }, 'bad'], q1: 'old' });
-    expect(data()).toEqual({ title: 'FAQ', questions: [{ question: 'Remote', answer: '' }] });
+    expect(data()).toEqual({ title: '', questions: [{ question: 'Remote', answer: '' }] });
   });
 
   it('replaces data from the AI only for known types', () => {

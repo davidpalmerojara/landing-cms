@@ -7,6 +7,7 @@ import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft } from 'lucide-react
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import { nextPathFromLocation } from '@/lib/safe-redirect';
+import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [magicSent, setMagicSent] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [securedNextPath, setSecuredNextPath] = useState<string | null>(null);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +59,10 @@ export default function LoginPage() {
     setError('');
     setMagicSent(false);
   };
+
+  if (securedNextPath) {
+    return <PasswordDisabledScreen onContinue={() => router.replace(securedNextPath)} />;
+  }
 
   return (
     <div id="main-content" className="min-h-screen bg-surface flex items-center justify-center px-4">
@@ -205,11 +211,11 @@ export default function LoginPage() {
                   setError('');
                   setIsLoading(true);
                   try {
-                    await api.auth.googleLogin(credentialResponse.credential);
-                    router.replace(nextPathFromLocation());
-                  } catch (e) {
-                    const emailInUse = e instanceof Error && e.message.includes('EMAIL_IN_USE');
-                    setError(t(emailInUse ? 'auth.googleEmailInUse' : 'auth.googleLoginError'));
+                    const res = await api.auth.googleLogin(credentialResponse.credential);
+                    if (res.password_disabled) setSecuredNextPath(nextPathFromLocation());
+                    else router.replace(nextPathFromLocation());
+                  } catch {
+                    setError(t('auth.googleLoginError'));
                     setIsLoading(false);
                   }
                 }}

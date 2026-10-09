@@ -79,7 +79,9 @@
     "haveAccount": "Already have an account?",
     "registerLink": "Sign up",
     "loginLink": "Log in",
-    "googleEmailInUse": "An account with this email already exists. Log in with your username and password."
+    "passwordDisabledTitle": "We secured your account",
+    "passwordDisabledBody": "This account had a password that was never confirmed from your email. Since you just proved the email is yours, we turned that password off and closed any other open sessions. If you didn't create it, nobody else can get in now. From now on, sign in the way you did today, without a password.",
+    "passwordDisabledContinue": "Continue"
   },
   "errors": {
     "globalTitle": "Something went wrong",

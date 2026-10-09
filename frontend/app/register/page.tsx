@@ -6,6 +6,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordDisabled, setPasswordDisabled] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +48,10 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  if (passwordDisabled) {
+    return <PasswordDisabledScreen onContinue={() => router.replace('/dashboard')} />;
+  }
 
   return (
     <div id="main-content" className="min-h-screen bg-surface flex items-center justify-center px-4">
@@ -143,8 +149,9 @@ export default function RegisterPage() {
                   setError('');
                   setIsLoading(true);
                   try {
-                    await api.auth.googleLogin(credentialResponse.credential);
-                    router.replace('/dashboard');
+                    const res = await api.auth.googleLogin(credentialResponse.credential);
+                    if (res.password_disabled) setPasswordDisabled(true);
+                    else router.replace('/dashboard');
                   } catch {
                     setError(t('auth.googleRegisterError'));
                     setIsLoading(false);

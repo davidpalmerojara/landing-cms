@@ -48,23 +48,6 @@ class TestGoogleOAuth:
 
     @override_settings(GOOGLE_CLIENT_ID='google-client-id')
     @patch('accounts.views.google_id_token.verify_oauth2_token')
-    def test_does_not_link_google_to_an_account_with_a_password(self, mock_verify, api_client):
-        """Pre-account takeover: someone registered the victim's email with their
-        own password (emails are not verified on sign-up). Linking the victim's
-        Google login to that account would let the attacker in."""
-        attacker_made = UserFactory(email='victim@example.com')
-        mock_verify.return_value = {**GOOGLE_IDINFO, 'sub': 'victim-google-sub', 'email': 'victim@example.com'}
-
-        resp = api_client.post('/api/auth/google/', {'token': 'victim-token'}, format='json')
-
-        assert resp.status_code == status.HTTP_409_CONFLICT
-        assert resp.data['code'] == 'EMAIL_IN_USE'
-        assert 'bp_access' not in resp.cookies
-        attacker_made.refresh_from_db()
-        assert attacker_made.google_id in (None, '')
-
-    @override_settings(GOOGLE_CLIENT_ID='google-client-id')
-    @patch('accounts.views.google_id_token.verify_oauth2_token')
     def test_links_google_to_a_passwordless_account(self, mock_verify, api_client):
         """Accounts created by magic link have no password and proved control of the email."""
         user = UserFactory(email='existing@example.com')

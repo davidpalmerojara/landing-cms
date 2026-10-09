@@ -79,7 +79,9 @@
     "haveAccount": "¿Ya tienes cuenta?",
     "registerLink": "Regístrate",
     "loginLink": "Inicia sesión",
-    "googleEmailInUse": "Ya existe una cuenta con este email. Inicia sesión con tu usuario y contraseña."
+    "passwordDisabledTitle": "Hemos protegido tu cuenta",
+    "passwordDisabledBody": "Esta cuenta tenía una contraseña que nunca se confirmó desde tu email. Como acabas de demostrar que el email es tuyo, hemos desactivado esa contraseña y cerrado las demás sesiones abiertas. Si no la creaste tú, nadie más puede entrar ya. A partir de ahora, entra como hoy, sin contraseña.",
+    "passwordDisabledContinue": "Continuar"
   },
   "errors": {
     "globalTitle": "Algo salió mal",

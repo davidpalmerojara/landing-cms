@@ -15,6 +15,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import MagicToken
+from .ownership import confirm_email_owner
 from .serializers import (
     GoogleAuthSerializer,
     MagicLinkRequestSerializer,
@@ -29,10 +30,17 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def _auth_response(user, status_code=200):
-    """Auth response: tokens go only into httpOnly cookies, never the JSON body (ADR-008)."""
+def _auth_response(user, status_code=200, password_disabled=False):
+    """Auth response: tokens go only into httpOnly cookies, never the JSON body (ADR-008).
+
+    password_disabled tells the client that signing in took over an account whose
+    password had never been confirmed by email, so it can explain what happened.
+    """
     refresh = RefreshToken.for_user(user)
-    response = Response({'user': UserSerializer(user).data}, status=status_code)
+    body = {'user': UserSerializer(user).data}
+    if password_disabled:
+        body['password_disabled'] = True
+    response = Response(body, status=status_code)
     set_auth_cookies(response, str(refresh.access_token), str(refresh))
     return response
 
@@ -107,24 +115,14 @@ class GoogleLoginView(APIView):
 
         # Find or create user
         user = User.objects.filter(google_id=google_sub).first()
+        password_disabled = False
 
         if not user:
-            # Check if email is already taken by another account
             user = User.objects.filter(email=email).first()
-            if user and user.has_usable_password():
-                # Emails are not verified on sign-up, so this account may have
-                # been registered by someone else with this email. Linking would
-                # hand them the Google user's account (pre-account takeover).
-                return Response(
-                    {
-                        'error': 'Ya existe una cuenta con este email. Inicia sesión con tu usuario y contraseña.',
-                        'code': 'EMAIL_IN_USE',
-                    },
-                    status=status.HTTP_409_CONFLICT,
-                )
             if user:
-                # Passwordless account (created by magic link, which proves
-                # control of the email): safe to add Google as a login method.
+                # Google verified this email, so the person signing in owns it.
+                # A password set by whoever registered the address first stops working.
+                password_disabled = confirm_email_owner(user)
                 user.google_id = google_sub
                 if picture:
                     user.avatar = picture
@@ -141,11 +139,12 @@ class GoogleLoginView(APIView):
                     email=email,
                     google_id=google_sub,
                     avatar=picture,
+                    email_verified=True,
                 )
                 user.set_unusable_password()
                 user.save()
 
-        return _auth_response(user)
+        return _auth_response(user, password_disabled=password_disabled)
 
 
 class MagicLinkRequestView(APIView):
@@ -221,17 +220,21 @@ class MagicLinkVerifyView(APIView):
 
         # Find or create user
         user = User.objects.filter(email=email).first()
-        if not user:
+        password_disabled = False
+        if user:
+            # The link reached this inbox, so the person signing in owns the email
+            password_disabled = confirm_email_owner(user)
+        else:
             base_username = email.split('@')[0][:30]
             username = base_username
             while User.objects.filter(username=username).exists():
                 username = f"{base_username}_{uuid.uuid4().hex[:6]}"
 
-            user = User(username=username, email=email)
+            user = User(username=username, email=email, email_verified=True)
             user.set_unusable_password()
             user.save()
 
-        return _auth_response(user)
+        return _auth_response(user, password_disabled=password_disabled)
 
 
 class LogoutView(APIView):

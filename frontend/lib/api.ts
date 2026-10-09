@@ -71,6 +71,8 @@ export interface ApiUser {
 
 export interface AuthResponse {
   user: ApiUser;
+  /** Present when this sign-in proved the email and turned off a password that was never confirmed */
+  password_disabled?: boolean;
 }
 
 export interface ApiBlock {

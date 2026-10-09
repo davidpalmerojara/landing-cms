@@ -1,7 +1,9 @@
 """JWT authentication that reads from httpOnly cookies with header fallback."""
 
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken
 from .cookies import ACCESS_COOKIE
+from .sessions import issued_before_revocation
 
 
 class CookieJWTAuthentication(JWTAuthentication):
@@ -23,3 +25,9 @@ class CookieJWTAuthentication(JWTAuthentication):
 
         validated_token = self.get_validated_token(raw_token)
         return self.get_user(validated_token), validated_token
+
+    def get_user(self, validated_token):
+        user = super().get_user(validated_token)
+        if issued_before_revocation(user, validated_token):
+            raise InvalidToken('La sesión se cerró.')
+        return user

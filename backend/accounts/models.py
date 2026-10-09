@@ -13,6 +13,11 @@ class User(AbstractUser):
     avatar = models.URLField(blank=True, default='')
     email = models.EmailField(unique=True)
     google_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    # Set once someone proves control of the email (magic link or Google).
+    # Sign-up with a password does not prove it.
+    email_verified = models.BooleanField(default=False)
+    # Tokens issued before this instant are rejected (see accounts/sessions.py)
+    sessions_revoked_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

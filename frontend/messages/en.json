@@ -288,7 +288,10 @@
     "pagesCount": "{count, plural, one {# page} other {# pages}}",
     "publishedCount": "{count, plural, one {# published} other {# published}}",
     "blocksCount": "{count, plural, one {# block} other {# blocks}}",
-    "pageOptions": "Options for {name}"
+    "pageOptions": "Options for {name}",
+    "unpublish": "Unpublish",
+    "unpublishConfirm": "Unpublish “{name}”? The page will no longer be available at its public address. The draft is kept.",
+    "unpublishError": "The page could not be unpublished."
   },
   "settingsPage": {
     "title": "Settings",
@@ -357,7 +360,9 @@
     "restoreVersionSuccess": "Version restored",
     "restoredByCollaborator": "{name} restored version {number}",
     "publishSuccess": "Page published at {path}",
-    "publishError": "The page could not be published. Please try again."
+    "publishError": "The page could not be published. Please try again.",
+    "unpublishedChanges": "Unpublished changes",
+    "publishChanges": "Publish changes"
   },
   "versionHistory": {
     "title": "Version history",

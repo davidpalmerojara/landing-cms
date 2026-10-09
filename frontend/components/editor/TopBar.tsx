@@ -97,12 +97,16 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
             <span className="font-medium text-sm text-primary tracking-wide truncate max-w-[16rem]" title={page.name}>{page.name}</span>
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 border ${
-                page.status === 'published'
-                  ? 'bg-success/10 text-success border-success/30'
-                  : 'bg-warning/10 text-warning border-warning/30'
+                page.status !== 'published'
+                  ? 'bg-surface-elevated text-secondary border-default/30'
+                  : page.hasUnpublishedChanges
+                    ? 'bg-warning/10 text-warning border-warning/30'
+                    : 'bg-success/10 text-success border-success/30'
               }`}
             >
-              {page.status === 'published' ? t('common.published') : t('common.draft')}
+              {page.status !== 'published'
+                ? t('common.draft')
+                : page.hasUnpublishedChanges ? t('editor.unpublishedChanges') : t('common.published')}
             </span>
             <span aria-live="polite">
               {autoSaveStatus === 'saving' && (
@@ -364,7 +368,9 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
           className="text-white text-sm font-bold px-3 xl:px-4 py-1.5 rounded-md shadow-lg transition-all active:scale-95 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
         >
-          {isPublishing ? t('editor.publishLoading') : t('editor.publishPage')}
+          {isPublishing
+            ? t('editor.publishLoading')
+            : page.status === 'published' && page.hasUnpublishedChanges ? t('editor.publishChanges') : t('editor.publishPage')}
         </button>
       </div>
 

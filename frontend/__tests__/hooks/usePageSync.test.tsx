@@ -12,6 +12,7 @@ vi.mock('@/lib/api', () => ({
       update: vi.fn(),
       create: vi.fn(),
       list: vi.fn(),
+      publish: vi.fn(),
     },
   },
 }));
@@ -19,6 +20,7 @@ vi.mock('@/lib/api', () => ({
 const { api } = await import('@/lib/api');
 const getPage = vi.mocked(api.pages.get);
 const updatePage = vi.mocked(api.pages.update);
+const publishPage = vi.mocked(api.pages.publish);
 
 const PAGE_ID = '11111111-1111-4111-8111-111111111111';
 const BLOCK_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -157,4 +159,50 @@ describe('usePageSync', () => {
     expect(past).toEqual([]);
     view.unmount();
   });
+
+  it('publish saves the draft first, then freezes it', async () => {
+    getPage.mockResolvedValue(apiPage());
+    const view = await mount();
+    act(() => { useEditorStore.getState().updateBlock(BLOCK_A, 'title', 'Lista para publicar'); });
+    updatePage.mockResolvedValue(apiPage({ has_unpublished_changes: false }));
+    publishPage.mockResolvedValue(apiPage({ status: 'published', published_at: '2026-10-09T10:00:00Z', has_unpublished_changes: false }));
+    const pastBefore = useEditorStore.getState().past.length;
+
+    let ok = false;
+    await act(async () => { ok = await sync.publishToApi(); });
+
+    expect(ok).toBe(true);
+    expect(updatePage.mock.invocationCallOrder[0]).toBeLessThan(publishPage.mock.invocationCallOrder[0]);
+    const { page, past } = useEditorStore.getState();
+    expect(page.status).toBe('published');
+    expect(page.hasUnpublishedChanges).toBe(false);
+    expect(past.length).toBe(pastBefore); // status change is not an undo step
+    view.unmount();
+  });
+
+  it('does not publish when saving the draft fails', async () => {
+    getPage.mockResolvedValue(apiPage());
+    const view = await mount();
+    updatePage.mockRejectedValue(new Error('API 500'));
+
+    let ok = true;
+    await act(async () => { ok = await sync.publishToApi(); });
+
+    expect(ok).toBe(false);
+    expect(publishPage).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it('marks unpublished changes after saving a published page', async () => {
+    getPage.mockResolvedValue(apiPage({ status: 'published', has_unpublished_changes: false }));
+    const view = await mount();
+    act(() => { useEditorStore.getState().updateBlock(BLOCK_A, 'title', 'Editado'); });
+    updatePage.mockResolvedValue(apiPage({ status: 'published', has_unpublished_changes: true }));
+
+    await act(async () => { await sync.saveToApi(); });
+
+    expect(useEditorStore.getState().page.hasUnpublishedChanges).toBe(true);
+    view.unmount();
+  });
 });
+

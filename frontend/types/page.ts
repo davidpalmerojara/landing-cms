@@ -34,4 +34,8 @@ export interface Page {
   designTokens?: DesignTokens;
   seo: SeoFields;
   blocks: Block[];
+  /** When the public copy was last frozen (ADR-017). Read-only, from the server. */
+  publishedAt?: string | null;
+  /** The draft was edited after the last publish. Read-only, from the server. */
+  hasUnpublishedChanges?: boolean;
 }

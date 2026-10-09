@@ -42,6 +42,8 @@ export function apiPageToLocal(apiPage: ApiPage): Page {
       ogType: apiPage.og_type || 'website',
       noindex: apiPage.noindex ?? false,
     },
+    publishedAt: apiPage.published_at ?? null,
+    hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
     blocks: apiPage.blocks.map((b): Block => {
       const { responsive, ...baseStyles } = b.styles as Record<string, unknown>;
       return {
@@ -60,7 +62,7 @@ export function localPageToApi(page: Page) {
   const seo = page.seo || defaultSeoFields;
   return {
     name: page.name,
-    status: page.status,
+    // status is not sent: it only changes through publish/unpublish (ADR-017)
     theme_id: page.themeId || 'default',
     custom_theme: page.customTheme || {},
     design_tokens: page.designTokens ? tokensToApi(page.designTokens) : {},
@@ -118,11 +120,19 @@ function readBackup(pageId: string): Page | null {
   }
 }
 
-/** Marks the page as saved unless it changed while the request was in flight. */
-function markSavedIfUnchanged(sentPage: Page) {
-  if (useEditorStore.getState().page === sentPage) {
-    useEditorStore.setState({ isSaved: true });
-  }
+/** Apply read-only publication fields from the server without an undo step or autosave. */
+function applyPublication(apiPage: ApiPage) {
+  const page = useEditorStore.getState().page;
+  useEditorStore.setState({
+    isRemoteUpdate: true,
+    page: {
+      ...page,
+      status: apiPage.status,
+      publishedAt: apiPage.published_at ?? null,
+      hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
+    },
+  });
+  queueMicrotask(() => useEditorStore.setState({ isRemoteUpdate: false }));
 }
 
 // --- Hook ---
@@ -181,8 +191,10 @@ export function usePageSync(pageId?: string) {
       } else {
         // Block ids are generated client-side and kept by the server (ADR-014),
         // so the response needs no reconciliation with local state.
-        await api.pages.update(currentPage.id, payload);
-        markSavedIfUnchanged(currentPage);
+        const updated = await api.pages.update(currentPage.id, payload);
+        const unchanged = useEditorStore.getState().page === currentPage;
+        applyPublication(updated);
+        if (unchanged) useEditorStore.setState({ isSaved: true });
       }
 
       writeBackup(useEditorStore.getState().page);
@@ -195,37 +207,21 @@ export function usePageSync(pageId?: string) {
     }
   }, []);
 
-  // Publish
+  // Publish: save the draft, then freeze it as the public page
   const publishToApi = useCallback(async () => {
-    const currentPage = useEditorStore.getState().page;
+    if (useEditorStore.getState().page.id.startsWith('page_')) return false;
+    const saved = await saveToApi();
+    if (!saved) return false;
     try {
-      setError(null);
-      const payload = { ...localPageToApi(currentPage), status: 'published' };
-
-      if (currentPage.id.startsWith('page_')) {
-        const result = await api.pages.create(payload);
-        useEditorStore.setState({
-          page: apiPageToLocal(result),
-          isSaved: true,
-        });
-      } else {
-        await api.pages.update(currentPage.id, payload);
-        // Reflect the new status locally without adding an undo step
-        const latestPage = useEditorStore.getState().page;
-        useEditorStore.setState({
-          isRemoteUpdate: true,
-          page: { ...latestPage, status: 'published' },
-          isSaved: latestPage === currentPage,
-        });
-        queueMicrotask(() => useEditorStore.setState({ isRemoteUpdate: false }));
-      }
+      const published = await api.pages.publish(useEditorStore.getState().page.id);
+      applyPublication(published);
       return true;
     } catch (e) {
       logSyncError('Failed to publish:', e);
       setError(e instanceof Error ? e.message : 'Error al publicar');
       return false;
     }
-  }, []);
+  }, [saveToApi]);
 
   /** Replace the editor state with the server's copy (e.g. after restoring a version). */
   const reloadFromApi = useCallback(async () => {

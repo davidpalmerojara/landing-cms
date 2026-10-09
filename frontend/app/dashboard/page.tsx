@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   Plus, FileText, Copy, Trash2, ExternalLink, Globe,
   Loader2, AlertCircle, MoreVertical, LogOut, Users,
-  FolderOpen, Settings, Search, Layers, Pencil, Menu, X,
+  FolderOpen, Settings, Search, Layers, Pencil, Menu, X, EyeOff,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiPageListItem } from '@/lib/api';
@@ -125,6 +125,17 @@ export default function DashboardPage() {
       } else {
         setError(msg);
       }
+    }
+  };
+
+  const handleUnpublish = async (id: string, name: string) => {
+    setOpenMenuId(null);
+    if (!window.confirm(t('dashboard.unpublishConfirm', { name }))) return;
+    try {
+      const updated = await api.pages.unpublish(id);
+      setPages((prev) => prev.map((p) => (p.id === id ? { ...p, status: updated.status, has_unpublished_changes: false } : p)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('dashboard.unpublishError'));
     }
   };
 
@@ -399,7 +410,11 @@ export default function DashboardPage() {
                             : 'bg-surface-card text-primary'
                         }`}
                       >
-                        {page.status === 'published' ? t('common.published').toUpperCase() : t('common.draft').toUpperCase()}
+                        {page.status !== 'published'
+                          ? t('common.draft').toUpperCase()
+                          : page.has_unpublished_changes
+                            ? t('editor.unpublishedChanges').toUpperCase()
+                            : t('common.published').toUpperCase()}
                       </span>
                     </div>
                     {/* Gradient overlay */}
@@ -470,6 +485,18 @@ export default function DashboardPage() {
                               >
                                 <Globe className="w-3.5 h-3.5" />
                                 {t('dashboard.viewPublished')}
+                              </button>
+                            )}
+                            {page.status === 'published' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnpublish(page.id, page.name);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
+                              >
+                                <EyeOff className="w-3.5 h-3.5" />
+                                {t('dashboard.unpublish')}
                               </button>
                             )}
                             <div className="border-t border-default/30 my-1" />

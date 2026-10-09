@@ -103,6 +103,8 @@ export interface ApiPage extends ApiSeoFields {
   custom_theme?: Record<string, string> | null;
   design_tokens?: Record<string, unknown> | null;
   blocks: ApiBlock[];
+  published_at?: string | null;
+  has_unpublished_changes?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +128,8 @@ export interface ApiPageListItem extends ApiSeoFields {
   owner_name?: string;
   is_shared?: boolean;
   preview_blocks: ApiPreviewBlock[];
+  published_at?: string | null;
+  has_unpublished_changes?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -232,6 +236,11 @@ export const api = {
 
     duplicate: (id: string) =>
       request<ApiPage>(`/pages/${id}/duplicate/`, { method: 'POST' }),
+
+    /** Freeze the saved draft as the public page (ADR-017). */
+    publish: (id: string) => request<ApiPage>(`/pages/${id}/publish/`, { method: 'POST' }),
+
+    unpublish: (id: string) => request<ApiPage>(`/pages/${id}/unpublish/`, { method: 'POST' }),
 
     share: (id: string, email: string) =>
       request<{ message: string }>(`/pages/${id}/share/`, {

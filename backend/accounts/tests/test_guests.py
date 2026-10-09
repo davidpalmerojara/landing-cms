@@ -377,6 +377,44 @@ class TestGuestPublishedPages:
         assert data['noindex'] is False
         assert data['show_watermark'] is False
 
+    def test_guest_pages_cannot_carry_custom_html_and_say_they_are_demos(self, api_client):
+        """Anyone can create a guest, so their public pages must not work for phishing."""
+        client, guest = start_guest()
+        page = PageFactory(owner=guest, slug='demo-html')
+        BlockFactory(page=page, type='hero', order=0)
+        BlockFactory(page=page, type='customHtml', order=1, data={'html': '<form>Contraseña</form>'})
+        client.post(f'/api/pages/{page.id}/publish/')
+
+        data = api_client.get('/api/public/pages/demo-html/').data
+
+        assert data['is_guest_page'] is True
+        assert [b['type'] for b in data['blocks']] == ['hero']
+
+    def test_guest_pages_do_not_collect_contact_messages(self, api_client):
+        client, guest = start_guest()
+        page = PageFactory(owner=guest, slug='demo-contacto')
+        BlockFactory(page=page, type='contact', order=0, data={'title': 'Escríbenos'})
+        client.post(f'/api/pages/{page.id}/publish/')
+
+        resp = api_client.post('/api/public/pages/demo-contacto/contact/', {
+            'name': 'Ana', 'email': 'ana@example.com', 'message': 'Hola',
+        }, format='json')
+
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert resp.data['code'] == 'GUEST_PAGE'
+        assert not FormSubmission.objects.filter(page=page).exists()
+
+    def test_normal_pages_are_not_marked_as_guest_pages(self, api_client):
+        owner = UserFactory()
+        page = PageFactory(owner=owner, slug='normal-html')
+        BlockFactory(page=page, type='customHtml', order=0, data={'html': '<p>Hola</p>'})
+        page.publish(owner)
+
+        data = api_client.get('/api/public/pages/normal-html/').data
+
+        assert data['is_guest_page'] is False
+        assert [b['type'] for b in data['blocks']] == ['customHtml']
+
     def test_the_public_page_disappears_with_the_guest(self, api_client):
         page = self.publish_guest_page()
         age(page.owner, 25)

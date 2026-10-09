@@ -75,17 +75,23 @@ class PublicPageView(generics.RetrieveAPIView):
         # A guest's page is a demo: never indexed, always with the watermark
         is_guest_page = page.owner.is_guest if page.owner else False
         seo = {field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS}
+        blocks = sorted(version.snapshot, key=lambda b: b.get('order', 0))
         if is_guest_page:
             seo['noindex'] = True
+            # Anyone can create a guest: their pages must not be usable for
+            # phishing on this domain. No custom HTML, and the client shows a
+            # notice and keeps the contact form from sending.
+            blocks = [b for b in blocks if b.get('type') != 'customHtml']
         return Response({
             'id': str(page.id),
             'slug': page.slug,
             'status': page.status,
             **seo,
-            'blocks': sorted(version.snapshot, key=lambda b: b.get('order', 0)),
+            'blocks': blocks,
             'published_at': published,
             'updated_at': published,
             'show_watermark': is_guest_page or not getattr(plan, 'remove_watermark', False),
+            'is_guest_page': is_guest_page,
         })
 
 

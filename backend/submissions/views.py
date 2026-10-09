@@ -46,13 +46,19 @@ class PublicContactView(APIView):
         page = (
             Page.objects
             .filter(slug=slug, status=Page.Status.PUBLISHED, published_version__isnull=False)
-            .select_related('published_version')
+            .select_related('published_version', 'owner')
             .first()
         )
         if page is None:
             return Response(
                 {'error': 'Página no encontrada.', 'code': 'NOT_FOUND'},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+        if page.owner.is_guest:
+            # Guest pages are demos anyone can create: they don't collect visitors' data
+            return Response(
+                {'error': 'Las páginas de prueba no reciben mensajes.', 'code': 'GUEST_PAGE'},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         block_ids = contact_block_ids(page)

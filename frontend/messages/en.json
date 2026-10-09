@@ -589,7 +589,8 @@
       "rateLimited": "You have sent several messages in a row. Wait a minute and try again.",
       "unavailable": "This form is no longer available.",
       "generic": "We couldn't send your message. Please try again in a moment."
-    }
+    },
+    "contactGuestNote": "Test pages in the demo don't send messages."
   },
   "preview": {
     "backToEditor": "Back to editor",
@@ -712,7 +713,8 @@
   },
   "publicPage": {
     "empty": "This page has no content.",
-    "madeWith": "Made with Paxl"
+    "madeWith": "Made with Paxl",
+    "guestNotice": "Test page created by a guest in the Paxl demo. It is deleted within 24 hours. Don't enter personal data."
   },
   "share": {
     "title": "Share page",

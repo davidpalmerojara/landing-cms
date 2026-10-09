@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Code2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, CustomHtmlData } from '@/types/blocks';
 
 /**
  * Sandbox for user HTML. No allow-scripts: nothing in the block can run
@@ -52,9 +52,9 @@ function SandboxedHtml({ html, title }: { html: string; title: string }) {
   );
 }
 
-export default function CustomHtmlBlock({ data, isPreviewMode }: BlockProps) {
+export default function CustomHtmlBlock({ data, isPreviewMode }: BlockProps<CustomHtmlData>) {
   const t = useTranslations('blocks');
-  const html = (data.html as string) || '';
+  const html = data.html;
 
   if (isPreviewMode && html) {
     return <SandboxedHtml html={html} title={t('customHtmlPreview')} />;

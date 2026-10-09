@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api } from '@/lib/api';
+import type { BlockData } from '@/types/blocks';
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001';
 const LOCK_RENEW_INTERVAL = 10_000; // 10s
@@ -63,7 +64,7 @@ export function useCollaboration(
     useEditorStore.getState().setBlockLock(blockId, null);
   }, [send]);
 
-  const sendBlockUpdate = useCallback((blockId: string, data?: Record<string, unknown>, styles?: Record<string, unknown>) => {
+  const sendBlockUpdate = useCallback((blockId: string, data?: BlockData, styles?: Record<string, unknown>) => {
     send({ type: 'block_updated', block_id: blockId, data, styles });
   }, [send]);
 
@@ -127,7 +128,7 @@ export function useCollaboration(
       case 'block_updated':
         store.applyRemoteBlockUpdate(
           msg.block_id as string,
-          msg.data as Record<string, unknown> | undefined,
+          msg.data,
           msg.styles as Record<string, unknown> | undefined,
         );
         break;
@@ -198,7 +199,7 @@ export function useCollaboration(
           if (dataChanged || stylesChanged) {
             sendBlockUpdate(
               block.id,
-              dataChanged ? (block.data as unknown as Record<string, unknown>) : undefined,
+              dataChanged ? block.data : undefined,
               stylesChanged ? (block.styles as unknown as Record<string, unknown>) : undefined,
             );
           }

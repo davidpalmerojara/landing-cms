@@ -1,17 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
-import { defaultBlockStyles, type Block } from '@/types/blocks';
+import { defaultBlockStyles, type Block, type BlockType } from '@/types/blocks';
+import { getAtPath, makeBlock as buildBlock } from '@/lib/block-data';
 import { defaultSeoFields, type Page } from '@/types/page';
 import { cloneDesignTokens, defaultDesignTokens, presetTokens } from '@/lib/design-tokens';
 
-function makeBlock(id: string, type = 'hero'): Block {
-  return {
-    id,
-    type,
-    name: `${type} block`,
-    data: { title: 'Test' },
-    styles: { ...defaultBlockStyles },
-  };
+function makeBlock(id: string, type: BlockType = 'hero'): Block {
+  return buildBlock({ id, name: `${type} block`, styles: { ...defaultBlockStyles } }, type, { title: 'Test' });
 }
 
 function makePage(blocks: Block[], overrides: Partial<Page> = {}): Page {
@@ -96,7 +91,7 @@ describe('editor-store', () => {
       const { updateBlock } = useEditorStore.getState();
       updateBlock('b2', 'title', 'New Title');
       const block = useEditorStore.getState().page.blocks.find((b) => b.id === 'b2');
-      expect(block?.data.title).toBe('New Title');
+      expect(getAtPath(block?.data, ['title'])).toBe('New Title');
     });
   });
 

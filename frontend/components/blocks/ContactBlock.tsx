@@ -3,7 +3,7 @@
 import { useRef, type FormEvent } from 'react';
 import { AlertCircle, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, ContactData } from '@/types/blocks';
 import { useContactForm } from '@/hooks/useContactForm';
 import EditableText from './EditableText';
 import { useContactFormContext } from './contact-form-context';
@@ -12,7 +12,7 @@ const FIELD_CLASS = 'w-full px-4 py-3 rounded-lg text-sm focus-visible:outline-2
 const FIELD_STYLE = { backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' };
 
 /** The working form, shown on the page (preview mode). It only sends from a published page. */
-function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>) {
+function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'blockId' | 'data'>) {
   const t = useTranslations('blocks');
   const { slug } = useContactFormContext();
   const { status, errorKind, isSending, submit } = useContactForm(slug, blockId);
@@ -45,7 +45,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>
             required
             maxLength={100}
             autoComplete="name"
-            placeholder={(data.namePlaceholder as string) || t('contactName')}
+            placeholder={data.namePlaceholder || t('contactName')}
             className={FIELD_CLASS}
             style={FIELD_STYLE}
           />
@@ -59,7 +59,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>
             required
             maxLength={254}
             autoComplete="email"
-            placeholder={(data.emailPlaceholder as string) || t('contactEmail')}
+            placeholder={data.emailPlaceholder || t('contactEmail')}
             className={FIELD_CLASS}
             style={FIELD_STYLE}
           />
@@ -72,7 +72,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>
           name="message"
           required
           maxLength={2000}
-          placeholder={(data.messagePlaceholder as string) || t('contactMessagePlaceholder')}
+          placeholder={data.messagePlaceholder || t('contactMessagePlaceholder')}
           className={`${FIELD_CLASS} h-32 resize-none`}
           style={FIELD_STYLE}
         />
@@ -90,7 +90,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>
         style={{ backgroundColor: 'var(--theme-primary)' }}
       >
         {isSending ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" aria-hidden="true" />}
-        <span>{isSending ? t('contactSending') : (data.buttonText as string) || t('contactSend')}</span>
+        <span>{isSending ? t('contactSending') : data.buttonText || t('contactSend')}</span>
       </button>
 
       {!canSend && (
@@ -116,7 +116,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps, 'blockId' | 'data'>
   );
 }
 
-export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProps<ContactData>) {
   const t = useTranslations('blocks');
   return (
     <section
@@ -130,7 +130,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
         <EditableText
           blockId={blockId}
           fieldKey="title"
-          value={data.title as string}
+          value={data.title}
           as="h2"
           className="text-center mb-4 text-3xl @tablet:text-4xl"
           style={{ color: 'var(--theme-text)', fontFamily: 'var(--bp-font-heading)', fontWeight: 'var(--bp-font-weight-heading)' as unknown as number }}
@@ -138,7 +138,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
         <EditableText
           blockId={blockId}
           fieldKey="subtitle"
-          value={data.subtitle as string}
+          value={data.subtitle}
           as="p"
           className="text-center mb-10"
           style={{ color: 'var(--theme-text-muted)' }}
@@ -154,7 +154,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
               <input
                 id={`${blockId}-name`}
                 type="text"
-                placeholder={(data.namePlaceholder as string) || t('contactName')}
+                placeholder={data.namePlaceholder || t('contactName')}
                 readOnly
                 className="w-full px-4 py-3 rounded-lg text-sm"
                 style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
@@ -165,7 +165,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
               <input
                 id={`${blockId}-email`}
                 type="email"
-                placeholder={(data.emailPlaceholder as string) || t('contactEmail')}
+                placeholder={data.emailPlaceholder || t('contactEmail')}
                 readOnly
                 className="w-full px-4 py-3 rounded-lg text-sm"
                 style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
@@ -176,7 +176,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
             <label htmlFor={`${blockId}-message`} className="sr-only">{t('contactMessage')}</label>
             <textarea
               id={`${blockId}-message`}
-              placeholder={(data.messagePlaceholder as string) || t('contactMessagePlaceholder')}
+              placeholder={data.messagePlaceholder || t('contactMessagePlaceholder')}
               readOnly
               className="w-full px-4 py-3 rounded-lg text-sm h-32 resize-none"
               style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
@@ -187,7 +187,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
             style={{ backgroundColor: 'var(--theme-primary)' }}
           >
             <Send className="w-4 h-4" />
-            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText as string} />
+            <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
           </button>
         </div>
         )}

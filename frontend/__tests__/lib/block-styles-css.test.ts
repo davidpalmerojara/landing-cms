@@ -1,18 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { blockStyleClass, blockStylesCss } from '@/lib/block-styles-css';
 import { defaultBlockStyles, type Block } from '@/types/blocks';
+import { makeBlock } from '@/lib/block-data';
 
 const id = '3f2a9c1e-0000-4000-8000-000000000001';
 
 function block(styles: Partial<Block['styles']>, responsiveStyles?: Block['responsiveStyles']): Block {
-  return {
-    id,
-    type: 'hero',
-    name: 'Hero',
-    data: {},
-    styles: { ...defaultBlockStyles, ...styles },
-    responsiveStyles,
-  };
+  return makeBlock({ id, name: 'Hero', styles: { ...defaultBlockStyles, ...styles }, responsiveStyles }, 'hero', {});
 }
 
 describe('blockStylesCss', () => {

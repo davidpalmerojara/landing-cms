@@ -5,6 +5,7 @@ import NavbarBlock from '@/components/blocks/NavbarBlock';
 import FooterBlock from '@/components/blocks/FooterBlock';
 import PricingBlock from '@/components/blocks/PricingBlock';
 import { blockAnchorIds } from '@/lib/block-anchors';
+import { normalizeBlockData } from '@/lib/block-data';
 import { render } from '../mobile-editor/test-utils';
 
 const props = { blockId: 'b1' };
@@ -19,13 +20,13 @@ describe('block links', () => {
       <HeroBlock
         {...props}
         isPreviewMode
-        data={{
+        data={normalizeBlockData('hero', {
           title: 'T',
           buttonText: 'Go',
           buttonLink: 'https://example.com/a',
           secondaryButtonText: 'More',
           secondaryButtonLink: '#features',
-        }}
+        })}
       />,
     );
     const anchors = Array.from(view.container.querySelectorAll('a'));
@@ -38,19 +39,19 @@ describe('block links', () => {
 
   it('falls back to a plain button for empty or unsafe links', () => {
     const view = render(
-      <CtaBlock {...props} isPreviewMode data={{ title: 'T', buttonText: 'Go', buttonLink: 'javascript:alert(1)' }} />,
+      <CtaBlock {...props} isPreviewMode data={normalizeBlockData('cta', { title: 'T', buttonText: 'Go', buttonLink: 'javascript:alert(1)' })} />,
     );
     expect(view.container.querySelector('a')).toBeNull();
     expect(view.container.querySelector('button')?.textContent).toBe('Go');
     view.unmount();
 
-    const empty = render(<CtaBlock {...props} isPreviewMode data={{ title: 'T', buttonText: 'Go', buttonLink: '' }} />);
+    const empty = render(<CtaBlock {...props} isPreviewMode data={normalizeBlockData('cta', { title: 'T', buttonText: 'Go', buttonLink: '' })} />);
     expect(empty.container.querySelector('a')).toBeNull();
     empty.unmount();
   });
 
   it('renders no anchors in the editor even when links are set', () => {
-    const data = { title: 'T', buttonText: 'Go', buttonLink: 'https://example.com' };
+    const data = normalizeBlockData('cta', { title: 'T', buttonText: 'Go', buttonLink: 'https://example.com' });
     const view = render(<CtaBlock {...props} isPreviewMode={false} data={data} />);
     expect(view.container.querySelector('a')).toBeNull();
     expect(view.container.querySelector('button')).not.toBeNull();
@@ -62,17 +63,16 @@ describe('block links', () => {
       <NavbarBlock
         {...props}
         isPreviewMode
-        data={{
+        data={normalizeBlockData('navbar', {
           brandName: 'Acme',
-          link1: 'A',
-          link1Url: '#features',
-          link2: 'B',
-          link2Url: '//evil.com',
-          link3: 'C',
-          link3Url: '/precios',
+          links: [
+            { label: 'A', url: '#features' },
+            { label: 'B', url: '//evil.com' },
+            { label: 'C', url: '/precios' },
+          ],
           ctaText: 'Go',
           ctaLink: 'mailto:hola@example.com',
-        }}
+        })}
       />,
     );
     expect(hrefs(view.container)).toEqual(['#features', '/precios', 'mailto:hola@example.com']);
@@ -84,15 +84,14 @@ describe('block links', () => {
       <FooterBlock
         {...props}
         isPreviewMode
-        data={{
+        data={normalizeBlockData('footer', {
           brandName: 'Acme',
-          link1Label: 'A',
-          link1Url: 'https://example.com',
-          link2Label: 'B',
-          link2Url: 'data:text/html,x',
-          link3Label: 'C',
-          link3Url: 'tel:+34600123456',
-        }}
+          links: [
+            { label: 'A', url: 'https://example.com' },
+            { label: 'B', url: 'data:text/html,x' },
+            { label: 'C', url: 'tel:+34600123456' },
+          ],
+        })}
       />,
     );
     expect(hrefs(view.container)).toEqual(['https://example.com', 'tel:+34600123456']);
@@ -104,12 +103,12 @@ describe('block links', () => {
       <PricingBlock
         {...props}
         isPreviewMode
-        data={{
-          plan1ButtonText: 'One',
-          plan1ButtonLink: '/registro',
-          plan2ButtonText: 'Two',
-          plan2ButtonLink: ' javascript:alert(1)',
-        }}
+        data={normalizeBlockData('pricing', {
+          plans: [
+            { buttonText: 'One', buttonLink: '/registro' },
+            { buttonText: 'Two', buttonLink: ' javascript:alert(1)' },
+          ],
+        })}
       />,
     );
     expect(hrefs(view.container)).toEqual(['/registro']);

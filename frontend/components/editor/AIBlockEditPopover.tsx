@@ -49,7 +49,11 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
     try {
       const result = await api.ai.editBlock(pageId, blockId, value);
-      replaceBlockData(blockId, result.block.type, result.block.data);
+      if (!replaceBlockData(blockId, result.block.type, result.block.data)) {
+        // The server answered with a block type this editor does not know
+        setError(t('ai.blockEditError'));
+        return;
+      }
       onClose();
     } catch (e) {
       let msg = e instanceof Error ? e.message : t('ai.blockEditError');

@@ -3,10 +3,11 @@ import { act } from 'react';
 import ContactBlock from '@/components/blocks/ContactBlock';
 import { ContactFormProvider } from '@/components/blocks/contact-form-context';
 import { api, ContactSubmitError } from '@/lib/api';
+import { normalizeBlockData } from '@/lib/block-data';
 import { render, type RenderResult } from '../mobile-editor/test-utils';
 
 const BLOCK_ID = '11111111-1111-4111-8111-111111111111';
-const data = { title: 'Escríbenos', subtitle: 'Te leemos', buttonText: 'Mandar mensaje' };
+const data = normalizeBlockData('contact', { title: 'Escríbenos', subtitle: 'Te leemos', buttonText: 'Mandar mensaje' });
 
 function renderBlock(options: { slug: string | null; isPreviewMode?: boolean }): RenderResult {
   return render(

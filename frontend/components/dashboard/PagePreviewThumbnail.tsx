@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { blockRegistry } from '@/lib/block-registry';
+import { UntypedBlockContent } from '@/components/blocks/BlockContent';
+import { isBlockType } from '@/lib/block-data';
 import { pageThemeVars } from '@/lib/page-theme';
 import type { DesignTokens } from '@/lib/design-tokens';
 import type { ApiPreviewBlock } from '@/lib/api';
@@ -56,16 +57,11 @@ export default function PagePreviewThumbnail({ blocks, designTokens }: PagePrevi
           }}
         >
           {blocks.map((block) => {
-            const BlockComponent = blockRegistry[block.type]?.component;
-            if (!BlockComponent) return null;
+            if (!isBlockType(block.type)) return null;
 
             return (
               <div key={block.id} style={{ overflow: 'hidden' }}>
-                <BlockComponent
-                  blockId={block.id}
-                  data={block.data}
-                  isPreviewMode={true}
-                />
+                <UntypedBlockContent block={block} isPreviewMode={true} />
               </div>
             );
           })}

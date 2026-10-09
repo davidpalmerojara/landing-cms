@@ -1,5 +1,5 @@
 import type { StyleGroupKey, StyleFieldDefinition } from '@/lib/block-styles-config';
-import type { FieldDefinition } from '@/types/inspector';
+import type { FieldDefinition, ScalarFieldDefinition } from '@/types/inspector';
 
 function isEnglish(locale: string) {
   return locale.startsWith('en');
@@ -20,119 +20,115 @@ function translateSelectOptionLabel(fieldKey: string, value: string, locale: str
   return null;
 }
 
-function translateExactFieldLabel(fieldKey: string, locale: string) {
-  if (!isEnglish(locale)) return null;
+const EXACT_FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  subtitle: 'Subtitle',
+  buttonText: 'Button text',
+  badgeText: 'Badge text',
+  buttonLink: 'Button link',
+  secondaryButtonText: 'Secondary button text',
+  secondaryButtonLink: 'Secondary button link',
+  backgroundImage: 'Background image',
+  alignment: 'Alignment',
+  brandName: 'Brand name',
+  logoImage: 'Logo',
+  ctaText: 'CTA text',
+  ctaLink: 'CTA link',
+  description: 'Description',
+  copyright: 'Copyright',
+  billingPeriod: 'Billing period',
+  popularBadgeText: 'Popular badge text',
+  columns: 'Columns',
+  namePlaceholder: 'Name placeholder',
+  emailPlaceholder: 'Email placeholder',
+  messagePlaceholder: 'Message placeholder',
+  html: 'HTML code',
+  // List fields
+  features: 'Features',
+  testimonials: 'Testimonials',
+  plans: 'Plans',
+  questions: 'Questions',
+  logos: 'Companies',
+  images: 'Images',
+  members: 'Members',
+  stats: 'Stats',
+  events: 'Events',
+  links: 'Links',
+};
 
-  const exactLabels: Record<string, string> = {
-    title: 'Title',
-    subtitle: 'Subtitle',
-    buttonText: 'Button text',
-    badgeText: 'Badge text',
-    buttonLink: 'Button link',
-    secondaryButtonText: 'Secondary button text',
-    secondaryButtonLink: 'Secondary button link',
-    backgroundImage: 'Background image',
-    alignment: 'Alignment',
-    brandName: 'Brand name',
-    logoImage: 'Logo',
-    link1: 'Link 1',
-    link2: 'Link 2',
-    link3: 'Link 3',
-    link1Url: 'Link 1 destination',
-    link2Url: 'Link 2 destination',
-    link3Url: 'Link 3 destination',
-    ctaText: 'CTA text',
-    ctaLink: 'CTA link',
-    description: 'Description',
-    copyright: 'Copyright',
-    link1Label: 'Link 1 label',
-    link2Label: 'Link 2 label',
-    link3Label: 'Link 3 label',
-    billingPeriod: 'Billing period',
-    popularBadgeText: 'Popular badge text',
-    columns: 'Columns',
-    namePlaceholder: 'Name placeholder',
-    emailPlaceholder: 'Email placeholder',
-    messagePlaceholder: 'Message placeholder',
-    html: 'HTML code',
-  };
+/** Name of one item of each list field. */
+const LIST_ITEM_LABELS: Record<string, string> = {
+  features: 'Feature',
+  testimonials: 'Testimonial',
+  plans: 'Plan',
+  questions: 'Question',
+  logos: 'Company',
+  images: 'Image',
+  members: 'Member',
+  stats: 'Stat',
+  events: 'Event',
+  links: 'Link',
+};
 
-  return exactLabels[fieldKey] || null;
-}
+/** Fields inside list items, by `listKey.itemKey`. */
+const LIST_ITEM_FIELD_LABELS: Record<string, string> = {
+  'features.title': 'Title',
+  'features.description': 'Description',
+  'testimonials.quote': 'Testimonial',
+  'testimonials.author': 'Author',
+  'testimonials.role': 'Role',
+  'plans.name': 'Name',
+  'plans.price': 'Price',
+  'plans.features': 'Features (one per line)',
+  'plans.buttonText': 'Button text',
+  'plans.buttonLink': 'Button link',
+  'plans.highlighted': 'Highlighted',
+  'questions.question': 'Question',
+  'questions.answer': 'Answer',
+  'logos.name': 'Name',
+  'images.src': 'Image',
+  'images.alt': 'Alternative text',
+  'members.name': 'Name',
+  'members.role': 'Role',
+  'members.image': 'Photo',
+  'stats.value': 'Value',
+  'stats.label': 'Label',
+  'events.date': 'Date',
+  'events.title': 'Title',
+  'events.description': 'Description',
+  'links.label': 'Text',
+  'links.url': 'Destination',
+};
 
-function translatePatternFieldLabel(fieldKey: string, locale: string) {
-  if (!isEnglish(locale)) return null;
-
-  const featureMatch = fieldKey.match(/^feature(\d)(Title|Desc)$/);
-  if (featureMatch) {
-    return `Feature ${featureMatch[1]} ${featureMatch[2] === 'Title' ? 'title' : 'description'}`;
-  }
-
-  const planMatch = fieldKey.match(/^plan(\d)(Name|Price|Features|ButtonText|ButtonLink)$/);
-  if (planMatch) {
-    const suffixMap: Record<string, string> = {
-      Name: 'name',
-      Price: 'price',
-      Features: 'features (one per line)',
-      ButtonText: 'button text',
-      ButtonLink: 'button link',
-    };
-    return `Plan ${planMatch[1]} ${suffixMap[planMatch[2]]}`;
-  }
-
-  const questionMatch = fieldKey.match(/^q(\d)$/);
-  if (questionMatch) return `Question ${questionMatch[1]}`;
-
-  const answerMatch = fieldKey.match(/^a(\d)$/);
-  if (answerMatch) return `Answer ${answerMatch[1]}`;
-
-  const logoMatch = fieldKey.match(/^logo(\d)$/);
-  if (logoMatch) return `Company ${logoMatch[1]}`;
-
-  const imageMatch = fieldKey.match(/^image(\d)$/);
-  if (imageMatch) return `Image ${imageMatch[1]}`;
-
-  const memberMatch = fieldKey.match(/^member(\d)(Name|Role|Image)$/);
-  if (memberMatch) {
-    const suffixMap: Record<string, string> = {
-      Name: 'name',
-      Role: 'role',
-      Image: 'photo',
-    };
-    return `Member ${memberMatch[1]} ${suffixMap[memberMatch[2]]}`;
-  }
-
-  const statMatch = fieldKey.match(/^stat(\d)(Value|Label)$/);
-  if (statMatch) {
-    return `Stat ${statMatch[1]} ${statMatch[2] === 'Value' ? 'value' : 'label'}`;
-  }
-
-  const itemMatch = fieldKey.match(/^item(\d)(Date|Title|Desc)$/);
-  if (itemMatch) {
-    const suffixMap: Record<string, string> = {
-      Date: 'date',
-      Title: 'title',
-      Desc: 'description',
-    };
-    return `Event ${itemMatch[1]} ${suffixMap[itemMatch[2]]}`;
-  }
-
-  return null;
-}
-
-export function translateFieldDefinition(field: FieldDefinition, locale: string): FieldDefinition {
-  const translatedLabel =
-    translateExactFieldLabel(field.key, locale) ||
-    translatePatternFieldLabel(field.key, locale) ||
-    field.label;
-
+function translateScalarField(field: ScalarFieldDefinition, label: string | undefined, locale: string): ScalarFieldDefinition {
+  const translated = { ...field, label: label || field.label };
+  if (translated.type !== 'select') return translated;
   return {
-    ...field,
-    label: translatedLabel,
-    options: field.options?.map((option) => ({
+    ...translated,
+    options: translated.options.map((option) => ({
       ...option,
       label: translateSelectOptionLabel(field.key, option.value, locale) || option.label,
     })),
+  };
+}
+
+/** Field labels are written in Spanish in the block registry; English comes from these tables. */
+export function translateFieldDefinition(field: FieldDefinition, locale: string): FieldDefinition {
+  const english = isEnglish(locale);
+  const label = english ? EXACT_FIELD_LABELS[field.key] : undefined;
+  if (field.type !== 'list') return translateScalarField(field, label, locale);
+
+  return {
+    ...field,
+    label: label || field.label,
+    itemLabel: (english && LIST_ITEM_LABELS[field.key]) || field.itemLabel,
+    itemFields: field.itemFields.map((itemField) =>
+      translateScalarField(
+        itemField,
+        english ? LIST_ITEM_FIELD_LABELS[`${field.key}.${itemField.key}`] : undefined,
+        locale,
+      ),
+    ),
   };
 }
 

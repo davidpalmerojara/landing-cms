@@ -1,12 +1,12 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, LogoCloudData } from '@/types/blocks';
 import EditableText from './EditableText';
 
-export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockProps<LogoCloudData>) {
   const t = useTranslations('blocks');
-  const logoKeys = ['logo1', 'logo2', 'logo3', 'logo4', 'logo5'] as const;
+  const hasLogos = data.logos.some((logo) => logo.name);
 
   return (
     <section
@@ -19,29 +19,31 @@ export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockPr
       <EditableText
         blockId={blockId}
         fieldKey="title"
-        value={data.title as string}
+        value={data.title}
         as="p"
         className="text-center text-sm mb-8 uppercase tracking-widest font-medium"
         style={{ color: 'var(--theme-text-muted)' }}
       />
-      <div
-        className="flex items-center justify-center gap-8 max-w-4xl mx-auto flex-wrap @tablet:gap-12"
-      >
-        {logoKeys.map((key) => {
-          const name = data[key] as string;
-          if (!name) return null;
-          return (
-            <EditableText
-              key={key}
-              blockId={blockId}
-              fieldKey={key}
-              value={name}
-              className="font-bold opacity-60 text-lg @tablet:text-xl"
-              style={{ color: 'var(--theme-text-muted)' }}
-            />
-          );
-        })}
-      </div>
+      {hasLogos && (
+        <div
+          className="flex items-center justify-center gap-8 max-w-4xl mx-auto flex-wrap @tablet:gap-12"
+        >
+          {data.logos.map((logo, index) => {
+            // Logos left empty are not shown
+            if (!logo.name) return null;
+            return (
+              <EditableText
+                key={index}
+                blockId={blockId}
+                fieldKey={['logos', index, 'name']}
+                value={logo.name}
+                className="font-bold opacity-60 text-lg @tablet:text-xl"
+                style={{ color: 'var(--theme-text-muted)' }}
+              />
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

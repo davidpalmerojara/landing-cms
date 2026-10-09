@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import clsx from 'clsx';
 import type { Block } from '@/types/blocks';
-import { blockRegistry } from '@/lib/block-registry';
+import BlockContent from '@/components/blocks/BlockContent';
 import { blockAnchorIds } from '@/lib/block-anchors';
 import { blockStyleClass, blockStylesCss } from '@/lib/block-styles-css';
 import { ContactFormProvider } from '@/components/blocks/contact-form-context';
@@ -40,26 +40,18 @@ const PageRenderer = ({ blocks, themeVars, liveLinks = false, contactSlug, class
         <div className={clsx('@container min-h-screen bg-white', className)} style={themeVars}>
           {/* Only numbers, plain colours and validated ids reach this string */}
           {css && <style dangerouslySetInnerHTML={{ __html: css }} />}
-          {blocks.map((block) => {
-            const BlockComponent = blockRegistry[block.type]?.component;
-            if (!BlockComponent) return null;
-            return (
-              <div
-                key={block.id}
-                id={anchorIds.get(block.id)}
-                className={blockStyleClass(block.id) ?? undefined}
-                data-block-id={block.id}
-                data-block-type={block.type}
-                style={block.type !== 'navbar' ? { overflow: 'hidden' } : undefined}
-              >
-                <BlockComponent
-                  blockId={block.id}
-                  data={block.data}
-                  isPreviewMode={true}
-                />
-              </div>
-            );
-          })}
+          {blocks.map((block) => (
+            <div
+              key={block.id}
+              id={anchorIds.get(block.id)}
+              className={blockStyleClass(block.id) ?? undefined}
+              data-block-id={block.id}
+              data-block-type={block.type}
+              style={block.type !== 'navbar' ? { overflow: 'hidden' } : undefined}
+            >
+              <BlockContent block={block} isPreviewMode={true} />
+            </div>
+          ))}
           {children}
         </div>
       </ContactFormProvider>

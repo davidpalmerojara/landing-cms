@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import type { Block } from '@/types/blocks';
+import BlockContent from '@/components/blocks/BlockContent';
 
 const SWIPE_THRESHOLD = 80;
 const LONG_PRESS_MS = 500;
@@ -28,42 +29,39 @@ interface MobileBlockCardProps {
 }
 
 function getBlockPreview(block: Block, t: ReturnType<typeof useTranslations>): string {
-  const d = block.data;
   switch (block.type) {
     case 'hero':
-      return (d.title as string) || t('mobile.heroPreview');
+      return block.data.title || t('mobile.heroPreview');
     case 'features':
-      return (d.title as string) || t('mobile.featuresPreview');
+      return block.data.title || t('mobile.featuresPreview');
     case 'pricing': {
-      const plans = [d.plan1Name, d.plan2Name].filter(Boolean);
-      return plans.length > 0 ? t('mobile.pricingPreview', { count: plans.length }) : t('blocks.pricing');
+      const count = block.data.plans.length;
+      return count > 0 ? t('mobile.pricingPreview', { count }) : t('blocks.pricing');
     }
     case 'testimonials':
-      return (d.title as string) || t('mobile.testimonialsPreview');
+      return block.data.title || t('mobile.testimonialsPreview');
     case 'cta':
-      return (d.title as string) || t('mobile.ctaPreview');
+      return block.data.title || t('mobile.ctaPreview');
     case 'footer':
-      return (d.brandName as string) || t('mobile.footerPreview');
+      return block.data.brandName || t('mobile.footerPreview');
     case 'faq':
-      return (d.title as string) || t('mobile.faqPreview');
+      return block.data.title || t('mobile.faqPreview');
     case 'contact':
-      return (d.title as string) || t('mobile.contactPreview');
+      return block.data.title || t('mobile.contactPreview');
     case 'navbar':
-      return (d.brandName as string) || t('mobile.navbarPreview');
+      return block.data.brandName || t('mobile.navbarPreview');
     case 'team':
-      return (d.title as string) || t('mobile.teamPreview');
+      return block.data.title || t('mobile.teamPreview');
     case 'stats':
-      return (d.title as string) || t('mobile.statsPreview');
+      return block.data.title || t('mobile.statsPreview');
     case 'timeline':
-      return (d.title as string) || t('mobile.timelinePreview');
+      return block.data.title || t('mobile.timelinePreview');
     case 'gallery':
-      return (d.title as string) || t('mobile.galleryPreview');
+      return block.data.title || t('mobile.galleryPreview');
     case 'logoCloud':
-      return (d.title as string) || t('mobile.logoCloudPreview');
+      return block.data.title || t('mobile.logoCloudPreview');
     case 'customHtml':
-      return (d.html as string)?.slice(0, 40) || t('mobile.customHtmlPreview');
-    default:
-      return block.name || block.type;
+      return block.data.html.slice(0, 40) || t('mobile.customHtmlPreview');
   }
 }
 
@@ -233,7 +231,6 @@ export default function MobileBlockCard({
   const swipeProgress = Math.min(Math.abs(swipeX) / SWIPE_THRESHOLD, 1);
 
   // Lazy render block preview
-  const PreviewComponent = isPreviewExpanded ? definition?.component : null;
 
   return (
     <div className="relative" role="listitem" aria-label={`${label}: ${preview}`}>
@@ -322,14 +319,10 @@ export default function MobileBlockCard({
           opacity: isPreviewExpanded ? 1 : 0,
         }}
       >
-        {PreviewComponent && (
+        {isPreviewExpanded && (
           <div className="mt-1 rounded-xl border border-default/15 overflow-hidden bg-white">
             <div className="@container pointer-events-none select-none" style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', maxHeight: 400 }}>
-              <PreviewComponent
-                blockId={block.id}
-                data={block.data}
-                isPreviewMode={true}
-              />
+              <BlockContent block={block} isPreviewMode={true} />
             </div>
           </div>
         )}

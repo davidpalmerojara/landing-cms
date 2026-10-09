@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useEditorStore, HISTORY_COALESCE_MS } from '@/store/editor-store';
 import { defaultBlockStyles } from '@/types/blocks';
+import { getAtPath, makeBlock } from '@/lib/block-data';
 import { defaultSeoFields } from '@/types/page';
 import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import type { Page } from '@/types/page';
@@ -13,11 +14,11 @@ function makePage(id: string, title = 'Start'): Page {
     slug: 'test',
     designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
-    blocks: [{ id: 'b1', type: 'hero', name: 'Hero', data: { title, subtitle: '' }, styles: { ...defaultBlockStyles } }],
+    blocks: [makeBlock({ id: 'b1', name: 'Hero', styles: { ...defaultBlockStyles } }, 'hero', { title, subtitle: '' })],
   };
 }
 
-const title = () => useEditorStore.getState().page.blocks[0].data.title;
+const title = () => getAtPath(useEditorStore.getState().page.blocks[0].data, ['title']);
 
 describe('editor history', () => {
   beforeEach(() => {

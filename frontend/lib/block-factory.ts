@@ -1,5 +1,6 @@
 import { blockRegistry } from './block-registry';
-import type { Block } from '@/types/blocks';
+import { makeBlock } from './block-data';
+import type { Block, BlockType } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 
 /**
@@ -23,16 +24,7 @@ export function isBlockId(id: string): boolean {
   return UUID_RE.test(id);
 }
 
-export function createBlock(type: string): Block {
+export function createBlock(type: BlockType): Block {
   const config = blockRegistry[type];
-  if (!config) {
-    throw new Error(`Unknown block type: ${type}`);
-  }
-  return {
-    id: newBlockId(),
-    type,
-    name: config.label,
-    data: { ...config.initialData },
-    styles: { ...defaultBlockStyles },
-  };
+  return makeBlock({ id: newBlockId(), name: config.label, styles: { ...defaultBlockStyles } }, type, config.initialData);
 }

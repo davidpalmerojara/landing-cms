@@ -1,9 +1,18 @@
 import { defaultBlockStyles } from '@/types/blocks';
-import type { Block } from '@/types/blocks';
+import type { Block, BlockDataMap, BlockType } from '@/types/blocks';
 import { newBlockId } from '@/lib/block-factory';
 import { presetTokens } from '@/lib/design-tokens';
 import type { DesignTokens } from '@/lib/design-tokens';
+import { makeBlock } from '@/lib/block-data';
 
+/** A block of a template: any subset of its type's data (the rest is empty). */
+type TemplateBlock = {
+  [K in BlockType]: {
+    type: K;
+    data: Partial<BlockDataMap[K]>;
+    styles?: Partial<typeof defaultBlockStyles>;
+  };
+}[BlockType];
 
 export interface PageTemplate {
   id: string;
@@ -13,11 +22,7 @@ export interface PageTemplate {
   presetId: string;
   category: string;
   /** Block types in order; each can override data and styles */
-  blocks: Array<{
-    type: string;
-    data: Record<string, unknown>;
-    styles?: Partial<typeof defaultBlockStyles>;
-  }>;
+  blocks: TemplateBlock[];
 }
 
 /** Instantiate a template's blocks with unique IDs */
@@ -26,18 +31,14 @@ export function instantiateTemplate(template: PageTemplate): {
   designTokens: DesignTokens;
   name: string;
 } {
-  const blocks: Block[] = template.blocks.map((def) => ({
-    id: newBlockId(),
-    type: def.type,
-    name: def.type,
-    data: { ...def.data },
-    styles: { ...defaultBlockStyles, ...def.styles },
-  }));
+  const blocks: Block[] = template.blocks.map((def) =>
+    makeBlock({ id: newBlockId(), name: def.type, styles: { ...defaultBlockStyles, ...def.styles } }, def.type, def.data),
+  );
   return { blocks, designTokens: presetTokens(template.presetId), name: template.name };
 }
 
 // ─── Template definitions ────────────────────────────────────────
-// Field keys must match blockRegistry[type].initialData exactly.
+// Data keys are checked against the block's data type (types/block-data.ts).
 
 export const pageTemplates: PageTemplate[] = [
   // ── 1. SaaS Landing ─────────────────────────────────────────
@@ -53,12 +54,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'DataSync',
           logoImage: '',
-          link1: 'Características',
-          link1Url: '#features',
-          link2: 'Precios',
-          link2Url: '#pricing',
-          link3: 'FAQ',
-          link3Url: '#faq',
+          links: [
+            { label: 'Características', url: '#features' },
+            { label: 'Precios', url: '#pricing' },
+            { label: 'FAQ', url: '#faq' },
+          ],
           ctaText: 'Empezar gratis',
           ctaLink: '#pricing',
         },
@@ -77,47 +77,59 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           title: 'Escala sin límites',
           subtitle: 'Diseñado para el rendimiento extremo de las empresas más exigentes.',
-          stat1Value: '99.9%',
-          stat1Label: 'Uptime garantizado',
-          stat2Value: '50M+',
-          stat2Label: 'Eventos diarios',
-          stat3Value: '<10ms',
-          stat3Label: 'Latencia media',
-          stat4Value: '24/7',
-          stat4Label: 'Soporte técnico',
+          stats: [
+            { value: '99.9%', label: 'Uptime garantizado' },
+            { value: '50M+', label: 'Eventos diarios' },
+            { value: '<10ms', label: 'Latencia media' },
+            { value: '24/7', label: 'Soporte técnico' },
+          ],
         },
       },
       {
         type: 'features',
         data: {
           title: 'Todo lo que necesitas para escalar',
-          feature1Title: 'Conexión instantánea',
-          feature1Desc: 'Conecta con más de 50 herramientas y plataformas SaaS en menos de 2 minutos mediante nuestra API unificada.',
-          feature2Title: 'Seguridad de grado bancario',
-          feature2Desc: 'Cifrado end-to-end, cumplimiento SOC2 y GDPR desde el primer día para mantener tus datos a salvo.',
+          features: [
+            {
+              title: 'Conexión instantánea',
+              description: 'Conecta con más de 50 herramientas y plataformas SaaS en menos de 2 minutos mediante nuestra API unificada.',
+            },
+            {
+              title: 'Seguridad de grado bancario',
+              description: 'Cifrado end-to-end, cumplimiento SOC2 y GDPR desde el primer día para mantener tus datos a salvo.',
+            },
+          ],
         },
       },
       {
         type: 'logoCloud',
         data: {
           title: 'Empresas que confían en DataSync',
-          logo1: 'TechFlow',
-          logo2: 'CloudBase',
-          logo3: 'NextWave',
-          logo4: 'DataPrime',
-          logo5: 'Infranet',
+          logos: [
+            { name: 'TechFlow' },
+            { name: 'CloudBase' },
+            { name: 'NextWave' },
+            { name: 'DataPrime' },
+            { name: 'Infranet' },
+          ],
         },
       },
       {
         type: 'testimonials',
         data: {
           title: 'Amado por equipos de ingeniería',
-          quote1: 'Integrar DataSync nos ahorró meses de desarrollo interno. Es magia pura y funciona sin problemas.',
-          author1: 'Elena Torres',
-          role1: 'Lead Engineer en TechFlow',
-          quote2: 'Nunca había visto una sincronización tan rápida. Nuestro equipo ahora puede centrarse en el producto core.',
-          author2: 'Carlos Gómez',
-          role2: 'CTO en Startup.io',
+          testimonials: [
+            {
+              quote: 'Integrar DataSync nos ahorró meses de desarrollo interno. Es magia pura y funciona sin problemas.',
+              author: 'Elena Torres',
+              role: 'Lead Engineer en TechFlow',
+            },
+            {
+              quote: 'Nunca había visto una sincronización tan rápida. Nuestro equipo ahora puede centrarse en el producto core.',
+              author: 'Carlos Gómez',
+              role: 'CTO en Startup.io',
+            },
+          ],
         },
       },
       {
@@ -125,27 +137,44 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           title: 'Precios simples y transparentes',
           subtitle: 'Escala tu infraestructura sin sorpresas en tu factura mensual.',
-          plan1Name: 'Starter',
-          plan1Price: '$29',
-          plan1Features: '100k eventos/mes\nSoporte por email\n3 integraciones',
-          plan1ButtonText: 'Elegir Starter',
-          plan2Name: 'Pro',
-          plan2Price: '$99',
-          plan2Features: 'Eventos ilimitados\nSoporte prioritario 24/7\nIntegraciones ilimitadas',
-          plan2ButtonText: 'Empezar prueba Pro',
-          plan2Highlighted: true,
+          plans: [
+            {
+              name: 'Starter',
+              price: '$29',
+              features: '100k eventos/mes\nSoporte por email\n3 integraciones',
+              buttonText: 'Elegir Starter',
+              buttonLink: '',
+              highlighted: false,
+            },
+            {
+              name: 'Pro',
+              price: '$99',
+              features: 'Eventos ilimitados\nSoporte prioritario 24/7\nIntegraciones ilimitadas',
+              buttonText: 'Empezar prueba Pro',
+              buttonLink: '',
+              highlighted: true,
+            },
+          ],
         },
       },
       {
         type: 'faq',
         data: {
           title: 'Preguntas frecuentes',
-          q1: '¿Tienen prueba gratuita?',
-          a1: 'Sí, ofrecemos 14 días de prueba con acceso a todas las funcionalidades del plan Pro, sin requerir tarjeta de crédito.',
-          q2: '¿Puedo cancelar en cualquier momento?',
-          a2: 'Absolutamente. No hay contratos a largo plazo y puedes cancelar tu suscripción con un solo clic en tu panel.',
-          q3: '¿Ofrecen descuentos para startups?',
-          a3: 'Sí, tenemos un programa especial para startups en etapas tempranas. Contáctanos en el soporte para más detalles.',
+          questions: [
+            {
+              question: '¿Tienen prueba gratuita?',
+              answer: 'Sí, ofrecemos 14 días de prueba con acceso a todas las funcionalidades del plan Pro, sin requerir tarjeta de crédito.',
+            },
+            {
+              question: '¿Puedo cancelar en cualquier momento?',
+              answer: 'Absolutamente. No hay contratos a largo plazo y puedes cancelar tu suscripción con un solo clic en tu panel.',
+            },
+            {
+              question: '¿Ofrecen descuentos para startups?',
+              answer: 'Sí, tenemos un programa especial para startups en etapas tempranas. Contáctanos en el soporte para más detalles.',
+            },
+          ],
         },
       },
       {
@@ -160,9 +189,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'DataSync',
           description: 'Infraestructura de datos robusta para equipos ágiles e innovadores.',
-          link1Label: 'Documentación',
-          link2Label: 'Términos',
-          link3Label: 'Privacidad',
+          links: [
+            { label: 'Documentación', url: '' },
+            { label: 'Términos', url: '' },
+            { label: 'Privacidad', url: '' },
+          ],
           copyright: '© 2026 DataSync Inc. Todos los derechos reservados.',
         },
       },
@@ -183,11 +214,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'Studio.Design',
           logoImage: '',
-          link1: 'Trabajos',
-          link1Url: '#gallery',
-          link2: 'Servicios',
-          link2Url: '#features',
-          link3: 'Sobre mí',
+          links: [
+            { label: 'Trabajos', url: '#gallery' },
+            { label: 'Servicios', url: '#features' },
+            { label: 'Sobre mí', url: '' },
+          ],
           ctaText: 'Hablemos',
           ctaLink: '#cta',
         },
@@ -208,32 +239,46 @@ export const pageTemplates: PageTemplate[] = [
           title: 'Proyectos Destacados',
           subtitle: 'Una selección de mis trabajos recientes en UI/UX y Branding.',
           columns: '2',
-          image1: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
-          image2: 'https://images.unsplash.com/photo-1559028012-481c04fa702d?w=800&q=80',
-          image3: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=800&q=80',
-          image4: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80',
+          images: [
+            { src: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1559028012-481c04fa702d?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80', alt: '' },
+          ],
         },
       },
       {
         type: 'features',
         data: {
           title: 'Cómo puedo ayudarte',
-          feature1Title: 'Diseño de Producto (UI/UX)',
-          feature1Desc: 'Desde la conceptualización hasta los prototipos finales en Figma, creando interfaces intuitivas y accesibles.',
-          feature2Title: 'Estrategia de Marca',
-          feature2Desc: 'Desarrollo de identidades visuales sólidas que conectan emocionalmente con tu audiencia objetivo.',
+          features: [
+            {
+              title: 'Diseño de Producto (UI/UX)',
+              description: 'Desde la conceptualización hasta los prototipos finales en Figma, creando interfaces intuitivas y accesibles.',
+            },
+            {
+              title: 'Estrategia de Marca',
+              description: 'Desarrollo de identidades visuales sólidas que conectan emocionalmente con tu audiencia objetivo.',
+            },
+          ],
         },
       },
       {
         type: 'testimonials',
         data: {
           title: 'Lo que dicen mis clientes',
-          quote1: 'Transformó completamente nuestra aplicación. La retención de usuarios aumentó un 40% en el primer mes tras el rediseño.',
-          author1: 'Laura Méndez',
-          role1: 'Founder en FinTech Plus',
-          quote2: 'Trabajar con él fue un proceso fluido. Supo captar la esencia de nuestra marca desde el primer boceto.',
-          author2: 'David Costa',
-          role2: 'Director de Marketing en StudioX',
+          testimonials: [
+            {
+              quote: 'Transformó completamente nuestra aplicación. La retención de usuarios aumentó un 40% en el primer mes tras el rediseño.',
+              author: 'Laura Méndez',
+              role: 'Founder en FinTech Plus',
+            },
+            {
+              quote: 'Trabajar con él fue un proceso fluido. Supo captar la esencia de nuestra marca desde el primer boceto.',
+              author: 'David Costa',
+              role: 'Director de Marketing en StudioX',
+            },
+          ],
         },
       },
       {
@@ -249,9 +294,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'Studio.Design',
           description: 'Product Designer & UI Developer afincado en Madrid.',
-          link1Label: 'Dribbble',
-          link2Label: 'LinkedIn',
-          link3Label: 'Twitter',
+          links: [
+            { label: 'Dribbble', url: '' },
+            { label: 'LinkedIn', url: '' },
+            { label: 'Twitter', url: '' },
+          ],
           copyright: '© 2026 Studio Design. Creado con pasión.',
         },
       },
@@ -272,12 +319,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'La Brasa',
           logoImage: '',
-          link1: 'El Menú',
-          link1Url: '#gallery',
-          link2: 'Nuestra Historia',
-          link2Url: '#features',
-          link3: 'Ubicación',
-          link3Url: '#cta',
+          links: [
+            { label: 'El Menú', url: '#gallery' },
+            { label: 'Nuestra Historia', url: '#features' },
+            { label: 'Ubicación', url: '#cta' },
+          ],
           ctaText: 'Reservar Mesa',
           ctaLink: '#cta',
         },
@@ -295,10 +341,16 @@ export const pageTemplates: PageTemplate[] = [
         type: 'features',
         data: {
           title: 'Nuestra esencia',
-          feature1Title: 'Ingredientes de proximidad',
-          feature1Desc: 'Trabajamos exclusivamente con productores locales para garantizar la máxima frescura y calidad en cada plato.',
-          feature2Title: 'Horno de leña tradicional',
-          feature2Desc: 'Nuestras carnes y verduras se preparan lentamente en nuestro horno de leña, dándoles ese sabor ahumado inconfundible.',
+          features: [
+            {
+              title: 'Ingredientes de proximidad',
+              description: 'Trabajamos exclusivamente con productores locales para garantizar la máxima frescura y calidad en cada plato.',
+            },
+            {
+              title: 'Horno de leña tradicional',
+              description: 'Nuestras carnes y verduras se preparan lentamente en nuestro horno de leña, dándoles ese sabor ahumado inconfundible.',
+            },
+          ],
         },
       },
       {
@@ -307,24 +359,32 @@ export const pageTemplates: PageTemplate[] = [
           title: 'Nuestros platos estrella',
           subtitle: 'Un vistazo a lo que te espera en La Brasa.',
           columns: '3',
-          image1: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80',
-          image2: 'https://images.unsplash.com/photo-1558030006-450675393462?w=800&q=80',
-          image3: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=800&q=80',
-          image4: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-          image5: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
-          image6: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
+          images: [
+            { src: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1558030006-450675393462?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80', alt: '' },
+            { src: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80', alt: '' },
+          ],
         },
       },
       {
         type: 'testimonials',
         data: {
           title: 'Reseñas de nuestros comensales',
-          quote1: 'El mejor chuletón que he probado en mi vida. El ambiente es acogedor y el servicio impecable. Repetiremos seguro.',
-          author1: 'Javier M.',
-          role1: 'Guía Local de Google',
-          quote2: 'Increíble experiencia. Los entrantes son muy originales y los postres caseros son el broche de oro perfecto.',
-          author2: 'Sofía R.',
-          role2: 'Cliente habitual',
+          testimonials: [
+            {
+              quote: 'El mejor chuletón que he probado en mi vida. El ambiente es acogedor y el servicio impecable. Repetiremos seguro.',
+              author: 'Javier M.',
+              role: 'Guía Local de Google',
+            },
+            {
+              quote: 'Increíble experiencia. Los entrantes son muy originales y los postres caseros son el broche de oro perfecto.',
+              author: 'Sofía R.',
+              role: 'Cliente habitual',
+            },
+          ],
         },
       },
       {
@@ -340,9 +400,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'La Brasa',
           description: 'Cocina de brasa contemporánea. Donde el fuego y el sabor se encuentran.',
-          link1Label: 'Instagram',
-          link2Label: 'TripAdvisor',
-          link3Label: 'Aviso Legal',
+          links: [
+            { label: 'Instagram', url: '' },
+            { label: 'TripAdvisor', url: '' },
+            { label: 'Aviso Legal', url: '' },
+          ],
           copyright: '© 2026 La Brasa. Todos los derechos reservados.',
         },
       },
@@ -370,37 +432,59 @@ export const pageTemplates: PageTemplate[] = [
         type: 'features',
         data: {
           title: '¿Qué estamos construyendo?',
-          feature1Title: 'Innovación real',
-          feature1Desc: 'No es otro producto más. Estamos resolviendo un problema que nadie ha abordado de esta manera.',
-          feature2Title: 'Acceso anticipado',
-          feature2Desc: 'Los primeros suscriptores tendrán acceso exclusivo antes del lanzamiento público y precio especial de por vida.',
+          features: [
+            {
+              title: 'Innovación real',
+              description: 'No es otro producto más. Estamos resolviendo un problema que nadie ha abordado de esta manera.',
+            },
+            {
+              title: 'Acceso anticipado',
+              description: 'Los primeros suscriptores tendrán acceso exclusivo antes del lanzamiento público y precio especial de por vida.',
+            },
+          ],
         },
       },
       {
         type: 'timeline',
         data: {
           title: 'Roadmap de lanzamiento',
-          item1Date: 'Q1 2026',
-          item1Title: 'Beta cerrada',
-          item1Desc: 'Acceso exclusivo para los primeros 500 suscriptores de la lista de espera.',
-          item2Date: 'Q2 2026',
-          item2Title: 'Beta pública',
-          item2Desc: 'Abrimos las puertas al público con un plan gratuito generoso.',
-          item3Date: 'Q3 2026',
-          item3Title: 'Lanzamiento oficial',
-          item3Desc: 'Versión 1.0 con todas las funcionalidades y planes de pago disponibles.',
+          events: [
+            {
+              date: 'Q1 2026',
+              title: 'Beta cerrada',
+              description: 'Acceso exclusivo para los primeros 500 suscriptores de la lista de espera.',
+            },
+            {
+              date: 'Q2 2026',
+              title: 'Beta pública',
+              description: 'Abrimos las puertas al público con un plan gratuito generoso.',
+            },
+            {
+              date: 'Q3 2026',
+              title: 'Lanzamiento oficial',
+              description: 'Versión 1.0 con todas las funcionalidades y planes de pago disponibles.',
+            },
+          ],
         },
       },
       {
         type: 'faq',
         data: {
           title: 'Preguntas frecuentes',
-          q1: '¿Cuándo será el lanzamiento?',
-          a1: 'Estamos en fase de desarrollo activo. El lanzamiento público está previsto para Q2 2026.',
-          q2: '¿Es gratuito?',
-          a2: 'Habrá un plan gratuito generoso y planes de pago para equipos más grandes.',
-          q3: '¿Cómo me apunto a la beta?',
-          a3: 'Déjanos tu email y serás de los primeros en probar la plataforma cuando esté lista.',
+          questions: [
+            {
+              question: '¿Cuándo será el lanzamiento?',
+              answer: 'Estamos en fase de desarrollo activo. El lanzamiento público está previsto para Q2 2026.',
+            },
+            {
+              question: '¿Es gratuito?',
+              answer: 'Habrá un plan gratuito generoso y planes de pago para equipos más grandes.',
+            },
+            {
+              question: '¿Cómo me apunto a la beta?',
+              answer: 'Déjanos tu email y serás de los primeros en probar la plataforma cuando esté lista.',
+            },
+          ],
         },
       },
       {
@@ -415,9 +499,11 @@ export const pageTemplates: PageTemplate[] = [
         data: {
           brandName: 'NuevoProducto',
           description: 'Próximamente. Algo grande se está cocinando.',
-          link1Label: 'Twitter',
-          link2Label: 'Blog',
-          link3Label: 'Contacto',
+          links: [
+            { label: 'Twitter', url: '' },
+            { label: 'Blog', url: '' },
+            { label: 'Contacto', url: '' },
+          ],
           copyright: '© 2026 NuevoProducto. Todos los derechos reservados.',
         },
       },

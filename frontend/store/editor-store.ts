@@ -4,13 +4,30 @@ import type { Page, SeoFields } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
 import type { ColorTokens, TypographyTokens, SpacingTokens, BorderTokens } from '@/lib/design-tokens';
 import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
-import type { Block, BlockStyles } from '@/types/blocks';
+import type { Block, BlockDataMap, BlockStyles, BlockType, DataPath } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
 import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
 import { newBlockId } from '@/lib/block-factory';
+import {
+  getAtPath,
+  insertListItem,
+  isBlockType,
+  isPlainObject,
+  listMaxItems,
+  makeBlock,
+  moveListItem,
+  pathKey,
+  removeListItem,
+  setAtPath,
+  withBlockData,
+} from '@/lib/block-data';
 
 // --- Default page (hardcoded to avoid circular dep: block-registry → blocks → EditableText → editor-store) ---
+
+function defaultBlock<K extends BlockType>(id: string, type: K, name: string, data: Partial<BlockDataMap[K]>): Block {
+  return makeBlock({ id, name, styles: { ...defaultBlockStyles } }, type, data);
+}
 
 function getDefaultPage(): Page {
   return {
@@ -21,13 +38,39 @@ function getDefaultPage(): Page {
     designTokens: cloneDesignTokens(defaultDesignTokens),
     seo: { ...defaultSeoFields },
     blocks: [
-      { id: 'blk_default_1', type: 'hero', name: 'Hero Section', data: { title: 'Crea landing pages increíbles.', subtitle: 'Un editor visual de próxima generación diseñado para equipos ambiciosos.', buttonText: 'Comenzar gratis', backgroundImage: '', alignment: 'center' }, styles: { ...defaultBlockStyles } },
-      { id: 'blk_default_2', type: 'features', name: 'Features Grid', data: { title: 'Descubre las ventajas', feature1Title: 'Característica 1', feature1Desc: 'Descripción breve de esta característica increíble.', feature2Title: 'Característica 2', feature2Desc: 'Descripción breve de esta característica increíble.' }, styles: { ...defaultBlockStyles } },
-      { id: 'blk_default_3', type: 'testimonials', name: 'Testimonials', data: { title: 'Lo que dicen de nosotros', quote1: 'Este producto ha cambiado por completo la forma en que trabajamos. Simplemente brillante.', author1: 'María García', role1: 'Product Manager en TechCorp', quote2: 'La mejor decisión que tomamos este año. El soporte es increíble y los resultados inmediatos.', author2: 'Carlos Ruiz', role2: 'CTO en Startup.io' }, styles: { ...defaultBlockStyles } },
-      { id: 'blk_default_4', type: 'cta', name: 'Call to Action', data: { title: 'Comienza tu viaje', subtitle: '', buttonText: 'Suscribirse' }, styles: { ...defaultBlockStyles } },
-      { id: 'blk_default_5', type: 'footer', name: 'Footer Simple', data: { brandName: 'Acme Corp', description: 'Construyendo el futuro de la web, un bloque a la vez. Únete a nuestra revolución digital.', copyright: '© 2026 Acme Corporation. Todos los derechos reservados.', link1Label: 'Producto', link2Label: 'Precios', link3Label: 'Contacto' }, styles: { ...defaultBlockStyles } },
+      defaultBlock('blk_default_1', 'hero', 'Hero Section', { title: 'Crea landing pages increíbles.', subtitle: 'Un editor visual de próxima generación diseñado para equipos ambiciosos.', buttonText: 'Comenzar gratis', backgroundImage: '', alignment: 'center' }),
+      defaultBlock('blk_default_2', 'features', 'Features Grid', {
+        title: 'Descubre las ventajas',
+        features: [
+          { title: 'Característica 1', description: 'Descripción breve de esta característica increíble.' },
+          { title: 'Característica 2', description: 'Descripción breve de esta característica increíble.' },
+        ],
+      }),
+      defaultBlock('blk_default_3', 'testimonials', 'Testimonials', {
+        title: 'Lo que dicen de nosotros',
+        testimonials: [
+          { quote: 'Este producto ha cambiado por completo la forma en que trabajamos. Simplemente brillante.', author: 'María García', role: 'Product Manager en TechCorp' },
+          { quote: 'La mejor decisión que tomamos este año. El soporte es increíble y los resultados inmediatos.', author: 'Carlos Ruiz', role: 'CTO en Startup.io' },
+        ],
+      }),
+      defaultBlock('blk_default_4', 'cta', 'Call to Action', { title: 'Comienza tu viaje', subtitle: '', buttonText: 'Suscribirse' }),
+      defaultBlock('blk_default_5', 'footer', 'Footer Simple', {
+        brandName: 'Acme Corp',
+        description: 'Construyendo el futuro de la web, un bloque a la vez. Únete a nuestra revolución digital.',
+        copyright: '© 2026 Acme Corporation. Todos los derechos reservados.',
+        links: [
+          { label: 'Producto', url: '' },
+          { label: 'Precios', url: '' },
+          { label: 'Contacto', url: '' },
+        ],
+      }),
     ],
   };
+}
+
+/** Blocks with block `id` replaced by `update(block)`. */
+function mapBlock(blocks: Block[], id: string, update: (block: Block) => Block): Block[] {
+  return blocks.map((block) => (block.id === id ? update(block) : block));
 }
 
 // --- Types ---
@@ -130,8 +173,21 @@ interface EditorActions {
   setPageWithHistory: (updater: Page | ((prev: Page) => Page), options?: { coalesceKey?: string }) => void;
   /** Replace the document with a freshly loaded page: clears history and selection. */
   loadPage: (page: Page) => void;
-  addBlock: (type: string, label: string, index?: number | null, initialData?: Record<string, unknown>) => void;
+  /** Data is normalized for the type; without `initialData` nothing is added. */
+  addBlock: (type: BlockType, label: string, index?: number | null, initialData?: unknown) => void;
+  /** Set a top-level data field. Same as updateBlockField(id, [key], value). */
   updateBlock: (id: string, key: string, value: unknown) => void;
+  /**
+   * Set the value at `path` inside a block's data (['features', 2, 'title']).
+   * Only existing slots are written; consecutive edits of one path share an undo step.
+   */
+  updateBlockField: (id: string, path: DataPath, value: unknown) => void;
+  /** Insert an item in list `listKey` (at the end by default). Its own undo step; no-op at the list's maximum. */
+  addListItem: (id: string, listKey: string, item: unknown, index?: number) => void;
+  /** Remove item `index` of list `listKey`. Its own undo step. */
+  removeListItem: (id: string, listKey: string, index: number) => void;
+  /** Move item `from` of list `listKey` to position `to`. Its own undo step. */
+  moveListItem: (id: string, listKey: string, from: number, to: number) => void;
   updateBlockStyle: (id: string, styleKey: keyof BlockStyles, value: unknown) => void;
   updateBlockResponsiveStyle: (id: string, device: 'tablet' | 'mobile', styleKey: keyof BlockStyles, value: unknown) => void;
   deleteBlock: (id: string) => void;
@@ -181,8 +237,10 @@ interface EditorActions {
   setBlockLock: (blockId: string, userId: string | null) => void;
   setCursorPosition: (userId: string, x: number, y: number) => void;
   removeCursorPosition: (userId: string) => void;
-  replaceBlockData: (blockId: string, newType: string, newData: Record<string, unknown>) => void;
-  applyRemoteBlockUpdate: (blockId: string, data?: Record<string, unknown>, styles?: Record<string, unknown>) => void;
+  /** Replace a block's type and data (AI edit). Returns false, changing nothing, for an unknown type. */
+  replaceBlockData: (blockId: string, newType: string, newData: unknown) => boolean;
+  /** Merge data/styles received from another editor; data is normalized for the block's type. */
+  applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: Record<string, unknown>) => void;
 
   // Toasts
   addToast: (message: string, variant?: 'success' | 'error' | 'info') => void;
@@ -278,7 +336,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   addBlock: (type, label, index = null, initialData) => {
     if (!initialData) return;
     const newId = newBlockId();
-    const newBlock: Block = { id: newId, type, name: label, data: { ...initialData }, styles: { ...defaultBlockStyles } };
+    const newBlock = makeBlock({ id: newId, name: label, styles: { ...defaultBlockStyles } }, type, initialData);
     get().setPageWithHistory((prev) => {
       const newBlocks = [...prev.blocks];
       if (index !== null) newBlocks.splice(index, 0, newBlock);
@@ -289,12 +347,45 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   updateBlock: (id, key, value) => {
+    get().updateBlockField(id, [key], value);
+  },
+
+  updateBlockField: (id, path, value) => {
+    const block = get().page.blocks.find((b) => b.id === id);
+    if (!block) return;
+    const nextData = setAtPath(block.data, path, value);
+    if (nextData === block.data) return;
     get().setPageWithHistory((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((block) =>
-        block.id === id ? { ...block, data: { ...block.data, [key]: value } } : block
-      ),
-    }), { coalesceKey: `block:${id}:data:${key}` });
+      blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, nextData)),
+    }), { coalesceKey: `block:${id}:data:${pathKey(path)}` });
+  },
+
+  // Structural list changes: no coalesceKey, so each one is its own undo step
+  // and the typing that follows starts a new one.
+  addListItem: (id, listKey, item, index) => {
+    const block = get().page.blocks.find((b) => b.id === id);
+    if (!block) return;
+    const items = getAtPath(block.data, [listKey]);
+    if (!Array.isArray(items) || items.length >= listMaxItems(block.type, listKey)) return;
+    get().setPageWithHistory((prev) => ({
+      ...prev,
+      blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, insertListItem(b.data, listKey, item, index))),
+    }));
+  },
+
+  removeListItem: (id, listKey, index) => {
+    get().setPageWithHistory((prev) => ({
+      ...prev,
+      blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, removeListItem(b.data, listKey, index))),
+    }));
+  },
+
+  moveListItem: (id, listKey, from, to) => {
+    get().setPageWithHistory((prev) => ({
+      ...prev,
+      blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, moveListItem(b.data, listKey, from, to))),
+    }));
   },
 
   updateBlockStyle: (id, styleKey, value) => {
@@ -607,14 +698,12 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     });
   },
   replaceBlockData: (blockId, newType, newData) => {
+    if (!isBlockType(newType)) return false;
     get().setPageWithHistory((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((block) =>
-        block.id === blockId
-          ? { ...block, type: newType, data: newData }
-          : block
-      ),
+      blocks: mapBlock(prev.blocks, blockId, (block) => makeBlock(block, newType, newData)),
     }));
+    return true;
   },
 
   applyRemoteBlockUpdate: (blockId, data, styles) => {
@@ -622,13 +711,9 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     const { page } = get();
     const newPage = {
       ...page,
-      blocks: page.blocks.map((block) => {
-        if (block.id !== blockId) return block;
-        return {
-          ...block,
-          ...(data ? { data: { ...block.data, ...data } } : {}),
-          ...(styles ? { styles: { ...block.styles, ...styles } } : {}),
-        };
+      blocks: mapBlock(page.blocks, blockId, (block) => {
+        const withData = isPlainObject(data) ? withBlockData(block, { ...block.data, ...data }) : block;
+        return styles ? { ...withData, styles: { ...withData.styles, ...styles } } : withData;
       }),
     };
     set({ page: newPage, isSaved: false });

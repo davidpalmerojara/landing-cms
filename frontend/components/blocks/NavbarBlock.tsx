@@ -3,28 +3,31 @@
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { BlockProps } from '@/types/blocks';
+import type { BlockProps, NavbarData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import { safeHref } from '@/lib/safe-link';
 
-export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps) {
+export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps<NavbarData>) {
   const t = useTranslations('blocks');
   const [menuOpen, setMenuOpen] = useState(false);
-  const logoImage = data.logoImage as string;
-  const navLinks = (['link1', 'link2', 'link3'] as const).map((key) => ({
-    key,
-    label: data[key] as string,
-    href: isPreviewMode ? safeHref(data[`${key}Url`]) : null,
-  }));
+  const logoImage = data.logoImage;
+  // Links without a label are not shown; `index` points into data.links for editing
+  const navLinks = data.links
+    .map((link, index) => ({
+      index,
+      label: link.label,
+      href: isPreviewMode ? safeHref(link.url) : null,
+    }))
+    .filter((link) => link.label);
   const ctaHref = isPreviewMode ? safeHref(data.ctaLink) : null;
 
-  const renderNavLink = (key: 'link1' | 'link2' | 'link3', label: string, href: string | null, className: string) => {
+  const renderNavLink = (index: number, label: string, href: string | null, className: string) => {
     const style = { color: 'var(--theme-text-muted)' };
     if (href) {
-      return <BlockLink key={key} href={href} className={className} style={style}>{label}</BlockLink>;
+      return <BlockLink key={index} href={href} className={className} style={style}>{label}</BlockLink>;
     }
-    return <EditableText key={key} blockId={blockId} fieldKey={key} value={label} as="span" className={className} style={style} />;
+    return <EditableText key={index} blockId={blockId} fieldKey={['links', index, 'label']} value={label} as="span" className={className} style={style} />;
   };
 
   return (
@@ -44,13 +47,13 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
               className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
               style={{ backgroundColor: 'var(--theme-primary)' }}
             >
-              {(data.brandName as string)?.charAt(0) || 'B'}
+              {data.brandName.charAt(0) || 'B'}
             </div>
           )}
           <EditableText
             blockId={blockId}
             fieldKey="brandName"
-            value={data.brandName as string}
+            value={data.brandName}
             as="span"
             className="font-semibold text-lg"
             style={{ color: 'var(--theme-text)' }}
@@ -72,28 +75,28 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
             className="absolute top-full left-0 right-0 border-b py-4 px-4 flex flex-col gap-3 z-50 @tablet:hidden"
             style={{ backgroundColor: 'var(--theme-bg)', borderColor: 'var(--theme-border)' }}
           >
-            {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm'))}
+            {navLinks.map(({ index, label, href }) => renderNavLink(index, label, href, 'text-sm'))}
             {ctaHref ? (
               <BlockLink
                 href={ctaHref}
                 className="text-white text-sm font-medium px-4 py-2 rounded-lg inline-block text-center"
                 style={{ backgroundColor: 'var(--theme-primary)' }}
               >
-                {data.ctaText as string}
+                {data.ctaText}
               </BlockLink>
             ) : (
               <button
                 className="text-white text-sm font-medium px-4 py-2 rounded-lg"
                 style={{ backgroundColor: 'var(--theme-primary)' }}
               >
-                {data.ctaText as string}
+                {data.ctaText}
               </button>
             )}
           </div>
         )}
         <div className="hidden @tablet:flex items-center gap-8">
           <div className="flex items-center gap-6">
-            {navLinks.map(({ key, label, href }) => renderNavLink(key, label, href, 'text-sm transition-colors'))}
+            {navLinks.map(({ index, label, href }) => renderNavLink(index, label, href, 'text-sm transition-colors'))}
           </div>
           {ctaHref ? (
             <BlockLink
@@ -101,14 +104,14 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
               className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90 inline-block text-center"
               style={{ backgroundColor: 'var(--theme-primary)' }}
             >
-              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText} />
             </BlockLink>
           ) : (
             <button
               className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors hover:opacity-90"
               style={{ backgroundColor: 'var(--theme-primary)' }}
             >
-              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText as string} />
+              <EditableText blockId={blockId} fieldKey="ctaText" value={data.ctaText} />
             </button>
           )}
         </div>

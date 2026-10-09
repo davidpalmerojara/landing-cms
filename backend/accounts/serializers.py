@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .guests import GUEST_EMAIL_DOMAIN, guest_expires_at
+
 User = get_user_model()
 
 
@@ -12,6 +14,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'username', 'password', 'password2']
+
+    def validate_email(self, value):
+        if value.lower().endswith(f'@{GUEST_EMAIL_DOMAIN}'):
+            raise serializers.ValidationError('Usa un email real.')
+        return value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -26,15 +33,20 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     has_google = serializers.SerializerMethodField()
+    expires_at = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google', 'is_guest', 'expires_at']
+        read_only_fields = ['id', 'created_at', 'is_guest']
 
     def get_has_google(self, obj):
         return bool(obj.google_id)
 
+    def get_expires_at(self, obj):
+        """When a guest session is deleted; null for normal accounts."""
+        expires_at = guest_expires_at(obj)
+        return expires_at.isoformat() if expires_at else None
 
 
 

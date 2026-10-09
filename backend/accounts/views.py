@@ -14,6 +14,14 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .guests import (
+    GuestCapacityReached,
+    NotAGuest,
+    active_guests,
+    claim_guest,
+    create_guest,
+    sweep_before_creating,
+)
 from .models import MagicToken
 from .ownership import confirm_email_owner
 from .serializers import (
@@ -24,7 +32,7 @@ from .serializers import (
     UserSerializer,
 )
 from .cookies import REFRESH_COOKIE, set_auth_cookies, clear_auth_cookies
-from .throttles import AuthRateThrottle
+from .throttles import AuthRateThrottle, GuestCreationThrottle
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -64,6 +72,40 @@ class RegisterView(generics.CreateAPIView):
         )
 
         return _auth_response(user, status_code=status.HTTP_201_CREATED)
+
+
+class GuestView(APIView):
+    """POST /api/auth/guest/ — start a temporary guest session (24 h by default)."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [GuestCreationThrottle]
+
+    def post(self, request):
+        sweep_before_creating()
+        if active_guests().count() >= settings.GUEST_MAX_ACTIVE:
+            logger.warning('Guest capacity reached (%s active)', settings.GUEST_MAX_ACTIVE)
+            raise GuestCapacityReached()
+        user = create_guest()
+        return _auth_response(user, status_code=status.HTTP_201_CREATED)
+
+
+class GuestClaimView(APIView):
+    """POST /api/auth/guest/claim/ — a guest signs up and keeps its pages.
+
+    Takes the same fields and runs the same validation as register. The guest
+    becomes a normal Free account and gets a fresh session.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.is_guest:
+            raise NotAGuest()
+        serializer = RegisterSerializer(user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        claim_guest(user, username=data['username'], email=data['email'], password=data['password'])
+        return _auth_response(user)
 
 
 class MeView(APIView):

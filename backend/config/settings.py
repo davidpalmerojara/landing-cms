@@ -201,6 +201,7 @@ REST_FRAMEWORK = {
         'auth': '10/minute',
         'login_username': '5/minute',
         'contact': '5/minute',
+        'guest': os.environ.get('GUEST_CREATION_RATE', '5/hour'),
     },
     # Number of trusted proxies in front of the app. With the default (unset)
     # DRF used the whole X-Forwarded-For header as the client id, so any
@@ -252,6 +253,15 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+
+# Guest mode ("try it without signing up", accounts/guests.py)
+# How long a guest account and everything in it lives, in hours.
+GUEST_LIFETIME_HOURS = int(os.environ.get('GUEST_LIFETIME_HOURS', '24'))
+# Guest accounts alive at the same time; past this, new guests get a 503.
+GUEST_MAX_ACTIVE = int(os.environ.get('GUEST_MAX_ACTIVE', '200'))
+# Pages one guest can create.
+GUEST_MAX_PAGES = int(os.environ.get('GUEST_MAX_PAGES', '5'))
 
 
 # Google OAuth

@@ -3,6 +3,7 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
 from .cookies import ACCESS_COOKIE
+from .guests import GuestExpired, is_expired_guest
 from .sessions import issued_before_revocation
 
 
@@ -30,4 +31,7 @@ class CookieJWTAuthentication(JWTAuthentication):
         user = super().get_user(validated_token)
         if issued_before_revocation(user, validated_token):
             raise InvalidToken('La sesión se cerró.')
+        if is_expired_guest(user):
+            # The account is deleted by the next sweep; until then a still-valid JWT must not work
+            raise GuestExpired()
         return user

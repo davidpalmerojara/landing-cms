@@ -23,6 +23,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import IsNotGuest
 from .models import Plan, Subscription, PaymentHistory, WebhookLog
 from .permissions import get_user_subscription, invalidate_plan_cache
 from .serializers import (
@@ -98,7 +99,7 @@ class CreateCheckoutView(APIView):
     Creates a Stripe Checkout Session for upgrading to Pro.
     Returns { "checkout_url": "https://checkout.stripe.com/..." }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotGuest]
 
     def post(self, request):
         input_serializer = CreateCheckoutSerializer(data=request.data)
@@ -186,7 +187,7 @@ class CreatePortalView(APIView):
     Creates a Stripe Billing Portal session for managing subscription.
     Returns { "portal_url": "https://billing.stripe.com/..." }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotGuest]
 
     def post(self, request):
         try:

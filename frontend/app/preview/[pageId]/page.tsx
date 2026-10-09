@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import type { ApiPage } from '@/lib/api';
 import { apiToTokens } from '@/lib/design-tokens';
 import { pageThemeVars } from '@/lib/page-theme';
+import { LiveLinksProvider } from '@/components/blocks/live-links-context';
 
 type DeviceMode = 'desktop' | 'tablet' | 'mobile';
 
@@ -148,10 +149,12 @@ export default function PreviewPage() {
     if (!page) return;
     setPublishError(null);
     try {
-      const updated = await api.pages.update(page.id, { status: 'published' });
-      setPage(apiPageToLocal(updated));
-    } catch {
+      // Freezes the saved draft shown here as the public page (ADR-017)
+      const published = await api.pages.publish(page.id);
+      setPage(apiPageToLocal(published));
+    } catch (e) {
       setPublishError(t('preview.publishError'));
+      if (process.env.NODE_ENV === 'development') console.error('Failed to publish from preview:', e);
     }
   }, [page, t]);
 
@@ -183,6 +186,7 @@ export default function PreviewPage() {
   const anchorIds = blockAnchorIds(page.blocks);
 
   return (
+    <LiveLinksProvider value={true}>
     <div className="min-h-screen bg-white" style={themeVars}>
       <PreviewTopBar page={page} onPublish={handlePublish} publishError={publishError} />
 
@@ -228,5 +232,6 @@ export default function PreviewPage() {
         </div>
       )}
     </div>
+    </LiveLinksProvider>
   );
 }

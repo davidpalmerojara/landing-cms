@@ -74,9 +74,11 @@ class PageListSerializer(serializers.ModelSerializer):
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
             'block_count', 'owner_name', 'is_shared', 'preview_blocks',
+            'published_at', 'has_unpublished_changes',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
+        # status only changes through the publish/unpublish actions
+        read_only_fields = ['id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at']
 
     def get_is_shared(self, obj):
         request = self.context.get('request')
@@ -115,9 +117,11 @@ class PageDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'status', 'theme_id', 'custom_theme', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
             'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
-            'blocks', 'created_at', 'updated_at',
+            'blocks', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
+        # status only changes through the publish/unpublish actions, so an
+        # autosave can never publish or unpublish a page
+        read_only_fields = ['id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'created_at', 'updated_at']
 
     def create(self, validated_data):
         blocks_data = validated_data.pop('blocks', [])
@@ -131,32 +135,6 @@ class PageDetailSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         with transaction.atomic():
             blocks_data = validated_data.pop('blocks', None)
-
-            # Auto-snapshot before publishing
-            new_status = validated_data.get('status')
-            status_changed = new_status and new_status != instance.status
-            if (
-                new_status == Page.Status.PUBLISHED
-                and instance.status != Page.Status.PUBLISHED
-                and instance.blocks.exists()
-            ):
-                from .models import create_version_snapshot
-                request = self.context.get('request')
-                user = request.user if request else None
-                create_version_snapshot(
-                    page=instance,
-                    user=user,
-                    trigger='auto_publish',
-                    label='Antes de publicar',
-                )
-
-            # Invalidate sitemap cache when publish status changes
-            if status_changed:
-                try:
-                    from django.core.cache import cache
-                    cache.delete('sitemap_xml')
-                except Exception:
-                    pass
 
             # Update page fields
             for attr, value in validated_data.items():

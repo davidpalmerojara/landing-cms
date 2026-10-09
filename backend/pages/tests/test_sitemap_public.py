@@ -7,6 +7,12 @@ from pages.models import Page
 from tests.factories import PageFactory, UserFactory
 
 
+def published_page(owner, **kwargs):
+    page = PageFactory(owner=owner, **kwargs)
+    page.publish(owner)
+    return page
+
+
 @pytest.mark.django_db
 class TestPublicSitemap:
     def setup_method(self, method):
@@ -14,9 +20,9 @@ class TestPublicSitemap:
 
     def test_sitemap_xml_only_includes_published_indexable_pages(self, api_client):
         owner = UserFactory()
-        published = PageFactory(owner=owner, status=Page.Status.PUBLISHED, slug='published-page')
+        published = published_page(owner, slug='published-page')
         draft = PageFactory(owner=owner, status=Page.Status.DRAFT, slug='draft-page')
-        noindex = PageFactory(owner=owner, status=Page.Status.PUBLISHED, noindex=True, slug='hidden-page')
+        noindex = published_page(owner, noindex=True, slug='hidden-page')
 
         resp = api_client.get('/api/sitemap/')
 
@@ -29,9 +35,9 @@ class TestPublicSitemap:
 
     def test_sitemap_data_json_only_includes_published_indexable_pages(self, api_client):
         owner = UserFactory()
-        published = PageFactory(owner=owner, status=Page.Status.PUBLISHED, slug='published-json')
+        published = published_page(owner, slug='published-json')
         draft = PageFactory(owner=owner, status=Page.Status.DRAFT, slug='draft-json')
-        noindex = PageFactory(owner=owner, status=Page.Status.PUBLISHED, noindex=True, slug='noindex-json')
+        noindex = published_page(owner, noindex=True, slug='noindex-json')
 
         resp = api_client.get('/api/public/sitemap-data/')
 

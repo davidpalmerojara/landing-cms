@@ -19,6 +19,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
 from accounts.cookies import ACCESS_COOKIE
+from accounts.sessions import issued_before_revocation
 
 User = get_user_model()
 
@@ -39,7 +40,8 @@ def get_user_from_token(token_str: str):
     """Validate a JWT access token and return the corresponding user."""
     try:
         validated = AccessToken(token_str)
-        return User.objects.get(pk=validated['user_id'])
+        user = User.objects.get(pk=validated['user_id'])
+        return AnonymousUser() if issued_before_revocation(user, validated) else user
     except (TokenError, KeyError, User.DoesNotExist):
         return AnonymousUser()
 

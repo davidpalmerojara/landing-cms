@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 
 export default function MagicVerifyPage() {
   const t = useTranslations();
@@ -13,20 +14,27 @@ export default function MagicVerifyPage() {
   const token = params.token as string;
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(true);
+  const [passwordDisabled, setPasswordDisabled] = useState(false);
 
   useEffect(() => {
     if (!token) return;
 
     api.auth.magicVerify(token)
-      .then(() => {
+      .then((res) => {
         setVerifying(false);
-        setTimeout(() => router.replace('/dashboard'), 1500);
+        // The account's unconfirmed password was turned off: explain before moving on
+        if (res.password_disabled) setPasswordDisabled(true);
+        else setTimeout(() => router.replace('/dashboard'), 1500);
       })
       .catch(() => {
         setVerifying(false);
         setError(t('auth.magicLinkInvalid'));
       });
   }, [token, router, t]);
+
+  if (passwordDisabled) {
+    return <PasswordDisabledScreen onContinue={() => router.replace('/dashboard')} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-4">

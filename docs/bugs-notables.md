@@ -134,3 +134,11 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Qué pasaba**: La subida de imágenes comprobaba el `Content-Type` que declara el navegador. Un fichero `evil.html` declarado como `image/png` se aceptaba y se guardaba con su nombre y extensión originales, listo para servirse como HTML desde nuestro dominio.
 - **Arreglo**: El tipo se detecta por la firma de los primeros bytes (JPEG, PNG, GIF, WebP) y el fichero se guarda con un nombre aleatorio y la extensión del tipo detectado. El nombre original solo se conserva como etiqueta.
 - **Cómo se verificó**: Tests con un HTML declarado como PNG (rechazado), un PNG real llamado `evil.html` (guardado como `.png` con un nombre aleatorio) y un SVG con `onload` (rechazado).
+
+## 17. La vista previa habría dejado de publicar (detectado al integrar)
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Con la publicación congelada (ADR-017), el estado de la página dejó de poder cambiarse por `PUT`. La página `/preview/[id]` tenía su propio botón "Publicar", que hacía justo eso: `PUT {status: 'published'}`. Ningún test la cubría y no estaba en los recorridos automáticos.
+- **Cómo se detectó**: Al integrar el trabajo de los enlaces, que también tocaba esa página, buscando en todo el frontend cualquier otro sitio que escribiera `status`.
+- **Arreglo**: La vista previa usa el endpoint `/publish/`, igual que el editor.
+- **Lección**: Al cambiar un contrato de la API, buscar todos sus usos (`grep`) además de confiar en los tests: el código sin tests es justo donde se esconden estas roturas.

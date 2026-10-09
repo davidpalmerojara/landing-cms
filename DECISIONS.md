@@ -168,6 +168,16 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-017: Publicar es congelar una copia
+
+- **Fecha**: 2026-10-09
+- **Contexto**: "Publicada" era solo un estado de la página. La página pública leía los bloques en vivo, así que cada autosave cambiaba la web que veían los visitantes mientras el dueño aún estaba editando, y un `PUT` del autosave podía publicar o despublicar.
+- **Decisión**: Publicar (`POST /api/pages/{id}/publish/`) crea una `PageVersion` con los bloques, el tema, los tokens y el SEO, y `Page.published_version` apunta a ella. La página pública y los sitemaps sirven esa copia. El estado ya no se puede cambiar por `PUT`: solo con publicar y despublicar (`/unpublish/`). `has_unpublished_changes` (la última edición es posterior a `published_at`) permite al editor mostrar "Cambios sin publicar" y "Publicar cambios". La limpieza de versiones por plan nunca borra la versión publicada.
+- **Alternativas**: Duplicar las tablas en "borrador" y "publicado" (más esquema y más código de sincronización); un campo JSON con la copia dentro de `Page` (pierde el historial y la posibilidad de restaurar lo que estaba publicado).
+- **Consecuencias**: Editar es seguro: nada llega al público hasta pulsar Publicar. Reutilizar `PageVersion` hace que cada publicación quede en el historial y se pueda restaurar. Una migración de datos congeló el contenido de las páginas que ya estaban publicadas. El render en servidor de la página pública (S7) leerá esta misma copia.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

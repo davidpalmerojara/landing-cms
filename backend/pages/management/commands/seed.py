@@ -1,35 +1,54 @@
 from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from pages.block_validators import clean_block_data
 from pages.models import Page, Block
 
 
+# Block data in the shapes the editor stores (lists are arrays of objects).
+# create_sample_blocks() runs every block through clean_block_data, the same
+# validation as the API, so a stale sample fails loudly instead of seeding
+# data the editor would reject.
 SAMPLE_BLOCKS = [
     {
+        'type': 'navbar',
+        'data': {
+            'brandName': 'Paxl',
+            'links': [
+                {'label': 'Features', 'url': '#features'},
+                {'label': 'Pricing', 'url': '#pricing'},
+                {'label': 'FAQ', 'url': '#faq'},
+            ],
+            'ctaText': 'Get Started',
+            'ctaLink': '#contact',
+        },
+        'styles': {},
+    },
+    {
         'type': 'hero',
-        'order': 0,
         'data': {
             'title': 'Build Beautiful Landing Pages',
             'subtitle': 'Create stunning, conversion-optimized pages in minutes with our visual editor.',
-            'ctaText': 'Get Started Free',
+            'buttonText': 'Get Started Free',
+            'buttonLink': '#pricing',
+            'alignment': 'center',
         },
-        'styles': {'paddingTop': '80', 'paddingBottom': '80'},
+        'styles': {},
     },
     {
         'type': 'features',
-        'order': 1,
         'data': {
             'title': 'Everything You Need',
-            'subtitle': 'Powerful features to help you build and launch faster.',
             'features': [
                 {'title': 'Visual Editor', 'description': 'Drag and drop blocks to build your page.'},
                 {'title': 'Responsive', 'description': 'Looks great on desktop, tablet, and mobile.'},
                 {'title': 'Fast', 'description': 'Optimized for speed and performance.'},
             ],
         },
-        'styles': {'paddingTop': '60', 'paddingBottom': '60'},
+        'styles': {},
     },
     {
         'type': 'testimonials',
-        'order': 2,
         'data': {
             'title': 'What Our Users Say',
             'testimonials': [
@@ -37,33 +56,87 @@ SAMPLE_BLOCKS = [
                 {'quote': 'The easiest page builder I have ever used.', 'author': 'Carlos R.', 'role': 'Marketing Lead'},
             ],
         },
-        'styles': {'paddingTop': '60', 'paddingBottom': '60'},
+        'styles': {},
+    },
+    {
+        'type': 'pricing',
+        'data': {
+            'title': 'Simple Pricing',
+            'plans': [
+                {
+                    'name': 'Free',
+                    'price': '$0',
+                    'features': 'One page\nPaxl subdomain',
+                    'buttonText': 'Start Free',
+                    'buttonLink': '#contact',
+                    'highlighted': False,
+                },
+                {
+                    'name': 'Pro',
+                    'price': '$19',
+                    'features': 'Unlimited pages\nCustom domain\nAnalytics',
+                    'buttonText': 'Go Pro',
+                    'buttonLink': '#contact',
+                    'highlighted': True,
+                },
+            ],
+        },
+        'styles': {},
+    },
+    {
+        'type': 'faq',
+        'data': {
+            'title': 'Questions',
+            'questions': [
+                {'question': 'Is there a free plan?', 'answer': 'Yes, you can start for free.'},
+                {'question': 'Can I use my own domain?', 'answer': 'Yes, on the Pro plan.'},
+            ],
+        },
+        'styles': {},
     },
     {
         'type': 'cta',
-        'order': 3,
         'data': {
             'title': 'Ready to Get Started?',
             'subtitle': 'Join thousands of teams building better landing pages.',
-            'ctaText': 'Start Building',
+            'buttonText': 'Start Building',
         },
-        'styles': {'paddingTop': '80', 'paddingBottom': '80'},
+        'styles': {},
     },
     {
         'type': 'footer',
-        'order': 4,
         'data': {
-            'companyName': 'Paxl',
-            'links': ['Privacy', 'Terms', 'Contact'],
+            'brandName': 'Paxl',
+            'description': 'The visual editor for landing pages.',
+            'copyright': '© Paxl',
+            'links': [
+                {'label': 'Privacy', 'url': ''},
+                {'label': 'Terms', 'url': ''},
+                {'label': 'Contact', 'url': '#contact'},
+            ],
         },
         'styles': {},
     },
 ]
 
 
+def create_sample_blocks(page: Page) -> int:
+    """Create the sample blocks of `page`, validated like any API save."""
+    for order, block in enumerate(SAMPLE_BLOCKS):
+        Block.objects.create(
+            page=page,
+            type=block['type'],
+            order=order,
+            data=clean_block_data(block['type'], block['data']),
+            styles=block['styles'],
+        )
+    return len(SAMPLE_BLOCKS)
+
+
 class Command(BaseCommand):
     help = 'Seed the database with a sample landing page'
 
+    @transaction.atomic
     def handle(self, *args, **options):
         page, created = Page.objects.get_or_create(
             slug='sample-landing',
@@ -74,9 +147,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('Sample page already exists, skipping.'))
             return
 
-        for block_data in SAMPLE_BLOCKS:
-            Block.objects.create(page=page, **block_data)
+        count = create_sample_blocks(page)
 
         self.stdout.write(self.style.SUCCESS(
-            f'Created sample page "{page.name}" with {len(SAMPLE_BLOCKS)} blocks (id: {page.id})'
+            f'Created sample page "{page.name}" with {count} blocks (id: {page.id})'
         ))

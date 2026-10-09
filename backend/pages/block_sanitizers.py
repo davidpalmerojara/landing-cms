@@ -34,11 +34,11 @@ CUSTOM_HTML_CSS_SANITIZER = CSSSanitizer(
     ]
 )
 
+# Top-level fields only. The items of list fields (features, plans, links...) are
+# sanitized by the list rules in block_validators, in a single pass.
 URL_FIELDS_BY_TYPE = {
     'hero': {'backgroundImage'},
-    'gallery': {'image1', 'image2', 'image3', 'image4', 'image5', 'image6'},
     'navbar': {'logoImage'},
-    'team': {'member1Image', 'member2Image', 'member3Image'},
 }
 
 # Fields holding a link a visitor can follow (href). They accept more than the
@@ -46,23 +46,17 @@ URL_FIELDS_BY_TYPE = {
 LINK_FIELDS_BY_TYPE = {
     'hero': {'buttonLink', 'secondaryButtonLink'},
     'cta': {'buttonLink'},
-    'navbar': {'link1Url', 'link2Url', 'link3Url', 'ctaLink'},
-    'footer': {'link1Url', 'link2Url', 'link3Url'},
-    'pricing': {'plan1ButtonLink', 'plan2ButtonLink'},
+    'navbar': {'ctaLink'},
 }
 
 RICH_TEXT_FIELDS_BY_TYPE = {
-    'features': {'feature1Desc', 'feature2Desc'},
-    'testimonials': {'quote1', 'quote2'},
     'cta': {'subtitle'},
     'footer': {'description'},
-    'pricing': {'subtitle', 'plan1Features', 'plan2Features'},
-    'faq': {'a1', 'a2', 'a3'},
+    'pricing': {'subtitle'},
     'gallery': {'subtitle'},
     'contact': {'subtitle'},
     'team': {'subtitle'},
     'stats': {'subtitle'},
-    'timeline': {'item1Desc', 'item2Desc', 'item3Desc'},
 }
 
 

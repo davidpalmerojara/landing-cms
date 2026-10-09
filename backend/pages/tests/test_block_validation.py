@@ -5,39 +5,43 @@ from tests.factories import UserFactory, PageFactory, BlockFactory
 
 
 VALID_BLOCK_CASES = [
-    ('navbar', {'brandName': 'Acme', 'ctaText': 'Start', 'logoImage': 'https://example.com/logo.png'}),
+    ('navbar', {'brandName': 'Acme', 'ctaText': 'Start', 'logoImage': 'https://example.com/logo.png', 'links': [{'label': 'Docs', 'url': '/docs'}]}),
     ('hero', {'title': 'Hero title', 'alignment': 'right', 'backgroundImage': 'https://example.com/bg.jpg'}),
-    ('features', {'title': None, 'feature1Title': 'Fast', 'feature1Desc': 'Desc'}),
-    ('testimonials', {'quote1': 'Loved it', 'author1': 'Jane'}),
+    ('features', {'title': None, 'features': [{'title': 'Fast', 'description': 'Desc'}]}),
+    ('testimonials', {'testimonials': [{'quote': 'Loved it', 'author': 'Jane', 'role': 'CEO'}]}),
     ('cta', {'title': 'Join now', 'buttonText': 'Go'}),
-    ('footer', {'brandName': 'Acme', 'description': 'Footer copy'}),
-    ('pricing', {'title': 'Plans', 'plan2Highlighted': True, 'billingPeriod': '/mo'}),
-    ('faq', {'q1': 'How?', 'a1': 'Like this'}),
-    ('logoCloud', {'logo1': 'Acme'}),
-    ('gallery', {'columns': 4, 'image1': 'https://example.com/1.jpg'}),
+    ('footer', {'brandName': 'Acme', 'description': 'Footer copy', 'links': [{'label': 'Terms', 'url': ''}]}),
+    ('pricing', {'title': 'Plans', 'plans': [{'name': 'Pro', 'highlighted': True}], 'billingPeriod': '/mo'}),
+    ('faq', {'questions': [{'question': 'How?', 'answer': 'Like this'}]}),
+    ('logoCloud', {'logos': [{'name': 'Acme'}]}),
+    ('gallery', {'columns': 4, 'images': [{'src': 'https://example.com/1.jpg', 'alt': 'One'}]}),
     ('contact', {'title': 'Contact', 'emailPlaceholder': 'Email'}),
     ('customHtml', {'html': '<section><h2>Hello</h2></section>'}),
-    ('team', {'member1Name': 'Ana', 'member1Image': 'https://example.com/a.jpg'}),
-    ('stats', {'stat1Value': '10K', 'stat1Label': 'Users'}),
-    ('timeline', {'item1Date': '2025', 'item1Title': 'Launch'}),
+    ('team', {'members': [{'name': 'Ana', 'role': 'CEO', 'image': 'https://example.com/a.jpg'}]}),
+    ('stats', {'stats': [{'value': '10K', 'label': 'Users'}]}),
+    ('timeline', {'events': [{'date': '2025', 'title': 'Launch', 'description': ''}]}),
 ]
 
 MAX_LENGTH_CASES = [
     ('navbar', 'brandName', 'x' * 101),
     ('hero', 'title', 'x' * 201),
-    ('features', 'feature1Desc', 'x' * 501),
-    ('testimonials', 'quote1', 'x' * 501),
+    ('features', ('features', 'description'), 'x' * 501),
+    ('testimonials', ('testimonials', 'quote'), 'x' * 501),
     ('cta', 'buttonText', 'x' * 51),
     ('footer', 'copyright', 'x' * 201),
     ('pricing', 'billingPeriod', 'x' * 201),
-    ('faq', 'a1', 'x' * 1001),
-    ('logoCloud', 'logo1', 'x' * 101),
+    ('faq', ('questions', 'answer'), 'x' * 1001),
+    ('logoCloud', ('logos', 'name'), 'x' * 101),
     ('gallery', 'title', 'x' * 201),
     ('contact', 'namePlaceholder', 'x' * 101),
     ('customHtml', 'html', 'x' * 50001),
-    ('team', 'member1Name', 'x' * 101),
-    ('stats', 'stat1Label', 'x' * 201),
-    ('timeline', 'item1Desc', 'x' * 501),
+    ('team', ('members', 'name'), 'x' * 101),
+    ('stats', ('stats', 'label'), 'x' * 201),
+    ('timeline', ('events', 'description'), 'x' * 501),
+    ('gallery', ('images', 'alt'), 'x' * 301),
+    ('pricing', ('plans', 'features'), 'x' * 1001),
+    ('navbar', ('links', 'label'), 'x' * 201),
+    ('footer', ('links', 'label'), 'x' * 201),
 ]
 
 
@@ -54,14 +58,21 @@ def test_each_block_type_accepts_valid_data(block_type, data):
 
 @pytest.mark.parametrize(('block_type', 'field_name', 'value'), MAX_LENGTH_CASES)
 def test_each_block_type_rejects_exceeded_max_length(block_type, field_name, value):
+    if isinstance(field_name, tuple):
+        list_key, item_field = field_name
+        data = {list_key: [{item_field: value}]}
+        expected_error = f'{list_key}[0].{item_field}'
+    else:
+        data = {field_name: value}
+        expected_error = field_name
     serializer = BlockSerializer(data={
         'type': block_type,
         'order': 0,
-        'data': {field_name: value},
+        'data': data,
         'styles': {},
     })
     assert not serializer.is_valid()
-    assert field_name in serializer.errors['data']
+    assert expected_error in serializer.errors['data']
 
 
 @pytest.mark.parametrize(
@@ -86,9 +97,9 @@ def test_enum_fields_reject_invalid_values(block_type, data, field_name):
     ('block_type', 'data', 'field_name'),
     [
         ('hero', {'backgroundImage': 'javascript:alert(1)'}, 'backgroundImage'),
-        ('gallery', {'image1': 'javascript:alert(1)'}, 'image1'),
+        ('gallery', {'images': [{'src': 'javascript:alert(1)'}]}, 'images[0].src'),
         ('navbar', {'logoImage': 'javascript:alert(1)'}, 'logoImage'),
-        ('team', {'member1Image': 'javascript:alert(1)'}, 'member1Image'),
+        ('team', {'members': [{'name': 'Ana', 'image': 'javascript:alert(1)'}]}, 'members[0].image'),
     ],
 )
 def test_url_fields_reject_unsafe_schemes(block_type, data, field_name):
@@ -107,7 +118,7 @@ def test_page_serializer_allows_optional_features_title():
     serializer = PageDetailSerializer(data={
         'name': 'Features page',
         'blocks': [
-            {'type': 'features', 'data': {'title': None, 'feature1Title': 'Fast'}, 'styles': {}},
+            {'type': 'features', 'data': {'title': None, 'features': [{'title': 'Fast'}]}, 'styles': {}},
         ],
     })
     assert serializer.is_valid(), serializer.errors
@@ -211,12 +222,17 @@ class TestBlockAllowlist:
     def test_keeps_null_and_boolean_values_that_have_rules(self):
         serializer = self._save([{
             'type': 'pricing',
-            'data': {'title': None, 'plan2Highlighted': True},
+            'data': {'title': None, 'plans': [{'name': 'Pro', 'highlighted': True}]},
             'styles': {},
         }])
         assert serializer.is_valid(), serializer.errors
         page = serializer.save(owner=UserFactory())
-        assert page.blocks.get().data == {'title': None, 'plan2Highlighted': True}
+        assert page.blocks.get().data == {
+            'title': None,
+            'plans': [{
+                'name': 'Pro', 'price': '', 'features': '', 'buttonText': '', 'buttonLink': '', 'highlighted': True,
+            }],
+        }
 
     def test_rejects_oversized_block_data(self):
         serializer = self._save([{'type': 'customHtml', 'data': {'html': 'x' * 70_000}, 'styles': {}}])

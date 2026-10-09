@@ -79,6 +79,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Fecha**: 2026-10-08
 - **Qué pasaba**: El servidor restauraba bloques, tema, tokens y SEO, pero el cliente solo copiaba nombre, bloques y estado. El siguiente autosave enviaba el tema, los tokens y el SEO antiguos y deshacía esa parte de la restauración.
 - **Arreglo**: El cliente recarga la página entera desde el servidor con el mismo mapper que la carga normal (`reloadFromApi`). La carga se marca como remota para que el autosave no la reenvíe, y vacía el historial de deshacer.
+- **Actualización (S10)**: El aviso ahora es `page_updated` con motivo `restore`, y quien no restauró fusiona la página restaurada con sus cambios sin guardar en lugar de recargarla entera (ADR-024, entrada 22).
 - **Cómo se verificó**: Test de `usePageSync` y prueba en el navegador: se guarda una versión, se cambia el título SEO, se restaura y, pasados los 3 segundos del autosave, el servidor sigue teniendo el título de la versión.
 
 ## 10. Renovar la sesión solo con la cookie daba un 500
@@ -175,3 +176,12 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se detectó**: Al construir el formulario para convertir una sesión de invitado en cuenta, que reutiliza las mismas reglas del registro y sí lee `details`.
 - **Arreglo**: El registro lee los errores de campo de `ApiError.details` y muestra el primero.
 - **Lección**: Cuando cambia el formato de los errores de la API, hay que revisar también los formularios que ya existían, no solo los nuevos.
+
+## 22. Dos personas editando a la vez se borraban el trabajo
+
+- **Fecha**: 2026-10-09
+- **Qué pasaba**: Cada autoguardado reemplazaba la página entera y el servidor no comprobaba sobre qué versión se había hecho el cambio, así que ganaba el último. Añadir, borrar o mover bloques no se avisaba por WebSocket. Si A borraba un bloque y B guardaba después, el bloque resucitaba. Si B añadía uno y A guardaba, desaparecía. Un cambio de tema o de SEO de un editor desfasado pisaba el de los demás, y un guardado en vuelo podía deshacer una restauración de versión. Además, dos pestañas de la misma persona se quitaban los bloqueos entre sí, porque la presencia iba por usuario y no por conexión.
+- **Cómo se detectó**: Revisando la colaboración contra las cinco condiciones que el plan exigía para sacarla en la demo. El fallo de fondo era de diseño, no un caso raro.
+- **Arreglo** (ADR-024): Cada página tiene `version`. Un guardado hecho sobre una versión antigua recibe 409 con la página actual, y el cliente fusiona en tres vías (`lib/page-merge.ts`: lo que tenía el servidor, sus cambios y lo nuevo) sin perder nunca una edición. Tras cada escritura el servidor emite `page_updated`, y los demás traen la página y la fusionan igual. Presencia y bloqueos van por conexión.
+- **Cómo se verificó**: Tests de la fusión, incluidas propiedades con ediciones aleatorias (no se pierde ninguna edición ni se duplica ningún bloque). Tests del consumer con `WebsocketCommunicator`, incluida una carrera real entre dos guardados. Y una prueba con dos navegadores reales (propietario e invitado colaborador): 13 comprobaciones, tres pasadas seguidas sin un fallo.
+- **Lección**: Sin versión, "guardar la página entera" es "borrar lo que no sabías que había cambiado". La concurrencia optimista es barata de añadir y lo que la hace usable es la fusión en el cliente.

@@ -1,0 +1,181 @@
+{
+  "id": "nonprofit",
+  "language": "es",
+  "title": {
+    "es": "Asociación sin ánimo de lucro",
+    "en": "Non-profit organization"
+  },
+  "origin": "placeholder",
+  "prompt": "Web para Manos al Campo, una asociación sin ánimo de lucro que recupera huertos urbanos, con misión, impacto en cifras, equipo y cómo colaborar",
+  "keywords": [
+    "asociacion",
+    "ong",
+    "sin animo de lucro",
+    "non-profit",
+    "nonprofit",
+    "non profit",
+    "charity",
+    "solidari",
+    "voluntari",
+    "volunteer",
+    "donac",
+    "donat",
+    "fundacion",
+    "foundation",
+    "social",
+    "medio ambiente",
+    "environment",
+    "comunidad",
+    "community"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Manos al Campo",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Misión",
+            "url": "#mision"
+          },
+          {
+            "label": "Impacto",
+            "url": "#impacto"
+          },
+          {
+            "label": "Colabora",
+            "url": "#colabora"
+          }
+        ],
+        "ctaText": "Hazte voluntario"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Devolvemos la vida a los huertos urbanos de nuestros barrios",
+        "subtitle": "Somos una asociación sin ánimo de lucro que recupera solares abandonados y los convierte en huertos comunitarios donde vecinos de todas las edades cultivan, aprenden y se encuentran.",
+        "buttonText": "Quiero colaborar",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "stats",
+      "data": {
+        "title": "Lo que hemos conseguido juntos",
+        "subtitle": "Datos de los últimos cuatro años de trabajo.",
+        "stats": [
+          {
+            "value": "12",
+            "label": "Huertos recuperados"
+          },
+          {
+            "value": "850",
+            "label": "Vecinos participantes"
+          },
+          {
+            "value": "9 t",
+            "label": "Verdura cultivada al año"
+          },
+          {
+            "value": "30",
+            "label": "Talleres en colegios"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Cómo trabajamos",
+        "features": [
+          {
+            "title": "Recuperamos espacios",
+            "description": "Negociamos con ayuntamientos y propietarios para ceder solares en desuso y los preparamos con la ayuda de los vecinos."
+          },
+          {
+            "title": "Enseñamos a cultivar",
+            "description": "Talleres abiertos de compostaje, siembra y riego para quienes nunca han tenido un huerto."
+          },
+          {
+            "title": "Creamos comunidad",
+            "description": "Cada huerto tiene su grupo de vecinos, sus comidas compartidas y su calendario de tareas."
+          },
+          {
+            "title": "Educamos en los colegios",
+            "description": "Llevamos el huerto al aula con talleres para que niños y niñas conozcan de dónde viene la comida."
+          }
+        ]
+      }
+    },
+    {
+      "type": "team",
+      "data": {
+        "title": "Las personas detrás del proyecto",
+        "subtitle": "Un equipo pequeño, con mucha gente alrededor.",
+        "members": [
+          {
+            "name": "Rosa Villalba",
+            "role": "Presidenta y coordinadora de huertos",
+            "image": ""
+          },
+          {
+            "name": "Daniel Cortés",
+            "role": "Responsable de talleres",
+            "image": ""
+          },
+          {
+            "name": "Inés Montoya",
+            "role": "Voluntariado y comunicación",
+            "image": ""
+          },
+          {
+            "name": "Tomás Aguirre",
+            "role": "Administración y finanzas",
+            "image": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "data": {
+        "title": "Hay un huerto cerca de ti esperando manos",
+        "subtitle": "Dos horas al mes bastan. Ven a una jornada abierta, conoce al grupo y decide después.",
+        "buttonText": "Apúntate a una jornada"
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Escríbenos",
+        "subtitle": "Cuéntanos si quieres ser voluntario, proponer un solar o colaborar con tu empresa o colegio. Te respondemos en una semana.",
+        "buttonText": "Enviar mensaje"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Manos al Campo",
+        "description": "Asociación sin ánimo de lucro inscrita en el registro de asociaciones. Todo lo que recaudamos se invierte en los huertos.",
+        "copyright": "© 2027 Asociación Manos al Campo.",
+        "links": [
+          {
+            "label": "Misión",
+            "url": "#mision"
+          },
+          {
+            "label": "Transparencia",
+            "url": ""
+          },
+          {
+            "label": "Contacto",
+            "url": "#colabora"
+          }
+        ]
+      }
+    }
+  ]
+}

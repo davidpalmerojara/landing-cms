@@ -1,0 +1,175 @@
+{
+  "id": "restaurant",
+  "language": "es",
+  "title": {
+    "es": "Restaurante mediterráneo",
+    "en": "Mediterranean restaurant"
+  },
+  "origin": "placeholder",
+  "prompt": "Landing para Casa Olivar, un restaurante de cocina mediterránea en Valencia, con carta destacada, opiniones de clientes y formulario de reservas",
+  "keywords": [
+    "restaur",
+    "cocina",
+    "cuisine",
+    "carta",
+    "menu",
+    "menú",
+    "comida",
+    "food",
+    "cafeteria",
+    "cafe",
+    "bar",
+    "reserva",
+    "booking",
+    "table",
+    "mesa",
+    "chef",
+    "tapas",
+    "pizzeria"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Casa Olivar",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Carta",
+            "url": "#carta"
+          },
+          {
+            "label": "Galería",
+            "url": "#galeria"
+          },
+          {
+            "label": "Reservas",
+            "url": "#reservas"
+          }
+        ],
+        "ctaText": "Reservar mesa"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Cocina mediterránea de mercado, en el corazón de Valencia",
+        "subtitle": "Arroces al fuego de leña, pescado del día y verduras de la huerta valenciana. Una casa pequeña donde cada plato se hace al momento.",
+        "buttonText": "Ver la carta",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Lo que no puedes dejar de probar",
+        "features": [
+          {
+            "title": "Arroz meloso de gamba roja",
+            "description": "Fondo de pescado de roca, sofrito lento y gamba de Dénia. Se hace por encargo para dos personas o más."
+          },
+          {
+            "title": "Pulpo a la brasa con crema de boniato",
+            "description": "Cocido durante horas y terminado a la brasa. Lo acompañamos con pimentón ahumado y aceite de oliva virgen extra."
+          },
+          {
+            "title": "Tarta de queso de la casa",
+            "description": "Cremosa, ligera y con un punto de limón. La receta de la abuela de Marta, que lleva veinte años sin cambiar."
+          },
+          {
+            "title": "Menú del día entre semana",
+            "description": "Dos primeros, dos segundos y postre casero a un precio cerrado. Producto de temporada y una opción vegetariana siempre."
+          }
+        ]
+      }
+    },
+    {
+      "type": "gallery",
+      "data": {
+        "title": "Un vistazo a la casa",
+        "subtitle": "Platos, sala y gente que disfruta de la mesa.",
+        "columns": "3",
+        "images": [
+          {
+            "src": "",
+            "alt": "Paella en la mesa"
+          },
+          {
+            "src": "",
+            "alt": "Sala del restaurante con luz cálida"
+          },
+          {
+            "src": "",
+            "alt": "Postres de la casa"
+          },
+          {
+            "src": "",
+            "alt": "Barra de la cocina"
+          },
+          {
+            "src": "",
+            "alt": "Terraza al atardecer"
+          },
+          {
+            "src": "",
+            "alt": "Productos del mercado"
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "Lo que dicen quienes ya han venido",
+        "testimonials": [
+          {
+            "quote": "El mejor arroz que he probado en Valencia, y mira que hay donde elegir. El trato es cercano y el local, precioso.",
+            "author": "Elena Ruiz",
+            "role": "Clienta habitual"
+          },
+          {
+            "quote": "Fuimos a celebrar un cumpleaños y nos cuidaron desde que entramos. Repetiremos en cuanto haya mesa.",
+            "author": "Jorge Martí",
+            "role": "Cena de grupo en mayo"
+          },
+          {
+            "quote": "Producto fresco y raciones generosas. Se nota que cocinan con cariño y sin prisas.",
+            "author": "Carmen Sanz",
+            "role": "Visitante de Madrid"
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Reserva tu mesa",
+        "subtitle": "Dinos el día, la hora y cuántos sois y te confirmamos por correo en menos de 24 horas. Para grupos de más de diez, escríbenos con antelación.",
+        "buttonText": "Enviar reserva"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Casa Olivar",
+        "description": "Restaurante de cocina mediterránea en Valencia. Abierto de martes a domingo, de 13:00 a 16:00 y de 20:00 a 23:30.",
+        "copyright": "© 2027 Casa Olivar. Todos los derechos reservados.",
+        "links": [
+          {
+            "label": "Carta",
+            "url": "#carta"
+          },
+          {
+            "label": "Reservas",
+            "url": "#reservas"
+          },
+          {
+            "label": "Aviso legal",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

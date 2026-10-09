@@ -1,0 +1,187 @@
+{
+  "id": "app-launch",
+  "language": "en",
+  "title": {
+    "es": "Lanzamiento de app móvil",
+    "en": "Mobile app launch"
+  },
+  "origin": "placeholder",
+  "prompt": "Launch page for Tidyup, a mobile app that helps families plan chores and shared shopping lists, with features, key numbers and a call to download",
+  "keywords": [
+    "app",
+    "aplicacion",
+    "application",
+    "movil",
+    "mobile",
+    "ios",
+    "android",
+    "iphone",
+    "descarga",
+    "download",
+    "lanzamiento",
+    "launch",
+    "smartphone",
+    "play store",
+    "app store"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Tidyup",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Features",
+            "url": "#features"
+          },
+          {
+            "label": "Reviews",
+            "url": "#reviews"
+          },
+          {
+            "label": "FAQ",
+            "url": "#faq"
+          }
+        ],
+        "ctaText": "Download"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "The family to-do list that actually gets done",
+        "subtitle": "Tidyup lets everyone at home see who is doing what: chores, shared shopping lists and reminders, all in one calm app for iPhone and Android.",
+        "buttonText": "Download the app",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Less nagging, more doing",
+        "features": [
+          {
+            "title": "Chores with a rotation",
+            "description": "Set up weekly chores once and Tidyup rotates them fairly. Kids earn stars, adults get a break from reminding."
+          },
+          {
+            "title": "One shopping list for everyone",
+            "description": "Add an item from the sofa and it shows up for whoever is at the store. Items are grouped by aisle."
+          },
+          {
+            "title": "Gentle reminders",
+            "description": "Nudges arrive at the right time, not all at once. Quiet hours keep evenings peaceful."
+          },
+          {
+            "title": "Works offline",
+            "description": "No signal in the basement supermarket? Your lists stay available and sync when you are back online."
+          }
+        ]
+      }
+    },
+    {
+      "type": "stats",
+      "data": {
+        "title": "Families are using it every day",
+        "subtitle": "Numbers from the first six months.",
+        "stats": [
+          {
+            "value": "40,000+",
+            "label": "Households"
+          },
+          {
+            "value": "4.8",
+            "label": "Average store rating"
+          },
+          {
+            "value": "1.2M",
+            "label": "Chores completed"
+          },
+          {
+            "value": "78%",
+            "label": "Weekly active families"
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "Loved at home",
+        "testimonials": [
+          {
+            "quote": "We stopped arguing about the dishes in the first week. The rotation just takes the drama out of it.",
+            "author": "Hannah Brooks",
+            "role": "Parent of three"
+          },
+          {
+            "quote": "My kids actually ask to do their chores now because of the stars. I did not see that coming.",
+            "author": "Marcus Webb",
+            "role": "Dad and part-time teacher"
+          },
+          {
+            "quote": "The shared shopping list alone is worth it. No more duplicate milk.",
+            "author": "Priya Nair",
+            "role": "Lives with two flatmates"
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "data": {
+        "title": "Good to know",
+        "questions": [
+          {
+            "question": "Is Tidyup free?",
+            "answer": "The app is free for one household with up to six members. Tidyup Plus adds extra lists, history and custom reward charts for a small yearly fee."
+          },
+          {
+            "question": "Can kids use it without an account?",
+            "answer": "Yes. Children join with a code from a parent, with no email needed, and parents control what they can see and edit."
+          },
+          {
+            "question": "Which devices are supported?",
+            "answer": "Tidyup works on iPhone with iOS 16 or later and on Android phones with version 10 or later. A web view is on the roadmap."
+          },
+          {
+            "question": "Where is my data stored?",
+            "answer": "Your household data is stored in the EU and is never sold or used for advertising. You can export or delete it at any time from the settings."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "data": {
+        "title": "Give your house a calmer routine",
+        "subtitle": "Download Tidyup for free and set up your first chore in under two minutes.",
+        "buttonText": "Get the app"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Tidyup",
+        "description": "A friendly app for families who share a home, a list and a lot of laundry.",
+        "copyright": "© 2027 Tidyup Apps. All rights reserved.",
+        "links": [
+          {
+            "label": "Features",
+            "url": "#features"
+          },
+          {
+            "label": "Privacy",
+            "url": ""
+          },
+          {
+            "label": "Support",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

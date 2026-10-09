@@ -1,0 +1,207 @@
+{
+  "id": "small-shop",
+  "language": "es",
+  "title": {
+    "es": "Tienda artesanal",
+    "en": "Small craft shop"
+  },
+  "origin": "placeholder",
+  "prompt": "Tienda online de Tinta y Barro, cerámica artesanal hecha a mano en Sevilla, con productos destacados, la historia del taller, opiniones y contacto",
+  "keywords": [
+    "tienda",
+    "shop",
+    "store",
+    "ecommerce",
+    "e-commerce",
+    "artesan",
+    "handmade",
+    "craft",
+    "ceramic",
+    "producto",
+    "product",
+    "comprar",
+    "buy",
+    "boutique",
+    "joyeria",
+    "jewelry",
+    "ropa",
+    "clothing",
+    "regalo",
+    "gift",
+    "taller",
+    "workshop"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Tinta y Barro",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Piezas",
+            "url": "#piezas"
+          },
+          {
+            "label": "Taller",
+            "url": "#taller"
+          },
+          {
+            "label": "Contacto",
+            "url": "#contacto"
+          }
+        ],
+        "ctaText": "Ver tienda"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Cerámica hecha a mano en Sevilla, pieza a pieza",
+        "subtitle": "Tazas, platos y jarrones modelados en nuestro taller del barrio de Triana. Cada pieza es única y está pensada para usarse todos los días.",
+        "buttonText": "Ver las piezas",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Piezas destacadas",
+        "features": [
+          {
+            "title": "Taza Alba",
+            "description": "Esmalte blanco roto con borde de color arcilla. Cabe un café largo y se agarra con una sola mano. 18 €."
+          },
+          {
+            "title": "Plato llano Cielo",
+            "description": "Azul profundo con reflejos que cambian en cada horneada. Apto para lavavajillas y microondas. 24 €."
+          },
+          {
+            "title": "Jarrón Olivo",
+            "description": "Barro oscuro con una textura que recuerda a la corteza. Sirve para flor fresca o seca. 38 €."
+          },
+          {
+            "title": "Set de desayuno",
+            "description": "Taza, cuenco y plato pequeño a juego, en una caja de cartón reciclado lista para regalar. 52 €."
+          }
+        ]
+      }
+    },
+    {
+      "type": "gallery",
+      "data": {
+        "title": "Del barro a tu mesa",
+        "subtitle": "Un paseo por el taller y por las últimas piezas.",
+        "columns": "3",
+        "images": [
+          {
+            "src": "",
+            "alt": "Manos modelando una taza en el torno"
+          },
+          {
+            "src": "",
+            "alt": "Estantería con piezas recién esmaltadas"
+          },
+          {
+            "src": "",
+            "alt": "Horno del taller"
+          },
+          {
+            "src": "",
+            "alt": "Tazas en tonos tierra"
+          },
+          {
+            "src": "",
+            "alt": "Mesa puesta con vajilla artesanal"
+          },
+          {
+            "src": "",
+            "alt": "Jarrones con flores secas"
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeline",
+      "data": {
+        "title": "La historia del taller",
+        "events": [
+          {
+            "date": "2016",
+            "title": "Primer torno",
+            "description": "Marta empieza a modelar en un garaje prestado después de un curso de cerámica en Triana."
+          },
+          {
+            "date": "2019",
+            "title": "El taller de la calle Betis",
+            "description": "Abrimos un local propio con horno y espacio para recibir visitas."
+          },
+          {
+            "date": "2022",
+            "title": "Tienda online",
+            "description": "Empezamos a enviar a toda España con embalaje reciclado y sin plástico."
+          },
+          {
+            "date": "2025",
+            "title": "Talleres para principiantes",
+            "description": "Cada sábado enseñamos a hacer una pieza desde cero en grupos de seis personas."
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "Opiniones de quienes ya tienen sus piezas",
+        "testimonials": [
+          {
+            "quote": "Las tazas llegaron perfectamente embaladas y son aún más bonitas en persona. Ya he pedido el set de desayuno.",
+            "author": "Lola Benítez",
+            "role": "Clienta desde Madrid"
+          },
+          {
+            "quote": "Compré un jarrón para regalar y me lo quedé yo. Se nota el trabajo detrás de cada pieza.",
+            "author": "Andrés Gil",
+            "role": "Cliente de Cádiz"
+          },
+          {
+            "quote": "El taller del sábado fue una gozada. Me llevé a casa mi propio cuenco y muchas ganas de repetir.",
+            "author": "Beatriz Lara",
+            "role": "Alumna del taller"
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Encargos y dudas",
+        "subtitle": "Si buscas una pieza a medida, un pedido para tu restaurante o tienes cualquier pregunta sobre un envío, escríbenos. Respondemos en un día laborable.",
+        "buttonText": "Enviar mensaje"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Tinta y Barro",
+        "description": "Taller de cerámica artesanal en Triana, Sevilla. Visitas con cita previa de martes a sábado.",
+        "copyright": "© 2027 Tinta y Barro. Todos los derechos reservados.",
+        "links": [
+          {
+            "label": "Piezas",
+            "url": "#piezas"
+          },
+          {
+            "label": "Taller",
+            "url": "#taller"
+          },
+          {
+            "label": "Envíos y devoluciones",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

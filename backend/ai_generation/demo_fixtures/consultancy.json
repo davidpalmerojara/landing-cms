@@ -1,0 +1,216 @@
+{
+  "id": "consultancy",
+  "language": "en",
+  "title": {
+    "es": "Consultoría",
+    "en": "Consultancy"
+  },
+  "origin": "placeholder",
+  "prompt": "Website for Arden & Wells, a small management consultancy helping manufacturing companies cut costs, with services, results in numbers, the team and a contact form",
+  "keywords": [
+    "consultor",
+    "consultan",
+    "consulting",
+    "consultancy",
+    "asesor",
+    "advisor",
+    "advisory",
+    "agency",
+    "agencia",
+    "despacho",
+    "firm",
+    "abogad",
+    "lawyer",
+    "law",
+    "contab",
+    "accounting",
+    "empresa",
+    "company",
+    "enterprise",
+    "servicios profesionales",
+    "professional services"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Arden & Wells",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Services",
+            "url": "#services"
+          },
+          {
+            "label": "Results",
+            "url": "#results"
+          },
+          {
+            "label": "Contact",
+            "url": "#contact"
+          }
+        ],
+        "ctaText": "Book a call"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Lower your plant costs without cutting what makes your product good",
+        "subtitle": "Arden &amp; Wells is a small consultancy that helps manufacturing companies find savings in energy, scrap and downtime, and keep them. Practical work done on the shop floor, not in slide decks.",
+        "buttonText": "Book a free call",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "logoCloud",
+      "data": {
+        "title": "Trusted by manufacturers across the Midlands",
+        "logos": [
+          {
+            "name": "Hartley Castings"
+          },
+          {
+            "name": "Brookfield Plastics"
+          },
+          {
+            "name": "Calder Precision"
+          },
+          {
+            "name": "Ashby Packaging"
+          },
+          {
+            "name": "Marlow Components"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "What we do",
+        "features": [
+          {
+            "title": "Cost diagnostic",
+            "description": "Two weeks on site mapping where money leaks: energy, scrap, changeovers and maintenance. You get a ranked list of fixes with expected savings."
+          },
+          {
+            "title": "Lean implementation",
+            "description": "We work alongside your team to put the changes in place, train supervisors and measure results every week."
+          },
+          {
+            "title": "Supplier negotiation",
+            "description": "Benchmarking and structured negotiation with your top suppliers, based on real market data."
+          },
+          {
+            "title": "Ongoing support",
+            "description": "A monthly review to keep the gains, spot drift early and plan the next round of improvements."
+          }
+        ]
+      }
+    },
+    {
+      "type": "stats",
+      "data": {
+        "title": "Results our clients see",
+        "subtitle": "Average across projects completed in the last three years.",
+        "stats": [
+          {
+            "value": "14%",
+            "label": "Reduction in operating costs"
+          },
+          {
+            "value": "31%",
+            "label": "Less unplanned downtime"
+          },
+          {
+            "value": "6 months",
+            "label": "Typical payback period"
+          },
+          {
+            "value": "40+",
+            "label": "Plants improved"
+          }
+        ]
+      }
+    },
+    {
+      "type": "team",
+      "data": {
+        "title": "The people you will work with",
+        "subtitle": "Former plant managers and engineers, not career consultants.",
+        "members": [
+          {
+            "name": "Eleanor Arden",
+            "role": "Founding partner, operations",
+            "image": ""
+          },
+          {
+            "name": "James Wells",
+            "role": "Founding partner, finance",
+            "image": ""
+          },
+          {
+            "name": "Priya Chandra",
+            "role": "Lean and quality lead",
+            "image": ""
+          },
+          {
+            "name": "Owen Pritchard",
+            "role": "Energy efficiency engineer",
+            "image": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "What clients say",
+        "testimonials": [
+          {
+            "quote": "They found savings we had walked past for years, and they stayed until the changes stuck. The first-year return paid for the project twice.",
+            "author": "Graham Hartley",
+            "role": "Managing director, a casting foundry"
+          },
+          {
+            "quote": "Honest, practical and respectful of our operators. The team felt helped, not audited.",
+            "author": "Sophie Calder",
+            "role": "Operations manager, a precision engineering firm"
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Let us look at your numbers",
+        "subtitle": "Tell us about your plant and the biggest cost you would like to understand. We reply within one working day with next steps, and the first call is free.",
+        "buttonText": "Send enquiry"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Arden & Wells",
+        "description": "Operations consultancy for manufacturers. Birmingham, United Kingdom.",
+        "copyright": "© 2027 Arden & Wells Ltd. All rights reserved.",
+        "links": [
+          {
+            "label": "Services",
+            "url": "#services"
+          },
+          {
+            "label": "Privacy",
+            "url": ""
+          },
+          {
+            "label": "Contact",
+            "url": "#contact"
+          }
+        ]
+      }
+    }
+  ]
+}

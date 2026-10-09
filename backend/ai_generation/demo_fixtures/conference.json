@@ -1,0 +1,238 @@
+{
+  "id": "conference",
+  "language": "en",
+  "title": {
+    "es": "Conferencia o evento",
+    "en": "Conference or event"
+  },
+  "origin": "placeholder",
+  "prompt": "Website for DevNorth 2027, a two-day developer conference in Edinburgh, with a schedule timeline, speakers, ticket pricing and an FAQ",
+  "keywords": [
+    "conferencia",
+    "conference",
+    "evento",
+    "event",
+    "congreso",
+    "summit",
+    "festival",
+    "meetup",
+    "jornadas",
+    "ponentes",
+    "speaker",
+    "entradas",
+    "tickets",
+    "agenda",
+    "schedule",
+    "workshop",
+    "taller",
+    "hackathon"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "DevNorth 2027",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Schedule",
+            "url": "#schedule"
+          },
+          {
+            "label": "Speakers",
+            "url": "#speakers"
+          },
+          {
+            "label": "Tickets",
+            "url": "#tickets"
+          }
+        ],
+        "ctaText": "Get tickets"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Two days of practical talks for developers, in Edinburgh",
+        "subtitle": "DevNorth brings together 600 engineers on 14 and 15 May 2027 to share what works in production: real systems, real mistakes and the lessons that came out of them.",
+        "buttonText": "Get your ticket",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "stats",
+      "data": {
+        "title": "DevNorth at a glance",
+        "subtitle": "Last year in numbers.",
+        "stats": [
+          {
+            "value": "600",
+            "label": "Attendees"
+          },
+          {
+            "value": "32",
+            "label": "Talks and workshops"
+          },
+          {
+            "value": "2",
+            "label": "Days"
+          },
+          {
+            "value": "94%",
+            "label": "Would come back"
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeline",
+      "data": {
+        "title": "The two days",
+        "events": [
+          {
+            "date": "14 May, 09:00",
+            "title": "Doors open and coffee",
+            "description": "Pick up your badge, meet the community and settle in before the opening keynote."
+          },
+          {
+            "date": "14 May, 10:00",
+            "title": "Opening keynote",
+            "description": "Why the boring parts of engineering decide whether a system lasts."
+          },
+          {
+            "date": "14 May, 14:00",
+            "title": "Hands-on workshops",
+            "description": "Small groups, laptops open: observability, testing and performance."
+          },
+          {
+            "date": "15 May, 10:00",
+            "title": "Talks on two tracks",
+            "description": "Backend and platform in one room, frontend and design systems in the other."
+          },
+          {
+            "date": "15 May, 16:30",
+            "title": "Closing panel and party",
+            "description": "Questions from the audience, then drinks with the speakers."
+          }
+        ]
+      }
+    },
+    {
+      "type": "team",
+      "data": {
+        "title": "Meet the speakers",
+        "subtitle": "A mix of practitioners from companies of every size.",
+        "members": [
+          {
+            "name": "Fiona MacLeod",
+            "role": "Staff engineer, reliability",
+            "image": ""
+          },
+          {
+            "name": "Tomasz Nowak",
+            "role": "Frontend architect",
+            "image": ""
+          },
+          {
+            "name": "Amara Okafor",
+            "role": "Head of platform",
+            "image": ""
+          },
+          {
+            "name": "Callum Reid",
+            "role": "Open-source maintainer",
+            "image": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "pricing",
+      "data": {
+        "title": "Tickets",
+        "subtitle": "Prices include lunch, coffee and access to the recordings.",
+        "plans": [
+          {
+            "name": "Early bird",
+            "price": "£249",
+            "features": "Both days\nLunch and coffee\nTalk recordings",
+            "buttonText": "Buy ticket",
+            "buttonLink": "",
+            "highlighted": false
+          },
+          {
+            "name": "Standard",
+            "price": "£349",
+            "features": "Both days\nLunch and coffee\nTalk recordings\nWorkshop seat",
+            "buttonText": "Buy ticket",
+            "buttonLink": "",
+            "highlighted": true
+          },
+          {
+            "name": "Team pack",
+            "price": "£1,200",
+            "features": "Five standard tickets\nReserved seating\nInvoice for your company",
+            "buttonText": "Buy team pack",
+            "buttonLink": "",
+            "highlighted": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "data": {
+        "title": "Practical details",
+        "questions": [
+          {
+            "question": "Where does DevNorth take place?",
+            "answer": "At a conference centre ten minutes from Waverley station. We will send the exact address, directions and accessibility information with your ticket."
+          },
+          {
+            "question": "Can I get a refund?",
+            "answer": "Tickets can be refunded in full up to 30 days before the event and transferred to a colleague at any time."
+          },
+          {
+            "question": "Will the talks be recorded?",
+            "answer": "Yes. Every main-stage talk is recorded and sent to ticket holders about two weeks after the conference."
+          },
+          {
+            "question": "Is there a code of conduct?",
+            "answer": "Yes. DevNorth is a welcoming event for everyone, and our code of conduct is available on the site with a contact for reports."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "data": {
+        "title": "Join us in Edinburgh",
+        "subtitle": "Early bird tickets are limited. Reserve yours while they last.",
+        "buttonText": "Get tickets"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "DevNorth",
+        "description": "An independent developer conference run by volunteers in Edinburgh.",
+        "copyright": "© 2027 DevNorth Events. All rights reserved.",
+        "links": [
+          {
+            "label": "Schedule",
+            "url": "#schedule"
+          },
+          {
+            "label": "Code of conduct",
+            "url": ""
+          },
+          {
+            "label": "Contact",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

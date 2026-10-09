@@ -1,0 +1,195 @@
+{
+  "id": "design-portfolio",
+  "language": "en",
+  "title": {
+    "es": "Portfolio de diseñadora",
+    "en": "Design portfolio"
+  },
+  "origin": "placeholder",
+  "prompt": "Portfolio for Mara Lindqvist, a freelance brand designer, with a gallery of selected projects, services, testimonials and a contact form",
+  "keywords": [
+    "portfolio",
+    "portafolio",
+    "diseñ",
+    "design",
+    "freelance",
+    "autonom",
+    "creativ",
+    "creative",
+    "ilustra",
+    "illustrat",
+    "photograph",
+    "fotograf",
+    "branding",
+    "proyectos",
+    "projects",
+    "artist",
+    "artista"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Mara Lindqvist",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Work",
+            "url": "#work"
+          },
+          {
+            "label": "Services",
+            "url": "#services"
+          },
+          {
+            "label": "Contact",
+            "url": "#contact"
+          }
+        ],
+        "ctaText": "Let's talk"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Brand identities that make sense at first glance",
+        "subtitle": "I am Mara, a freelance brand designer. I help small studios and growing businesses get a logo, a palette and a voice that all work together.",
+        "buttonText": "See my work",
+        "backgroundImage": "",
+        "alignment": "left"
+      }
+    },
+    {
+      "type": "gallery",
+      "data": {
+        "title": "Selected projects",
+        "subtitle": "A sample of identities, packaging and editorial pieces from the past two years.",
+        "columns": "3",
+        "images": [
+          {
+            "src": "",
+            "alt": "Identity for an artisan bakery"
+          },
+          {
+            "src": "",
+            "alt": "Labels for a local brewery"
+          },
+          {
+            "src": "",
+            "alt": "Catalog for an art gallery"
+          },
+          {
+            "src": "",
+            "alt": "Packaging for natural cosmetics"
+          },
+          {
+            "src": "",
+            "alt": "Website for an architecture studio"
+          },
+          {
+            "src": "",
+            "alt": "Posters for a film festival"
+          }
+        ]
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "How I can help",
+        "features": [
+          {
+            "title": "Visual identity",
+            "description": "Logo, palette, typography and a short guide so anyone on your team can use the brand without breaking it."
+          },
+          {
+            "title": "Packaging and labels",
+            "description": "Design that stands out on the shelf and prints well, with files that are ready for the press."
+          },
+          {
+            "title": "Editorial design",
+            "description": "Catalogs, decks and brochures with a clean layout that people actually enjoy reading."
+          },
+          {
+            "title": "Art direction",
+            "description": "I stay with your team through the launch so every new piece keeps the same standard."
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "What clients say",
+        "testimonials": [
+          {
+            "quote": "Mara understood in one meeting what we had struggled to explain for months. The result really represents us.",
+            "author": "Ian Foster",
+            "role": "Founder of a bakery"
+          },
+          {
+            "quote": "An organized process, deadlines met and proposals that come with reasons. Working with her is a pleasure.",
+            "author": "Lucy Prescott",
+            "role": "Director of an art gallery"
+          },
+          {
+            "quote": "In-store sales went up as soon as we changed the labels. People pick them up and read them.",
+            "author": "Paul Ferrer",
+            "role": "Local brewery"
+          }
+        ]
+      }
+    },
+    {
+      "type": "stats",
+      "data": {
+        "title": "Calm, careful work",
+        "subtitle": "A few numbers after eight years in the trade.",
+        "stats": [
+          {
+            "value": "60+",
+            "label": "Projects delivered"
+          },
+          {
+            "value": "8",
+            "label": "Years of experience"
+          },
+          {
+            "value": "4 weeks",
+            "label": "Average time for an identity"
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Tell me about your project",
+        "subtitle": "Send a few lines about what you need and by when. I reply within two working days with a proposal and a fixed quote.",
+        "buttonText": "Send message"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Mara Lindqvist",
+        "description": "Brand and packaging design for businesses with personality. I work remotely with clients across Europe.",
+        "copyright": "© 2027 Mara Lindqvist. All rights reserved.",
+        "links": [
+          {
+            "label": "Work",
+            "url": "#work"
+          },
+          {
+            "label": "Services",
+            "url": "#services"
+          },
+          {
+            "label": "Contact",
+            "url": "#contact"
+          }
+        ]
+      }
+    }
+  ]
+}

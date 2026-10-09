@@ -1,0 +1,202 @@
+{
+  "id": "fitness-studio",
+  "language": "es",
+  "title": {
+    "es": "Estudio de entrenamiento",
+    "en": "Fitness studio"
+  },
+  "origin": "placeholder",
+  "prompt": "Página para Pulso Studio, un estudio de entrenamiento funcional en Bilbao, con clases, equipo de entrenadores, tarifas y formulario de contacto",
+  "keywords": [
+    "fitness",
+    "gimnasio",
+    "gym",
+    "entrena",
+    "training",
+    "workout",
+    "yoga",
+    "pilates",
+    "crossfit",
+    "deporte",
+    "sport",
+    "clases",
+    "classes",
+    "wellness",
+    "salud",
+    "health",
+    "musculacion"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Pulso Studio",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Clases",
+            "url": "#clases"
+          },
+          {
+            "label": "Equipo",
+            "url": "#equipo"
+          },
+          {
+            "label": "Tarifas",
+            "url": "#tarifas"
+          }
+        ],
+        "ctaText": "Clase gratis"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Entrena con cabeza, en grupos pequeños y en el centro de Bilbao",
+        "subtitle": "Entrenamiento funcional con un máximo de ocho personas por clase. Un entrenador que te corrige, un plan que se adapta a ti y cero postureo.",
+        "buttonText": "Reservar clase de prueba",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Clases para todos los niveles",
+        "features": [
+          {
+            "title": "Funcional 45",
+            "description": "Sesión de 45 minutos con fuerza, movilidad y trabajo cardiovascular. Ideal para empezar o para entrenar en la pausa del mediodía."
+          },
+          {
+            "title": "Fuerza para principiantes",
+            "description": "Aprende los patrones básicos con barra y mancuernas, a tu ritmo y con progresiones claras."
+          },
+          {
+            "title": "Movilidad y espalda",
+            "description": "Clase suave para soltar tensión, mejorar la postura y prevenir lesiones. Recomendada tras muchas horas sentado."
+          },
+          {
+            "title": "Entrenamiento personal",
+            "description": "Sesiones individuales con objetivos concretos: ganar fuerza, preparar una carrera o recuperarte de una lesión."
+          }
+        ]
+      }
+    },
+    {
+      "type": "team",
+      "data": {
+        "title": "Quién te va a entrenar",
+        "subtitle": "Profesionales titulados que siguen formándose.",
+        "members": [
+          {
+            "name": "Aitor Mendizábal",
+            "role": "Director y entrenador de fuerza",
+            "image": ""
+          },
+          {
+            "name": "Nerea Olabarri",
+            "role": "Entrenadora de funcional",
+            "image": ""
+          },
+          {
+            "name": "Unai Echevarría",
+            "role": "Fisioterapeuta y movilidad",
+            "image": ""
+          },
+          {
+            "name": "Leire Goikoetxea",
+            "role": "Entrenadora personal",
+            "image": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "pricing",
+      "data": {
+        "title": "Tarifas claras, sin permanencia",
+        "subtitle": "Todas incluyen valoración inicial y seguimiento mensual.",
+        "plans": [
+          {
+            "name": "Clase suelta",
+            "price": "12 €",
+            "features": "Una clase a elegir\nSin compromiso\nReserva por la web",
+            "buttonText": "Reservar",
+            "buttonLink": "",
+            "highlighted": false
+          },
+          {
+            "name": "Mensual",
+            "price": "59 €/mes",
+            "features": "Hasta 3 clases por semana\nValoración inicial\nSeguimiento mensual\nSin permanencia",
+            "buttonText": "Empezar ahora",
+            "buttonLink": "",
+            "highlighted": true
+          },
+          {
+            "name": "Ilimitado",
+            "price": "89 €/mes",
+            "features": "Clases ilimitadas\nUna sesión personal al mes\nPlan de entrenamiento propio\nSin permanencia",
+            "buttonText": "Elegir plan",
+            "buttonLink": "",
+            "highlighted": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "Lo que cuentan nuestros socios",
+        "testimonials": [
+          {
+            "quote": "Llevaba años sin entrenar y aquí me sentí cómoda desde el primer día. Los grupos pequeños marcan la diferencia.",
+            "author": "Miren Zubiaur",
+            "role": "Socia desde 2024"
+          },
+          {
+            "quote": "Mi espalda ha mejorado muchísimo con las clases de movilidad. Mis días de oficina ya no acaban con dolor.",
+            "author": "Gorka Arrieta",
+            "role": "Socio desde 2023"
+          },
+          {
+            "quote": "Los entrenadores se saben tu nombre y tu historial. Eso no lo encuentras en un gimnasio grande.",
+            "author": "Sara Lekue",
+            "role": "Socia desde 2025"
+          }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "title": "Empieza con una clase de prueba",
+        "subtitle": "Déjanos tu nombre y tu correo y te contamos qué horario encaja mejor. La primera clase es gratis y sin compromiso.",
+        "buttonText": "Quiero probar"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Pulso Studio",
+        "description": "Estudio de entrenamiento funcional en Bilbao. De lunes a viernes de 7:00 a 21:00 y sábados de 9:00 a 13:00.",
+        "copyright": "© 2027 Pulso Studio. Todos los derechos reservados.",
+        "links": [
+          {
+            "label": "Clases",
+            "url": "#clases"
+          },
+          {
+            "label": "Tarifas",
+            "url": "#tarifas"
+          },
+          {
+            "label": "Contacto",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

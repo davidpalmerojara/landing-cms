@@ -1,0 +1,231 @@
+{
+  "id": "online-course",
+  "language": "es",
+  "title": {
+    "es": "Curso online",
+    "en": "Online course"
+  },
+  "origin": "placeholder",
+  "prompt": "Landing para un curso online de fotografía móvil llamado Foto en Tu Bolsillo, con temario, testimonios de alumnos, precio y preguntas frecuentes",
+  "keywords": [
+    "curso",
+    "course",
+    "online",
+    "formacion",
+    "training program",
+    "academia",
+    "academy",
+    "clase",
+    "lesson",
+    "aprender",
+    "learn",
+    "alumno",
+    "student",
+    "temario",
+    "curriculum",
+    "bootcamp",
+    "masterclass",
+    "ebook",
+    "tutorial",
+    "fotografia",
+    "photography"
+  ],
+  "blocks": [
+    {
+      "type": "navbar",
+      "data": {
+        "brandName": "Foto en Tu Bolsillo",
+        "logoImage": "",
+        "links": [
+          {
+            "label": "Temario",
+            "url": "#temario"
+          },
+          {
+            "label": "Opiniones",
+            "url": "#opiniones"
+          },
+          {
+            "label": "Precio",
+            "url": "#precio"
+          }
+        ],
+        "ctaText": "Inscribirme"
+      }
+    },
+    {
+      "type": "hero",
+      "data": {
+        "title": "Haz fotos que te gusten solo con tu móvil",
+        "subtitle": "Un curso online de 6 semanas para aprender luz, composición y edición con el teléfono que ya llevas encima. Sin cámaras caras ni experiencia previa.",
+        "buttonText": "Ver el temario",
+        "backgroundImage": "",
+        "alignment": "center"
+      }
+    },
+    {
+      "type": "features",
+      "data": {
+        "title": "Lo que incluye el curso",
+        "features": [
+          {
+            "title": "Clases en vídeo cortas",
+            "description": "Más de 40 lecciones de 8 a 15 minutos que puedes ver cuando quieras y repetir las veces que haga falta."
+          },
+          {
+            "title": "Ejercicios con feedback",
+            "description": "Cada semana subes una foto y recibes comentarios personales sobre qué funciona y cómo mejorarla."
+          },
+          {
+            "title": "Grupo privado",
+            "description": "Una comunidad de alumnos para compartir fotos, resolver dudas y no perder el ritmo."
+          },
+          {
+            "title": "Acceso para siempre",
+            "description": "Pagas una vez y conservas las clases, los materiales y las futuras actualizaciones."
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeline",
+      "data": {
+        "title": "Temario semana a semana",
+        "events": [
+          {
+            "date": "Semana 1",
+            "title": "Mirar antes de disparar",
+            "description": "Cómo ver la luz, elegir el momento y entender qué hace interesante una imagen."
+          },
+          {
+            "date": "Semana 2",
+            "title": "Composición",
+            "description": "Encuadres, líneas, planos y reglas para romperlas con intención."
+          },
+          {
+            "date": "Semana 3",
+            "title": "Luz natural y luz artificial",
+            "description": "Aprovecha la hora dorada, las sombras y la luz de casa sin focos profesionales."
+          },
+          {
+            "date": "Semana 4",
+            "title": "Retrato y calle",
+            "description": "Pierde el miedo a fotografiar a personas y consigue naturalidad."
+          },
+          {
+            "date": "Semana 5",
+            "title": "Edición con el móvil",
+            "description": "Un flujo de trabajo sencillo con aplicaciones gratuitas para dar carácter a tus fotos."
+          },
+          {
+            "date": "Semana 6",
+            "title": "Tu proyecto final",
+            "description": "Reúne tus mejores diez fotos en una serie y prepárala para compartirla."
+          }
+        ]
+      }
+    },
+    {
+      "type": "testimonials",
+      "data": {
+        "title": "Lo que dicen los alumnos",
+        "testimonials": [
+          {
+            "quote": "Pensaba que necesitaba una cámara mejor. En dos semanas mis fotos eran otras y no había cambiado de móvil.",
+            "author": "Alba Cordero",
+            "role": "Alumna de la edición de primavera"
+          },
+          {
+            "quote": "Las correcciones personales son lo mejor. Te dicen exactamente qué tocar y por qué.",
+            "author": "Rubén Calvo",
+            "role": "Aficionado a los viajes"
+          },
+          {
+            "quote": "Lo hice a ratos por las noches y no me agobié. El grupo me ayudó a seguir hasta el final.",
+            "author": "Marina Pedrosa",
+            "role": "Alumna y madre de dos niños"
+          }
+        ]
+      }
+    },
+    {
+      "type": "pricing",
+      "data": {
+        "title": "Elige cómo quieres hacerlo",
+        "subtitle": "Pago único, sin suscripciones.",
+        "plans": [
+          {
+            "name": "Curso completo",
+            "price": "97 €",
+            "features": "Más de 40 lecciones en vídeo\nMateriales descargables\nAcceso de por vida\nGrupo privado",
+            "buttonText": "Inscribirme",
+            "buttonLink": "",
+            "highlighted": false
+          },
+          {
+            "name": "Curso con feedback",
+            "price": "167 €",
+            "features": "Todo lo del curso completo\nCorrección personal semanal\nRevisión de tu proyecto final\nSesión en directo cada mes",
+            "buttonText": "Quiero feedback",
+            "buttonLink": "",
+            "highlighted": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "faq",
+      "data": {
+        "title": "Preguntas frecuentes",
+        "questions": [
+          {
+            "question": "¿Necesito un móvil de gama alta?",
+            "answer": "No. Cualquier móvil de los últimos cinco años sirve. Aprenderás a sacarle partido a lo que tengas, y los ajustes se explican para iPhone y Android."
+          },
+          {
+            "question": "¿Cuánto tiempo tengo que dedicarle?",
+            "answer": "Unas tres horas por semana entre clases y ejercicios. Puedes ir a tu ritmo, y las lecciones no caducan."
+          },
+          {
+            "question": "¿Y si no me convence?",
+            "answer": "Tienes 14 días para pedir la devolución completa sin dar explicaciones. Nos basta con un correo."
+          },
+          {
+            "question": "¿Recibiré un certificado?",
+            "answer": "Sí, un certificado de finalización cuando completes el proyecto final, que puedes compartir en tu portfolio o redes."
+          }
+        ]
+      }
+    },
+    {
+      "type": "cta",
+      "data": {
+        "title": "Tu móvil ya puede hacer mejores fotos",
+        "subtitle": "La próxima edición empieza el primer lunes de mes. Las plazas con feedback son limitadas.",
+        "buttonText": "Reservar plaza"
+      }
+    },
+    {
+      "type": "footer",
+      "data": {
+        "brandName": "Foto en Tu Bolsillo",
+        "description": "Cursos online de fotografía móvil para quienes quieren mirar mejor, no comprar más.",
+        "copyright": "© 2027 Foto en Tu Bolsillo. Todos los derechos reservados.",
+        "links": [
+          {
+            "label": "Temario",
+            "url": "#temario"
+          },
+          {
+            "label": "Precio",
+            "url": "#precio"
+          },
+          {
+            "label": "Contacto",
+            "url": ""
+          }
+        ]
+      }
+    }
+  ]
+}

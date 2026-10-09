@@ -10,6 +10,7 @@ import type { Block } from '@/types/blocks';
 import { apiToTokens } from '@/lib/design-tokens';
 import { pageThemeVars } from '@/lib/page-theme';
 import { ContactFormProvider } from '@/components/blocks/contact-form-context';
+import { LiveLinksProvider } from '@/components/blocks/live-links-context';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
@@ -100,6 +101,7 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
   }
 
   return (
+    <LiveLinksProvider value={true}>
     <ContactFormProvider value={{ slug: page.slug }}>
     <div className="min-h-screen bg-white" style={themeVars}>
       {blocks.map((block) => {
@@ -154,5 +156,6 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
       )}
     </div>
     </ContactFormProvider>
+    </LiveLinksProvider>
   );
 }

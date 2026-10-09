@@ -1,5 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
+'use client';
+
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { isExternalHref } from '@/lib/safe-link';
+import { useLiveLinks } from './live-links-context';
 
 interface BlockLinkProps {
   /** Already validated with safeHref(). */
@@ -9,17 +12,24 @@ interface BlockLinkProps {
   children: ReactNode;
 }
 
+const blockNavigation = (e: MouseEvent<HTMLAnchorElement>) => e.preventDefault();
+
 /**
  * Anchor for link fields of a block (buttons, nav and footer items). Only
  * rendered on previews and published pages; the editor keeps its inline
  * editable elements. External links open in the same tab.
+ *
+ * Inside the editor's previews the href is still rendered (hover shows the
+ * target, so links can be checked) but clicking does not navigate.
  */
 export default function BlockLink({ href, className, style, children }: BlockLinkProps) {
+  const live = useLiveLinks();
   return (
     <a
       href={href}
       className={className}
       style={style}
+      onClick={live ? undefined : blockNavigation}
       {...(isExternalHref(href) ? { rel: 'noopener noreferrer' } : {})}
     >
       {children}

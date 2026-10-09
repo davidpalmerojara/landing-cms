@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   tokensToCssVars,
@@ -11,6 +13,9 @@ import {
   defaultTypographyTokens,
   defaultSpacingTokens,
   defaultBorderTokens,
+  fontStack,
+  fontVariable,
+  googleFonts,
   type DesignTokens,
 } from '@/lib/design-tokens';
 
@@ -23,8 +28,8 @@ describe('design-tokens', () => {
       expect(vars['--bp-color-primary']).toBe(defaultColorTokens.primary);
     });
 
-    it('generates --bp-font-heading with quotes and sans-serif fallback', () => {
-      expect(vars['--bp-font-heading']).toBe("'Inter', sans-serif");
+    it('generates --bp-font-heading from the self-hosted font, with the name and sans-serif as fallbacks', () => {
+      expect(vars['--bp-font-heading']).toBe("var(--font-page-inter, 'Inter'), sans-serif");
     });
 
     it('generates --bp-font-size-base in px', () => {
@@ -154,5 +159,24 @@ describe('design-tokens', () => {
     it('typography has 8 fields', () => {
       expect(Object.keys(defaultDesignTokens.typography)).toHaveLength(8);
     });
+  });
+});
+
+describe('theme fonts', () => {
+  it('every font the theme offers is self-hosted under the variable fontStack() uses', () => {
+    // lib/page-fonts.ts uses next/font, which only runs inside Next: read it as text
+    const source = readFileSync(resolve(__dirname, '../../lib/page-fonts.ts'), 'utf8');
+    const defined = [...source.matchAll(/variable: '(--font-page-[a-z0-9-]+)'/g)].map((m) => m[1]);
+
+    expect(defined.sort()).toEqual(googleFonts.map(fontVariable).sort());
+  });
+
+  it('uses the self-hosted copy with the font name and a generic family as fallbacks', () => {
+    expect(fontStack('Plus Jakarta Sans')).toBe("var(--font-page-plus-jakarta-sans, 'Plus Jakarta Sans'), sans-serif");
+    expect(fontStack('Playfair Display')).toBe("var(--font-page-playfair-display, 'Playfair Display'), serif");
+  });
+
+  it('keeps unknown names as plain families and strips characters that could escape the value', () => {
+    expect(fontStack("Comic Sans'; } body { display:none")).toBe("'Comic Sans  body  display:none', sans-serif");
   });
 });

@@ -1,65 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSyncExternalStore } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { blockRegistry } from '@/lib/block-registry';
-import { blockAnchorIds } from '@/lib/block-anchors';
-import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import type { Page } from '@/types/page';
-import { defaultSeoFields } from '@/types/page';
-import type { Block } from '@/types/blocks';
 import { api } from '@/lib/api';
-import type { ApiPage } from '@/lib/api';
-import { apiToTokens } from '@/lib/design-tokens';
+import { apiPageToLocal } from '@/lib/page-mapping';
 import { pageThemeVars } from '@/lib/page-theme';
-import { LiveLinksProvider } from '@/components/blocks/live-links-context';
-
-type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-
-function getDeviceModeSnapshot(): DeviceMode {
-  if (typeof window === 'undefined') return 'desktop';
-  const width = window.innerWidth;
-  if (width < 640) return 'mobile';
-  if (width < 1024) return 'tablet';
-  return 'desktop';
-}
-
-function subscribeToViewport(callback: () => void) {
-  window.addEventListener('resize', callback);
-  return () => window.removeEventListener('resize', callback);
-}
-
-function apiPageToLocal(apiPage: ApiPage): Page {
-  return {
-    id: apiPage.id,
-    name: apiPage.name,
-    status: apiPage.status,
-    slug: apiPage.slug,
-    themeId: apiPage.theme_id || 'default',
-    customTheme: (apiPage.custom_theme as Page['customTheme']) || undefined,
-    designTokens: apiToTokens(apiPage.design_tokens as Record<string, unknown> | undefined),
-    seo: {
-      seoTitle: apiPage.seo_title || '',
-      seoDescription: apiPage.seo_description || '',
-      seoCanonicalUrl: apiPage.seo_canonical_url || '',
-      ogTitle: apiPage.og_title || '',
-      ogDescription: apiPage.og_description || '',
-      ogImage: apiPage.og_image || '',
-      ogType: apiPage.og_type || 'website',
-      noindex: apiPage.noindex ?? false,
-    },
-    blocks: apiPage.blocks.map((b): Block => ({
-      id: b.id,
-      type: b.type,
-      name: blockRegistry[b.type]?.label || b.type,
-      data: b.data,
-      styles: { ...defaultBlockStyles, ...b.styles },
-    })),
-  };
-}
+import PageRenderer from '@/components/renderer/PageRenderer';
 
 function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublish: () => Promise<void>; publishError: string | null }) {
   const t = useTranslations();
@@ -127,12 +76,6 @@ export default function PreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  const deviceMode = useSyncExternalStore<DeviceMode>(
-    subscribeToViewport,
-    getDeviceModeSnapshot,
-    () => 'desktop',
-  );
-
   useEffect(() => {
     async function loadPage() {
       try {
@@ -183,45 +126,14 @@ export default function PreviewPage() {
   }
 
   const themeVars = pageThemeVars({ themeId: page.themeId, customTheme: page.customTheme, designTokens: page.designTokens });
-  const anchorIds = blockAnchorIds(page.blocks);
 
   return (
-    <LiveLinksProvider value={true}>
-    <div className="min-h-screen bg-white" style={themeVars}>
+    <div className="min-h-screen bg-white">
       <PreviewTopBar page={page} onPublish={handlePublish} publishError={publishError} />
 
-      {page.blocks.map((block) => {
-        const BlockComponent = blockRegistry[block.type]?.component;
-        if (!BlockComponent) return null;
-
-        const s = resolveStyles(block, deviceMode);
-        const blockStyle: React.CSSProperties = block.type !== 'navbar' ? { overflow: 'hidden' } : {};
-        if (s.paddingTop) blockStyle.paddingTop = s.paddingTop;
-        if (s.paddingBottom) blockStyle.paddingBottom = s.paddingBottom;
-        if (s.paddingLeft) blockStyle.paddingLeft = s.paddingLeft;
-        if (s.paddingRight) blockStyle.paddingRight = s.paddingRight;
-        if (s.marginTop) blockStyle.marginTop = s.marginTop;
-        if (s.marginBottom) blockStyle.marginBottom = s.marginBottom;
-        if (s.bgColor) {
-          blockStyle.backgroundColor = s.bgColor;
-          (blockStyle as Record<string, unknown>)['--theme-bg'] = s.bgColor;
-        }
-        if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
-
-        return (
-          <div key={block.id} id={anchorIds.get(block.id)} style={blockStyle}>
-            <BlockComponent
-              blockId={block.id}
-              data={block.data}
-              isMobile={deviceMode === 'mobile'}
-              isTablet={deviceMode === 'tablet'}
-              isPreviewMode={true}
-            />
-          </div>
-        );
-      })}
-
-      {page.blocks.length === 0 && (
+      {page.blocks.length > 0 ? (
+        <PageRenderer blocks={page.blocks} themeVars={themeVars} liveLinks />
+      ) : (
         <div className="flex items-center justify-center min-h-screen text-muted">
           <div className="text-center space-y-4">
             <p className="text-xl">{t('preview.empty')}</p>
@@ -232,6 +144,5 @@ export default function PreviewPage() {
         </div>
       )}
     </div>
-    </LiveLinksProvider>
   );
 }

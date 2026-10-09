@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import AppProviders from '@/components/providers/AppProviders';
 import { LOCALE_COOKIE, MESSAGES, resolveLocale } from '@/lib/i18n';
+import { pageFontVariables } from '@/lib/page-fonts';
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -58,7 +59,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${dmSans.variable} ${jetbrainsMono.variable} ${pageFontVariables} antialiased`}
       >
         <a
           href="#main-content"

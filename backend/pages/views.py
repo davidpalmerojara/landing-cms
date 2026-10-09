@@ -8,6 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from .models import Page, Block, Asset, PageVersion, CustomDomain, create_version_snapshot
+from .revalidation import revalidate_public_pages
 from .serializers import (
     PageListSerializer, PageDetailSerializer, AssetSerializer, PreviewBlockSerializer,
     PageVersionListSerializer, PageVersionDetailSerializer,
@@ -110,13 +111,16 @@ class PageViewSet(viewsets.ModelViewSet):
         if instance.owner != self.request.user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Solo el propietario puede eliminar esta página.')
+        slug = instance.slug
         instance.delete()
+        revalidate_public_pages(slug)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, id=None):
         """POST /api/pages/{id}/publish/ — freeze the current draft as the public page."""
         page = self.get_object()
         page.publish(request.user)
+        revalidate_public_pages(page.slug)
         return Response(PageDetailSerializer(page, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
@@ -124,6 +128,7 @@ class PageViewSet(viewsets.ModelViewSet):
         """POST /api/pages/{id}/unpublish/ — take the public page offline."""
         page = self.get_object()
         page.unpublish()
+        revalidate_public_pages(page.slug)
         return Response(PageDetailSerializer(page, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])

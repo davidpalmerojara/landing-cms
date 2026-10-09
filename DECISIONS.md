@@ -188,6 +188,21 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-019: La página publicada se renderiza en el servidor
+
+- **Fecha**: 2026-10-09
+- **Contexto**: `/p/[slug]` devolvía un `<div>` vacío desde el servidor y lo pintaba todo en el navegador. El diseño de móvil o escritorio se elegía en JavaScript con `window.innerWidth`, cada visita consultaba a Django sin caché y las fuentes del tema no se cargaban (el CSS pedía "Inter" por su nombre y solo funcionaba si el visitante la tenía instalada).
+- **Decisión**:
+  - Un renderer compartido (`components/renderer/PageRenderer.tsx`) para la página pública y la vista previa, sin nada que dependa de `window`. El HTML del servidor trae la página completa.
+  - Los bloques eligen su diseño con container queries de Tailwind v4 (`@tablet:` desde 640 px y `@desktop:` desde 1024 px, los mismos cortes que el editor) en lugar de las props `isMobile`/`isTablet`. La raíz de cada superficie es un contenedor, así que el mismo CSS sirve en la página real y en los marcos de 375, 768 y 1200 px del editor.
+  - El espaciado y el fondo por dispositivo de cada bloque se convierten en una hoja de estilos (`lib/block-styles-css.ts`) con una regla por dispositivo. Como acaba dentro de un `<style>`, solo deja pasar números, colores con sintaxis simple e ids validados.
+  - Los datos de la página publicada se guardan en la caché de datos de Next, etiquetados por slug. Al publicar, despublicar o borrar, Django llama a `POST /revalidate` con un secreto compartido (`REVALIDATE_SECRET`) y la siguiente visita ya trae la copia nueva. Los 60 segundos de caducidad solo sirven si ese aviso se pierde.
+  - Las 20 fuentes del tema se autoalojan con `next/font` (`lib/page-fonts.ts`): se descargan al compilar y se sirven desde el propio dominio, sin precarga. El navegador solo baja las que la página usa y nunca contacta con Google.
+- **Alternativas**: Media queries (miden la ventana, no el marco del editor, así que el editor dejaría de mostrar el móvil fielmente); ISR de la página entera (los textos de Paxl en la página, como la marca de agua, dependen del idioma del visitante); Google Fonts por CSS (envía la IP de cada visitante a Google, lo contrario de la analítica sin cookies); revalidar desde el navegador del dueño tras publicar (no cubre despublicar ni borrar desde el dashboard, y cualquiera podría llamar a esa acción).
+- **Consecuencias**: `curl` de `/p/slug` devuelve todo el contenido y los buscadores lo leen sin ejecutar JavaScript. Las visitas repetidas no llegan a Django. Las fuentes añaden unos 6,5 KB comprimidos de CSS (`@font-face`) a todas las páginas. El canvas del editor sigue resolviendo los overrides por dispositivo en JavaScript, porque sabe qué dispositivo muestra. Se quitó `app/loading.tsx`, que envolvía también la página pública y convertía sus 404 en 200.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

@@ -1,48 +1,8 @@
 import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { LOCALE_COOKIE, MESSAGES, resolveLocale } from '@/lib/i18n';
+import { getPublicPage } from '@/lib/public-page';
 import PublicPageClient from './PublicPageClient';
-import { serverApiUrl } from '@/lib/server-api';
-
-const API_BASE = serverApiUrl();
-
-interface ApiBlock {
-  id: string;
-  type: string;
-  order: number;
-  data: Record<string, unknown>;
-  styles: Record<string, unknown>;
-}
-
-interface ApiPage {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  theme_id?: string;
-  custom_theme?: Record<string, string> | null;
-  seo_title?: string;
-  seo_description?: string;
-  seo_canonical_url?: string;
-  og_title?: string;
-  og_description?: string;
-  og_image?: string;
-  og_type?: string;
-  noindex?: boolean;
-  blocks: ApiBlock[];
-}
-
-async function getPublicPage(slug: string): Promise<ApiPage | null> {
-  try {
-    const res = await fetch(`${API_BASE}/public/pages/${slug}/`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

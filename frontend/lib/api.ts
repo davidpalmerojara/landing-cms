@@ -75,6 +75,29 @@ export interface AuthResponse {
   password_disabled?: boolean;
 }
 
+/** GET /api/public/pages/{slug}/: the copy frozen at publish time (ADR-017). */
+export interface ApiPublicPage {
+  id: string;
+  slug: string;
+  status: string;
+  name: string;
+  theme_id?: string;
+  custom_theme?: Record<string, string> | null;
+  design_tokens?: Record<string, unknown> | null;
+  seo_title?: string;
+  seo_description?: string;
+  seo_canonical_url?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  og_type?: string;
+  noindex?: boolean;
+  blocks: Pick<ApiBlock, 'id' | 'type' | 'order' | 'data' | 'styles'>[];
+  published_at: string | null;
+  updated_at: string | null;
+  show_watermark: boolean;
+}
+
 export interface ApiBlock {
   id: string;
   type: string;
@@ -449,7 +472,7 @@ export const api = {
   },
 
   public: {
-    getBySlug: (slug: string) => publicRequest<ApiPage>(`/public/pages/${slug}/`),
+    getBySlug: (slug: string) => publicRequest<ApiPublicPage>(`/public/pages/${encodeURIComponent(slug)}/`),
     submitContact: submitContactRequest,
   },
 

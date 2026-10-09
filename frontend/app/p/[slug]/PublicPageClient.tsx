@@ -8,6 +8,7 @@ import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import type { Block } from '@/types/blocks';
 import { apiToTokens } from '@/lib/design-tokens';
 import { pageThemeVars } from '@/lib/page-theme';
+import { ContactFormProvider } from '@/components/blocks/contact-form-context';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
@@ -97,6 +98,7 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
   }
 
   return (
+    <ContactFormProvider value={{ slug: page.slug }}>
     <div className="min-h-screen bg-white" style={themeVars}>
       {blocks.map((block) => {
         const BlockComponent = blockRegistry[block.type]?.component;
@@ -149,5 +151,6 @@ export default function PublicPageClient({ page }: { page: ApiPage }) {
         </div>
       )}
     </div>
+    </ContactFormProvider>
   );
 }

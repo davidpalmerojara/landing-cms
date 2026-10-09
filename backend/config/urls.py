@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/', include('ai_generation.urls')),
     path('api/', include('analytics.urls')),
     path('api/', include('billing.urls')),
+    path('api/', include('submissions.urls')),
 ]
 
 if settings.DEBUG:

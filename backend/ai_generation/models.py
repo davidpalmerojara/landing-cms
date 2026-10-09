@@ -11,14 +11,19 @@ class AIGenerationLog(models.Model):
         SINGLE_BLOCK = 'single_block', 'Single Block'
         EDIT_BLOCK = 'edit_block', 'Edit Block'
 
+    class Source(models.TextChoices):
+        DEMO = 'demo', 'Saved demo response'
+        LIVE = 'live', 'Server key'
+        OWN_KEY = 'own_key', "User's own key"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='ai_generations',
     )
-    # Paid with a key sent by the user for that request (not counted against the plan)
-    used_own_key = models.BooleanField(default=False)
+    # Where the answer came from. Only live counts against the plan and the daily caps.
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.LIVE)
     page = models.ForeignKey(
         'pages.Page',
         on_delete=models.SET_NULL,
@@ -35,6 +40,7 @@ class AIGenerationLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['source', 'created_at'])]
 
     def __str__(self):
         return f'{self.mode} — {self.user.username} — {self.created_at:%Y-%m-%d %H:%M}'

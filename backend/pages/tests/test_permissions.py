@@ -21,7 +21,7 @@ CHECK_LIMIT = 'billing.permissions.check_page_limit'
 GET_PLAN = 'billing.permissions.get_user_plan'
 CHECK_FEATURE = 'billing.permissions.check_feature'
 RESOLVE_PROVIDER = 'ai_generation.views.resolve_provider'
-CALL_AI = 'ai_generation.views.call_ai'
+CALL_AI = 'ai_generation.providers.call_ai'
 
 
 def _mock_plan():
@@ -294,7 +294,8 @@ class TestAIPermissions:
     @patch(GET_PLAN, return_value=_mock_plan())
     @patch(RESOLVE_PROVIDER, return_value=('gemini', 'fake-key', True))
     @patch(CALL_AI)
-    def test_owner_can_generate_and_edit_block(self, mock_ai, mock_provider, mock_plan, auth_client, user):
+    def test_owner_can_generate_and_edit_block(self, mock_ai, mock_provider, mock_plan, auth_client, user, settings):
+        settings.AI_DEMO_MODE = False  # exercise the provider path
         generated_page = PageFactory(owner=user)
         editable_page = PageFactory(owner=user)
         block = BlockFactory(page=editable_page, type='hero', order=0, data={'title': 'Old'})

@@ -10,9 +10,13 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-AI_MODEL_ANTHROPIC = 'claude-sonnet-4-20250514'
-AI_MODEL_GEMINI = 'gemini-2.5-flash'
-MAX_TOKENS = 4096
+# Model ids come from settings (GEMINI_MODEL, ANTHROPIC_MODEL)
+# Room for a whole page, and for the thinking tokens some models spend before the JSON
+MAX_TOKENS = 16384
+
+
+class ProviderQuotaError(Exception):
+    """The provider refused the call because its quota or rate limit is used up (HTTP 429)."""
 
 
 @dataclass
@@ -46,7 +50,9 @@ def resolve_provider(own_provider: str | None = None, own_key: str | None = None
 
 
 def call_ai(system_prompt: str, user_message: str, provider: str, api_key: str) -> AIResponse:
-    """Call the appropriate AI provider and return the response."""
+    """Call the appropriate AI provider and return the response.
+
+    Raises ProviderQuotaError when the provider answers that its quota is used up."""
     if provider == 'anthropic':
         return _call_anthropic(system_prompt, user_message, api_key)
     elif provider == 'gemini':
@@ -59,12 +65,15 @@ def _call_anthropic(system_prompt: str, user_message: str, api_key: str) -> AIRe
     import anthropic
 
     client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model=AI_MODEL_ANTHROPIC,
-        max_tokens=MAX_TOKENS,
-        system=system_prompt,
-        messages=[{'role': 'user', 'content': user_message}],
-    )
+    try:
+        message = client.messages.create(
+            model=settings.ANTHROPIC_MODEL,
+            max_tokens=MAX_TOKENS,
+            system=system_prompt,
+            messages=[{'role': 'user', 'content': user_message}],
+        )
+    except anthropic.RateLimitError as exc:
+        raise ProviderQuotaError(str(exc)) from exc
 
     text = message.content[0].text if message.content else ''
     return AIResponse(
@@ -77,17 +86,22 @@ def _call_anthropic(system_prompt: str, user_message: str, api_key: str) -> AIRe
 
 def _call_gemini(system_prompt: str, user_message: str, api_key: str) -> AIResponse:
     from google import genai
+    from google.genai import errors as genai_errors
+
+    config = genai.types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        max_output_tokens=MAX_TOKENS,
+        temperature=0.7,
+    )
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=AI_MODEL_GEMINI,
-        contents=user_message,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            max_output_tokens=MAX_TOKENS,
-            temperature=0.7,
-        ),
-    )
+    try:
+        response = client.models.generate_content(model=settings.GEMINI_MODEL, contents=user_message, config=config)
+    except genai_errors.APIError as exc:
+        # 429: rate limit or free quota; 402 / RESOURCE_EXHAUSTED: prepaid credits used up
+        if exc.code in (402, 429) or exc.status == 'RESOURCE_EXHAUSTED':
+            raise ProviderQuotaError(str(exc)) from exc
+        raise
 
     text = response.text or ''
     # Gemini usage metadata

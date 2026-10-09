@@ -291,9 +291,22 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 REVALIDATE_SECRET = os.environ.get('REVALIDATE_SECRET', '')
 
 
-# AI Generation — server-level fallback keys (users can provide their own)
+# --- AI generation (ADR-022) ---
+# Server-level keys (users can send their own with each request; those are never stored)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 GOOGLE_AI_KEY = os.environ.get('GOOGLE_AI_KEY', '')
+# Model ids sent to each provider
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+ANTHROPIC_MODEL = os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-4-20250514')
+# Demo mode (default): the server key is never used. Page generation serves a saved
+# response and block editing a saved variant. A key sent with the request still works.
+AI_DEMO_MODE = os.environ.get('AI_DEMO_MODE', 'True').lower() in ('true', '1', 'yes')
+# Seconds a saved response takes to arrive, so it feels like the real thing (0 in tests)
+AI_DEMO_DELAY_SECONDS = float(os.environ.get('AI_DEMO_DELAY_SECONDS', '2.5'))
+# With AI_DEMO_MODE=False and a server key: calls per UTC day, for everyone and per user.
+# Past either limit (or if the provider reports its quota is exhausted) a saved response is served.
+AI_LIVE_DAILY_LIMIT = int(os.environ.get('AI_LIVE_DAILY_LIMIT', '30'))
+AI_LIVE_USER_DAILY_LIMIT = int(os.environ.get('AI_LIVE_USER_DAILY_LIMIT', '2'))
 
 
 # Stripe

@@ -20,7 +20,7 @@ from tests.factories import BlockFactory, PageFactory
 
 GET_PLAN = 'billing.permissions.get_user_plan'
 RESOLVE_PROVIDER = 'ai_generation.views.resolve_provider'
-CALL_AI = 'ai_generation.views.call_ai'
+CALL_AI = 'ai_generation.providers.call_ai'
 
 NUMBERED_KEY = re.compile(r'"(?:(?:feature|quote|author|role|plan|logo|image|member|stat|item|link)\d\w*|[qa]\d)"')
 
@@ -29,6 +29,12 @@ LIST_KEYS = {
     'pricing': 'plans', 'faq': 'questions', 'logoCloud': 'logos', 'gallery': 'images', 'team': 'members',
     'stats': 'stats', 'timeline': 'events',
 }
+
+
+@pytest.fixture(autouse=True)
+def live_mode(settings):
+    """These tests exercise the provider path; demo mode has its own tests."""
+    settings.AI_DEMO_MODE = False
 
 
 def plan():

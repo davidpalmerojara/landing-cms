@@ -156,11 +156,11 @@ Response:
     "data": {{
       "title": "Trusted by 500+ startup teams",
       "logos": [
-        {{ "name": "TechCrunch" }},
-        {{ "name": "Y Combinator" }},
-        {{ "name": "Stripe" }},
-        {{ "name": "Vercel" }},
-        {{ "name": "Linear" }}
+        {{ "name": "Northwind Labs" }},
+        {{ "name": "Brightpath" }},
+        {{ "name": "Kestrel Works" }},
+        {{ "name": "Lumen Studio" }},
+        {{ "name": "Harbor & Co" }}
       ]
     }}
   }},
@@ -173,7 +173,7 @@ Response:
         {{ "value": "500+", "label": "Teams onboarded" }},
         {{ "value": "99.9%", "label": "Uptime SLA" }},
         {{ "value": "2.3s", "label": "Avg. load time" }},
-        {{ "value": "4.8/5", "label": "G2 rating" }}
+        {{ "value": "4.8/5", "label": "Average customer rating" }}
       ]
     }}
   }},
@@ -192,7 +192,7 @@ Response:
         }},
         {{
           "title": "Powerful Integrations",
-          "description": "Connect GitHub, Slack, and Figma in a few clicks. Every pull request and design update lands on the right card."
+          "description": "Connect your code repository, chat, and design tools in a few clicks. Every pull request and design update lands on the right card."
         }}
       ]
     }}
@@ -230,8 +230,8 @@ Response:
           "answer": "Yes! Our Starter plan is free forever for teams of up to 5. No credit card required to get started."
         }},
         {{
-          "question": "Can I import from Jira or Trello?",
-          "answer": "Absolutely. We have one-click importers for Jira, Trello, Asana, and Linear. Your data migrates in minutes."
+          "question": "Can I import from another tool?",
+          "answer": "Absolutely. We have one-click importers for the most common task trackers. Your data migrates in minutes."
         }},
         {{
           "question": "What happens when my trial ends?",

@@ -124,7 +124,7 @@ describe('usePageSync', () => {
     vi.clearAllMocks();
     localStorage.clear();
     useEditorStore.setState({
-      past: [], future: [], selectedBlockId: null, syncBase: null, myConnectionId: null, presence: [],
+      past: [], future: [], selectedBlockId: null, syncBase: null, myConnectionId: null, presence: [], collabStatus: 'idle',
     });
   });
 
@@ -159,6 +159,25 @@ describe('usePageSync', () => {
       expect(page.name).toBe('From backup');
       expect(page.blocks[0].id).toMatch(/^[0-9a-f-]{36}$/);
       expect(syncBase).toBeNull();
+      view.unmount();
+    });
+
+    it('reports the HTTP status of a failed load, not only its message', async () => {
+      getPage.mockRejectedValue(new ApiError(404, '{"error":"Not found"}'));
+
+      const view = await mount();
+
+      expect(sync.errorStatus).toBe(404);
+      view.unmount();
+    });
+
+    it('has no status when the failure was not an HTTP response', async () => {
+      getPage.mockRejectedValue(new Error('offline'));
+
+      const view = await mount();
+
+      expect(sync.error).toBe('offline');
+      expect(sync.errorStatus).toBeNull();
       view.unmount();
     });
 
@@ -453,6 +472,24 @@ describe('usePageSync', () => {
       expect(state().page.designTokens).toEqual(presetTokens('ember'));
       expect(state().page.seo.seoTitle).toBe('My unsaved title');
       expect(onRemoteMerged).toHaveBeenCalledWith(expect.objectContaining({ reason: 'restore', by: { userId: 'u2', username: 'ana' } }));
+      view.unmount();
+    });
+  });
+
+  describe('after access is revoked', () => {
+    it('sends and fetches nothing once the owner stopped sharing the page', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Unsaved mine'); });
+      act(() => { state().setCollabStatus('revoked'); });
+      getPage.mockClear();
+
+      expect(await save()).toBe(false);
+      await remoteChange({ version: 2 });
+
+      expect(updatePage).not.toHaveBeenCalled();
+      expect(getPage).not.toHaveBeenCalled();
+      expect(title(BLOCK_A)).toBe('Unsaved mine');
       view.unmount();
     });
   });

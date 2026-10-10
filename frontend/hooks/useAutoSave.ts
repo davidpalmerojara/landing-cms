@@ -14,6 +14,8 @@ export function autoSaveDelay(otherConnections: number): number {
   return otherConnections > 0 ? COLLAB_AUTO_SAVE_DELAY : AUTO_SAVE_DELAY;
 }
 
+const isAccessRevoked = () => useEditorStore.getState().collabStatus === 'revoked';
+
 export function useAutoSave(saveToApi: () => Promise<boolean>) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusRef = useRef<SaveStatus>('idle');
@@ -40,6 +42,9 @@ export function useAutoSave(saveToApi: () => Promise<boolean>) {
         // Don't auto-save remote updates (received via WebSocket)
         if (useEditorStore.getState().isRemoteUpdate) return;
 
+        // Access was revoked: the server would refuse every save, so stop trying
+        if (isAccessRevoked()) return;
+
         // Clear existing timer
         if (timerRef.current) clearTimeout(timerRef.current);
 
@@ -48,6 +53,10 @@ export function useAutoSave(saveToApi: () => Promise<boolean>) {
         // Set new debounced save
         timerRef.current = setTimeout(async () => {
           if (cancelledRef.current) return;
+          if (isAccessRevoked()) {
+            setAutoSaveStatus('idle');
+            return;
+          }
           setAutoSaveStatus('saving');
           const ok = await saveToApi();
           if (cancelledRef.current) return;

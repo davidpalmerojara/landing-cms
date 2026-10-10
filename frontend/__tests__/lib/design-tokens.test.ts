@@ -75,8 +75,9 @@ describe('design-tokens', () => {
       expect(vars['--theme-text']).toBe(defaultColorTokens.textPrimary);
     });
 
-    it('generates 8 theme vars total', () => {
-      expect(Object.keys(vars)).toHaveLength(8);
+    it('generates the 8 palette vars and the derived readable colors', () => {
+      expect(Object.keys(vars)).toHaveLength(18);
+      expect(vars['--theme-text-on-primary']).toBe(defaultColorTokens.textOnPrimary);
     });
   });
 

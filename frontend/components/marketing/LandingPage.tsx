@@ -142,7 +142,7 @@ export default function LandingPage() {
               <p className="text-secondary leading-relaxed mb-6">{t('marketing.home.themeDescription')}</p>
               <ul className="mt-auto flex flex-wrap gap-3" aria-label={t('marketing.home.themePresetsLabel')}>
                 {tokenPresets.slice(0, 4).map((preset) => (
-                  <li key={preset.id} className="flex rounded-full overflow-hidden border border-default/30" title={preset.name}>
+                  <li key={preset.id} className="flex rounded-full overflow-hidden border border-default/30" title={t(`designTokens.presets.${preset.id}`)}>
                     {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background].map((color) => (
                       <span key={color} className="w-5 h-5" style={{ backgroundColor: color }} />
                     ))}

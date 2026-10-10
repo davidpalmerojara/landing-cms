@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import {
-  tokenPresets, scaleRatios, googleFonts, contrastIssues,
+  tokenPresets, scaleRatios, googleFonts, contrastIssues, matchingPresetId,
 } from '@/lib/design-tokens';
 import type {
   ColorTokens, TypographyTokens, SpacingTokens, BorderTokens,
@@ -96,6 +96,7 @@ function ContrastWarnings({ colors }: { colors: ColorTokens }) {
           <span>{t(CONTRAST_MESSAGE_KEYS[id])}: {t('contrastWarning', { ratio: ratio.toFixed(1) })}</span>
         </div>
       ))}
+      {issues.length > 0 && <p className="text-[10px] text-muted px-2">{t('contrastAutoFixed')}</p>}
     </div>
   );
 }
@@ -132,28 +133,38 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
 
 // --- Preset Palette Picker ---
 
-function PalettePresets({ onSelect }: { onSelect: (preset: TokenPreset) => void }) {
+function PalettePresets({ activeId, onSelect }: { activeId: string | null; onSelect: (preset: TokenPreset) => void }) {
   const t = useTranslations('designTokens');
+  const labelId = useId();
 
   return (
     <div className="space-y-2">
-      <div className="text-[10px] text-muted uppercase tracking-wider font-medium">{t('presetPalettes')}</div>
-      <div className="grid grid-cols-2 gap-2">
-        {tokenPresets.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => onSelect(preset)}
-            className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-primary/50 hover:bg-surface-card/50 transition-all group"
-          >
-            <div className="flex gap-0.5">
-              {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background, preset.colors.textPrimary].map((c, i) => (
-                <div key={i} className="w-4 h-4 rounded-sm border border-default/50" style={{ backgroundColor: c }} />
-              ))}
-            </div>
-            <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">{preset.name}</span>
-          </button>
-        ))}
+      <div id={labelId} className="text-[10px] text-muted uppercase tracking-wider font-medium">{t('presetPalettes')}</div>
+      <div role="group" aria-labelledby={labelId} className="grid grid-cols-2 gap-2">
+        {tokenPresets.map((preset) => {
+          const isActive = preset.id === activeId;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => onSelect(preset)}
+              aria-pressed={isActive}
+              className={`flex flex-col gap-1.5 p-2 rounded-lg border transition-all group ${
+                isActive ? 'border-primary bg-surface-card/50' : 'border-subtle hover:border-primary/50 hover:bg-surface-card/50'
+              }`}
+            >
+              <span className="flex w-full items-center gap-0.5">
+                {[preset.colors.primary, preset.colors.secondary, preset.colors.accent, preset.colors.background, preset.colors.textPrimary].map((c, i) => (
+                  <span key={i} className="w-4 h-4 rounded-sm border border-default/50" style={{ backgroundColor: c }} />
+                ))}
+                {isActive && <Check aria-hidden="true" className="ml-auto w-3.5 h-3.5 text-primary-color" />}
+              </span>
+              <span className={`text-[10px] text-left transition-colors ${isActive ? 'text-primary' : 'text-secondary group-hover:text-primary'}`}>
+                {t(`presets.${preset.id}`)}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -303,7 +314,7 @@ export default function DesignTokensPanel() {
       <div className="flex-1 overflow-y-auto">
         {/* Colors */}
         <Section title={t('colors')} icon={Palette}>
-          <PalettePresets onSelect={handlePreset} />
+          <PalettePresets activeId={matchingPresetId(colors)} onSelect={handlePreset} />
           <div className="h-px bg-subtle/60 my-2" />
           <div className="space-y-2.5">
             {colorFields.map(({ key, label, desc }) => (

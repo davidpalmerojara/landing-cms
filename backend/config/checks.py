@@ -21,9 +21,16 @@ def check_trusted_proxies(app_configs, **kwargs):
     with NUM_PROXIES=0 all visitors share one bucket, so five guest sessions per
     hour or five contact messages per minute lock out the whole site.
     """
+    proxies = settings.REST_FRAMEWORK.get('NUM_PROXIES')
+    if isinstance(proxies, int) and proxies < 0:
+        # Never valid: DRF would pick an address from the wrong end of X-Forwarded-For (SEC2-011)
+        return [Error(
+            f'NUM_PROXIES is negative ({proxies}).',
+            hint='Set NUM_PROXIES to the number of proxies between the visitor and this server (0 or more).',
+            id='paxl.E001',
+        )]
     if settings.DEBUG:
         return []
-    proxies = settings.REST_FRAMEWORK.get('NUM_PROXIES')
     if proxies:
         return []
     return [Error(

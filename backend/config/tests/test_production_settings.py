@@ -29,6 +29,16 @@ class TestTrustedProxiesCheck:
 
         assert check_trusted_proxies(None) == []
 
+    @pytest.mark.parametrize('debug', [False, True])
+    def test_sec2_011_a_negative_count_never_passes(self, settings, debug):
+        settings.DEBUG = debug
+        with_proxies(settings, -1)
+
+        problems = check_trusted_proxies(None)
+
+        assert [p.id for p in problems] == ['paxl.E001']
+        assert 'negative' in problems[0].msg
+
     def test_qa007_development_does_not_need_it(self, settings):
         settings.DEBUG = True
         with_proxies(settings, 0)

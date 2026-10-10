@@ -14,6 +14,8 @@ import type { BlockType } from '@/types/blocks';
 
 /** Below Tailwind's `lg` the sidebar is a panel that opens over the canvas (QA-022). */
 const OVERLAY_QUERY = '(max-width: 1023.98px)';
+/** Frames to keep trying to move focus into a panel that is still opening (about a quarter of a second) */
+const MAX_FOCUS_ATTEMPTS = 15;
 
 /** Pans the canvas to a block once React has drawn it (a block added a moment ago). */
 function revealSoon(blockId: string | null) {
@@ -151,13 +153,21 @@ export default function LeftSidebar() {
   const openPanel = () => setIsOpen(true);
 
   // Once the panel is drawn (no longer `invisible`), focus moves into it: its selected tab (EDITOR2-005).
-  // Right in the effect the browser still saw the panel as hidden and ignored the call, so focus
-  // stayed on "Bloques"; the next frame is when it can take it (EDITOR3-001)
+  // Right after the panel opens the browser ignores `focus()` for a frame or two (it is still
+  // coming out of `invisible` and sliding in), so focus stayed on "Bloques": try on each frame
+  // until the tab has it (EDITOR3-001)
   useEffect(() => {
     if (!isOverlayOpen) return;
-    const frame = requestAnimationFrame(() => {
-      asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
-    });
+    let frame = 0;
+    let attempts = 0;
+    const focusSelectedTab = () => {
+      const tab = asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (!tab) return;
+      tab.focus();
+      attempts += 1;
+      if (document.activeElement !== tab && attempts < MAX_FOCUS_ATTEMPTS) frame = requestAnimationFrame(focusSelectedTab);
+    };
+    frame = requestAnimationFrame(focusSelectedTab);
     return () => cancelAnimationFrame(frame);
   }, [isOverlayOpen]);
 

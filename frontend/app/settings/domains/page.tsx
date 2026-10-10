@@ -18,7 +18,7 @@ function StatusBadge({ domain }: { domain: ApiCustomDomain }) {
   const t = useTranslations();
   if (domain.is_active) {
     return (
-      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-success bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
         <CheckCircle2 className="w-3 h-3" />
         {t('domains.active')}
       </span>
@@ -26,7 +26,7 @@ function StatusBadge({ domain }: { domain: ApiCustomDomain }) {
   }
   if (domain.dns_status === 'verified' && domain.ssl_status !== 'active') {
     return (
-      <span className="flex items-center gap-1.5 text-[11px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full">
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary-color bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full">
         <Shield className="w-3 h-3 animate-pulse" />
         {t('domains.verifyingSsl')}
       </span>
@@ -34,14 +34,14 @@ function StatusBadge({ domain }: { domain: ApiCustomDomain }) {
   }
   if (domain.dns_status === 'failed') {
     return (
-      <span className="flex items-center gap-1.5 text-[11px] font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-error bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
         <AlertCircle className="w-3 h-3" />
         {t('domains.dnsError')}
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1.5 text-[11px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+    <span className="flex items-center gap-1.5 text-[11px] font-medium text-warning bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
       <Clock className="w-3 h-3" />
       {t('domains.dnsPending')}
     </span>
@@ -82,12 +82,12 @@ function DnsInstructions({ domain }: { domain: ApiCustomDomain }) {
             className="text-muted hover:text-secondary p-1"
             title={t('domains.copy')}
           >
-            {copied === 'cname' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied === 'cname' ? <CheckCircle2 className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
         {/* A Record alternative */}
         <div className="flex items-center gap-3 p-2.5 bg-surface rounded-md border border-subtle/50">
-          <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">A</span>
+          <span className="text-[10px] font-bold text-warning bg-amber-500/10 px-2 py-0.5 rounded">A</span>
           <div className="flex-1 min-w-0">
             <span className="text-[11px] text-secondary">{t('domains.recordName')} </span>
             <span className="text-[11px] text-primary font-mono">{instructions.alternative_a_record.name}</span>
@@ -99,7 +99,7 @@ function DnsInstructions({ domain }: { domain: ApiCustomDomain }) {
             className="text-muted hover:text-secondary p-1"
             title={t('domains.copy')}
           >
-            {copied === 'a' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied === 'a' ? <CheckCircle2 className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -172,7 +172,7 @@ function AddDomainModal({
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-[12px] bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-error text-[12px] bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {error}
             </div>
@@ -297,31 +297,32 @@ export default function DomainsSettingsPage() {
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
+            aria-label={t('common.backToDashboard')}
             className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary-color" />
-            <span className="font-semibold text-primary">{t('domains.title')}</span>
+            <h1 className="font-semibold text-primary">{t('domains.title')}</h1>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         {error && (
-          <div className="flex items-center gap-2 text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
-            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">×</button>
+            <button onClick={() => setError(null)} className="ml-auto text-error hover:text-red-300">×</button>
           </div>
         )}
 
         {isPro === false && (
           <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/10 border border-primary/20 rounded-xl">
             <div className="flex items-center gap-3 mb-3">
-              <Crown className="w-5 h-5 text-amber-400" />
-              <h3 className="font-semibold text-primary">{t('domains.proFeatureTitle')}</h3>
+              <Crown className="w-5 h-5 text-warning" />
+              <h2 className="font-semibold text-primary">{t('domains.proFeatureTitle')}</h2>
             </div>
             <p className="text-[13px] text-secondary mb-4">
               {t('domains.proFeatureDescription')}
@@ -425,7 +426,7 @@ export default function DomainsSettingsPage() {
 
                 {/* Show error message */}
                 {d.dns_error && (
-                  <div className="mt-3 flex items-center gap-2 text-red-400 text-[12px] bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  <div className="mt-3 flex items-center gap-2 text-error text-[12px] bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {d.dns_error}
                   </div>

@@ -57,7 +57,7 @@ export default function TestimonialsBlock({ blockId, data, isPreviewMode }: Bloc
                     blockId={blockId}
                     fieldKey={['testimonials', index, 'author']}
                     value={testimonial.author}
-                    as="h4"
+                    as="h3"
                     className="font-semibold"
                     style={{ color: 'var(--theme-text)' }}
                   />

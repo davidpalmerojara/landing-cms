@@ -214,7 +214,7 @@ export default function LandingPage() {
 
             {/* Product */}
             <div>
-              <h4 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.product')}</h4>
+              <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.product')}</h3>
               <ul className="space-y-2 text-sm text-muted">
                 <li><a href="#features" className="hover:text-primary-color transition-colors">{t('navigation.features')}</a></li>
                 <li><Link href="/register" className="hover:text-primary-color transition-colors">{t('navigation.templates')}</Link></li>
@@ -224,7 +224,7 @@ export default function LandingPage() {
 
             {/* Company */}
             <div>
-              <h4 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.company')}</h4>
+              <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.company')}</h3>
               <ul className="space-y-2 text-sm text-muted">
                 <li><Link href="/about" className="hover:text-primary-color transition-colors">{t('navigation.about')}</Link></li>
                 <li><Link href="/changelog" className="hover:text-primary-color transition-colors">{t('marketing.pages.changelog.title')}</Link></li>
@@ -234,7 +234,7 @@ export default function LandingPage() {
 
             {/* Connect */}
             <div>
-              <h4 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.connect')}</h4>
+              <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.connect')}</h3>
               <ul className="space-y-2 text-sm text-muted">
                 <li><Link href="/contact" className="hover:text-primary-color transition-colors">{t('navigation.support')}</Link></li>
               </ul>

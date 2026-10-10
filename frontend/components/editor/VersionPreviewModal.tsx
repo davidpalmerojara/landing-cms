@@ -79,9 +79,9 @@ const DIFF_BORDERS: Record<DiffStatus, string> = {
 };
 
 const DIFF_LABELS: Record<DiffStatus, { color: string } | null> = {
-  added: { color: 'bg-emerald-500/20 text-emerald-400' },
-  removed: { color: 'bg-red-500/20 text-red-400' },
-  modified: { color: 'bg-amber-500/20 text-amber-400' },
+  added: { color: 'bg-emerald-500/20 text-success' },
+  removed: { color: 'bg-red-500/20 text-error' },
+  modified: { color: 'bg-amber-500/20 text-warning' },
   unchanged: null,
 };
 
@@ -236,7 +236,7 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
             onClick={() => setShowDiff((v) => !v)}
             className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
               showDiff
-                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                ? 'bg-amber-500/15 text-warning border border-amber-500/30'
                 : 'text-muted hover:text-secondary border border-default hover:border-default'
             }`}
           >
@@ -273,7 +273,9 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
           </button>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label={commonT('close')}
             className="text-muted hover:text-secondary p-1.5 rounded hover:bg-surface-card/50 transition-colors"
           >
             <X className="w-4 h-4" />

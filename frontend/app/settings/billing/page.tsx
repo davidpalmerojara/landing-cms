@@ -109,20 +109,21 @@ export default function BillingPage() {
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
+            aria-label={t('common.backToDashboard')}
             className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-3">
             <span className="text-xl font-black tracking-tighter" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Paxl</span>
-            <span className="font-semibold text-primary">{t('billing.title')}</span>
+            <h1 className="font-semibold text-primary">{t('billing.title')}</h1>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         {error && (
-          <div className="flex items-center gap-2 text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
@@ -143,10 +144,10 @@ export default function BillingPage() {
                     <h2 className="text-xl font-bold text-primary">
                       {isPro ? t('billing.pro') : t('billing.free')}
                     </h2>
-                    {isPro && <Crown className="w-5 h-5 text-amber-400" />}
+                    {isPro && <Crown className="w-5 h-5 text-warning" />}
                   </div>
                   {subscription?.cancel_at_period_end && subscription.current_period_end && (
-                    <p className="text-sm text-amber-400 mt-1">
+                    <p className="text-sm text-warning mt-1">
                       {t('billing.cancelAt', { date: new Date(subscription.current_period_end).toLocaleDateString(locale) })}
                     </p>
                   )}
@@ -195,7 +196,7 @@ export default function BillingPage() {
                   >
                     {t('billing.yearly')}
                     {proPlan?.price_yearly && (
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-semibold">
+                      <span className="text-[10px] bg-emerald-500/20 text-success px-1.5 py-0.5 rounded-full font-semibold">
                         -17%
                       </span>
                     )}
@@ -256,9 +257,9 @@ export default function BillingPage() {
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                 p.status === 'paid'
-                                  ? 'bg-emerald-500/10 text-emerald-400'
+                                  ? 'bg-emerald-500/10 text-success'
                                   : p.status === 'failed'
-                                  ? 'bg-red-500/10 text-red-400'
+                                  ? 'bg-red-500/10 text-error'
                                   : 'bg-surface-card text-secondary'
                               }`}
                             >
@@ -322,7 +323,7 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
     >
       <div className="flex items-center gap-2 mb-4">
         <h3 className="text-lg font-bold text-primary">{plan.display_name}</h3>
-        {highlighted && <Crown className="w-4 h-4 text-amber-400" />}
+        {highlighted && <Crown className="w-4 h-4 text-warning" />}
       </div>
 
       <div className="mb-6">

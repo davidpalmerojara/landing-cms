@@ -293,6 +293,19 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Traducir en el servidor según `Accept-Language` (el texto de los bloques es del cliente y las plantillas también); un diccionario de mensajes por clave para el contenido de ejemplo (más indirección y perdería el tipado de ADR-021); mantener `initialData` en el registro con una función por idioma (mezcla estructura y palabras).
 - **Consecuencias**: Un bloque o una plantilla nuevos exigen texto en los dos idiomas (las pruebas comprueban que ambos tienen la misma forma y que el inglés no contiene español). Añadir un tercer idioma es añadir una clave en `ContentLocale` y rellenar las mismas tablas. `AI_PLAN_LIMIT` cubre dos casos (plan sin IA y límite por hora) y se muestra con un solo mensaje.
 
+## ADR-026: Teclado en el lienzo: una sola parada de tabulación y flechas entre bloques
+
+- **Fecha**: 2026-10-10
+- **Contexto**: Los bloques del lienzo solo se podían seleccionar con el ratón (WCAG 2.1.1). Además, los botones, enlaces y campos de dentro de los bloques (que en el editor no hacen nada: tienen `pointer-events: none`) eran paradas de tabulación, y la tecla Espacio, reservada para desplazar el lienzo, impedía activar cualquier botón con el teclado.
+- **Decisión**:
+  - Cada bloque es un `role="group"` enfocable con nombre "Bloque Hero, 2 de 8" (más "seleccionado" o "bloqueado, lo está editando X"). Elegimos tabindex itinerante (patrón de lista): el lienzo es una sola parada de tabulación (el último bloque enfocado, o el primero) y las flechas, Inicio y Fin mueven el foco. Así una página larga no obliga a tabular decenas de veces para llegar al inspector. El contenido de los bloques sale del orden de tabulación (`useRemoveFromTabOrder`); se edita desde el inspector.
+  - Teclas, solo con el bloque mismo enfocado (nunca desde un campo, un botón de la barra o un texto en edición): Enter o Espacio seleccionan; Escape quita la selección y deja el foco en el bloque; Alt con flecha arriba o abajo mueve el bloque; Ctrl o Cmd con D lo duplica; Supr o Retroceso piden confirmación para eliminarlo (actúa sobre el bloque enfocado, no sobre el seleccionado). Los atajos globales (deshacer, copiar, pegar) siguen igual. Se documentan en el panel del inspector cuando no hay nada seleccionado y como descripción del lienzo para lectores de pantalla.
+  - Un bloque bloqueado por otra persona se puede enfocar pero no operar; el ratón y el teclado se rechazan igual y se anuncia "no se puede seleccionar: lo está editando X". Mover, duplicar, seleccionar y anunciar usan una región `role="status"` por bloque.
+  - Espacio solo mueve el lienzo cuando el foco no está en un campo, botón, enlace o interruptor, ni en un bloque al que se llegó con el teclado.
+  - El anillo de foco se dibuja dentro del bloque (el marco del lienzo recorta lo que queda fuera).
+- **Alternativas**: Todos los bloques en el orden de tabulación (más simple, pero cada bloque suma una parada y la edición del inspector queda lejos); `aria-activedescendant` desde el contenedor (no mueve el foco real ni sirve con el desplazamiento del lienzo); un `role="listbox"` (los bloques contienen texto y controles que un `option` no permite).
+- **Consecuencias**: La edición de texto en el propio lienzo sigue siendo con doble clic; con teclado se edita el mismo campo en el inspector. Mover un bloque con teclado depende de Alt más flechas, que algunos lectores de pantalla en modo exploración pueden interceptar. Las paletas predefinidas de color pasan AA para texto principal, secundario (sobre fondo y superficie) y texto sobre el color primario; las páginas ya creadas conservan los colores que guardaron.
+
 ---
 
 ## Plantilla para nuevas decisiones

@@ -17,7 +17,7 @@ export default function GlobalError({
     <div className="flex items-center justify-center min-h-screen bg-surface text-secondary px-6">
       <div className="flex flex-col items-center text-center max-w-md">
         <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-6">
-          <AlertCircle className="w-8 h-8 text-red-400" />
+          <AlertCircle className="w-8 h-8 text-error" />
         </div>
 
         <h1 className="text-2xl font-bold text-primary mb-2">{t('errors.globalTitle')}</h1>

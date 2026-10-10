@@ -26,6 +26,7 @@ export default function SettingsPage() {
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center gap-3">
           <Link
             href="/dashboard"
+            aria-label={t('common.backToDashboard')}
             className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -47,7 +48,7 @@ export default function SettingsPage() {
                 <Globe className="w-5 h-5 text-muted" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-secondary">{t('settingsPage.domainsTitle')}</h3>
+                <h2 className="text-sm font-medium text-secondary">{t('settingsPage.domainsTitle')}</h2>
                 <p className="text-xs text-muted mt-0.5">{t('guest.domainsLocked')}</p>
               </div>
             </div>
@@ -60,7 +61,7 @@ export default function SettingsPage() {
               <Globe className="w-5 h-5 text-primary-color" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-primary">{t('settingsPage.domainsTitle')}</h3>
+              <h2 className="text-sm font-medium text-primary">{t('settingsPage.domainsTitle')}</h2>
               <p className="text-xs text-muted mt-0.5">{t('settingsPage.domainsDescription')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted group-hover:text-secondary transition-colors shrink-0" />
@@ -75,7 +76,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium text-secondary">{t('settingsPage.accountTitle')}</h3>
+                <h2 className="text-sm font-medium text-secondary">{t('settingsPage.accountTitle')}</h2>
                 <span className="text-[10px] font-medium text-muted bg-surface-card px-2 py-0.5 rounded-full uppercase tracking-wider">
                   {t('common.comingSoon')}
                 </span>

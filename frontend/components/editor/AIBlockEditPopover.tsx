@@ -161,7 +161,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
           {/* Error */}
           {error && (
-            <p className="text-xs text-red-400 mt-2 px-1" role="alert">{error}</p>
+            <p className="text-xs text-error mt-2 px-1" role="alert">{error}</p>
           )}
 
           {/* A saved variant says so */}
@@ -197,7 +197,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
 
           {/* Loading state */}
           {isLoading && (
-            <p className="text-xs text-violet-400 mt-2 px-1 flex items-center gap-1.5" role="status">
+            <p className="text-xs text-primary-color mt-2 px-1 flex items-center gap-1.5" role="status">
               <Loader2 className="w-3 h-3 animate-spin" />
               {t('ai.blockEditing')}
             </p>
@@ -212,7 +212,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
                 aria-expanded={showKeySetup}
                 aria-controls="ai-block-own-key"
                 disabled={isLoading}
-                className="text-[11px] text-violet-400 hover:text-violet-300 underline flex items-center gap-1 disabled:opacity-50"
+                className="text-[11px] text-primary-color hover:text-primary underline flex items-center gap-1 disabled:opacity-50"
               >
                 <Key className="w-3 h-3" aria-hidden="true" />
                 {t('ai.setupKey')}

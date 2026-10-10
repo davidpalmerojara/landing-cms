@@ -109,8 +109,8 @@ export interface ServerBlockWrite {
 
 const store = () => useEditorStore.getState();
 
-/** The controller of the open editor (one per tab), for writes made through other endpoints. */
-let activeController: PageSyncController | null = null;
+/** Controllers of the open editor (one per tab; the latest started wins), for writes made through other endpoints. */
+const startedControllers = new Set<PageSyncController>();
 
 /** The owner stopped sharing the page: the server refuses everything, so nothing is sent or fetched. */
 const isAccessRevoked = () => store().collabStatus === 'revoked';
@@ -244,13 +244,14 @@ export class PageSyncController {
   /** (Re)start retries after `dispose` (React mounts effects twice in development). */
   start() {
     this.disposed = false;
-    activeController = this;
+    startedControllers.delete(this);
+    startedControllers.add(this);
   }
 
   /** Stop the timers (the editor closed). Saves already asked for still run. */
   dispose() {
     this.disposed = true;
-    if (activeController === this) activeController = null;
+    startedControllers.delete(this);
     this.clearRetry();
     if (this.savedTimer) clearTimeout(this.savedTimer);
     this.savedTimer = null;
@@ -677,6 +678,7 @@ export class PageSyncController {
  * when the block type is unknown.
  */
 export function adoptServerBlock(write: ServerBlockWrite): boolean {
-  if (activeController) return activeController.adoptServerBlock(write);
+  const active = [...startedControllers].pop();
+  if (active) return active.adoptServerBlock(write);
   return store().replaceBlockData(write.block.id, write.block.type, write.block.data);
 }

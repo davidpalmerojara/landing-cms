@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useId, useState, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Palette, Type, Maximize2, Square,
@@ -8,12 +8,11 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
 import {
-  tokenPresets, scaleRatios, googleFonts,
-  meetsWcagAA, contrastRatio,
+  tokenPresets, scaleRatios, googleFonts, contrastIssues,
 } from '@/lib/design-tokens';
 import type {
   ColorTokens, TypographyTokens, SpacingTokens, BorderTokens,
-  TokenPreset,
+  TokenPreset, ContrastIssue,
 } from '@/lib/design-tokens';
 
 // --- Color Picker Field ---
@@ -31,6 +30,7 @@ function ColorField({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useTranslations('designTokens');
   // What is being typed. Only a complete color reaches the page tokens, which
   // are saved as typed and validated by the server.
   const [draft, setDraft] = useState(value);
@@ -67,7 +67,7 @@ function ColorField({
         value={draft}
         onChange={(e) => handleText(e.target.value)}
         onBlur={() => setDraft(value)}
-        aria-label={label}
+        aria-label={t('colorHex', { label })}
         className="w-[72px] bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-primary"
       />
     </div>
@@ -76,16 +76,26 @@ function ColorField({
 
 // --- Contrast Warning ---
 
-function ContrastWarning({ textColor, bgColor }: { textColor: string; bgColor: string }) {
+const CONTRAST_MESSAGE_KEYS = {
+  textOnBackground: 'contrastTextOnBackground',
+  textOnSurface: 'contrastTextOnSurface',
+  secondaryOnBackground: 'contrastSecondaryOnBackground',
+  secondaryOnSurface: 'contrastSecondaryOnSurface',
+  onPrimary: 'contrastOnPrimary',
+} as const;
+
+/** Every text/background pair of the palette below AA. The container stays mounted so changes are announced. */
+function ContrastWarnings({ colors }: { colors: ColorTokens }) {
   const t = useTranslations('designTokens');
-  if (textColor.length !== 7 || bgColor.length !== 7) return null;
-  const passes = meetsWcagAA(textColor, bgColor);
-  const ratio = contrastRatio(textColor, bgColor);
-  if (passes) return null;
+  const issues: ContrastIssue[] = contrastIssues(colors);
   return (
-    <div className="flex items-center gap-1.5 text-amber-400 text-[10px] px-2 py-1 bg-amber-500/10 rounded-md mt-1">
-      <AlertTriangle className="w-3 h-3 shrink-0" />
-      <span>{t('contrastWarning', { ratio: ratio.toFixed(1) })}</span>
+    <div aria-live="polite" className="space-y-1">
+      {issues.map(({ id, ratio }) => (
+        <div key={id} className="flex items-start gap-1.5 text-warning text-[10px] px-2 py-1 bg-amber-500/10 rounded-md mt-1">
+          <AlertTriangle aria-hidden="true" className="w-3 h-3 shrink-0 mt-px" />
+          <span>{t(CONTRAST_MESSAGE_KEYS[id])}: {t('contrastWarning', { ratio: ratio.toFixed(1) })}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -99,19 +109,23 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
   return (
     <div className="border-b border-subtle/50">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={panelId}
         className="w-full flex items-center gap-2 px-4 py-3 text-xs font-semibold text-secondary uppercase tracking-wider hover:bg-surface-card/30 transition-colors"
       >
-        <Icon className="w-3.5 h-3.5 text-muted" />
+        <Icon aria-hidden="true" className="w-3.5 h-3.5 text-muted" />
         {title}
         <span className="ml-auto">
-          {open ? <ChevronDown className="w-3.5 h-3.5 text-muted" /> : <ChevronRight className="w-3.5 h-3.5 text-muted" />}
+          {open ? <ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-muted" /> : <ChevronRight aria-hidden="true" className="w-3.5 h-3.5 text-muted" />}
         </span>
       </button>
-      {open && <div className="px-4 pb-4 space-y-3">{children}</div>}
+      {open && <div id={panelId} className="px-4 pb-4 space-y-3">{children}</div>}
     </div>
   );
 }
@@ -128,6 +142,7 @@ function PalettePresets({ onSelect }: { onSelect: (preset: TokenPreset) => void 
         {tokenPresets.map((preset) => (
           <button
             key={preset.id}
+            type="button"
             onClick={() => onSelect(preset)}
             className="flex flex-col gap-1.5 p-2 rounded-lg border border-subtle hover:border-primary/50 hover:bg-surface-card/50 transition-all group"
           >
@@ -188,14 +203,17 @@ function SliderField({
   unit?: string;
   onChange: (v: number) => void;
 }) {
+  const labelId = useId();
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-secondary">{label}</span>
+        <span id={labelId} className="text-xs text-secondary">{label}</span>
         <span className="text-[10px] text-muted font-mono">{value}{unit}</span>
       </div>
       <input
         type="range"
+        aria-labelledby={labelId}
+        aria-valuetext={`${value}${unit ?? ''}`}
         min={min}
         max={max}
         step={step}
@@ -220,10 +238,12 @@ function SelectField({
   options: { value: string | number; label: string }[];
   onChange: (v: string) => void;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1">
-      <span className="text-xs text-secondary">{label}</span>
+      <label htmlFor={id} className="block text-xs text-secondary">{label}</label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-surface-elevated border border-default rounded-md px-2 py-1.5 text-xs text-secondary focus:outline-none focus:border-primary appearance-none cursor-pointer"
@@ -274,7 +294,7 @@ export default function DesignTokensPanel() {
   ];
 
   return (
-    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col overflow-hidden shrink-0">
+    <aside aria-label={t('title')} className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col overflow-hidden shrink-0">
       <div className="px-4 py-3 border-b border-subtle/50">
         <h2 className="text-sm font-semibold text-primary">{t('title')}</h2>
         <p className="text-[10px] text-muted mt-0.5">{t('description')}</p>
@@ -297,8 +317,7 @@ export default function DesignTokensPanel() {
             ))}
           </div>
           {/* Contrast warnings */}
-          <ContrastWarning textColor={colors.textPrimary} bgColor={colors.background} />
-          <ContrastWarning textColor={colors.textOnPrimary} bgColor={colors.primary} />
+          <ContrastWarnings colors={colors} />
         </Section>
 
         {/* Typography */}

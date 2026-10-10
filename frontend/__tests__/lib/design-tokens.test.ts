@@ -7,7 +7,10 @@ import {
   tokensToApi,
   apiToTokens,
   contrastRatio,
+  contrastIssues,
+  contrastPairs,
   meetsWcagAA,
+  tokenPresets,
   defaultDesignTokens,
   defaultColorTokens,
   defaultTypographyTokens,
@@ -195,5 +198,46 @@ describe('server-side validation (backend/pages/design_tokens.py)', () => {
     const serverRatios = block.split(',').map((n) => n.trim()).filter(Boolean).map(Number);
 
     expect(serverRatios).toEqual(scaleRatios.map((r) => r.value));
+  });
+
+  // --- Preset palettes ---
+  describe('preset palettes', () => {
+    it.each(tokenPresets.map((p) => p.id))('"%s" passes WCAG AA for the text of every surface it draws on', (id) => {
+      const colors = tokenPresets.find((p) => p.id === id)!.colors;
+
+      for (const { id: pair, text, background } of contrastPairs) {
+        const ratio = contrastRatio(colors[text], colors[background]);
+
+        expect(ratio, `${pair}: ${colors[text]} on ${colors[background]}`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastIssues(colors)).toEqual([]);
+    });
+  });
+
+  describe('contrastIssues', () => {
+    it('reports secondary text that is too faint on the background and on cards', () => {
+      const colors = { ...defaultColorTokens, textSecondary: '#d4d4d8' };
+
+      expect(contrastIssues(colors).map((issue) => issue.id)).toEqual(['secondaryOnBackground', 'secondaryOnSurface']);
+    });
+
+    it('reports text on the primary color', () => {
+      const colors = { ...defaultColorTokens, primary: '#10b981', textOnPrimary: '#ffffff' };
+      const issues = contrastIssues(colors);
+
+      expect(issues).toHaveLength(1);
+      expect(issues[0].id).toBe('onPrimary');
+      expect(issues[0].ratio).toBeLessThan(4.5);
+    });
+
+    it('skips colors that are still being typed', () => {
+      const colors = { ...defaultColorTokens, textSecondary: '#d4d', textPrimary: '#fff' };
+
+      expect(contrastIssues(colors)).toEqual([]);
+    });
+
+    it('finds nothing wrong with the default palette', () => {
+      expect(contrastIssues(defaultColorTokens)).toEqual([]);
+    });
   });
 });

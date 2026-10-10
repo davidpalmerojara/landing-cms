@@ -37,6 +37,24 @@
     "no": "No",
     "or": "or"
   },
+  "a11y": {
+    "canvasLabel": "Page canvas, {count, plural, one {# block} other {# blocks}}",
+    "shortcutsTitle": "Canvas keyboard shortcuts",
+    "shortcutNavigate": "Up and Down arrows: go to the previous or next block",
+    "shortcutSelect": "Enter or Space: select the block and edit it in the inspector",
+    "shortcutDeselect": "Escape: clear the selection",
+    "shortcutMove": "Alt with Up or Down arrow: move the block",
+    "shortcutDuplicate": "Ctrl or Cmd with D: duplicate the block",
+    "shortcutDelete": "Delete or Backspace: remove the block",
+    "blockAria": "{name} block, {position} of {total}",
+    "blockStateSelected": "selected",
+    "blockStateLocked": "locked, {user} is editing it",
+    "blockSelected": "{name} block selected. Its properties are in the inspector.",
+    "selectionCleared": "Selection cleared",
+    "blockLockedRefused": "{name} cannot be selected: {user} is editing it.",
+    "blockMoved": "{name} block moved to position {position} of {total}",
+    "blockDuplicated": "{name} block duplicated"
+  },
   "preferences": {
     "themeLight": "Switch to light mode",
     "themeDark": "Switch to dark mode",
@@ -489,7 +507,13 @@
     "radiusSm": "Small radius",
     "radiusMd": "Medium radius",
     "radiusLg": "Large radius",
-    "radiusPreview": "sm / md / lg / full"
+    "radiusPreview": "sm / md / lg / full",
+    "contrastTextOnBackground": "Primary text on background",
+    "contrastSecondaryOnBackground": "Secondary text on background",
+    "contrastSecondaryOnSurface": "Secondary text on surface",
+    "contrastOnPrimary": "Text on primary color",
+    "contrastTextOnSurface": "Primary text on surface",
+    "colorHex": "{label}, hex code"
   },
   "mobile": {
     "quickEditMode": "Quick edit",
@@ -808,7 +832,11 @@
     "domainFallback": "paxl.com",
     "titleFallback": "Page title",
     "descriptionFallback": "Add a meta description to improve your SEO.",
-    "socialDescriptionFallback": "Add a description for social media."
+    "socialDescriptionFallback": "Add a description for social media.",
+    "charCount": "{count} of {max} characters",
+    "charCountWarn": "close to the limit",
+    "charCountOver": "over the recommended limit",
+    "removeOgImage": "Remove OG image"
   },
   "inspector": {
     "selectImage": "Select image",
@@ -829,7 +857,11 @@
     "listRemove": "Remove {item} {position}",
     "listAnnounceAdded": "New item: {item} {position}",
     "listAnnounceRemoved": "Item removed: {item} {position}",
-    "listAnnounceMoved": "{item} is now in position {position}"
+    "listAnnounceMoved": "{item} is now in position {position}",
+    "removeImage": "Remove image",
+    "imageCurrent": "Current image: {name}",
+    "imageNone": "No image selected",
+    "hexInput": "Hexadecimal color code"
   },
   "assets": {
     "loadError": "Could not load assets",

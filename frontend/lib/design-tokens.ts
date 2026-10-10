@@ -202,7 +202,7 @@ export const tokenPresets: TokenPreset[] = [
       surface: '#f0fdf4',
       textPrimary: '#064e3b',
       textSecondary: '#6b7280',
-      textOnPrimary: '#ffffff',
+      textOnPrimary: '#0f172a',
       border: '#d1fae5',
       success: '#22c55e',
       error: '#ef4444',
@@ -219,7 +219,7 @@ export const tokenPresets: TokenPreset[] = [
       surface: '#1e293b',
       textPrimary: '#f1f5f9',
       textSecondary: '#94a3b8',
-      textOnPrimary: '#ffffff',
+      textOnPrimary: '#0f172a',
       border: '#334155',
       success: '#34d399',
       error: '#f87171',
@@ -236,7 +236,7 @@ export const tokenPresets: TokenPreset[] = [
       surface: '#fef3c7',
       textPrimary: '#78350f',
       textSecondary: '#92400e',
-      textOnPrimary: '#ffffff',
+      textOnPrimary: '#0f172a',
       border: '#fde68a',
       success: '#16a34a',
       error: '#dc2626',
@@ -269,8 +269,8 @@ export const tokenPresets: TokenPreset[] = [
       background: '#ffffff',
       surface: '#f0fdfa',
       textPrimary: '#134e4a',
-      textSecondary: '#5eead4',
-      textOnPrimary: '#ffffff',
+      textSecondary: '#0f766e',
+      textOnPrimary: '#0f172a',
       border: '#ccfbf1',
       success: '#14b8a6',
       error: '#ef4444',
@@ -305,7 +305,7 @@ export const tokenPresets: TokenPreset[] = [
       background: '#ffffff',
       surface: '#f0fdfa',
       textPrimary: '#134e4a',
-      textSecondary: '#5eead4',
+      textSecondary: '#0f766e',
       textOnPrimary: '#0f172a',
       border: '#ccfbf1',
       success: '#10b981',
@@ -407,7 +407,7 @@ export const tokenPresets: TokenPreset[] = [
       background: '#ffffff',
       surface: '#fff1f2',
       textPrimary: '#1c1917',
-      textSecondary: '#78716c',
+      textSecondary: '#57534e',
       textOnPrimary: '#ffffff',
       border: '#fecdd3',
       success: '#10b981',
@@ -519,6 +519,36 @@ export function contrastRatio(hex1: string, hex2: string): number {
 /** Check if contrast meets WCAG AA (4.5:1 for normal text) */
 export function meetsWcagAA(textColor: string, bgColor: string): boolean {
   return contrastRatio(textColor, bgColor) >= 4.5;
+}
+
+/**
+ * The text/background pairs the blocks actually draw: text and secondary text
+ * on the page background and on cards (surface), and the text of primary buttons.
+ */
+export const contrastPairs = [
+  { id: 'textOnBackground', text: 'textPrimary', background: 'background' },
+  { id: 'textOnSurface', text: 'textPrimary', background: 'surface' },
+  { id: 'secondaryOnBackground', text: 'textSecondary', background: 'background' },
+  { id: 'secondaryOnSurface', text: 'textSecondary', background: 'surface' },
+  { id: 'onPrimary', text: 'textOnPrimary', background: 'primary' },
+] as const satisfies readonly { id: string; text: keyof ColorTokens; background: keyof ColorTokens }[];
+
+export type ContrastPairId = (typeof contrastPairs)[number]['id'];
+
+export interface ContrastIssue {
+  id: ContrastPairId;
+  ratio: number;
+}
+
+const COMPLETE_HEX = /^#[0-9a-f]{6}$/i;
+
+/** Pairs of the palette below WCAG AA (4.5:1). Colors still being typed are skipped. */
+export function contrastIssues(colors: ColorTokens): ContrastIssue[] {
+  return contrastPairs.flatMap(({ id, text, background }) => {
+    if (!COMPLETE_HEX.test(colors[text]) || !COMPLETE_HEX.test(colors[background])) return [];
+    const ratio = contrastRatio(colors[text], colors[background]);
+    return ratio >= 4.5 ? [] : [{ id, ratio }];
+  });
 }
 
 // --- API mapping helpers ---

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import { isKeyOperableTarget, isTextEntryTarget } from '@/lib/keyboard';
 
 export function useEditorShortcuts() {
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
@@ -10,8 +11,8 @@ export function useEditorShortcuts() {
     if (isPreviewMode) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      // Fields (also contentEditable and selects) keep their own keys
+      const isTyping = isTextEntryTarget(e.target);
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 
@@ -47,7 +48,9 @@ export function useEditorShortcuts() {
         }
       }
 
-      if (!isTyping && (e.key === 'Delete' || e.key === 'Backspace')) {
+      // Backspace on a focused button or link must not delete a block by surprise
+      const isOperating = isKeyOperableTarget(e.target);
+      if (!isOperating && (e.key === 'Delete' || e.key === 'Backspace')) {
         const { selectedBlockId } = useEditorStore.getState();
         if (selectedBlockId) {
           e.preventDefault();

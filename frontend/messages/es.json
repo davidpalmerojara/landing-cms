@@ -37,6 +37,24 @@
     "no": "No",
     "or": "o"
   },
+  "a11y": {
+    "canvasLabel": "Lienzo de la página, {count, plural, one {# bloque} other {# bloques}}",
+    "shortcutsTitle": "Atajos de teclado en el lienzo",
+    "shortcutNavigate": "Flechas arriba y abajo: ir al bloque anterior o siguiente",
+    "shortcutSelect": "Enter o Espacio: seleccionar el bloque y editarlo en el inspector",
+    "shortcutDeselect": "Escape: quitar la selección",
+    "shortcutMove": "Alt con flechas arriba o abajo: mover el bloque",
+    "shortcutDuplicate": "Ctrl o Cmd con D: duplicar el bloque",
+    "shortcutDelete": "Supr o Retroceso: eliminar el bloque",
+    "blockAria": "Bloque {name}, {position} de {total}",
+    "blockStateSelected": "seleccionado",
+    "blockStateLocked": "bloqueado, lo está editando {user}",
+    "blockSelected": "Bloque {name} seleccionado. Sus propiedades están en el inspector.",
+    "selectionCleared": "Selección quitada",
+    "blockLockedRefused": "{name} no se puede seleccionar: lo está editando {user}.",
+    "blockMoved": "Bloque {name} movido a la posición {position} de {total}",
+    "blockDuplicated": "Bloque {name} duplicado"
+  },
   "preferences": {
     "themeLight": "Cambiar a modo claro",
     "themeDark": "Cambiar a modo oscuro",
@@ -489,7 +507,13 @@
     "radiusSm": "Radius pequeño",
     "radiusMd": "Radius medio",
     "radiusLg": "Radius grande",
-    "radiusPreview": "sm / md / lg / full"
+    "radiusPreview": "sm / md / lg / full",
+    "contrastTextOnBackground": "Texto principal sobre fondo",
+    "contrastSecondaryOnBackground": "Texto secundario sobre fondo",
+    "contrastSecondaryOnSurface": "Texto secundario sobre superficie",
+    "contrastOnPrimary": "Texto sobre color primario",
+    "contrastTextOnSurface": "Texto principal sobre superficie",
+    "colorHex": "{label}, código hexadecimal"
   },
   "mobile": {
     "quickEditMode": "Edición rápida",
@@ -808,7 +832,11 @@
     "domainFallback": "paxl.com",
     "titleFallback": "Título de la página",
     "descriptionFallback": "Agrega una meta description para mejorar tu SEO.",
-    "socialDescriptionFallback": "Agrega una descripción para redes sociales."
+    "socialDescriptionFallback": "Agrega una descripción para redes sociales.",
+    "charCount": "{count} de {max} caracteres",
+    "charCountWarn": "cerca del límite",
+    "charCountOver": "supera el límite recomendado",
+    "removeOgImage": "Quitar imagen OG"
   },
   "inspector": {
     "selectImage": "Seleccionar imagen",
@@ -829,7 +857,11 @@
     "listRemove": "Eliminar {item} {position}",
     "listAnnounceAdded": "Nuevo elemento: {item} {position}",
     "listAnnounceRemoved": "Elemento eliminado: {item} {position}",
-    "listAnnounceMoved": "{item} ahora está en la posición {position}"
+    "listAnnounceMoved": "{item} ahora está en la posición {position}",
+    "removeImage": "Quitar imagen",
+    "imageCurrent": "Imagen actual: {name}",
+    "imageNone": "Ninguna imagen seleccionada",
+    "hexInput": "Código de color hexadecimal"
   },
   "assets": {
     "loadError": "Error al cargar recursos",

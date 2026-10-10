@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useId, useState, useCallback } from 'react';
 import { ChevronDown, Layout } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
@@ -94,10 +94,10 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
             if (groupFields.length === 0) return null;
 
             return (
-              <div key={group.key} className="space-y-2">
-                <label className="text-xs font-semibold text-secondary uppercase tracking-wider">
+              <div key={group.key} className="space-y-2" role="group" aria-labelledby={`mobile-style-${group.key}-label`}>
+                <span id={`mobile-style-${group.key}-label`} className="block text-xs font-semibold text-secondary uppercase tracking-wider">
                   {translateStyleGroupLabel(group.key, locale)}
-                </label>
+                </span>
                 {group.key === 'background' ? (
                   groupFields.map((sf) => (
                     <MobileColorPicker
@@ -111,6 +111,7 @@ export default function MobileBlockEditor({ blockId }: MobileBlockEditorProps) {
                     <MobileSlider
                       key={sf.key}
                       label=""
+                      groupLabelId={`mobile-style-${group.key}-label`}
                       value={styles[sf.key] as number}
                       max={sf.max || 48}
                       onChange={(v) => handleStyleChange(sf.key, v)}
@@ -240,26 +241,24 @@ function MobileField({
 
     case 'toggle':
       return (
-        <div className="flex items-center justify-between py-1">
-          <label htmlFor={fieldId} className="text-xs font-semibold text-secondary">
-            {field.label}
-          </label>
+        <label htmlFor={fieldId} className="flex items-center justify-between gap-4 min-h-11 py-1 cursor-pointer">
+          <span className="text-xs font-semibold text-secondary">{field.label}</span>
           <input
             id={fieldId}
             type="checkbox"
             role="switch"
             checked={value === true}
             onChange={(e) => onChange(e.target.checked)}
-            className="w-11 h-6 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 checked:bg-primary bg-surface-card
+            className="shrink-0 w-11 h-6 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 checked:bg-primary bg-surface-card
               before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform before:duration-200 checked:before:translate-x-5"
           />
-        </div>
+        </label>
       );
 
     case 'color':
       return (
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-secondary">{field.label}</label>
+        <div className="space-y-1.5" role="group" aria-labelledby={`${fieldId}-label`}>
+          <span id={`${fieldId}-label`} className="block text-xs font-semibold text-secondary">{field.label}</span>
           <MobileColorPicker value={text} onChange={onChange} />
         </div>
       );
@@ -312,6 +311,7 @@ function MobileColorPicker({
           <button
             key={color}
             onClick={() => onChange(color)}
+            aria-pressed={value.toLowerCase() === color.toLowerCase()}
             className={`w-11 h-11 rounded-lg border-2 transition-all active:scale-95 ${
               value === color ? 'border-primary ring-2 ring-primary/30' : 'border-default/30'
             }`}
@@ -327,9 +327,11 @@ function MobileColorPicker({
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder="#000000"
-            className="flex-1 px-3 py-2.5 rounded-lg bg-surface-card border border-default/15 text-primary text-sm font-mono focus:border-primary/50 outline-none"
+            aria-label={t('hexInput')}
+            className="flex-1 min-h-11 px-3 py-2.5 rounded-lg bg-surface-card border border-default/15 text-primary text-sm font-mono focus:border-primary/50 outline-none"
           />
           <div
+            aria-hidden="true"
             className="w-10 h-10 rounded-lg border border-default/30 flex-shrink-0"
             style={{ backgroundColor: value || 'transparent' }}
           />
@@ -350,20 +352,24 @@ function MobileColorPicker({
 
 function MobileSlider({
   label,
+  groupLabelId,
   value,
   max,
   onChange,
 }: {
   label: string;
+  /** Id of the group label that names the slider when it has no label of its own. */
+  groupLabelId?: string;
   value: number;
   max: number;
   onChange: (value: number) => void;
 }) {
+  const labelId = useId();
   return (
     <div className="space-y-1">
       {label && (
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted">{label}</span>
+          <span id={labelId} className="text-[11px] text-muted">{label}</span>
           <span className="text-[11px] text-secondary font-mono">{value}px</span>
         </div>
       )}
@@ -377,8 +383,10 @@ function MobileSlider({
         min={0}
         max={max}
         value={value}
+        aria-labelledby={label ? labelId : groupLabelId}
+        aria-valuetext={`${value}px`}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="w-full accent-primary h-1.5"
+        className="w-full accent-primary h-11"
       />
     </div>
   );

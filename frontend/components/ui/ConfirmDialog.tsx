@@ -2,12 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
   message: string;
+  /** Defaults to "Eliminar" / "Delete" in the interface language */
   confirmLabel?: string;
+  /** Defaults to "Cancelar" / "Cancel" in the interface language */
   cancelLabel?: string;
   variant?: 'danger' | 'default';
   onConfirm: () => void;
@@ -18,12 +21,13 @@ export default function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Eliminar',
-  cancelLabel = 'Cancelar',
+  confirmLabel,
+  cancelLabel,
   variant = 'danger',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const t = useTranslations('common');
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -90,7 +94,7 @@ export default function ConfirmDialog({
             onClick={onCancel}
             className="text-[12px] font-medium px-3 py-2 rounded-lg text-secondary hover:text-primary hover:bg-surface-card transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('cancel')}
           </button>
           <button
             ref={confirmRef}
@@ -101,7 +105,7 @@ export default function ConfirmDialog({
                 : 'bg-primary hover:bg-primary/80 text-white'
             }`}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('delete')}
           </button>
         </div>
       </div>

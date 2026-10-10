@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api, ApiError } from '@/lib/api';
-import { logSyncError, readBackup } from '@/lib/page-backup';
+import { clearBackup, logSyncError, readBackup } from '@/lib/page-backup';
 import { PageSyncController } from '@/lib/page-sync';
-import type { PageSyncCallbacks, RemotePageChange } from '@/lib/page-sync';
+import type { PageSyncCallbacks, RemotePageChange, SaveOptions } from '@/lib/page-sync';
 
 export type { RemotePageChange } from '@/lib/page-sync';
 
 /**
  * Loads the page and keeps it in sync with the server through one
  * PageSyncController per page (versioned saves, merges, remote changes).
+ * Save status and problems live in the store (`autoSaveStatus`, `saveIssue`),
+ * set by the controller on every save path.
  */
 export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) {
   const page = useEditorStore((s) => s.page);
@@ -21,8 +23,6 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
   const [error, setError] = useState<string | null>(null);
   /** HTTP status of the failed load (404: the page does not exist or is not theirs); null for network errors */
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  /** The last save failed (the editor keeps working; shown in the top bar) */
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const callbacksRef = useRef(callbacks);
   useEffect(() => {
@@ -32,12 +32,30 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
   // One controller per page; the callbacks are read when they fire
   const sync = useMemo(() => new PageSyncController(pageId ?? '', () => ({
     onRemoteMerged: (change) => callbacksRef.current.onRemoteMerged?.(change),
-    onSaveFailed: (kind, e) => {
-      // A conflict is not a connection problem: the autosave status and a toast explain it
-      if (kind === 'request') setSaveError(e instanceof Error ? e.message : kind);
-      callbacksRef.current.onSaveFailed?.(kind, e);
-    },
+    onSaveFailed: (kind, e) => callbacksRef.current.onSaveFailed?.(kind, e),
+    onLocalChangesRecovered: () => callbacksRef.current.onLocalChangesRecovered?.(),
   })), [pageId]);
+
+  useEffect(() => {
+    sync.start();
+    return () => sync.dispose();
+  }, [sync]);
+
+  // Back online: send what failed instead of waiting for the next retry
+  useEffect(() => {
+    const retry = () => { void sync.retryNow(); };
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, [sync]);
+
+  // Access removed: the copy kept in this browser is someone else's page now (QA-110)
+  useEffect(() => useEditorStore.subscribe(
+    (s) => s.collabStatus,
+    (status) => {
+      const id = pageId || useEditorStore.getState().page.id;
+      if (status === 'revoked' && id) clearBackup(id);
+    },
+  ), [pageId]);
 
   // Load page from API on mount or pageId change
   useEffect(() => {
@@ -60,10 +78,10 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
         logSyncError('Failed to load page from API, using local backup if any:', e);
         setError(e instanceof Error ? e.message : 'Error al cargar');
         setErrorStatus(e instanceof ApiError ? e.status : null);
-        // Nothing known about the server's copy: the first save fetches it before sending
-        useEditorStore.getState().setSyncBase(null);
         const backup = pageId ? readBackup(pageId) : null;
-        if (backup) useEditorStore.getState().loadPage(backup);
+        // The copy's base, if it has one, is what the next save is checked against; without it the first save fetches it
+        useEditorStore.getState().setSyncBase(backup?.base ?? null);
+        if (backup) useEditorStore.getState().loadPage(backup.page);
       } finally {
         setIsLoading(false);
       }
@@ -72,14 +90,19 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     loadPage(sync);
   }, [pageId, sync]);
 
-  const saveToApi = useCallback(async () => {
-    setSaveError(null);
-    return sync.save();
-  }, [sync]);
+  const saveToApi = useCallback((options?: SaveOptions) => sync.save(options), [sync]);
 
-  const publishToApi = useCallback(async () => {
-    return sync.publish();
-  }, [sync]);
+  /** The tab is closing: send what is pending with keepalive. False when it could not be sent. */
+  const saveOnLeave = useCallback(() => sync.saveOnLeave(), [sync]);
+
+  const hasUnsavedChanges = useCallback(() => sync.hasUnsavedChanges(), [sync]);
+
+  const publishToApi = useCallback(() => sync.publish(), [sync]);
+
+  const unpublishToApi = useCallback(() => sync.unpublish(), [sync]);
+
+  /** Why the last publish or unpublish failed at the server (null: it did not, or the save before it failed). */
+  const lastPublicationError = useCallback(() => sync.lastPublicationError, [sync]);
 
   /** Restore a version for everyone; rejects when the server refuses it. */
   const restoreVersion = useCallback(async (versionId: string) => {
@@ -91,5 +114,18 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     void sync.handleRemoteChange(change);
   }, [sync]);
 
-  return { isLoading, error, errorStatus, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange, page };
+  return {
+    isLoading,
+    error,
+    errorStatus,
+    saveToApi,
+    saveOnLeave,
+    hasUnsavedChanges,
+    publishToApi,
+    unpublishToApi,
+    lastPublicationError,
+    restoreVersion,
+    handleRemoteChange,
+    page,
+  };
 }

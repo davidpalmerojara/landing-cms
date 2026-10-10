@@ -35,4 +35,6 @@ export interface Page {
   publishedAt?: string | null;
   /** The draft was edited after the last publish. Read-only, from the server. */
   hasUnpublishedChanges?: boolean;
+  /** The person editing owns the page; undefined when the server did not say. Read-only, from the server. */
+  isOwner?: boolean;
 }

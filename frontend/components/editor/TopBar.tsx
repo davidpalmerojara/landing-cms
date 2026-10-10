@@ -1,51 +1,83 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Monitor, Smartphone, Tablet,
   Eye, Save, CheckCircle2,
-  AlertCircle,
   Loader2, Globe, Share2, BarChart3, Search, MessageSquare,
-  Pencil, History, X, Check, Palette,
+  Pencil, History, X, Check, Palette, ChevronDown, ExternalLink,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ShareModal from './ShareModal';
 import ConnectionIndicator from './ConnectionIndicator';
+import SaveStatusIndicator from './SaveStatusIndicator';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useEditorStore, getUserColor, uniquePresenceUsers } from '@/store/editor-store';
 import type { PresenceEntry } from '@/store/editor-store';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
+import { useLeaveEditor } from '@/hooks/useLeaveEditor';
+import { usePublishActions } from '@/hooks/usePublishActions';
 import { api } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-errors';
+import { flushPendingSave } from '@/lib/save-flush';
+import type { RejectedField } from '@/lib/page-sync';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
 interface TopBarProps {
   onSave: () => Promise<boolean>;
   onPublish: () => Promise<boolean>;
-  apiError: string | null;
+  onUnpublish?: () => Promise<boolean>;
+  /** Why the last publish or unpublish failed at the server */
+  publicationError?: () => unknown;
+  /** Take the user to a field the server refused */
+  onShowRejectedField?: (field: RejectedField) => void;
   activeView?: EditorView;
   onViewChange?: (view: EditorView) => void;
   onOpenHistory?: () => void;
 }
 
-export default function TopBar({ onSave, onPublish, apiError, activeView = 'design', onViewChange, onOpenHistory }: TopBarProps) {
+const VIEW_BUTTONS: { view: EditorView; labelKey: string; Icon: typeof Pencil }[] = [
+  { view: 'design', labelKey: 'editor.viewDesign', Icon: Pencil },
+  { view: 'styles', labelKey: 'editor.viewStyles', Icon: Palette },
+  { view: 'seo', labelKey: 'editor.viewSeo', Icon: Search },
+  { view: 'analytics', labelKey: 'editor.viewAnalytics', Icon: BarChart3 },
+  { view: 'messages', labelKey: 'editor.viewMessages', Icon: MessageSquare },
+];
+
+export default function TopBar({
+  onSave,
+  onPublish,
+  onUnpublish,
+  publicationError,
+  onShowRejectedField,
+  activeView = 'design',
+  onViewChange,
+  onOpenHistory,
+}: TopBarProps) {
   const t = useTranslations();
   const page = useEditorStore((s) => s.page);
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const setDeviceMode = useEditorStore((s) => s.setDeviceMode);
   const isSaved = useEditorStore((s) => s.isSaved);
-  const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
   const presence = useEditorStore((s) => s.presence);
   const myUserId = useEditorStore((s) => s.myUserId);
   const presentUsers = useMemo(() => uniquePresenceUsers(presence), [presence]);
   const someoneElseHere = presentUsers.some((u) => u.userId !== myUserId);
   const [isSaving, setIsSaving] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showVersionInput, setShowVersionInput] = useState(false);
   const [versionLabel, setVersionLabel] = useState('');
   const [isSavingVersion, setIsSavingVersion] = useState(false);
   const [versionToast, setVersionToast] = useState<string | null>(null);
+  const [showPublishMenu, setShowPublishMenu] = useState(false);
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  const publishMenuRef = useRef<HTMLDivElement>(null);
+  const leave = useLeaveEditor('/dashboard');
+  const {
+    isOwner, isPublishing, isUnpublishing, publishedPath, publish, unpublish, dismissPublished,
+  } = usePublishActions({ onPublish, onUnpublish, publicationError });
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -61,162 +93,109 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
     }
   }, [onSave]);
 
-  const handlePublish = useCallback(async () => {
-    setIsPublishing(true);
-    const ok = await onPublish();
-    setIsPublishing(false);
-    const { addToast, page: published } = useEditorStore.getState();
-    if (ok) {
-      addToast(t('editor.publishSuccess', { path: `/p/${published.slug}` }), 'success');
-    } else {
-      addToast(t('editor.publishError'), 'error');
-    }
-  }, [onPublish, t]);
+  const showVersionToast = useCallback((message: string) => {
+    setVersionToast(message);
+    setTimeout(() => setVersionToast(null), 4000);
+  }, []);
 
   const handleSaveVersion = useCallback(async () => {
     if (page.id.startsWith('page_')) return;
     setIsSavingVersion(true);
     try {
+      // The version is a copy of the server's page: it must have what is on screen (QA-037)
+      if (!(await flushPendingSave())) {
+        showVersionToast(t('saveStatus.versionNeedsSave'));
+        return;
+      }
       const v = await api.versions.create(page.id, versionLabel);
-      setVersionToast(t('editor.saveVersionSuccess', { number: v.version_number }));
+      showVersionToast(t('editor.saveVersionSuccess', { number: v.version_number }));
       setShowVersionInput(false);
       setVersionLabel('');
-      setTimeout(() => setVersionToast(null), 3000);
-    } catch {
-      setVersionToast(t('editor.saveVersionError'));
-      setTimeout(() => setVersionToast(null), 3000);
+    } catch (e) {
+      showVersionToast(apiErrorMessage(e, t, 'editor.saveVersionError'));
     } finally {
       setIsSavingVersion(false);
     }
-  }, [page.id, t, versionLabel]);
+  }, [page.id, showVersionToast, t, versionLabel]);
+
+  // The publish menu closes on Escape and on a click outside it
+  useEffect(() => {
+    if (!showPublishMenu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowPublishMenu(false); };
+    const onPointer = (e: PointerEvent) => {
+      if (publishMenuRef.current && !publishMenuRef.current.contains(e.target as Node)) setShowPublishMenu(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointer);
+    };
+  }, [showPublishMenu]);
+
+  const isPublished = page.status === 'published';
+  const ownerOnlyId = 'topbar-owner-only-note';
 
   return (
-    <header className="h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
+    <header className="h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 in-data-[theme=light]:shadow-sm in-data-[theme=light]:shadow-black/5 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
       <div className="flex items-center gap-2 xl:gap-4 flex-1 min-w-0 overflow-hidden">
-        <a href="/dashboard" aria-label={t('editor.goToDashboard')} className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <a
+          href="/dashboard"
+          onClick={leave.onLinkClick}
+          aria-label={t('editor.goToDashboard')}
+          aria-busy={leave.isLeaving || undefined}
+          className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity shrink-0"
+          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+        >
           {t('common.brand')}
         </a>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-sm text-primary tracking-wide truncate max-w-[16rem]" title={page.name}>{page.name}</span>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 border ${
-                page.status !== 'published'
-                  ? 'bg-surface-elevated text-secondary border-default/30'
-                  : page.hasUnpublishedChanges
-                    ? 'bg-warning/10 text-warning border-warning/30'
-                    : 'bg-success/10 text-success border-success/30'
-              }`}
-            >
-              {page.status !== 'published'
-                ? t('common.draft')
-                : page.hasUnpublishedChanges ? t('editor.unpublishedChanges') : t('common.published')}
-            </span>
-            <span aria-live="polite">
-              {autoSaveStatus === 'saving' && (
-                <span className="flex items-center gap-1 text-secondary text-[10px]">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  {t('common.saving')}
-                </span>
-              )}
-              {autoSaveStatus === 'saved' && (
-                <span className="flex items-center gap-1 text-primary-color text-[10px]">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {t('common.saved')}
-                </span>
-              )}
-              {autoSaveStatus === 'error' && (
-                <span className="flex items-center gap-1 text-error text-[10px]">
-                  <AlertCircle className="w-3 h-3" />
-                  {t('editor.saveError')}
-                </span>
-              )}
-            </span>
-            {apiError && (
-              <span className="flex items-center gap-1 text-error text-[10px]" title={apiError}>
-                <AlertCircle className="w-3 h-3" />
-                {t('editor.offline')}
-              </span>
-            )}
+        <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+          <span className="font-medium text-sm text-primary tracking-wide truncate min-w-20 max-w-[16rem]" title={page.name}>{page.name}</span>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 border ${
+              !isPublished
+                ? 'bg-surface-elevated text-secondary border-default/30'
+                : page.hasUnpublishedChanges
+                  ? 'bg-warning/10 text-warning border-warning/30'
+                  : 'bg-success/10 text-success border-success/30'
+            }`}
+          >
+            {!isPublished
+              ? t('common.draft')
+              : page.hasUnpublishedChanges ? t('editor.unpublishedChanges') : t('common.published')}
+          </span>
+          <SaveStatusIndicator
+            onRetry={() => { void onSave(); }}
+            onShowField={(field) => onShowRejectedField?.(field)}
+          />
+          <span className="shrink-0">
             <ConnectionIndicator />
-          </div>
+          </span>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        {/* View toggle: Design / Analytics */}
+        {/* Editor view: plain toggle buttons, one pressed (QA-088) */}
         {onViewChange && (
-          <div role="radiogroup" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
-            <button
-              role="radio"
-              aria-checked={activeView === 'design'}
-              onClick={() => onViewChange('design')}
-              title={t('editor.viewDesign')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                activeView === 'design'
-                  ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
-              }`}
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">{t('editor.viewDesign')}</span>
-            </button>
-            <button
-              role="radio"
-              aria-checked={activeView === 'styles'}
-              onClick={() => onViewChange('styles')}
-              title={t('editor.viewStyles')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                activeView === 'styles'
-                  ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
-              }`}
-            >
-              <Palette className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">{t('editor.viewStyles')}</span>
-            </button>
-            <button
-              role="radio"
-              aria-checked={activeView === 'seo'}
-              onClick={() => onViewChange('seo')}
-              title={t('editor.viewSeo')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                activeView === 'seo'
-                  ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
-              }`}
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">{t('editor.viewSeo')}</span>
-            </button>
-            <button
-              role="radio"
-              aria-checked={activeView === 'analytics'}
-              onClick={() => onViewChange('analytics')}
-              title={t('editor.viewAnalytics')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                activeView === 'analytics'
-                  ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">{t('editor.viewAnalytics')}</span>
-            </button>
-            <button
-              role="radio"
-              aria-checked={activeView === 'messages'}
-              onClick={() => onViewChange('messages')}
-              title={t('editor.viewMessages')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                activeView === 'messages'
-                  ? 'bg-surface-card text-primary shadow-sm'
-                  : 'text-muted hover:text-secondary hover:bg-surface-card/50'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">{t('editor.viewMessages')}</span>
-            </button>
+          <div role="group" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
+            {VIEW_BUTTONS.map(({ view, labelKey, Icon }) => (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={activeView === view}
+                aria-label={t(labelKey)}
+                onClick={() => onViewChange(view)}
+                title={t(labelKey)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                  activeView === view
+                    ? 'bg-surface-card text-primary shadow-sm'
+                    : 'text-muted hover:text-secondary hover:bg-surface-card/50'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                <span className="hidden xl:inline" aria-hidden="true">{t(labelKey)}</span>
+              </button>
+            ))}
           </div>
         )}
 
@@ -281,6 +260,8 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
                     if (e.key === 'Escape') { setShowVersionInput(false); setVersionLabel(''); }
                   }}
                   placeholder={t('editor.versionPlaceholder')}
+                  aria-label={t('editor.versionPlaceholder')}
+                  maxLength={200}
                   className="bg-transparent text-xs text-primary placeholder-muted outline-none w-36"
                 />
                 <button
@@ -334,11 +315,11 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
         )}
         {/* Version toast */}
         {versionToast && (
-          <div className="absolute top-14 sm:top-16 right-2 sm:right-4 bg-surface-elevated border border-default text-primary text-xs px-3 py-2 rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
+          <div role="status" className="absolute top-14 sm:top-16 right-2 sm:right-4 bg-surface-elevated border border-default text-primary text-xs px-3 py-2 rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
             {versionToast}
           </div>
         )}
-        {page.status === 'published' && page.slug && (
+        {isPublished && page.slug && (
           <button
             onClick={() => window.open(`/p/${page.slug}`, '_blank')}
             className="text-sm font-medium flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10"
@@ -381,21 +362,109 @@ export default function TopBar({ onSave, onPublish, apiError, activeView = 'desi
           <ThemeToggle />
           <LocaleSwitcher />
         </div>
-        <button
-          onClick={handlePublish}
-          disabled={isPublishing}
-          className="text-white text-sm font-bold px-3 xl:px-4 py-1.5 rounded-md shadow-lg transition-all active:scale-95 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-        >
-          {isPublishing
-            ? t('editor.publishLoading')
-            : page.status === 'published' && page.hasUnpublishedChanges ? t('editor.publishChanges') : t('editor.publishPage')}
-        </button>
+
+        {/* Publish: owner only (D1); for others the button explains why it does nothing */}
+        <div ref={publishMenuRef} className="relative flex items-center">
+          {!isOwner && <span id={ownerOnlyId} className="sr-only">{t('publishing.ownerOnly')}</span>}
+          <button
+            onClick={publish}
+            disabled={isPublishing}
+            aria-disabled={!isOwner || undefined}
+            aria-describedby={!isOwner ? ownerOnlyId : undefined}
+            title={!isOwner ? t('publishing.ownerOnly') : undefined}
+            className={`text-white text-sm font-bold px-3 xl:px-4 py-1.5 shadow-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap ${
+              isOwner && isPublished && onUnpublish ? 'rounded-l-md' : 'rounded-md'
+            } ${!isOwner ? 'opacity-50 cursor-not-allowed active:scale-100' : ''}`}
+            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+          >
+            {isPublishing
+              ? t('editor.publishLoading')
+              : isPublished && page.hasUnpublishedChanges ? t('editor.publishChanges') : t('editor.publishPage')}
+          </button>
+          {isOwner && isPublished && onUnpublish && (
+            <button
+              type="button"
+              onClick={() => setShowPublishMenu((open) => !open)}
+              aria-expanded={showPublishMenu}
+              aria-controls="publish-menu"
+              aria-label={t('publishing.moreOptions')}
+              title={t('publishing.moreOptions')}
+              className="text-white py-1.5 px-1.5 rounded-r-md border-l border-white/30 shadow-lg"
+              style={{ background: '#2563EB' }}
+            >
+              <ChevronDown className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
+          {showPublishMenu && (
+            <div
+              id="publish-menu"
+              className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-default/20 rounded-lg shadow-xl p-1 z-50"
+            >
+              <button
+                type="button"
+                onClick={() => { setShowPublishMenu(false); setConfirmUnpublish(true); }}
+                disabled={isUnpublishing}
+                className="w-full text-left text-sm text-primary px-3 py-2 rounded-md hover:bg-surface-card focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:opacity-50"
+              >
+                {isUnpublishing ? t('publishing.unpublishing') : t('publishing.unpublish')}
+              </button>
+            </div>
+          )}
+          {publishedPath && (
+            <div
+              role="status"
+              className="absolute right-0 top-full mt-2 w-72 bg-surface-elevated border border-success/40 rounded-lg shadow-xl p-3 z-50 text-xs text-primary flex items-start gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1 min-w-0 space-y-1">
+                <p>{t('publishing.publishedAt')}</p>
+                <a
+                  href={publishedPath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-primary-color hover:underline break-all"
+                >
+                  {publishedPath}
+                  <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  <span className="sr-only">{t('publishing.opensInNewTab')}</span>
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={dismissPublished}
+                aria-label={t('common.close')}
+                className="text-muted hover:text-primary p-1 -m-1 rounded"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {showShareModal && !page.id.startsWith('page_') && (
         <ShareModal pageId={page.id} onClose={() => setShowShareModal(false)} />
       )}
+
+      <ConfirmDialog
+        open={confirmUnpublish}
+        title={t('publishing.unpublishTitle')}
+        message={t('publishing.unpublishMessage')}
+        confirmLabel={t('publishing.unpublish')}
+        variant="danger"
+        onConfirm={() => { setConfirmUnpublish(false); void unpublish(); }}
+        onCancel={() => setConfirmUnpublish(false)}
+      />
+      <ConfirmDialog
+        open={leave.confirmOpen}
+        title={t('saveStatus.leaveTitle')}
+        message={t('saveStatus.leaveMessage')}
+        confirmLabel={t('saveStatus.leaveAnyway')}
+        cancelLabel={t('saveStatus.stay')}
+        variant="danger"
+        onConfirm={leave.leaveAnyway}
+        onCancel={leave.stay}
+      />
     </header>
   );
 }

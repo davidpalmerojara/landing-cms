@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/editor/TopBar';
+import { SaveIssueBanner } from '@/components/editor/SaveStatusIndicator';
 import LeftSidebar from '@/components/editor/LeftSidebar';
 import CanvasViewport from '@/components/editor/CanvasViewport';
 import DragOverlay from '@/components/editor/DragOverlay';
@@ -29,6 +30,10 @@ import { useCollaboration } from '@/hooks/useCollaboration';
 import { useAuth } from '@/hooks/useAuth';
 import GuestSessionProvider from '@/components/guest/GuestSessionProvider';
 import GuestBanner from '@/components/guest/GuestBanner';
+import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { isMacPlatform } from '@/lib/keyboard';
+import { inspectorInputId } from '@/lib/save-issue';
+import type { RejectedField } from '@/lib/page-sync';
 
 // Recharts weighs more than the rest of the editor together: it loads when the analytics tab opens
 const AnalyticsPanel = dynamic(() => import('@/components/analytics/AnalyticsPanel'), {
@@ -47,6 +52,7 @@ export default function EditorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
 
+  const undoShortcut = isMacPlatform() ? '⌘Z' : 'Ctrl+Z';
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
   const pendingDeleteBlockId = useEditorStore((s) => s.pendingDeleteBlockId);
   const cancelDeleteBlock = useEditorStore((s) => s.cancelDeleteBlock);
@@ -61,19 +67,27 @@ export default function EditorPage() {
     if (user) setMyUserId(user.id);
   }, [user, setMyUserId]);
   useEditorShortcuts();
-  const { isLoading, error, errorStatus, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange } = usePageSync(pageId, {
+  const {
+    isLoading, error, errorStatus, saveToApi, saveOnLeave, hasUnsavedChanges,
+    publishToApi, unpublishToApi, lastPublicationError, restoreVersion, handleRemoteChange,
+  } = usePageSync(pageId, {
     onRemoteMerged: (change) => {
-      // A restore by someone else (not by this person in another tab) is worth a notice
-      if (change.reason === 'restore' && change.by && change.by.userId !== useEditorStore.getState().myUserId) {
+      // Only changes by someone else (not by this person in another tab) are worth a notice
+      if (!change.by || change.by.userId === useEditorStore.getState().myUserId) return;
+      if (change.reason === 'restore') {
         addToast(t('collab.restoredByCollaborator', { name: change.by.username }), 'info');
+      } else if (change.reason === 'publish') {
+        const published = useEditorStore.getState().page.status === 'published';
+        addToast(t(published ? 'publishing.publishedBy' : 'publishing.unpublishedBy', { name: change.by.username }), 'info');
       }
     },
     onSaveFailed: (kind) => {
       if (kind === 'conflict') addToast(t('collab.saveConflict'), 'error');
     },
+    onLocalChangesRecovered: () => addToast(t('saveStatus.recovered', { undo: undoShortcut }), 'info'),
   });
   useDragManager();
-  useAutoSave(saveToApi);
+  useAutoSave(saveToApi, { saveOnLeave, hasUnsavedChanges });
   const { sendCursorMove } = useCollaboration(pageId, { onRemoteChange: handleRemoteChange });
 
   const handleRestore = async (versionId: string) => {
@@ -92,6 +106,42 @@ export default function EditorPage() {
   const handlePreviewVersion = (versionId: string) => {
     setPreviewVersionId(versionId);
   };
+
+  // The tab says which page is open (QA-057)
+  useEffect(() => {
+    if (page.name) document.title = `${page.name} — ${t('common.brand')}`;
+  }, [page.name, t]);
+
+  /** Take the user to a field the server refused: its block selected, its input focused. */
+  const showRejectedField = useCallback((field: RejectedField) => {
+    if (field.blockId === null) {
+      setActiveView('seo');
+      return;
+    }
+    const store = useEditorStore.getState();
+    setActiveView('design');
+    setShowHistory(false);
+    if (store.isPreviewMode) store.togglePreview();
+    useEditorStore.setState((s) => ({ inspectorSections: { ...s.inspectorSections, content: true } }));
+    store.selectBlock(field.blockId);
+    const inputId = inspectorInputId(field.path);
+    // After the inspector renders the block's fields
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const input = inputId ? document.getElementById(inputId) : null;
+      const listToggle = field.path.length === 3
+        ? document.querySelector<HTMLElement>(`[data-list-focus="toggle-${field.path[1]}"]`)
+        : null;
+      (input ?? listToggle)?.focus();
+    }));
+  }, []);
+
+  const retrySave = useCallback(() => { void saveToApi(); }, [saveToApi]);
+
+  const pendingDeleteBlock = page.blocks.find((b) => b.id === pendingDeleteBlockId);
+  const deleteBlockMessage = t('editor.deleteBlockMessage', {
+    name: pendingDeleteBlock ? getTranslatedBlockLabel(pendingDeleteBlock.type, t) : t('editor.components'),
+    undo: undoShortcut,
+  });
 
   if (isLoading || isAuthLoading || !user) {
     return (
@@ -140,7 +190,7 @@ export default function EditorPage() {
         <ConfirmDialog
           open={pendingDeleteBlockId !== null}
           title={t('editor.deleteBlockTitle')}
-          message={t('editor.deleteBlockMessage', { name: page.blocks.find((b) => b.id === pendingDeleteBlockId)?.name || t('editor.components') })}
+          message={deleteBlockMessage}
           confirmLabel={t('common.delete')}
           variant="danger"
           onConfirm={confirmDeleteBlock}
@@ -163,11 +213,14 @@ export default function EditorPage() {
       <TopBar
         onSave={saveToApi}
         onPublish={publishToApi}
-        apiError={saveError}
+        onUnpublish={unpublishToApi}
+        publicationError={lastPublicationError}
+        onShowRejectedField={showRejectedField}
         activeView={activeView}
         onViewChange={setActiveView}
         onOpenHistory={() => setShowHistory((v) => !v)}
       />
+      <SaveIssueBanner onRetry={retrySave} onShowField={showRejectedField} />
 
       {activeView === 'analytics' ? (
         <main className="flex-1 overflow-hidden">
@@ -201,7 +254,7 @@ export default function EditorPage() {
       <ConfirmDialog
         open={pendingDeleteBlockId !== null}
         title={t('editor.deleteBlockTitle')}
-        message={t('editor.deleteBlockMessage', { name: page.blocks.find((b) => b.id === pendingDeleteBlockId)?.name || t('editor.components') })}
+        message={deleteBlockMessage}
         confirmLabel={t('common.delete')}
         variant="danger"
         onConfirm={confirmDeleteBlock}

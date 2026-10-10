@@ -125,6 +125,9 @@ function connectionHeaders(connectionId?: string | null): Record<string, string>
   return connectionId ? { 'X-Connection-Id': connectionId } : {};
 }
 
+/** Browsers refuse keepalive requests whose bodies add up to more than 64 KB; leave room for others. */
+const KEEPALIVE_MAX_BODY = 60_000;
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
   return fetchWithRetry<T>(() => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }));
@@ -212,6 +215,8 @@ export interface ApiPage extends ApiSeoFields {
   blocks: ApiBlock[];
   published_at?: string | null;
   has_unpublished_changes?: boolean;
+  /** The user asking owns the page (publish, unpublish, share are the owner's). Absent from older servers. */
+  is_owner?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -461,13 +466,20 @@ export const api = {
     create: (data: Record<string, unknown>) =>
       request<ApiPage>('/pages/', { method: 'POST', body: JSON.stringify(data) }),
 
-    /** `data.version` must be the version the edit is based on; a stale one gets 409 VERSION_CONFLICT. */
-    update: (id: string, data: Record<string, unknown>, connectionId?: string | null) =>
-      request<ApiPage>(`/pages/${id}/`, {
+    /**
+     * `data.version` must be the version the edit is based on; a stale one gets 409 VERSION_CONFLICT.
+     * `keepalive`: the request outlives the tab (sent while leaving the page); browsers
+     * cap such bodies at 64 KB, so a larger page is sent as a normal request.
+     */
+    update: (id: string, data: Record<string, unknown>, connectionId?: string | null, options: { keepalive?: boolean } = {}) => {
+      const body = JSON.stringify(data);
+      return request<ApiPage>(`/pages/${id}/`, {
         method: 'PUT',
-        body: JSON.stringify(data),
+        body,
         headers: connectionHeaders(connectionId),
-      }),
+        keepalive: Boolean(options.keepalive) && new TextEncoder().encode(body).length < KEEPALIVE_MAX_BODY,
+      });
+    },
 
     delete: (id: string) =>
       request<void>(`/pages/${id}/`, { method: 'DELETE' }),
@@ -479,7 +491,9 @@ export const api = {
     publish: (id: string, connectionId?: string | null) =>
       request<ApiPage>(`/pages/${id}/publish/`, { method: 'POST', headers: connectionHeaders(connectionId) }),
 
-    unpublish: (id: string) => request<ApiPage>(`/pages/${id}/unpublish/`, { method: 'POST' }),
+    /** Take the public copy offline (owner only). */
+    unpublish: (id: string, connectionId?: string | null) =>
+      request<ApiPage>(`/pages/${id}/unpublish/`, { method: 'POST', headers: connectionHeaders(connectionId) }),
 
     share: (id: string, email: string) =>
       request<{ message: string }>(`/pages/${id}/share/`, {

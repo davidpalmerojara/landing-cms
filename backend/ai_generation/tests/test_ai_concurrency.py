@@ -48,6 +48,29 @@ def edit_url(page, block):
 # --- QA-030 ------------------------------------------------------------------
 
 @pytest.mark.django_db
+def test_edit_ai_answers_with_the_page_version_it_wrote(auth_client, user):
+    """MOBILE2-002 contract: the editor adopts `page_version` as its sync base, so the
+    next PUT (an undo, say) is not a 409 against the AI's own write."""
+    page = PageFactory(owner=user)
+    block = BlockFactory(page=page, type='hero', order=0, data=HERO)
+
+    with patch(CALL_AI, return_value=reply({'type': 'hero', 'data': {**HERO, 'title': 'From the AI'}})):
+        response = auth_client.post(edit_url(page, block), {'instruction': 'Change the title'}, format='json')
+
+    assert response.status_code == status.HTTP_200_OK
+    stored = Page.objects.get(pk=page.pk).version
+    assert response.data['page_version'] == stored == page.version + 1
+    assert isinstance(response.data['page_version'], int)
+
+    undo = auth_client.put(f'/api/pages/{page.id}/', {
+        'name': page.name, 'version': response.data['page_version'], 'blocks': [
+            {'id': str(block.id), 'type': 'hero', 'order': 0, 'data': HERO, 'styles': {}},
+        ],
+    }, format='json')
+    assert undo.status_code == status.HTTP_200_OK, undo.data
+
+
+@pytest.mark.django_db
 class TestEditBlockWhileSomeoneElseSaves:
     def test_a_save_made_while_the_model_answers_is_not_overwritten(self, auth_client, user):
         page = PageFactory(owner=user)

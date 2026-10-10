@@ -155,14 +155,16 @@ class PageAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, page_id):
-        # Check plan allows analytics
         from billing.permissions import check_feature
-        check_feature(request.user, 'has_analytics', 'Analíticas')
 
         # Verify ownership or collaboration (distinct: the collaborators join repeats the page)
         page = pages_accessible_to(request.user).filter(pk=page_id).first()
         if page is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+        # Analytics is a feature of the page owner's plan, like collaboration: a
+        # collaborator on a Pro owner's page sees them whatever their own plan (ADR-032, SEC2-008)
+        check_feature(page.owner, 'has_analytics', 'Analíticas')
 
         # Parse query params
         period = request.query_params.get('period', '30d')

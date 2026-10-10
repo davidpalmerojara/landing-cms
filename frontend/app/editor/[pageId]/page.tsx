@@ -186,7 +186,13 @@ export default function EditorPage() {
   if (isQuickEditMode) {
     return (
       <GuestSessionProvider user={user} onClaimed={setUser}>
-        <MobileEditor pageId={pageId} onSave={saveToApi} onPublish={publishToApi} />
+        <MobileEditor
+          pageId={pageId}
+          onSave={saveToApi}
+          onPublish={publishToApi}
+          onUnpublish={unpublishToApi}
+          publicationError={lastPublicationError}
+        />
         <ConfirmDialog
           open={pendingDeleteBlockId !== null}
           title={t('editor.deleteBlockTitle')}
@@ -196,7 +202,7 @@ export default function EditorPage() {
           onConfirm={confirmDeleteBlock}
           onCancel={cancelDeleteBlock}
         />
-        <ToastContainer toasts={toasts} onDismiss={removeToast} />
+        <ToastContainer toasts={toasts} onDismiss={removeToast} placement="aboveFab" />
       </GuestSessionProvider>
     );
   }

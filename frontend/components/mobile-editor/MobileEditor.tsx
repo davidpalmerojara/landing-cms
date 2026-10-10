@@ -1,59 +1,81 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   Eye,
   Globe,
-  Plus,
+  Info,
   Layers,
-  Loader2,
-  Check,
-  AlertTriangle,
-  WifiOff,
-  RefreshCw,
+  Plus,
+  Redo2,
+  Undo2,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEditorStore } from '@/store/editor-store';
+import { useEditorStore, lockHeldByOther } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { getBlockDefaults } from '@/lib/block-defaults';
-import { resolveStyles } from '@/types/blocks';
+import { PAGE_FIELD_LIMITS } from '@/lib/field-limits';
 import type { BlockType } from '@/types/blocks';
-import BlockContent from '@/components/blocks/BlockContent';
-import { pageThemeVars } from '@/lib/page-theme';
+import type { ToastData } from '@/components/ui/Toast';
 import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
 import GuestBanner from '@/components/guest/GuestBanner';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useLeaveEditor } from '@/hooks/useLeaveEditor';
+import { useSaveIssueText } from '@/hooks/useSaveIssueText';
+import { useTouchReorder } from '@/hooks/useTouchReorder';
 import MobileBlockCard from './MobileBlockCard';
 import MobileBottomSheet from './MobileBottomSheet';
 import MobileBlockEditor from './MobileBlockEditor';
+import MobilePublishSheet, { publicationState } from './MobilePublishSheet';
+import MobilePreview from './MobilePreview';
+import QuickEditStatus from './QuickEditStatus';
 
 interface MobileEditorProps {
   pageId: string;
-  onSave: () => Promise<boolean | undefined>;
-  onPublish: () => Promise<boolean | undefined>;
+  /** Save now (the retry button); the save controller also retries by itself (QA-008) */
+  onSave: () => Promise<boolean>;
+  onPublish: () => Promise<boolean>;
+  onUnpublish?: () => Promise<boolean>;
+  /** Why the last publish or unpublish failed at the server */
+  publicationError?: () => unknown;
 }
 
-export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditorProps) {
+/** A toast with a button, added straight to the store's list (addToast takes no action). */
+function addToastWithAction(message: string, action: NonNullable<ToastData['action']>) {
+  const id = `undo-${Math.random().toString(36).slice(2, 9)}`;
+  useEditorStore.setState((s) => ({ toasts: [...s.toasts, { id, message, variant: 'success', action }] }));
+}
+
+export default function MobileEditor({ onSave, onPublish, onUnpublish, publicationError }: MobileEditorProps) {
   const t = useTranslations();
   const locale = useLocale();
   const page = useEditorStore((s) => s.page);
-  const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
+  const blockLocks = useEditorStore((s) => s.blockLocks);
+  const myConnectionId = useEditorStore((s) => s.myConnectionId);
+  const myUserId = useEditorStore((s) => s.myUserId);
+  const canUndo = useEditorStore((s) => s.past.length > 0);
+  const canRedo = useEditorStore((s) => s.future.length > 0);
+  const undo = useEditorStore((s) => s.undo);
+  const redo = useEditorStore((s) => s.redo);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
   const requestDeleteBlock = useEditorStore((s) => s.requestDeleteBlock);
   const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
   const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const addBlock = useEditorStore((s) => s.addBlock);
-  const addToast = useEditorStore((s) => s.addToast);
   const setPageWithHistory = useEditorStore((s) => s.setPageWithHistory);
+  const { issue, text: issueText } = useSaveIssueText();
+  const leave = useLeaveEditor('/dashboard');
 
   // --- Sheet state ---
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showPublishSheet, setShowPublishSheet] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
 
   // --- Long press preview ---
   const [previewBlockId, setPreviewBlockId] = useState<string | null>(null);
@@ -63,59 +85,21 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   const [nameValue, setNameValue] = useState(page.name);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Online/offline ---
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
-  const [isReconnecting, setIsReconnecting] = useState(false);
-
-  // --- Drag state ---
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  // --- Touch reorder (QA-071) ---
+  const scrollRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const cardRectsRef = useRef<DOMRect[]>([]);
-  const dragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartYRef = useRef(0);
+  const reorderBlocks = useCallback((from: number, to: number) => {
+    useEditorStore.getState().reorderBlocks(from, to);
+  }, []);
+  const { dragIndex, dropIndex, onHandleTouchStart, onTouchMove, onTouchEnd } = useTouchReorder({
+    scrollRef,
+    listRef,
+    onReorder: reorderBlocks,
+  });
+  const dragHandleProps = useMemo(() => ({ onTouchStart: onHandleTouchStart }), [onHandleTouchStart]);
 
   // --- Animation state for new blocks ---
   const [animatingBlockId, setAnimatingBlockId] = useState<string | null>(null);
-
-  // --- Focus restore ref ---
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
-
-  // --- Cleanup drag timer on unmount ---
-  useEffect(() => {
-    return () => {
-      if (dragTimerRef.current) clearTimeout(dragTimerRef.current);
-    };
-  }, []);
-
-  // --- Online/offline detection ---
-  useEffect(() => {
-    const goOnline = () => {
-      setIsReconnecting(true);
-      // Trigger a save attempt
-      onSave().then((success) => {
-        setIsReconnecting(false);
-        setIsOnline(true);
-        if (success) {
-          addToast(t('mobile.changesSynced'), 'success');
-        }
-      }).catch(() => {
-        setIsReconnecting(false);
-        setIsOnline(true);
-      });
-    };
-    const goOffline = () => {
-      setIsOnline(false);
-      setIsReconnecting(false);
-    };
-
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
-    return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
-    };
-  }, [addToast, onSave, t]);
 
   // --- Focus name input when editing starts ---
   useEffect(() => {
@@ -125,66 +109,22 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
     }
   }, [isEditingName]);
 
-  // --- Drag handlers ---
-  const handleDragStart = useCallback((e: React.TouchEvent, index: number) => {
-    const touch = e.touches[0];
-    touchStartYRef.current = touch.clientY;
-
-    if (listRef.current) {
-      const cards = listRef.current.querySelectorAll('[role="listitem"]');
-      cardRectsRef.current = Array.from(cards).map((c) => c.getBoundingClientRect());
-    }
-
-    dragTimerRef.current = setTimeout(() => {
-      setDragIndex(index);
-      setDropIndex(index);
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 150);
-  }, []);
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      if (dragIndex === null && dragTimerRef.current) {
-        const dy = Math.abs(e.touches[0].clientY - touchStartYRef.current);
-        if (dy > 8) {
-          clearTimeout(dragTimerRef.current);
-          dragTimerRef.current = null;
-        }
-        return;
-      }
-      if (dragIndex === null) return;
-
-      const touch = e.touches[0];
-      const rects = cardRectsRef.current;
-      let newDropIndex = rects.length;
-      for (let i = 0; i < rects.length; i++) {
-        const mid = rects[i].top + rects[i].height / 2;
-        if (touch.clientY < mid) {
-          newDropIndex = i;
-          break;
-        }
-      }
-      setDropIndex(newDropIndex);
-    },
-    [dragIndex],
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    if (dragTimerRef.current) {
-      clearTimeout(dragTimerRef.current);
-      dragTimerRef.current = null;
-    }
-    if (dragIndex !== null && dropIndex !== null && dragIndex !== dropIndex) {
-      useEditorStore.getState().reorderBlocks(dragIndex, dropIndex);
-    }
-    setDragIndex(null);
-    setDropIndex(null);
-  }, [dragIndex, dropIndex]);
+  // The sheet edits the selected block: it closes when the selection goes
+  // (someone else won the block's lock, or it was deleted elsewhere) (QA-073)
+  useEffect(() => useEditorStore.subscribe(
+    (s) => s.selectedBlockId,
+    (selected) => setEditingBlockId((editing) => (editing !== null && editing !== selected ? null : editing)),
+  ), []);
+  const sheetBlockId = editingBlockId !== null
+    && selectedBlockId === editingBlockId
+    && page.blocks.some((b) => b.id === editingBlockId)
+    ? editingBlockId
+    : null;
 
   // --- Block actions ---
-  const handleTap = useCallback((blockId: string) => {
-    lastFocusedRef.current = document.activeElement as HTMLElement | null;
-    selectBlock(blockId);
+  /** Open a block's sheet, unless another person has the block (the store refuses and they are told) */
+  const openBlock = useCallback((blockId: string) => {
+    if (!selectBlock(blockId)) return;
     setEditingBlockId(blockId);
   }, [selectBlock]);
 
@@ -194,25 +134,29 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
 
   const handleCloseEditor = useCallback(() => {
     setEditingBlockId(null);
-    // Restore focus after sheet close animation
-    setTimeout(() => {
-      lastFocusedRef.current?.focus();
-      lastFocusedRef.current = null;
-    }, 300);
-  }, []);
+    // Let go of the block so others can edit it
+    selectBlock(null);
+  }, [selectBlock]);
 
   const handleDuplicate = useCallback((blockId: string) => {
     duplicateBlock(blockId);
-    addToast(t('mobile.blockDuplicated'), 'success');
-    setTimeout(() => {
-      const blocks = useEditorStore.getState().page.blocks;
-      const duplicatedBlock = blocks.find((block) => block.id !== blockId && block.id === useEditorStore.getState().selectedBlockId);
-      if (duplicatedBlock) {
-        setAnimatingBlockId(duplicatedBlock.id);
-        setTimeout(() => setAnimatingBlockId(null), 400);
-      }
-    }, 0);
-  }, [addToast, duplicateBlock, t]);
+    const store = useEditorStore.getState();
+    const copyId = store.selectedBlockId !== blockId ? store.selectedBlockId : null;
+    // Duplicating selects the copy; in Quick Edit nothing stays selected without its sheet
+    selectBlock(null);
+    if (!copyId) return;
+    setAnimatingBlockId(copyId);
+    setTimeout(() => setAnimatingBlockId(null), 400);
+    // A swipe duplicates at once: the toast can take it back (QA-070)
+    addToastWithAction(t('mobile.blockDuplicated'), {
+      label: t('mobile.undo'),
+      onClick: () => {
+        if (useEditorStore.getState().page.blocks.some((b) => b.id === copyId)) {
+          useEditorStore.getState().deleteBlock(copyId);
+        }
+      },
+    });
+  }, [duplicateBlock, selectBlock, t]);
 
   const handleDelete = useCallback((blockId: string) => {
     requestDeleteBlock(blockId);
@@ -228,26 +172,14 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
     setTimeout(() => {
       const blocks = useEditorStore.getState().page.blocks;
       const newBlock = blocks[blocks.length - 1];
-      if (newBlock) {
-        // Animate the new block
-        setAnimatingBlockId(newBlock.id);
-        setTimeout(() => setAnimatingBlockId(null), 400);
-
-        // Scroll to new block
-        if (listRef.current) {
-          const items = listRef.current.querySelectorAll('[role="listitem"]');
-          const lastItem = items[items.length - 1];
-          if (lastItem) {
-            lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-
-        // Open editor
-        setEditingBlockId(newBlock.id);
-        selectBlock(newBlock.id);
-      }
+      if (!newBlock) return;
+      setAnimatingBlockId(newBlock.id);
+      setTimeout(() => setAnimatingBlockId(null), 400);
+      const items = listRef.current?.querySelectorAll('[role="listitem"]');
+      items?.[items.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      openBlock(newBlock.id);
     }, 50);
-  }, [addBlock, selectBlock, t, locale]);
+  }, [addBlock, openBlock, t, locale]);
 
   // --- Name editing ---
   const handleNameTap = useCallback(() => {
@@ -273,70 +205,64 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
     }
   }, [handleNameSubmit, page.name]);
 
-  // --- Publish ---
-  const handlePublish = useCallback(async () => {
-    setIsPublishing(true);
-    const success = await onPublish();
-    setIsPublishing(false);
-    setShowPublishSheet(false);
-    if (success) {
-      addToast(t('mobile.pagePublished'), 'success');
-    } else {
-      addToast(t('mobile.publishError'), 'error');
+  // --- Save problems: retry now, or go to the refused field ---
+  const handleIssueAction = useCallback(() => {
+    if (!issue) return;
+    if (issue.kind === 'failed') {
+      void onSave();
+      return;
     }
-  }, [addToast, onPublish, t]);
+    const field = issue.fields[0];
+    if (field.blockId) openBlock(field.blockId);
+    else if (field.path[0] === 'name') handleNameTap();
+  }, [handleNameTap, issue, onSave, openBlock]);
 
-  // --- Retry save ---
-  const handleRetrySave = useCallback(() => {
-    onSave();
-  }, [onSave]);
+  const closeAddSheet = useCallback(() => setShowAddSheet(false), []);
+  const closePublishSheet = useCallback(() => setShowPublishSheet(false), []);
+  const closePreview = useCallback(() => setIsPreview(false), []);
+
+  const availableBlocks = useMemo(() => getAvailableBlocks().map((block) => ({
+    ...block,
+    label: getTranslatedBlockLabel(block.type, t, block.label),
+  })), [t]);
 
   // --- Preview mode ---
   if (isPreview) {
-    return <MobilePreview page={page} onBack={() => setIsPreview(false)} />;
+    return <MobilePreview page={page} onBack={closePreview} />;
   }
 
-  // --- Connection + save status ---
-  const connectionStatus = !isOnline
-    ? 'offline'
-    : isReconnecting
-    ? 'reconnecting'
-    : autoSaveStatus;
-
-  const statusConfig: Record<string, { icon: typeof Check; label: string; color: string }> = {
-    saving: { icon: Loader2, label: t('mobile.saving'), color: 'text-muted' },
-    saved: { icon: Check, label: t('mobile.saved'), color: 'text-success' },
-    error: { icon: AlertTriangle, label: t('mobile.error'), color: 'text-warning' },
-    offline: { icon: WifiOff, label: t('mobile.offline'), color: 'text-warning' },
-    reconnecting: { icon: RefreshCw, label: t('mobile.reconnecting'), color: 'text-muted' },
+  const editingBlock = page.blocks.find((b) => b.id === sheetBlockId);
+  const publication = publicationState(page.status, page.hasUnpublishedChanges);
+  const anySheetOpen = sheetBlockId !== null || showAddSheet || showPublishSheet;
+  const issueActionLabel = issue?.kind === 'failed'
+    ? t('saveStatus.retryNow')
+    : issue?.kind === 'rejected' && (issue.fields[0].blockId || issue.fields[0].path[0] === 'name')
+      ? t('saveStatus.showField')
+      : null;
+  const lockedByName = (blockId: string): string | null => {
+    const holder = lockHeldByOther({ blockLocks, myConnectionId }, blockId);
+    if (!holder) return null;
+    return holder.userId === myUserId ? t('collab.yourOtherTab') : holder.username;
   };
-
-  const status = statusConfig[connectionStatus];
-  const StatusIcon = status?.icon || null;
-
-  const availableBlocks = getAvailableBlocks().map((block) => ({
-    ...block,
-    label: getTranslatedBlockLabel(block.type, t, block.label),
-  }));
-  const editingBlock = page.blocks.find((b) => b.id === editingBlockId);
 
   return (
     <div className="flex flex-col h-dvh bg-surface text-primary">
-      <GuestBanner />
+      <GuestBanner compact />
       <AccessRevokedBanner />
       {/* --- Toolbar --- */}
-      <header className="flex items-center justify-between px-4 h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
-        {/* Left: Back */}
+      <header className="flex items-center gap-1 px-2 h-16 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">
         <a
           href="/dashboard"
-          className="flex items-center justify-center text-secondary active:text-primary min-w-11 min-h-11 -ml-2 rounded-lg"
+          onClick={leave.onLinkClick}
+          aria-busy={leave.isLeaving || undefined}
+          className="flex items-center justify-center text-secondary active:text-primary min-w-11 min-h-11 rounded-lg shrink-0"
           aria-label={t('common.backToDashboard')}
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} aria-hidden="true" />
         </a>
 
-        {/* Center: Page name (editable) + status */}
-        <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
+        {/* Page name (editable, as wide as there is room for, QA-126) + status line */}
+        <div className="flex flex-col items-stretch justify-center min-w-0 flex-1">
           {isEditingName ? (
             <input
               ref={nameInputRef}
@@ -345,74 +271,82 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
               onChange={(e) => setNameValue(e.target.value)}
               onBlur={handleNameSubmit}
               onKeyDown={handleNameKeyDown}
-              className="text-sm font-medium text-primary bg-surface-card border border-default/30 rounded-lg px-3 py-1 min-h-11 outline-none focus:border-primary/50 max-w-[180px] text-center"
+              maxLength={PAGE_FIELD_LIMITS.name}
+              enterKeyHint="done"
+              className="w-full text-base font-medium text-primary bg-surface-elevated border border-default/30 rounded-lg px-3 min-h-11 outline-none focus:border-primary/50 text-center"
               aria-label={t('mobile.pageName')}
             />
           ) : (
             <button
+              type="button"
               onClick={handleNameTap}
-              className="text-sm font-medium text-primary truncate max-w-[160px] px-2 py-1 min-h-11 rounded-lg active:bg-surface-card transition-colors"
+              title={page.name}
+              className="w-full text-sm font-semibold text-primary truncate px-2 min-h-11 leading-tight rounded-lg active:bg-surface-elevated transition-colors"
               aria-label={`${t('mobile.editPageName')}: ${page.name}`}
             >
               {page.name}
             </button>
           )}
-          {StatusIcon && (
-            <span
-              className={`shrink-0 flex items-center gap-1 ${status.color}`}
-              aria-live="polite"
-              aria-label={status.label}
-            >
-              <StatusIcon size={13} className={connectionStatus === 'saving' || connectionStatus === 'reconnecting' ? 'animate-spin' : ''} />
-              {(connectionStatus === 'error' || connectionStatus === 'offline') && (
-                <span className="text-[10px] font-medium">{status.label}</span>
-              )}
-            </span>
+          <div className="-mt-2.5">
+            <QuickEditStatus />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsPreview(true)}
+          className="flex items-center justify-center min-w-11 min-h-11 text-secondary active:text-primary rounded-lg shrink-0"
+          aria-label={t('mobile.previewPage')}
+        >
+          <Eye size={20} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowPublishSheet(true)}
+          className={`relative flex items-center justify-center min-w-11 min-h-11 rounded-lg shrink-0 ${
+            publication === 'live' ? 'text-success' : publication === 'changes' ? 'text-warning' : 'text-secondary active:text-primary'
+          }`}
+          aria-label={
+            publication === 'draft' ? t('mobile.publishTitle')
+              : publication === 'changes' ? t('mobile.publishPendingAria') : t('mobile.publishedTitle')
+          }
+        >
+          <Globe size={20} aria-hidden="true" />
+          {/* Unpublished changes (QA-014) */}
+          {publication === 'changes' && (
+            <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-warning ring-2 ring-surface-card" aria-hidden="true" />
           )}
-          {connectionStatus === 'error' && (
+        </button>
+      </header>
+
+      {issue && issueText && (
+        <div className="flex items-center gap-3 pl-4 pr-2 py-1 bg-error/10 border-b border-error/30 text-[13px] text-primary shrink-0">
+          <AlertTriangle size={16} className="text-error shrink-0" aria-hidden="true" />
+          <p className="flex-1 min-w-0">{issueText.full}</p>
+          {issueActionLabel && (
             <button
-              onClick={handleRetrySave}
-              className="text-[10px] text-primary-color font-semibold active:opacity-70 ml-1 min-h-11 flex items-center"
+              type="button"
+              onClick={handleIssueAction}
+              className="shrink-0 min-h-11 px-3 rounded-lg font-semibold text-primary-color active:opacity-70"
             >
-              {t('mobile.retrySave')}
+              {issueActionLabel}
             </button>
           )}
         </div>
-
-        {/* Right: Preview + Publish */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setIsPreview(true)}
-            className="flex items-center justify-center min-w-11 min-h-11 text-secondary active:text-primary rounded-lg"
-            aria-label={t('mobile.previewPage')}
-          >
-            <Eye size={20} />
-          </button>
-          <button
-            onClick={() => setShowPublishSheet(true)}
-            className={`flex items-center justify-center min-w-11 min-h-11 rounded-lg ${
-              page.status === 'published'
-                ? 'text-success'
-                : 'text-secondary active:text-primary'
-            }`}
-            aria-label={page.status === 'published' ? t('mobile.publishedTitle') : t('mobile.publishTitle')}
-          >
-            <Globe size={20} />
-          </button>
-        </div>
-      </header>
+      )}
 
       {/* --- Block list --- */}
       <main
-        className="flex-1 overflow-y-auto px-4 py-4"
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-28"
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
       >
         {page.blocks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
             <div className="w-16 h-16 rounded-2xl bg-surface-card border border-default/15 flex items-center justify-center">
-              <Layers size={28} className="text-muted" />
+              <Layers size={28} className="text-muted" aria-hidden="true" />
             </div>
             <div>
               <p className="text-lg font-semibold text-primary">{t('mobile.emptyTitle')}</p>
@@ -444,13 +378,14 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
                     isFirst={i === 0}
                     isLast={i === page.blocks.length - 1}
                     isPreviewExpanded={previewBlockId === block.id}
-                    onTap={handleTap}
+                    lockedBy={lockedByName(block.id)}
+                    onTap={openBlock}
                     onLongPress={handleLongPress}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDelete}
-                    onMoveUp={(id) => moveBlockUp(id)}
-                    onMoveDown={(id) => moveBlockDown(id)}
-                    onDragHandleProps={{ onTouchStart: handleDragStart }}
+                    onMoveUp={moveBlockUp}
+                    onMoveDown={moveBlockDown}
+                    onDragHandleProps={dragHandleProps}
                   />
                 </div>
               );
@@ -460,60 +395,90 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
             )}
           </div>
         )}
+        {/* What Quick Edit leaves to the full editor (D7) */}
+        <p className="flex items-start gap-2 mt-6 px-1 text-xs text-secondary">
+          <Info size={14} className="shrink-0 mt-px" aria-hidden="true" />
+          {t('mobile.desktopOnlyNote')}
+        </p>
       </main>
 
+      {/* --- Undo / redo, within thumb reach (QA-067) --- */}
+      {!anySheetOpen && (
+        <div
+          role="group"
+          aria-label={t('mobile.history')}
+          className="fixed left-6 bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] z-30 flex items-center rounded-full bg-surface-card border border-default/20 shadow-lg shadow-black/30"
+        >
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            aria-label={t('mobile.undo')}
+            className="min-w-12 min-h-12 flex items-center justify-center rounded-l-full text-primary disabled:text-muted disabled:opacity-60 active:bg-surface-elevated"
+          >
+            <Undo2 size={20} aria-hidden="true" />
+          </button>
+          <span className="w-px h-6 bg-default/40" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            aria-label={t('mobile.redo')}
+            className="min-w-12 min-h-12 flex items-center justify-center rounded-r-full text-primary disabled:text-muted disabled:opacity-60 active:bg-surface-elevated"
+          >
+            <Redo2 size={20} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {/* --- FAB: Add block --- */}
-      {!editingBlockId && !showAddSheet && (
+      {!anySheetOpen && (
         <button
+          type="button"
           onClick={() => setShowAddSheet(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-black/30 active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+          className="fixed right-6 bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] z-30 w-14 h-14 rounded-full flex items-center justify-center bg-primary shadow-lg shadow-black/30 active:scale-95 transition-transform"
           aria-label={t('mobile.addBlock')}
         >
-          <Plus size={24} className="text-white" />
+          <Plus size={24} className="text-white" aria-hidden="true" />
         </button>
       )}
 
       {/* --- Bottom sheet: Block editor --- */}
       <MobileBottomSheet
-        open={editingBlockId !== null}
+        open={sheetBlockId !== null}
         onClose={handleCloseEditor}
         title={
-          editingBlockId
-            ? t('mobile.editBlock', {
-                name: getTranslatedBlockLabel(
-                  editingBlock?.type || '',
-                  t,
-                  editingBlock ? blockRegistry[editingBlock.type].label : t('editor.components'),
-                ),
-              })
+          editingBlock
+            ? t('mobile.editBlock', { name: getTranslatedBlockLabel(editingBlock.type, t, blockRegistry[editingBlock.type].label) })
             : undefined
         }
         ariaLabel={t('mobile.editBlockAria')}
         fullHeight
       >
-        {editingBlockId && <MobileBlockEditor blockId={editingBlockId} />}
+        {sheetBlockId && <MobileBlockEditor blockId={sheetBlockId} />}
       </MobileBottomSheet>
 
       {/* --- Bottom sheet: Add block picker --- */}
       <MobileBottomSheet
         open={showAddSheet}
-        onClose={() => setShowAddSheet(false)}
+        onClose={closeAddSheet}
         title={t('mobile.addBlock')}
         ariaLabel={t('mobile.selectBlockType')}
         fullHeight={false}
+        closeLabel={t('common.close')}
       >
         <div className="px-4 py-3 space-y-1">
           {availableBlocks.map((b) => {
             const BlockIcon = b.icon;
             return (
               <button
+                type="button"
                 key={b.type}
                 onClick={() => handleAddBlock(b.type)}
                 className="w-full flex items-center gap-4 px-4 py-3.5 min-h-11 rounded-xl active:bg-surface-card transition-colors"
               >
                 <div className="w-10 h-10 rounded-xl bg-surface-card border border-default/15 flex items-center justify-center shrink-0">
-                  <BlockIcon size={18} className="text-primary-color" />
+                  <BlockIcon size={18} className="text-primary-color" aria-hidden="true" />
                 </div>
                 <span className="text-sm font-medium text-primary">{b.label}</span>
               </button>
@@ -522,126 +487,25 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
         </div>
       </MobileBottomSheet>
 
-      {/* --- Bottom sheet: Publish confirmation --- */}
-      <MobileBottomSheet
+      {/* --- Bottom sheet: Publish (QA-014) --- */}
+      <MobilePublishSheet
         open={showPublishSheet}
-        onClose={() => setShowPublishSheet(false)}
-        title={page.status === 'published' ? t('mobile.publishedTitle') : t('mobile.publishTitle')}
-        ariaLabel={t('mobile.publishTitle')}
-        fullHeight={false}
-      >
-        <div className="px-5 py-4 space-y-4">
-          {page.status === 'published' ? (
-            <>
-              <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-sm text-success font-medium">
-                  {t('mobile.publishedAt', { slug: page.slug })}
-                </span>
-              </div>
-              <a
-                href={`/p/${page.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-3.5 rounded-xl text-center text-sm font-semibold text-white active:opacity-80"
-                style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-              >
-                {t('mobile.viewPublicPage')}
-              </a>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-secondary">{t('mobile.publishDescription', { slug: page.slug })}</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowPublishSheet(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-surface-card text-sm font-medium text-secondary active:bg-surface-elevated"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={handlePublish}
-                  disabled={isPublishing}
-                  className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white active:opacity-80 disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-                >
-                  {isPublishing ? t('editor.publishLoading') : t('common.publish')}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </MobileBottomSheet>
-    </div>
-  );
-}
+        onClose={closePublishSheet}
+        onPublish={onPublish}
+        onUnpublish={onUnpublish}
+        publicationError={publicationError}
+      />
 
-// --- Inline preview component ---
-
-function MobilePreview({
-  page,
-  onBack,
-}: {
-  page: ReturnType<typeof useEditorStore.getState>['page'];
-  onBack: () => void;
-}) {
-  const t = useTranslations();
-  const [showBar, setShowBar] = useState(true);
-
-  const themeVars = pageThemeVars(page.designTokens);
-
-  return (
-    <div className="fixed inset-0 z-80 bg-white">
-      <div
-        className="@container h-full overflow-y-auto"
-        style={themeVars}
-        onClick={(e) => {
-          // Only toggle bar when clicking empty areas, not interactive block elements
-          const target = e.target as HTMLElement;
-          if (!target.closest('button, a, input, select, textarea, [role="button"]')) {
-            setShowBar((v) => !v);
-          }
-        }}
-      >
-        {page.blocks.map((block) => {
-          // Apply block-level styles (padding, margin, bgColor, borderRadius)
-          const s = resolveStyles(block, 'mobile');
-          const needsOverflow = block.type === 'navbar';
-          const blockStyle: React.CSSProperties = needsOverflow ? {} : { overflow: 'hidden' };
-          if (s.paddingTop) blockStyle.paddingTop = s.paddingTop;
-          if (s.paddingBottom) blockStyle.paddingBottom = s.paddingBottom;
-          if (s.paddingLeft) blockStyle.paddingLeft = s.paddingLeft;
-          if (s.paddingRight) blockStyle.paddingRight = s.paddingRight;
-          if (s.marginTop) blockStyle.marginTop = s.marginTop;
-          if (s.marginBottom) blockStyle.marginBottom = s.marginBottom;
-          if (s.bgColor) {
-            blockStyle.backgroundColor = s.bgColor;
-            (blockStyle as Record<string, unknown>)['--theme-bg'] = s.bgColor;
-          }
-          if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
-
-          return (
-            <div key={block.id} style={blockStyle}>
-              <BlockContent block={block} isPreviewMode={true} />
-            </div>
-          );
-        })}
-      </div>
-
-      {showBar && (
-        <div className="fixed bottom-6 left-4 right-4 z-90 flex items-center justify-between px-4 py-3 bg-surface-card/90 backdrop-blur-xl rounded-2xl border border-default/20">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onBack();
-            }}
-            className="flex items-center gap-2 text-sm font-medium text-primary active:opacity-70 min-h-11"
-          >
-            <ArrowLeft size={16} /> {t('mobile.backToEditor')}
-          </button>
-          <span className="text-xs text-secondary">{t('mobile.previewLabel')}</span>
-        </div>
-      )}
+      <ConfirmDialog
+        open={leave.confirmOpen}
+        title={t('saveStatus.leaveTitle')}
+        message={t('saveStatus.leaveMessage')}
+        confirmLabel={t('saveStatus.leaveAnyway')}
+        cancelLabel={t('saveStatus.stay')}
+        variant="danger"
+        onConfirm={leave.leaveAnyway}
+        onCancel={leave.stay}
+      />
     </div>
   );
 }

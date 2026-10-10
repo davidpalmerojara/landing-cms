@@ -145,7 +145,9 @@
     },
     "logoutTitle": "¿Cerrar la sesión de invitado?",
     "logoutBody": "Perderás tus páginas: se borran junto con la sesión. Crea una cuenta para conservarlas.",
-    "logoutAnyway": "Cerrar sesión y perder mis páginas"
+    "logoutAnyway": "Cerrar sesión y perder mis páginas",
+    "bannerShort": "Sesión temporal",
+    "claimShort": "Crear cuenta"
   },
   "errors": {
     "globalTitle": "Algo salió mal",
@@ -566,17 +568,14 @@
   },
   "mobile": {
     "quickEditMode": "Edición rápida",
-    "tapToEdit": "Toca para editar",
     "dragToReorder": "Mantén para reordenar",
     "previewPage": "Vista previa",
     "backToEditor": "Volver al editor",
     "blockDuplicated": "Bloque duplicado",
-    "changesSynced": "Cambios sincronizados",
     "pagePublished": "Página publicada",
     "publishError": "Error al publicar",
     "pageName": "Nombre de la página",
     "editPageName": "Editar nombre de página",
-    "retrySave": "Reintentar",
     "emptyTitle": "Tu página está vacía",
     "emptyDescription": "Toca el botón + para añadir tu primer bloque",
     "pageBlocks": "Bloques de la página",
@@ -593,8 +592,6 @@
     "offline": "Sin conexión",
     "saving": "Guardando...",
     "saved": "Guardado",
-    "error": "Error",
-    "reconnecting": "Reconectando...",
     "heroPreview": "Hero",
     "featuresPreview": "Características",
     "pricingPreview": "{count, plural, one {# plan} other {# planes}}",
@@ -609,7 +606,57 @@
     "timelinePreview": "Línea temporal",
     "galleryPreview": "Galería",
     "logoCloudPreview": "Logos",
-    "customHtmlPreview": "HTML personalizado"
+    "customHtmlPreview": "HTML personalizado",
+    "lockedBy": "{name} lo está editando",
+    "improveWithAi": "Mejorar con IA",
+    "chooseImage": "Elegir imagen",
+    "changeImage": "Cambiar imagen",
+    "removeImage": "Quitar la imagen de «{field}»",
+    "pasteImageUrl": "Pegar una dirección",
+    "imageUrlLabel": "Dirección de la imagen de «{field}»",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "history": "Deshacer y rehacer",
+    "desktopOnlyNote": "El tema, el SEO y el historial de versiones se cambian desde un ordenador.",
+    "publishChangesDescription": "Quien visita /p/{slug} todavía ve la versión anterior.",
+    "publishPendingAria": "Publicar cambios (hay cambios sin publicar)",
+    "presenceLabel": "También editando: {names}",
+    "styles": {
+      "background": "Fondo",
+      "noBackground": "El del tema",
+      "themeColor": "{role} del tema ({value})",
+      "roles": {
+        "background": "Fondo",
+        "surface": "Superficie",
+        "primary": "Color principal",
+        "secondary": "Color secundario",
+        "accent": "Acento",
+        "textPrimary": "Texto"
+      },
+      "padding": "Espacio interior",
+      "margin": "Espacio exterior",
+      "paddingTop": "Arriba",
+      "paddingBottom": "Abajo",
+      "paddingLeft": "Izquierda",
+      "paddingRight": "Derecha",
+      "marginTop": "Arriba",
+      "marginBottom": "Abajo",
+      "step": {
+        "none": "Ninguno",
+        "s": "Pequeño ({px} px)",
+        "m": "Mediano ({px} px)",
+        "l": "Grande ({px} px)",
+        "xl": "Muy grande ({px} px)"
+      },
+      "borderRadius": "Esquinas",
+      "radius": {
+        "none": "Rectas",
+        "sm": "Poco redondeadas ({px} px)",
+        "md": "Redondeadas ({px} px)",
+        "lg": "Muy redondeadas ({px} px)"
+      },
+      "custom": "Personalizado ({px} px)"
+    }
   },
   "blocks": {
     "hero": "Hero",

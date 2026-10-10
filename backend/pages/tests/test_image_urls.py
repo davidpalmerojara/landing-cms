@@ -197,3 +197,22 @@ def test_custom_html_links_cannot_target_the_top_window():
     result = sanitize_custom_html('<a href="https://x.test" target="_top" rel="noopener">go</a>')
     assert 'target' not in result
     assert 'href="https://x.test"' in result
+
+
+# --- custom HTML media over http (SEC3-002) ----------------------------------
+
+@pytest.mark.parametrize(('html', 'expected'), [
+    ('<img src="http://x.test/a.png" alt="i">', '<img src="https://x.test/a.png" alt="i">'),
+    ('<img src="HTTP://x.test/a.png">', '<img src="https://x.test/a.png">'),
+    ('<video src="http://x.test/v.mp4" poster="http://x.test/p.png" controls></video>',
+     '<video src="https://x.test/v.mp4" poster="https://x.test/p.png" controls></video>'),
+    ('<video><source src="http://x.test/v.mp4" type="video/mp4"></video>',
+     '<video><source src="https://x.test/v.mp4" type="video/mp4"></video>'),
+    ('<img src="https://x.test/a.png">', '<img src="https://x.test/a.png">'),
+    # Links are not loaded by the page: they keep http
+    ('<a href="http://x.test/">go</a>', '<a href="http://x.test/">go</a>'),
+])
+def test_custom_html_media_is_upgraded_to_https(html, expected):
+    # SEC3-002: the CSP blocks http images and media, so the sanitizer upgrades them
+    assert sanitize_custom_html(html) == expected
+    assert sanitize_custom_html(expected) == expected

@@ -111,10 +111,13 @@ export default function EditorPage() {
     setPreviewVersionId(versionId);
   };
 
-  // The tab says which page is open (QA-057)
+  // The tab says which page is open (QA-057); never the placeholder page's name while loading or when it failed (APP2-005)
+  const failedTitle = error ? t(errorStatus === 404 ? 'editor.pageNotFoundTitle' : 'editor.loadErrorTitle') : null;
+  const openPageName = !isLoading && page.id === pageId ? page.name : '';
   useEffect(() => {
-    if (page.name) document.title = `${page.name} — ${t('common.brand')}`;
-  }, [page.name, t]);
+    const shown = failedTitle ?? openPageName;
+    if (shown) document.title = `${shown} — ${t('common.brand')}`;
+  }, [failedTitle, openPageName, t]);
 
   /** Take the user to a field the server refused: its block selected, its input focused. */
   const showRejectedField = useCallback((field: RejectedField) => {
@@ -166,9 +169,9 @@ export default function EditorPage() {
           <div className="w-14 h-14 bg-surface-card border border-default/15 rounded-2xl flex items-center justify-center mb-2">
             <span className="text-2xl">{is404 ? '🔍' : '⚠️'}</span>
           </div>
-          <h2 className="text-lg font-bold text-primary">
+          <h1 className="text-lg font-bold text-primary">
             {is404 ? t('editor.pageNotFoundTitle') : t('editor.loadErrorTitle')}
-          </h2>
+          </h1>
           <p className="text-sm text-muted">
             {is404
               ? t('editor.pageNotFoundDescription')

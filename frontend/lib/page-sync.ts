@@ -218,6 +218,15 @@ export class PageSyncController {
     return this.pageId || store().page.id;
   }
 
+  /**
+   * The editor still holds the placeholder page while it opens a page by id
+   * (or after that page failed to load): it is nobody's, so it is never saved
+   * or created on the server (APP2-005).
+   */
+  private holdsPlaceholder(): boolean {
+    return this.pageId !== '' && store().page.id.startsWith('page_');
+  }
+
   /** Runs `task` after every task queued before it. */
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const run = this.tail.then(async () => {
@@ -269,6 +278,7 @@ export class PageSyncController {
 
   /** The editor has changes the server does not have (including refused fields). */
   hasUnsavedChanges(): boolean {
+    if (this.holdsPlaceholder()) return false;
     const base = store().syncBase;
     if (!base) return true;
     // Someone else's live text is not ours to save (QA-033)
@@ -341,6 +351,7 @@ export class PageSyncController {
    */
   save(options: SaveOptions = {}): Promise<boolean> {
     if (isAccessRevoked()) return Promise.resolve(false);
+    if (this.holdsPlaceholder()) return Promise.resolve(true);
     if (this.queuedSave) return this.queuedSave;
     const run = this.enqueue(() => {
       this.queuedSave = null;
@@ -412,6 +423,7 @@ export class PageSyncController {
   private async saveNow(options: SaveOptions): Promise<boolean> {
     if (isAccessRevoked()) return false;
     const current = store().page;
+    if (this.holdsPlaceholder()) return true;
     if (current.id.startsWith('page_')) return this.create(current);
 
     this.setStatus('saving');

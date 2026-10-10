@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
-import ShareModal from '@/components/editor/ShareModal';
+import ShareModal, { shareErrorKey } from '@/components/editor/ShareModal';
 import GuestSessionProvider from '@/components/guest/GuestSessionProvider';
 import { useEditorStore } from '@/store/editor-store';
-import { api } from '@/lib/api';
-import { buttonByText, guestUser, normalUser } from '../guest/test-helpers';
+import { api, ApiError } from '@/lib/api';
+import { buttonByText, guestUser, normalUser, typeInto } from '../guest/test-helpers';
 import { click, render, resetEditorStore } from '../mobile-editor/test-utils';
 import type { RenderResult } from '../mobile-editor/test-utils';
 
@@ -144,6 +144,100 @@ describe('ShareModal', () => {
     await act(async () => { click(remove); });
 
     expect(unshare).toHaveBeenCalledWith(PAGE_ID, collaborator.id);
-    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Eliminado');
+    // The confirmation is the app's own words, not the server's
+    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Esa persona ya no tiene acceso a la página.');
+  });
+
+  describe('QA-062', () => {
+    it('gives focus back to the button that opened it when it closes', async () => {
+      const opener = document.createElement('button');
+      opener.textContent = 'Compartir';
+      document.body.appendChild(opener);
+      opener.focus();
+      view = await open(normalUser);
+      expect(document.activeElement).not.toBe(opener);
+
+      act(() => { view.unmount(); });
+
+      expect(document.activeElement).toBe(opener);
+      opener.remove();
+      view = render(<div />);
+    });
+
+    it('closes on Escape', async () => {
+      const onClose = vi.fn();
+      useEditorStore.setState({ myUserId: normalUser.id });
+      await act(async () => {
+        view = render(
+          <GuestSessionProvider user={normalUser} onClaimed={() => undefined}>
+            <ShareModal pageId={PAGE_ID} onClose={onClose} />
+          </GuestSessionProvider>,
+        );
+      });
+      const dialog = view.container.querySelector('[role="dialog"]');
+      act(() => { dialog?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      // Also when focus is no longer inside (the create-link button was replaced)
+      act(() => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows a guest as "Invitado", never with the placeholder email', async () => {
+      vi.mocked(api.pages.collaborators).mockResolvedValue({
+        owner: { id: guestUser.id, username: guestUser.username, email: guestUser.email },
+        collaborators: [{ id: 'g2', username: 'invitado-0a1b2c3d', email: 'invitado-0a1b2c3d@guest.invalid' }],
+      });
+      view = await open(guestUser);
+
+      expect(text(view)).toContain('Invitado');
+      expect(text(view)).not.toContain('invitado-');
+      expect(text(view)).not.toContain('guest.invalid');
+    });
+
+    it('reloads the list when someone it does not show joins the page', async () => {
+      view = await open(normalUser);
+      const load = vi.mocked(api.pages.collaborators);
+      expect(load).toHaveBeenCalledTimes(1);
+
+      // Someone already listed connecting changes nothing
+      await act(async () => {
+        useEditorStore.setState({ presence: [{ connectionId: 'c1', userId: owner.id, username: 'ana' }] });
+      });
+      expect(load).toHaveBeenCalledTimes(1);
+
+      load.mockResolvedValue({ owner, collaborators: [collaborator, { id: 'g9', username: 'invitado-99999999', email: 'invitado-99999999@guest.invalid' }] });
+      await act(async () => {
+        useEditorStore.setState({
+          presence: [
+            { connectionId: 'c1', userId: owner.id, username: 'ana' },
+            { connectionId: 'c2', userId: 'g9', username: 'Invitado 1' },
+          ],
+        });
+      });
+      expect(load).toHaveBeenCalledTimes(2);
+      expect(removeButtons(view)).toHaveLength(2);
+    });
+
+    it('translates errors instead of showing the server text', async () => {
+      vi.spyOn(api.pages, 'share').mockRejectedValue(new ApiError(400, JSON.stringify({ error: 'No puedes compartir contigo mismo.' })));
+      view = await open(normalUser);
+      const input = view.container.querySelector<HTMLInputElement>('input[type="email"]');
+      if (!input) throw new Error('no email field');
+      typeInto(input, 'ana@example.com');
+      await act(async () => { view.container.querySelector<HTMLFormElement>('form')?.requestSubmit(); });
+
+      const alert = view.container.querySelector('[role="alert"]')?.textContent ?? '';
+      expect(alert).toBe('No puedes compartir la página contigo.');
+      expect(alert).not.toContain('API');
+    });
+
+    it('maps each failure to its message', () => {
+      expect(shareErrorKey(new ApiError(400, JSON.stringify({ details: { email: ['bad'] } })), 'share')).toBe('share.invalidEmail');
+      expect(shareErrorKey(new ApiError(403, '{}'), 'remove')).toBe('share.notOwner');
+      expect(shareErrorKey(new ApiError(404, '{}'), 'remove')).toBe('share.notCollaborator');
+      expect(shareErrorKey(new ApiError(429, '{}'), 'share')).toBe('share.throttled');
+      expect(shareErrorKey(new Error('offline'), 'share')).toBe('share.shareError');
+    });
   });
 });

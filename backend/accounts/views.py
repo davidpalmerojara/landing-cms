@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .deletion import delete_account, has_active_stripe_subscription
 from .guests import (
     GuestCapacityReached,
     NotAGuest,
@@ -28,7 +29,9 @@ from .guests import (
 )
 from .models import MagicToken
 from .ownership import confirm_email_owner
+from .permissions import IsNotGuest
 from .serializers import (
+    DeleteAccountSerializer,
     GoogleAuthSerializer,
     MagicLinkRequestSerializer,
     MagicLinkVerifySerializer,
@@ -36,7 +39,7 @@ from .serializers import (
     UserSerializer,
 )
 from .cookies import REFRESH_COOKIE, set_auth_cookies, clear_auth_cookies
-from .throttles import AuthRateThrottle, GuestCreationThrottle
+from .throttles import AuthRateThrottle, GuestCreationThrottle, SignedInAuthRateThrottle
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -188,11 +191,60 @@ class GuestClaimView(APIView):
 
 
 class MeView(APIView):
-    """GET /api/auth/me/ — return current user."""
+    """GET /api/auth/me/ — return current user.
+
+    DELETE /api/auth/me/ — delete the account and everything it owns (ADR-026).
+    Body: `password` for accounts with a password, `confirm_username` for the
+    rest. 409 ACTIVE_SUBSCRIPTION while a paid Stripe subscription still runs.
+    """
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        # A guest account is deleted on its own after a day: nothing to confirm
+        if self.request.method == 'DELETE':
+            return [permissions.IsAuthenticated(), IsNotGuest()]
+        return super().get_permissions()
+
+    def get_throttles(self):
+        # The password is checked here, so guessing it is rate limited like a login
+        if self.request.method == 'DELETE':
+            return [SignedInAuthRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        user = request.user
+        serializer = DeleteAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if user.has_usable_password():
+            if not user.check_password(data.get('password', '')):
+                return Response(
+                    {'error': 'La contraseña no es correcta.', 'code': 'INVALID_PASSWORD'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif data.get('confirm_username', '') != user.username:
+            return Response(
+                {'error': 'Escribe tu nombre de usuario exactamente para confirmar.', 'code': 'CONFIRMATION_MISMATCH'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if has_active_stripe_subscription(user):
+            return Response(
+                {
+                    'error': 'Tienes una suscripción de pago activa. Cancélala desde Facturación antes de eliminar tu cuenta.',
+                    'code': 'ACTIVE_SUBSCRIPTION',
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        delete_account(user)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_auth_cookies(response)
+        return response
 
 
 class GoogleLoginView(APIView):

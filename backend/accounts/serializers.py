@@ -60,3 +60,12 @@ class MagicLinkRequestSerializer(serializers.Serializer):
 
 class MagicLinkVerifySerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    """The proof that the request comes from the person: their password, or
+    their username typed in full when the account has no password."""
+    password = serializers.CharField(
+        required=False, allow_blank=True, write_only=True, max_length=128, trim_whitespace=False,
+    )
+    confirm_username = serializers.CharField(required=False, allow_blank=True, max_length=150)

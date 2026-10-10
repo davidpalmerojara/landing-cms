@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { logSyncError, readBackup } from '@/lib/page-backup';
 import { PageSyncController } from '@/lib/page-sync';
 import type { PageSyncCallbacks, RemotePageChange } from '@/lib/page-sync';
@@ -19,6 +19,8 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
   const [isLoading, setIsLoading] = useState(true);
   /** The page could not be loaded */
   const [error, setError] = useState<string | null>(null);
+  /** HTTP status of the failed load (404: the page does not exist or is not theirs); null for network errors */
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   /** The last save failed (the editor keeps working; shown in the top bar) */
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
       } catch (e) {
         logSyncError('Failed to load page from API, using local backup if any:', e);
         setError(e instanceof Error ? e.message : 'Error al cargar');
+        setErrorStatus(e instanceof ApiError ? e.status : null);
         // Nothing known about the server's copy: the first save fetches it before sending
         useEditorStore.getState().setSyncBase(null);
         const backup = pageId ? readBackup(pageId) : null;
@@ -88,5 +91,5 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     void sync.handleRemoteChange(change);
   }, [sync]);
 
-  return { isLoading, error, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange, page };
+  return { isLoading, error, errorStatus, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange, page };
 }

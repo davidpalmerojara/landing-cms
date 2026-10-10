@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "record:demo": "node scripts/record-demo.mjs"
+    "record:demo": "node scripts/record-demo.mjs",
+    "showcase": "node scripts/showcase.mjs"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",

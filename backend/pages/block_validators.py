@@ -183,7 +183,7 @@ URL_RULE = FieldRule(max_length=2000, safe_url=True, sanitizer=None)
 LINK_RULE = FieldRule(max_length=2000, safe_link=True, sanitizer=None)
 PLAIN_RULE = FieldRule(max_length=PLAIN_TEXT_MAX)
 # Longer plain text (descriptions, answers, quotes). No field takes formatting:
-# the editor has none and React renders every field as text (ADR-031).
+# the editor has none and React renders every field as text (ADR-029).
 RICH_RULE = FieldRule(max_length=RICH_TEXT_MAX)
 BUTTON_RULE = FieldRule(max_length=BUTTON_TEXT_MAX)
 PLACEHOLDER_RULE = FieldRule(max_length=PLACEHOLDER_MAX)

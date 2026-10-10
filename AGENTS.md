@@ -161,7 +161,7 @@ Estado:
 ## Modelo De Datos
 Jerarquía principal:
 - `Workspace` -> agrupa páginas y assets; pertenece a `User` mediante `owner`.
-- `Page` -> pertenece a `owner` y opcionalmente a `workspace`; contiene `blocks`, `collaborators`, tema, design tokens, SEO y estado `draft/published`. `published_version` apunta a la `PageVersion` congelada que sirve la página pública (ADR-017); el estado solo cambia con publish/unpublish. `language` (BCP 47, por defecto `es`) alimenta el `<html lang>` de la página pública y entra en los metadatos de cada versión (ADR-032); `og_type` solo admite `website` o `article`.
+- `Page` -> pertenece a `owner` y opcionalmente a `workspace`; contiene `blocks`, `collaborators`, tema, design tokens, SEO y estado `draft/published`. `published_version` apunta a la `PageVersion` congelada que sirve la página pública (ADR-017); el estado solo cambia con publish/unpublish. `language` (BCP 47, por defecto `es`) alimenta el `<html lang>` de la página pública y entra en los metadatos de cada versión (ADR-033); `og_type` solo admite `website` o `article`.
 - `Block` -> pertenece a `Page`; guarda `type`, `order`, `data` y `styles` en JSON.
 
 Relaciones relevantes:
@@ -204,7 +204,7 @@ Públicos:
 
 Autenticados:
 - Auth: `GET /api/auth/me/`
-- Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/publish/`, `POST /api/pages/{id}/unpublish/`, `GET /api/pages/{id}/submissions/`, `DELETE /api/pages/{id}/submissions/{sid}/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`. Son solo del propietario (un colaborador recibe `403 NOT_OWNER`, ADR-031): publicar, despublicar, duplicar, eliminar la página o una versión, `generate` (IA de página entera), compartir, `unshare` e `invite`; el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029) y las URLs de imagen son estrictas (ADR-033).
+- Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/publish/`, `POST /api/pages/{id}/unpublish/`, `GET /api/pages/{id}/submissions/`, `DELETE /api/pages/{id}/submissions/{sid}/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`. Son solo del propietario (un colaborador recibe `403 NOT_OWNER`, ADR-032): publicar, despublicar, duplicar, eliminar la página o una versión, `generate` (IA de página entera), compartir, `unshare` e `invite`; el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029) y las URLs de imagen son estrictas (ADR-033).
 - Versions: `GET|POST /api/pages/{page_id}/versions/`, `GET|PATCH|DELETE /api/pages/{page_id}/versions/{id}/`, `POST /api/pages/{page_id}/versions/{id}/restore/`
 - Assets: `GET|POST /api/assets/`, `DELETE /api/assets/{id}/`
 - AI: `POST /api/pages/{page_id}/generate/`, `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/`

@@ -1,4 +1,4 @@
-"""Stored content catches up with the new field rules (ADR-029 follow-up, ADR-031).
+"""Stored content catches up with the new field rules (ADR-029 follow-up, ADR-034).
 
 1. Plain text. The long text fields of the blocks (subtitles, descriptions,
    quotes, answers, plan features) used to be saved as sanitized HTML: bleach

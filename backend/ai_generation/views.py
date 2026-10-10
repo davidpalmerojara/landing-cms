@@ -264,7 +264,7 @@ def _replace_page_blocks_locked(page: Page, user, sanitized: list[dict]) -> list
 
 class GeneratePageView(APIView):
     """POST /api/pages/{page_id}/generate/ — generate blocks with AI. Owner only:
-    it replaces every block of the page (ADR-031)."""
+    it replaces every block of the page (ADR-032)."""
 
     def post(self, request, page_id):
         page = _get_page(request.user, page_id)

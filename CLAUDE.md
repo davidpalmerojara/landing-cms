@@ -180,7 +180,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **User** (AbstractUser): UUID pk, email unico, google_id, is_guest (cuenta temporal, ADR-022). Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
-- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), language (etiqueta BCP 47, por defecto `es`, ADR-032), SEO fields (seo_title, seo_description, og_* con `og_type` website/article, noindex)
+- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), language (etiqueta BCP 47, por defecto `es`, ADR-033), SEO fields (seo_title, seo_description, og_* con `og_type` website/article, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
@@ -285,7 +285,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
 | POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
 
-Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-031); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-033).
+Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-033).
 
 ### Public
 

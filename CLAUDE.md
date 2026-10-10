@@ -156,13 +156,13 @@ Backend: modelo `Block` con campos `type`, `order`, `data` (JSONField), `styles`
 
 Store centralizado con `subscribeWithSelector`. Acciones principales:
 
-- **Bloques**: `addBlock`, `updateBlock`, `updateBlockStyle`, `deleteBlock`, `duplicateBlock`, `selectBlock`
+- **Bloques**: `addBlock`, `updateBlock`, `updateBlockStyle`, `deleteBlock`, `duplicateBlock`, `selectBlock` (devuelve `boolean`: `false` si otra conexion tiene el bloqueo del bloque; `requestDeleteBlock` igual, ADR-035)
 - **Responsive**: `updateBlockResponsiveStyle` (overrides por tablet/mobile)
 - **Historia**: `undo`, `redo`, `setPageWithHistory` (con arrays `past`/`future`; acepta `coalesceKey` para que las ediciones seguidas de un mismo campo formen un solo paso)
 - **Clipboard**: `copy`, `paste`
 - **Viewport**: `setDeviceMode`, `togglePreview`, `setZoom`, `panTo`
 - **DnD**: `startDragPending`, `startDrag`, `updateDragPosition`, `endDrag`, `setCanvasDropIndex`
-- **Colaboracion**: `setConnectedUsers`, `setRemoteCursors`, `applyRemotePageUpdate`
+- **Colaboracion**: `setPresence`, `setBlockLock(s)`, `applyRemotePage`, `applyRemoteBlockUpdate` (el texto en directo va a `relayedEdits`, no a la base de sincronizacion), `setAccessRevoked` (solo lectura), `requestCollabReconnect` (ADR-024, ADR-035)
 - **Toasts**: `addToast`, `removeToast`
 - **Page**: `setPageWithHistory`, `loadPage` (sustituye la pagina y vacia historial y seleccion; marcada como remota para que el autosave no la reenvie), `setAutoSaveStatus`
 - **IDs de bloque**: UUID v4 generados en el cliente con `newBlockId()` y conservados por el servidor (ADR-014)

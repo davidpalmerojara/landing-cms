@@ -36,7 +36,7 @@ def delete_page(user, page):
 
 async def assert_kicked_out(socket):
     error = await next_message(socket, 'error')
-    assert error['code'] == 'access_revoked'
+    assert error['code'] == 'page_deleted'
     close = await socket.receive_output(timeout=TIMEOUT)
     assert (close['type'], close['code']) == ('websocket.close', 4003)
     await socket.disconnect()
@@ -60,18 +60,15 @@ async def test_deleting_the_page_closes_the_collaborators_and_the_owners_other_t
     assert not await sync_to_async(Page.objects.filter(pk=page.pk).exists)()
 
 
-def test_every_person_with_access_is_notified_once_even_with_no_one_connected():
+def test_one_page_deleted_notice_reaches_everyone_even_with_no_one_connected():
     owner = UserFactory()
-    first, second = UserFactory(), UserFactory()
     page = PageFactory(owner=owner)
-    page.collaborators.add(first, second)
+    page.collaborators.add(UserFactory(), UserFactory())
 
-    with patch('pages.views.sync.notify_access_revoked') as notify:
+    with patch('pages.views.sync.notify_page_deleted') as notify:
         assert delete_page(owner, page).status_code == 204
 
-    notified = sorted(call.args[1] for call in notify.call_args_list)
-    assert notified == sorted([owner.pk, first.pk, second.pk])
-    assert {call.args[0] for call in notify.call_args_list} == {page.pk}
+    notify.assert_called_once_with(page.pk)
 
 
 def test_a_refused_delete_notifies_nobody():
@@ -79,7 +76,7 @@ def test_a_refused_delete_notifies_nobody():
     page = PageFactory(owner=owner)
     page.collaborators.add(collaborator)
 
-    with patch('pages.views.sync.notify_access_revoked') as notify:
+    with patch('pages.views.sync.notify_page_deleted') as notify:
         response = delete_page(collaborator, page)
 
     assert response.status_code == 403

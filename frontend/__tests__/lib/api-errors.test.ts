@@ -137,7 +137,8 @@ describe('ruleMessage: the server rule in the user language', () => {
   it.each([
     ["'El enlace no puede contener espacios ni caracteres de control.'", 'El enlace no puede contener espacios ni caracteres de control.', 'link'],
     ["'Enlace no permitido. Usa https://", 'Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.', 'link'],
-    ["f'URL no permitida: {value}'", 'URL no permitida: javascript:x', 'url'],
+    ["'URL de imagen no permitida. Usa https://", 'URL de imagen no permitida. Usa https://, http:// o una ruta que empiece por /.', 'url'],
+    ["'La URL de la imagen no puede contener espacios", 'La URL de la imagen no puede contener espacios, comillas, paréntesis, ";" ni otros caracteres especiales. Codifícalos (por ejemplo %28 y %29) o sube la imagen.', 'url'],
   ])('sanitizers: %s', (template, message, key) => {
     expect(sanitizers).toContain(template);
     expect(ruleMessage(message).key).toBe(key);

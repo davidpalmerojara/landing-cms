@@ -206,12 +206,10 @@ class PageViewSet(viewsets.ModelViewSet):
         require_page_owner(instance, self.request.user, 'Solo el propietario puede eliminar esta página.')
         slug = instance.slug
         page_id = instance.pk
+        instance.delete()
         # Everyone with the editor open, owner's other tabs included, must stop
         # now: their sockets would otherwise sit on a page that no longer exists
-        people_editing = {instance.owner_id, *instance.collaborators.values_list('pk', flat=True)}
-        instance.delete()
-        for user_id in people_editing:
-            sync.notify_access_revoked(page_id, user_id)
+        sync.notify_page_deleted(page_id)
         revalidate_public_pages(slug)
 
     @action(detail=True, methods=['post'])

@@ -297,7 +297,8 @@ describe('usePageSync', () => {
 
       expect(onSaveFailed).toHaveBeenCalledWith('request', expect.any(ApiError));
       expect(localStorage.getItem(`paxl-page-backup:${PAGE_ID}`)).toContain('Unsaved');
-      expect(sync.saveError).toBeTruthy();
+      expect(state().saveIssue).toEqual({ kind: 'failed', error: 'server', retrying: true });
+      expect(state().autoSaveStatus).toBe('error');
       view.unmount();
     });
   });

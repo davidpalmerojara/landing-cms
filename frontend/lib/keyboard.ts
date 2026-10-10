@@ -64,3 +64,8 @@ export const CANVAS_SHORTCUT_KEYS = [
   'shortcutDuplicate',
   'shortcutDelete',
 ] as const;
+
+/** Apple keyboards use Cmd where others use Ctrl (shortcuts and the hints that name them). */
+export function isMacPlatform(): boolean {
+  return typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
+}

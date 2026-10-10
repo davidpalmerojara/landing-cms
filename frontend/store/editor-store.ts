@@ -6,6 +6,7 @@ import type { ColorTokens, TypographyTokens, SpacingTokens, BorderTokens } from 
 import type { Block, BlockStyles, BlockType, DataPath } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
+import type { SaveIssue } from '@/lib/page-sync';
 import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
 import { newBlockId } from '@/lib/block-factory';
 import { getDefaultPage } from '@/lib/default-page';
@@ -130,6 +131,8 @@ interface EditorState {
 
   // Auto-save
   autoSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  /** Why the last save did not get everything to the server; set by lib/page-sync */
+  saveIssue: SaveIssue | null;
 
   // Collaboration
   myUserId: string | null;
@@ -288,6 +291,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   inspectorSections: { content: true, styles: true },
   isSaved: false,
   autoSaveStatus: 'idle',
+  saveIssue: null,
   myUserId: null,
   myConnectionId: null,
   collabStatus: 'idle',

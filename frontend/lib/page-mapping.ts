@@ -45,6 +45,7 @@ export function apiPageToLocal(apiPage: ApiPage): Page {
     },
     publishedAt: apiPage.published_at ?? null,
     hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
+    ...(typeof apiPage.is_owner === 'boolean' ? { isOwner: apiPage.is_owner } : {}),
     blocks: apiBlocksToLocal(apiPage.blocks),
   };
 }

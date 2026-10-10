@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import type { AiDemoInfo, AiSource } from '@/lib/api';
 import { aiErrorText, parseApiError } from '@/lib/ai';
+import { flushPendingSave } from '@/lib/save-flush';
 import { useAiOptions } from '@/hooks/useAiOptions';
 import { useEditorStore } from '@/store/editor-store';
 import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
@@ -35,6 +36,9 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
   const [aiKey, setAiKey] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const replaceBlockData = useEditorStore((s) => s.replaceBlockData);
+  // The popover lives inside the zoomed canvas: undo the zoom so its text stays readable (QA-038)
+  const zoom = useEditorStore((s) => s.viewportState.zoom);
+  const counterScale = zoom > 0 ? 1 / zoom : 1;
   const { options, error: optionsError } = useAiOptions(locale === 'en' ? 'en' : 'es');
   const ownKey = aiKey.trim();
   // Without their own key, in demo mode the instruction cannot be followed
@@ -51,7 +55,8 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
   ];
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Focusing must not scroll the editor shell, which has overflow hidden (QA-038)
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   // Close on Escape
@@ -72,6 +77,11 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
     setSavedResult(null);
 
     try {
+      // The server edits its copy of the block: it must have what is on screen (QA-037)
+      if (!(await flushPendingSave())) {
+        setError(t('saveStatus.aiNeedsSave'));
+        return;
+      }
       const result = await api.ai.editBlock(
         pageId,
         blockId,
@@ -99,6 +109,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
   return (
     <div
       className="absolute left-1/2 -translate-x-1/2 top-8 z-50 w-80"
+      style={{ scale: String(counterScale), transformOrigin: 'top center' }}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >

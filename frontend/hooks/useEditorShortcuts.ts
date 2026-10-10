@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/editor-store';
-import { isKeyOperableTarget, isTextEntryTarget } from '@/lib/keyboard';
+import { isKeyOperableTarget, isMacPlatform, isTextEntryTarget } from '@/lib/keyboard';
 
 export function useEditorShortcuts() {
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
@@ -13,8 +13,7 @@ export function useEditorShortcuts() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Fields (also contentEditable and selects) keep their own keys
       const isTyping = isTextEntryTarget(e.target);
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+      const cmdOrCtrl = isMacPlatform() ? e.metaKey : e.ctrlKey;
 
       if (cmdOrCtrl && !isTyping) {
         const key = e.key.toLowerCase();

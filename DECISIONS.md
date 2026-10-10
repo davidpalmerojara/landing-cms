@@ -553,3 +553,21 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - `QuickEditStatus` muestra "Sin guardar" desde la edición hasta que empieza el guardado (con un tope de 6 s por si no queda nada que enviar); los cambios de otras personas no cuentan.
 - **Alternativas**: Mover siempre los avisos arriba en el teléfono (tapan la barra y el nombre de la página sin motivo cuando no hay nada abierto); esconder los avisos mientras haya una hoja (un error de guardado quedaría sin leer); un contexto de React con "hay una hoja abierta" (el registro de `useCloseOnBack` ya lo sabe y cubre los diálogos de fuera de Quick Edit).
 - **Consecuencias**: Cualquier diálogo que use `useCloseOnBack` mueve los avisos arriba sin tocar nada más. El háptico al arrastrar sigue sin existir en iOS (Safari no implementa `navigator.vibrate`).
+
+
+---
+
+## ADR-045: Lo que ve el visitante, segunda ronda: pie fuera de `<main>`, bloques vacíos fuera, "no existe" en memoria, imágenes de plantilla propias
+
+- **Fecha**: 2026-10-10
+- **Contexto**: La segunda ronda de QA (PUBLIC2-004, 005, 006, 007, 009, 011 y APP2-001) encontró efectos secundarios de ADR-042 y huecos de privacidad en las plantillas.
+- **Decisión**:
+  - **Estructura (PUBLIC2-005, enmienda de ADR-042)**: `PageRenderer` pinta un `<div>` raíz (contenedor, tema, `lang` de la página) con `<main id="main-content">` dentro para los bloques; los bloques `footer` que cierran la página van después de `</main>`, para que sigan siendo el landmark `contentinfo` (dentro de `main` un `<footer>` no lo es y su `aria-label` está prohibido). Una página solo de pies los deja en `main`.
+  - **Bloques sin contenido (PUBLIC2-009)**: la página publicada y la vista previa no pintan un bloque cuyos textos e imágenes están vacíos (`lib/block-emptiness.ts`; los enlaces y las opciones de diseño no cuentan como contenido). El editor los sigue mostrando.
+  - **Idioma (PUBLIC2-006)**: `<html lang>` sigue siendo el de la página; las palabras de Paxl alrededor (aviso de invitado, marca de agua, "esta página no tiene contenido", enlace de salto) llevan `lang` del visitante. La vista previa ya no cambia `<html lang>`: su barra es de Paxl.
+  - **"No existe" (PUBLIC2-004, enmienda de ADR-042)**: `getPublicPage` ya no deja una entrada en la caché de datos de Next por cada slug desconocido (un archivo en disco por petición anónima). Las respuestas 404 se recuerdan en una tabla en memoria acotada (500 entradas, 60 s) y `/revalidate` la vacía para ese slug al publicar. Las páginas encontradas siguen en la caché de Next.
+  - **Imágenes de plantilla (PUBLIC2-007)**: las 12 fotos de las plantillas se descargaron una vez, se convirtieron a WebP (684 KB en total) y viven en `public/templates/`; las plantillas apuntan a `/templates/<nombre>.webp`. Las páginas ya creadas conservan las direcciones que guardaron. Completa ADR-039: una página creada desde una plantilla tampoco contacta con terceros.
+  - **Vista previa (PUBLIC2-001, PUBLIC2-011)**: sin botón de publicar para quien no es propietario (se explica con el mismo texto que la barra del editor); el botón dice "Publicar cambios" solo si hay cambios sin publicar y, si no los hay, está desactivado con "Publicada, sin cambios".
+  - **Menú de acciones (APP2-001)**: `ActionMenu` se pinta en un portal con coordenadas fijas (bug notable 47).
+- **Alternativas**: `role="contentinfo"` en el pie dentro de `main` (no es un rol permitido para `footer`); dos `main` o quitar `main` (rompe el destino del enlace de salto); persistir los 404 con una tarea de limpieza (más piezas que mantener); subir las fotos como assets del usuario al crear la página (cuotas, borrados y permisos para algo que es contenido de ejemplo).
+- **Consecuencias**: La tabla de 404 es por proceso: con varios procesos cada uno tiene la suya (el límite de 60 s sigue acotando la espera tras publicar). Las fotos de Unsplash se usan bajo su licencia, que permite alojarlas.

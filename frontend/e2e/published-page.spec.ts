@@ -132,7 +132,9 @@ test.describe('Published page', () => {
     expect(html).toMatch(/<html[^>]*lang="en"/);
 
     await expect(page.locator('#main-content')).toHaveCount(1);
-    const violations = await axeViolations(page, ['landmark-one-main', 'button-name', 'link-name', 'empty-heading', 'html-has-lang', 'valid-lang', 'region']);
+    // The closing footer is the page's contentinfo landmark, outside <main> (PUBLIC2-005)
+    await expect(page.getByRole('contentinfo')).toHaveCount(1);
+    const violations = await axeViolations(page, ['landmark-one-main', 'button-name', 'link-name', 'empty-heading', 'html-has-lang', 'valid-lang', 'region', 'aria-prohibited-attr', 'landmark-contentinfo-is-top-level']);
     expect(violations, describeViolations(violations)).toEqual([]);
   });
 

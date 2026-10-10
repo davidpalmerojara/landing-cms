@@ -117,7 +117,9 @@ test.describe('Collaboration integrity', () => {
 
       // The owner goes around the canvas: the layers panel, by mouse and by keyboard
       await owner.getByRole('tab', { name: 'Capas' }).click();
-      const layer = owner.locator('[data-layer-item]').filter({ hasText: /^Hero$/ });
+      // The layer says who holds the block (COLLAB2-005)
+      const layer = owner.locator('[data-layer-item]').filter({ hasText: /^Hero/ });
+      await expect(layer).toContainText('bloqueado, lo está editando');
       await layer.click();
       await expect(owner.getByText(/está editando este bloque$/).first()).toBeVisible();
       await layer.focus();

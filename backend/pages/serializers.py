@@ -119,6 +119,9 @@ class PageDetailSerializer(serializers.ModelSerializer):
     # Whether the requesting user owns the page: collaborators cannot publish,
     # duplicate, delete versions or regenerate it with AI (ADR-032)
     is_owner = serializers.SerializerMethodField()
+    # Not the model's URLField validator, which refuses a site path such as an
+    # uploaded "/media/assets/..." (SEC2-006): validate_og_image is the rule
+    og_image = serializers.CharField(max_length=500, required=False, allow_blank=True, trim_whitespace=False)
 
     def get_is_owner(self, obj):
         request = self.context.get('request')

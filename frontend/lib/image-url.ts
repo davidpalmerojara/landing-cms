@@ -1,12 +1,13 @@
 /**
  * The image URLs the server accepts (ADR-034, `validate_safe_image_url`):
- * `http(s)://host/...` or a path on this site (`/media/...`, not `//host`),
+ * `https://host/...` or a path on this site (`/media/...`, not `//host`),
  * with no spaces, control characters, quotes, parentheses, `;`, braces,
  * angle brackets, backticks or backslashes. Checked here first so the user
- * gets the reason at once; the server checks again.
+ * gets the reason at once; the server checks again. No `http://`: the pages'
+ * CSP blocks those images, so they would never show (SEC2-002).
  */
 const FORBIDDEN_CHARS = new Set(['\\', "'", '"', '(', ')', '<', '>', ';', '{', '}', '`']);
-const ABSOLUTE = /^https?:\/\/[^/?#]/i;
+const ABSOLUTE = /^https:\/\/[^/?#]/i;
 
 function hasForbiddenChar(value: string): boolean {
   for (const char of value) {

@@ -105,11 +105,13 @@ def sanitize_custom_html(value):
 # angle brackets, backticks, backslashes, whitespace and control characters
 # are refused (QA-005). Encode them (%28, %29...) if a file name really has them.
 _IMAGE_URL_FORBIDDEN_CHARS = re.compile(r'[\s\x00-\x20\x7f-\x9f\\\'"()<>;{}`]')
-_IMAGE_URL_ABSOLUTE = re.compile(r'https?://[^/?#].*', re.IGNORECASE)
+# https only: pages are served over https and their CSP (img-src) blocks http
+# images, so an http:// address would be saved and never shown (SEC2-002)
+_IMAGE_URL_ABSOLUTE = re.compile(r'https://[^/?#].*', re.IGNORECASE)
 
 
 def validate_safe_image_url(value):
-    """Validate the URL of an image: http(s)://host/... or a site-relative path
+    """Validate the URL of an image: https://host/... or a site-relative path
     ("/media/assets/a.png", not "//host"). Empty is allowed."""
     if value in (None, ''):
         return value
@@ -124,7 +126,7 @@ def validate_safe_image_url(value):
         return value
     if _IMAGE_URL_ABSOLUTE.fullmatch(value):
         return value
-    raise serializers.ValidationError('URL de imagen no permitida. Usa https://, http:// o una ruta que empiece por /.')
+    raise serializers.ValidationError('URL de imagen no permitida. Usa una dirección https:// o una ruta que empiece por /.')
 
 
 # Whitespace, control characters (incl. NUL, DEL, C1) and backslash anywhere in

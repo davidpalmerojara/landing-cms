@@ -29,7 +29,7 @@ IMAGE_FIELDS = [
 ACCEPTED = [
     '',
     'https://images.example.com/a.png',
-    'http://localhost:8001/media/assets/2026/10/abc.jpg',
+    'https://localhost:8001/media/assets/2026/10/abc.jpg',
     'https://cdn.example.com/a.png?w=800&h=600#top',
     'https://cdn.example.com/a%20b%28c%29.png',
     '/media/assets/2026/10/abc.jpg',
@@ -56,6 +56,10 @@ REJECTED = [
     'www.example.com/a.png',
     'https://',
     'ftp://x.test/a.png',
+    # SEC2-002: the CSP blocks http images, so they would be saved and never shown
+    'http://example.com/a.png',
+    'HTTP://example.com/a.png',
+    'http://localhost:8001/media/assets/2026/10/abc.jpg',
 ]
 
 
@@ -101,6 +105,20 @@ def test_og_image_rejects_the_injection_and_accepts_a_normal_url(auth_client, pa
                                  'version': page.version}, format='json')
     assert good.status_code == 200, good.data
     assert good.data['og_image'] == 'https://x.test/og.png'
+
+
+@pytest.mark.parametrize('og_image, expected', [
+    ('/media/assets/2026/10/og.png', 200),  # SEC2-006: an uploaded image is a site path
+    ('http://x.test/og.png', 400),  # SEC2-002
+    ('//evil.test/og.png', 400),
+])
+def test_og_image_takes_the_same_urls_as_block_images(auth_client, page, og_image, expected):
+    response = auth_client.put(f'/api/pages/{page.id}/', {
+        'name': page.name, 'blocks': [], 'og_image': og_image, 'version': page.version,
+    }, format='json')
+    assert response.status_code == expected, response.data
+    if expected == 200:
+        assert response.data['og_image'] == og_image
 
 
 # --- migration 0018, URLs ----------------------------------------------------

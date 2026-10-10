@@ -56,6 +56,9 @@ export function contentSecurityPolicy(scope: PolicyScope, env: PolicyEnvironment
     'style-src': unique(["'self'", "'unsafe-inline'", google ? GOOGLE_STYLE : null]),
     // Pictures are whatever address the author pasted (https), uploads, and inline previews
     'img-src': unique(["'self'", 'data:', 'blob:', 'https:', ...apiOrigins]),
+    // Video and audio in a Custom HTML block (the sanitizer allows <video>/<source>):
+    // without this they fell back to default-src and never loaded (SEC2-002)
+    'media-src': unique(["'self'", 'https:', ...apiOrigins]),
     'font-src': ["'self'", 'data:'],
     'connect-src': unique(["'self'", ...apiOrigins, wsOrigin, google ? GOOGLE_FRAME : null]),
     'frame-src': unique(["'self'", google ? GOOGLE_FRAME : null]),

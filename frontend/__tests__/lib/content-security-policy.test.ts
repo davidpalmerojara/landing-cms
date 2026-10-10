@@ -76,4 +76,13 @@ describe('contentSecurityPolicy (QA-102)', () => {
       expect.arrayContaining(["'self'", 'data:', 'blob:', 'https:']),
     );
   });
+
+  it('SEC2-002: a video in a Custom HTML block may play from https, on published pages and in the app', () => {
+    for (const scope of ['app', 'public'] as const) {
+      const media = directive(contentSecurityPolicy(scope, {}), 'media-src');
+
+      expect(media).toEqual(["'self'", 'https:']);
+      expect(media).not.toContain('http:');
+    }
+  });
 });

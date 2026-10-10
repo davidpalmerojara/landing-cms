@@ -260,12 +260,12 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
-| POST | `/register/` | No | Crear cuenta + tokens |
+| POST | `/register/` | No | Crear cuenta + tokens. Usuario nuevo: solo letras ASCII, números y `_ . -` (ADR-044) |
 | POST | `/login/` | No | Login + httpOnly cookies |
 | POST | `/refresh/` | No | Renovar access token |
 | POST | `/logout/` | No | Limpiar cookies |
 | POST | `/google/` | No | Login con Google ID token |
-| POST | `/magic/request/` | No | Enviar magic link |
+| POST | `/magic/request/` | No | Enviar magic link (como mucho 3 por buzón cada 15 min; pasado el límite, la misma respuesta sin envío, ADR-044) |
 | POST | `/magic/verify/` | No | Verificar magic token |
 | POST | `/guest/` | No | Sesión de invitado temporal, 24 h (ADR-022) |
 | POST | `/guest/claim/` | Si (invitado) | Convertir el invitado en cuenta normal y conservar sus páginas |
@@ -292,7 +292,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
 | POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
 
-Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-034).
+Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `https://host/...` o una ruta `/...` (ADR-044), sin comillas, paréntesis ni `;` (ADR-034).
 
 ### Public
 
@@ -314,7 +314,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 | POST | `/api/domains/{id}/verify/` | Si | Verificar DNS |
 | GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |
 | POST | `/api/pages/{id}/generate/` | Si (propietario) | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |
-| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque). `409 BLOCK_CHANGED` si el bloque cambió mientras tanto, `409 BLOCK_LOCKED` si otra conexión lo tiene bloqueado |
+| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque). `409 BLOCK_CHANGED` si el bloque cambió mientras tanto, `409 BLOCK_LOCKED` si otra conexión lo tiene bloqueado. Responde `block` y `page_version` (la versión de la página tras escribir). La variante de demo está en el idioma de la página |
 | POST | `/api/analytics/collect/` | No | Trackear evento |
 | GET | `/api/pages/{id}/analytics/` | Si | Analitica de pagina |
 | GET | `/api/billing/plans/` | No | Planes disponibles |
@@ -455,7 +455,7 @@ UI (componentes) → hooks/services → API client (lib/api.ts) → Backend → 
 
 - Queries parametrizadas siempre. Nunca concatenar strings para queries SQL o ORM filters con input del usuario.
 - CSRF tokens activos en Django (excepto endpoints JWT stateless).
-- Rate limiting en endpoints sensibles: login, register, magic link, AI generation.
+- Rate limiting en endpoints sensibles: login, register, magic link, AI generation. El límite de acceso cuenta por IP con sesión o sin ella (ADR-044).
 - Headers de seguridad: `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`.
 - JWT: validación de firma en servidor, access tokens con expiración corta (1h), refresh tokens rotados (7d).
 - Nunca exponer stack traces, IDs internos o configuración en respuestas de error de producción.

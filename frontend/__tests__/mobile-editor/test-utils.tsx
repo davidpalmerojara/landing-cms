@@ -106,39 +106,80 @@ export function resetEditorStore(page: Page = makePage()) {
   }, true);
 }
 
-export function installMatchMedia(initialWidth: number) {
-  let width = initialWidth;
-  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+export interface FakeViewport {
+  width: number;
+  height: number;
+  pointer: 'fine' | 'coarse';
+}
 
-  const mql = {
-    media: `(max-width: ${768 - 1}px)`,
-    get matches() { return width < 768; },
-    onchange: null as ((this: MediaQueryList, ev: MediaQueryListEvent) => unknown) | null,
-    addEventListener(_type: string, listener: EventListenerOrEventListenerObject) {
-      if (typeof listener === 'function') listeners.add(listener as (event: MediaQueryListEvent) => void);
-    },
-    removeEventListener(_type: string, listener: EventListenerOrEventListenerObject) {
-      if (typeof listener === 'function') listeners.delete(listener as (event: MediaQueryListEvent) => void);
-    },
-    addListener(listener: (event: MediaQueryListEvent) => void) {
-      listeners.add(listener);
-    },
-    removeListener(listener: (event: MediaQueryListEvent) => void) {
-      listeners.delete(listener);
-    },
-    dispatchEvent: () => true,
-  } satisfies MediaQueryList;
+/** Whether `query` matches `viewport`: comma-separated alternatives of `and`-joined width, height and pointer features. */
+export function evaluateMediaQuery(query: string, viewport: FakeViewport): boolean {
+  return query.split(',').some((alternative) =>
+    alternative.split(/\band\b/).every((part) => {
+      const match = /\(\s*([a-z-]+)\s*:\s*([a-z0-9.]+)\s*\)/.exec(part.trim());
+      if (!match) return true;
+      const [, feature, raw] = match;
+      const px = parseFloat(raw);
+      switch (feature) {
+        case 'max-width': return viewport.width <= px;
+        case 'min-width': return viewport.width >= px;
+        case 'max-height': return viewport.height <= px;
+        case 'min-height': return viewport.height >= px;
+        case 'pointer': return viewport.pointer === raw;
+        default: return false;
+      }
+    }),
+  );
+}
 
-  vi.stubGlobal('matchMedia', vi.fn(() => mql));
+/**
+ * A fake `window.matchMedia` that evaluates queries against a viewport the
+ * test controls (width, height, pointer), and notifies listeners on change.
+ */
+export function installMatchMedia(initialWidth: number, initial: Partial<Omit<FakeViewport, 'width'>> = {}) {
+  let viewport: FakeViewport = { width: initialWidth, height: initial.height ?? 900, pointer: initial.pointer ?? 'fine' };
+  const lists: { query: string; listeners: Set<(event: MediaQueryListEvent) => void> }[] = [];
+
+  const matchMedia = (query: string): MediaQueryList => {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    lists.push({ query, listeners });
+    return {
+      media: query,
+      get matches() { return evaluateMediaQuery(query, viewport); },
+      onchange: null,
+      addEventListener(_type: string, listener: EventListenerOrEventListenerObject) {
+        if (typeof listener === 'function') listeners.add(listener as (event: MediaQueryListEvent) => void);
+      },
+      removeEventListener(_type: string, listener: EventListenerOrEventListenerObject) {
+        if (typeof listener === 'function') listeners.delete(listener as (event: MediaQueryListEvent) => void);
+      },
+      addListener(listener: ((this: MediaQueryList, ev: MediaQueryListEvent) => unknown) | null) {
+        if (listener) listeners.add(listener as (event: MediaQueryListEvent) => void);
+      },
+      removeListener(listener: ((this: MediaQueryList, ev: MediaQueryListEvent) => unknown) | null) {
+        if (listener) listeners.delete(listener as (event: MediaQueryListEvent) => void);
+      },
+      dispatchEvent: () => true,
+    };
+  };
+
+  vi.stubGlobal('matchMedia', vi.fn(matchMedia));
+
+  const setViewport = (next: Partial<FakeViewport>) => {
+    viewport = { ...viewport, ...next };
+    act(() => {
+      lists.forEach(({ query, listeners }) => {
+        const event = { matches: evaluateMediaQuery(query, viewport), media: query } as MediaQueryListEvent;
+        listeners.forEach((listener) => listener(event));
+      });
+    });
+  };
 
   return {
     setWidth(nextWidth: number) {
-      width = nextWidth;
-      const event = { matches: mql.matches, media: mql.media } as MediaQueryListEvent;
-      act(() => {
-        listeners.forEach((listener) => listener(event));
-      });
+      setViewport({ width: nextWidth });
     },
+    setViewport,
     restore() {
       vi.unstubAllGlobals();
     },

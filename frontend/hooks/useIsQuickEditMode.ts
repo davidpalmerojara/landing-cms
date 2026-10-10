@@ -2,10 +2,12 @@
 
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/editor-store';
-import { QUICK_EDIT_BREAKPOINT } from '@/lib/constants';
+import { QUICK_EDIT_MEDIA_QUERY } from '@/lib/constants';
 
 /**
- * Detects viewport width and updates `isQuickEditMode` in the store.
+ * Whether this screen is a phone (QUICK_EDIT_MEDIA_QUERY: narrow, or a touch
+ * screen held sideways) and updates `isQuickEditMode` in the store. Rotating
+ * a phone keeps it in Quick Edit; tablets get the full editor.
  * Returns the current value so the editor page can conditionally render.
  */
 export function useIsQuickEditMode(): boolean {
@@ -13,7 +15,7 @@ export function useIsQuickEditMode(): boolean {
   const setIsQuickEditMode = useEditorStore((s) => s.setIsQuickEditMode);
 
   useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${QUICK_EDIT_BREAKPOINT - 1}px)`);
+    const mql = window.matchMedia(QUICK_EDIT_MEDIA_QUERY);
 
     const handler = (e: MediaQueryListEvent | MediaQueryList) => {
       setIsQuickEditMode(e.matches);

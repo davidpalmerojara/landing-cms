@@ -87,3 +87,12 @@ def notify_access_revoked(page_id, user_id) -> None:
         _send_to_page_group(page_id, {'type': 'access.revoked', 'user_id': str(user_id)})
     except Exception:
         logger.warning('Failed to broadcast access_revoked for page %s', page_id, exc_info=True)
+
+
+def notify_page_deleted(page_id) -> None:
+    """Close every open editor of a page that no longer exists, owner's other
+    tabs included, telling them why (not "you were unshared")."""
+    try:
+        _send_to_page_group(page_id, {'type': 'access.revoked', 'user_id': None, 'reason': 'page_deleted'})
+    except Exception:
+        logger.warning('Failed to broadcast page deletion for page %s', page_id, exc_info=True)

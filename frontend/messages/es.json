@@ -760,6 +760,7 @@
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "emptyText": "Vacío · doble clic para escribir",
+    "emptyTextTouch": "Vacío · doble toque para escribir",
     "contactFieldError": {
       "name": "Escribe tu nombre.",
       "email": "Escribe un email válido, como nombre@ejemplo.com.",
@@ -970,6 +971,7 @@
     "inviteLinkHint": "Ábrelo en una ventana de incógnito para probar la edición en tiempo real.",
     "inviteLinkError": "No se pudo crear el enlace. Inténtalo de nuevo.",
     "guestEmailLocked": "Invitar por email necesita una cuenta. Puedes invitar con un enlace.",
+    "realtimeNeedsPro": "Las personas con acceso pueden editar la página, pero sin ver en directo los cambios de las demás: eso necesita el plan Pro. Todos los cambios se guardan.",
     "notOwner": "Solo el propietario puede invitar o quitar colaboradores.",
     "guest": "Invitado",
     "shared": "Listo. Si esa dirección tiene cuenta en Paxl, ya puede editar la página.",

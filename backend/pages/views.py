@@ -54,6 +54,7 @@ RESTORABLE_METADATA_FIELDS = (
     'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
 )
 
+
 PUBLISHED_METADATA_FIELDS = (
     'name', 'design_tokens', 'language',
     'seo_title', 'seo_description', 'seo_canonical_url',

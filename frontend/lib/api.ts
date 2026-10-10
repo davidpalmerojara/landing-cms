@@ -128,8 +128,23 @@ function connectionHeaders(connectionId?: string | null): Record<string, string>
 /** Browsers refuse keepalive requests whose bodies add up to more than 64 KB; leave room for others. */
 const KEEPALIVE_MAX_BODY = 60_000;
 
+/**
+ * The interface language, which the server uses for validation messages and
+ * emails (Accept-Language). `<html lang>` always holds it: the server sets it
+ * from the locale and the language switcher updates it.
+ */
+function interfaceLanguage(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
+  const lang = document.documentElement.lang;
+  return lang === 'es' || lang === 'en' ? { 'Accept-Language': lang } : {};
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const headers = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
+  const headers = {
+    'Content-Type': 'application/json',
+    ...interfaceLanguage(),
+    ...(options?.headers as Record<string, string>),
+  };
   return fetchWithRetry<T>(() => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }));
 }
 
@@ -181,6 +196,8 @@ export interface ApiPublicPage {
 /** GET /api/features/: what this deployment offers (custom domains need DNS and SSL, which not every host has). */
 export interface ApiFeatures {
   custom_domains: boolean;
+  /** Payments run only with a Stripe test key (ADR-031): without one the billing endpoints answer 503 */
+  billing: boolean;
 }
 
 export interface ApiBlock {
@@ -459,7 +476,14 @@ export const api = {
   },
 
   pages: {
-    list: () => request<PaginatedResponse<ApiPageListItem>>('/pages/'),
+    /** One page of the list (20 per page). `search` filters by name or slug on the server. */
+    list: (params: { page?: number; search?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.page && params.page > 1) query.set('page', String(params.page));
+      if (params.search?.trim()) query.set('search', params.search.trim());
+      const qs = query.toString();
+      return request<PaginatedResponse<ApiPageListItem>>(`/pages/${qs ? `?${qs}` : ''}`);
+    },
 
     get: (id: string) => request<ApiPage>(`/pages/${id}/`),
 
@@ -566,7 +590,7 @@ export const api = {
     plans: () => publicRequest<ApiBillingPlan[]>('/billing/plans/'),
 
     subscription: () =>
-      request<{ subscription: ApiSubscription | null }>('/billing/subscription/'),
+      request<{ subscription: ApiSubscription | null; usage?: ApiUsage }>('/billing/subscription/'),
 
     payments: () =>
       request<{ payments: ApiPayment[] }>('/billing/payments/'),
@@ -709,6 +733,14 @@ export interface ApiSubscription {
   cancel_at_period_end: boolean;
   trial_end: string | null;
   created_at: string;
+}
+
+/** Totals for the dashboard: `pages` is what the plan limit counts (owned only), the rest covers every page the list shows. */
+export interface ApiUsage {
+  pages: number;
+  visible_pages: number;
+  published_pages: number;
+  blocks: number;
 }
 
 export interface ApiPayment {

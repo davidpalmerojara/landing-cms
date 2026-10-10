@@ -6,12 +6,14 @@ import { useTranslations } from 'next-intl';
 import { planFeatures } from '@/lib/plan-features';
 import PlanFeatureList from '@/components/billing/PlanFeatureList';
 import {
-  ArrowLeft, Loader2, Crown, CreditCard, ExternalLink, AlertCircle,
+  ArrowLeft, Loader2, Crown, CreditCard, ExternalLink, AlertCircle, Info, FlaskConical,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiBillingPlan } from '@/lib/api';
+import { accountErrorMessage } from '@/lib/account-errors';
 import { useAppLocale } from '@/components/providers/AppIntlProvider';
 import { useAuth } from '@/hooks/useAuth';
+import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 import { useBillingOverview } from '@/hooks/useBillingOverview';
 import { useFeatures } from '@/hooks/useFeatures';
 import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
@@ -29,12 +31,13 @@ export default function BillingPage() {
     enabled: Boolean(user && !user.is_guest),
   });
   const { features } = useFeatures();
+  const { billingEnabled, isKnown: isBillingKnown } = useBillingEnabled();
   const showCustomDomains = features?.custom_domains ?? false;
   const [actionError, setActionError] = useState<string | null>(null);
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
-  const loadError = hasError ? (loadFailure instanceof Error ? loadFailure.message : t('billing.loadError')) : null;
+  const loadError = hasError ? accountErrorMessage(loadFailure, t, 'billing.loadError') : null;
   const error = actionError ?? loadError;
 
   const handleCheckout = async () => {
@@ -44,7 +47,7 @@ export default function BillingPage() {
       const { checkout_url } = await api.billing.checkout(cycle);
       window.location.href = checkout_url;
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('billing.checkoutError'));
+      setActionError(accountErrorMessage(e, t, 'billing.checkoutError'));
       setIsCheckingOut(false);
     }
   };
@@ -56,7 +59,7 @@ export default function BillingPage() {
       const { portal_url } = await api.billing.portal();
       window.location.href = portal_url;
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('billing.portalError'));
+      setActionError(accountErrorMessage(e, t, 'billing.portalError'));
       setIsOpeningPortal(false);
     }
   };
@@ -99,7 +102,7 @@ export default function BillingPage() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-3">
-            <span className="text-xl font-black tracking-tighter" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Paxl</span>
+            <span className="text-xl font-black tracking-tighter" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('common.brand')}</span>
             <h1 className="font-semibold text-primary">{t('billing.title')}</h1>
           </div>
         </div>
@@ -107,10 +110,24 @@ export default function BillingPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         {error && (
-          <div className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div role="alert" className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             {error}
           </div>
+        )}
+
+        {/* Payments run only with a Stripe test key (ADR-031): say which mode this is */}
+        {isBillingKnown && !billingEnabled && (
+          <p role="note" className="flex items-start gap-2 text-sm text-secondary mb-6 bg-surface-elevated/60 border border-subtle rounded-lg px-4 py-3">
+            <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />
+            {t('billing.paymentsOff')}
+          </p>
+        )}
+        {billingEnabled && (
+          <p role="note" className="flex items-start gap-2 text-sm text-secondary mb-6 bg-warning/10 border border-warning/30 rounded-lg px-4 py-3">
+            <FlaskConical className="w-4 h-4 mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+            {t('billing.testMode')}
+          </p>
         )}
 
         {isLoading ? (
@@ -136,7 +153,7 @@ export default function BillingPage() {
                     </p>
                   )}
                 </div>
-                {isPro && (
+                {isPro && billingEnabled && (
                   <button
                     onClick={handlePortal}
                     disabled={isOpeningPortal}
@@ -180,7 +197,11 @@ export default function BillingPage() {
                   >
                     {t('billing.yearly')}
                     {proPlan?.price_yearly && (
-                      <span className="text-[10px] bg-emerald-500/20 text-success px-1.5 py-0.5 rounded-full font-semibold">
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                          cycle === 'yearly' ? 'bg-white/20 text-white' : 'bg-emerald-500/20 text-success'
+                        }`}
+                      >
                         -17%
                       </span>
                     )}
@@ -209,6 +230,7 @@ export default function BillingPage() {
                       onSelect={handleCheckout}
                       isLoading={isCheckingOut}
                       highlighted
+                      canUpgrade={billingEnabled}
                       showCustomDomains={showCustomDomains}
                     />
                   )}
@@ -289,11 +311,13 @@ interface PlanCardProps {
   isLoading?: boolean;
   disabled?: boolean;
   highlighted?: boolean;
+  /** False when this deployment takes no payments: the card says so instead of offering the upgrade */
+  canUpgrade?: boolean;
   /** Custom domains exist on this deployment: list them among the plan's features */
   showCustomDomains: boolean;
 }
 
-function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highlighted, showCustomDomains }: PlanCardProps) {
+function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highlighted, canUpgrade = true, showCustomDomains }: PlanCardProps) {
   const t = useTranslations();
   const features = planFeatures(plan, t, { customDomains: showCustomDomains });
   const price = cycle === 'yearly' && plan.price_yearly
@@ -317,7 +341,7 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
       <div className="mb-6">
         <div className="flex items-baseline gap-1">
           <span className="text-3xl font-bold text-primary">${price}</span>
-          <span className="text-sm text-muted">/{t('billing.monthly').toLowerCase()}</span>
+          <span className="text-sm text-muted">{t('billing.perMonth')}</span>
         </div>
         {cycle === 'yearly' && totalYearly && (
           <p className="text-xs text-muted mt-1">${totalYearly}/{t('billing.yearly').toLowerCase()}</p>
@@ -337,6 +361,10 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
       {isCurrent ? (
         <div className="text-center text-sm text-muted py-2 border border-subtle rounded-lg">
           {t('billing.currentPlan')}
+        </div>
+      ) : !canUpgrade ? (
+        <div className="text-center text-sm text-muted py-2 border border-subtle rounded-lg">
+          {t('billing.unavailableInDemo')}
         </div>
       ) : (
         <button

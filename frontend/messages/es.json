@@ -98,8 +98,11 @@
     "registerLink": "Regístrate",
     "loginLink": "Inicia sesión",
     "passwordDisabledTitle": "Hemos protegido tu cuenta",
-    "passwordDisabledBody": "Esta cuenta tenía una contraseña que nunca se confirmó desde tu email. Como acabas de demostrar que el email es tuyo, hemos desactivado esa contraseña y cerrado las demás sesiones abiertas. Si no la creaste tú, nadie más puede entrar ya. A partir de ahora, entra como hoy, sin contraseña.",
-    "passwordDisabledContinue": "Continuar"
+    "passwordDisabledBody": "Hemos desactivado la contraseña de esta cuenta. Se creó con un email que nunca se había confirmado, y acabas de demostrar que el email es tuyo con el enlace de acceso (o con Google). Por seguridad también hemos cerrado las demás sesiones abiertas. Si esa contraseña la creaste tú, no pasa nada: a partir de ahora entra con un enlace por email o con Google.",
+    "passwordDisabledContinue": "Continuar",
+    "required": "Este campo es obligatorio.",
+    "invalidEmail": "Escribe un email válido.",
+    "backToHome": "Volver al inicio"
   },
   "guest": {
     "tryButton": "Probar sin registrarse",
@@ -138,7 +141,10 @@
       "successTitle": "Cuenta creada",
       "successBody": "Tus páginas ya son de tu cuenta y no se borrarán.",
       "continue": "Continuar"
-    }
+    },
+    "logoutTitle": "¿Cerrar la sesión de invitado?",
+    "logoutBody": "Perderás tus páginas: se borran junto con la sesión. Crea una cuenta para conservarlas.",
+    "logoutAnyway": "Cerrar sesión y perder mis páginas"
   },
   "errors": {
     "globalTitle": "Algo salió mal",
@@ -148,7 +154,15 @@
     "goHome": "Ir al inicio",
     "goDashboard": "Ir al dashboard",
     "publicNotFoundTitle": "Página no encontrada",
-    "publicNotFoundDescription": "Esta página no existe o no ha sido publicada."
+    "publicNotFoundDescription": "Esta página no existe o no ha sido publicada.",
+    "network": "No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
+    "throttled": "Demasiados intentos seguidos. Espera un minuto e inténtalo de nuevo.",
+    "server": "Algo ha fallado en el servidor. Inténtalo de nuevo en un momento.",
+    "unauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "guestNotAllowed": "Esta función necesita una cuenta. Crea una para usarla.",
+    "notOwner": "Solo quien creó la página puede hacer esto.",
+    "billingDisabled": "Los pagos no están activos en esta demo.",
+    "billingProvider": "No se pudo contactar con el proveedor de pagos. Inténtalo de nuevo en un momento."
   },
   "navigation": {
     "main": "Navegación principal",
@@ -172,14 +186,15 @@
     "resources": "Recursos",
     "account": "Cuenta",
     "login": "Iniciar sesión",
-    "register": "Crear cuenta"
+    "register": "Crear cuenta",
+    "menu": "Menú"
   },
   "marketing": {
     "home": {
       "heroTitleBefore": "Monta una landing con bloques",
       "heroTitleAccent": "y publícala en un clic.",
       "heroSubtitle": "Paxl es un editor visual de landing pages. Partes de una plantilla, cambias los textos sobre la propia página y ajustas colores y tipografía en un solo sitio. Todo se guarda mientras trabajas.",
-      "ctaPrimary": "Probar el editor",
+      "ctaPrimary": "Crear una cuenta",
       "ctaSecondary": "Ver cómo funciona",
       "login": "Iniciar sesión",
       "register": "Crear cuenta",
@@ -219,13 +234,14 @@
     "pages": {
       "pricing": {
         "title": "Precios",
-        "subtitle": "Dos planes. Puedes empezar gratis y cambiar de plan cuando quieras desde la configuración.",
+        "subtitle": "Dos planes. Puedes empezar gratis.",
         "demoNotice": "Paxl es un proyecto personal: los pagos funcionan en el modo de pruebas de Stripe y no se cobra nada.",
         "perMonth": "/mes",
         "cta": "Crear cuenta",
         "loading": "Cargando planes…",
         "loadError": "No se han podido cargar los planes. Inténtalo de nuevo en unos segundos.",
-        "note": "Los límites de cada plan son los mismos que aplica la aplicación."
+        "note": "Estos son los límites que aplica la aplicación a cada plan.",
+        "paymentsOffNotice": "Paxl es un proyecto personal: los pagos no están activos en esta demo, así que el plan Pro todavía no se puede contratar."
       },
       "about": {
         "title": "Sobre Paxl",
@@ -253,9 +269,9 @@
         "section2Title": "Quien visita una página publicada",
         "section2Body": "Las estadísticas de las páginas publicadas no usan cookies ni guardan nada en el dispositivo del visitante. Se registran la ruta de la página (sin los parámetros de la URL), el origen del sitio desde el que llega, las etiquetas UTM, el tamaño de pantalla, el bloque pulsado y el destino de sus enlaces, y un identificador anónimo que el servidor calcula a partir de la IP y el navegador con una clave que cambia cada día. La IP y el navegador no se guardan, y el identificador no permite reconocer a una persona entre días distintos. Si quien visita una página envía su formulario de contacto, se guardan el nombre, el email y el mensaje para que el autor de la página los lea; no se guarda la IP.",
         "section3Title": "Cookies y almacenamiento del navegador",
-        "section3Body": "Dos cookies mantienen tu sesión iniciada (bp_access y bp_refresh) y otra recuerda el idioma (paxl-locale). En el almacenamiento local del navegador se guardan tu preferencia de tema claro u oscuro, una copia de la sesión y una copia de seguridad de la página que estás editando.",
+        "section3Body": "Dos cookies mantienen tu sesión iniciada (bp_access y bp_refresh), y solo existen si inicias sesión o empiezas una sesión de invitado. Otra cookie, paxl-locale, recuerda el idioma únicamente cuando lo cambias tú con el selector; si no lo tocas, la app usa el idioma de tu navegador y no guarda nada. En el almacenamiento local del navegador se guardan tu preferencia de tema claro u oscuro (cuando la cambias) y una copia de seguridad de la página que estás editando, para no perder cambios si falla la red. Las páginas publicadas no guardan cookies ni nada en el dispositivo de quien las visita.",
         "section4Title": "Servicios de terceros",
-        "section4Body": "Si usas la generación con IA, tu instrucción y el contenido del bloque se envían a Google (Gemini) o a Anthropic. Si usas tu propia clave, solo sirve para esa petición y no se guarda. Los pagos pasan por Stripe en modo de pruebas: no se cobra nada y no hace falta una tarjeta real. Si entras con Google, Google sabe que has iniciado sesión aquí.",
+        "section4Body": "Si usas la generación con IA, tu instrucción y el contenido del bloque se envían a Google (Gemini) o a Anthropic. Si usas tu propia clave, solo sirve para esa petición y no se guarda. El acceso con Google carga el script de Google únicamente en las pantallas de inicio de sesión y de registro, y solo si el servidor tiene configurado ese acceso: las páginas publicadas y el resto de la aplicación no contactan con Google. Si entras con Google, Google sabe que has iniciado sesión aquí. Los pagos están desactivados en la demo; si se activan, pasan por Stripe en modo de pruebas: no se cobra nada y no hace falta una tarjeta real.",
         "section5Title": "Lo que no se hace",
         "section5Body": "Los datos no se venden ni se usan para publicidad. Solo sirven para que la aplicación funcione.",
         "section6Title": "Borrar tus datos",
@@ -271,7 +287,7 @@
         "section2Title": "Uso aceptable",
         "section2Body": "No publiques contenido ilegal, engañoso o que vulnere los derechos de otras personas. Las páginas o cuentas que lo hagan se pueden retirar.",
         "section3Title": "Planes y pagos",
-        "section3Body": "Los planes de pago funcionan en el modo de pruebas de Stripe. No se cobra nada y no hace falta una tarjeta real.",
+        "section3Body": "Los pagos están desactivados en esta demo. Si se activan, funcionan en el modo de pruebas de Stripe: no se cobra nada y no hace falta una tarjeta real.",
         "section4Title": "Tu contenido",
         "section4Body": "Lo que creas en Paxl es tuyo. Solo se usa para mostrar tus páginas."
       },
@@ -316,7 +332,7 @@
     },
     "usage": "Uso: {current}/{max} páginas",
     "currentPlan": "Plan {plan}",
-    "loadError": "Error al cargar páginas",
+    "loadError": "No se han podido cargar tus páginas.",
     "templatePickerSubtitle": "Elige una plantilla, empieza desde cero o genera con IA",
     "aiTemplateDescription": "Describe tu página y la IA la crea",
     "blankPage": "Página en blanco",
@@ -350,7 +366,14 @@
     "pageOptions": "Opciones para {name}",
     "unpublish": "Despublicar",
     "unpublishConfirm": "¿Despublicar «{name}»? La página dejará de verse en su dirección pública. El borrador no se pierde.",
-    "unpublishError": "No se ha podido despublicar la página."
+    "unpublishError": "No se ha podido despublicar la página.",
+    "usageUnlimited": "Uso: {current, plural, one {# página} other {# páginas}} (sin límite)",
+    "planLimitDemo": "Has alcanzado el límite de páginas de tu plan. Elimina alguna para crear otra.",
+    "ownerOnlyNote": "Solo {owner} puede duplicar, despublicar o eliminar esta página.",
+    "editPageNamed": "Editar {name}",
+    "deleteTitle": "Eliminar página",
+    "unpublishTitle": "Despublicar página",
+    "loadMore": "Cargar más páginas"
   },
   "settingsPage": {
     "title": "Configuración",
@@ -376,7 +399,13 @@
       "goToBilling": "Ir a Facturación",
       "tooManyAttempts": "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
       "error": "No se pudo eliminar la cuenta. Inténtalo de nuevo."
-    }
+    },
+    "accountSignedInAs": "Has iniciado sesión como {username} ({email}).",
+    "billingTitle": "Facturación",
+    "billingDescription": "Tu plan, tus límites y el historial de pagos.",
+    "billingDescriptionOff": "Tu plan y sus límites. Los pagos no están activos en esta demo.",
+    "preferencesTitle": "Preferencias",
+    "preferencesDescription": "Tema claro u oscuro e idioma de la interfaz."
   },
   "editor": {
     "inspector": "Inspector",
@@ -494,7 +523,7 @@
     "colorSecondary": "Secundario",
     "colorSecondaryDesc": "Acentos secundarios",
     "colorAccent": "Acento",
-    "colorAccentDesc": "Badges, highlights",
+    "colorAccentDesc": "Etiquetas y destacados",
     "colorBackground": "Fondo",
     "colorBackgroundDesc": "Fondo general de la página",
     "colorSurface": "Superficie",
@@ -675,7 +704,11 @@
     "pro": "Pro",
     "back": "Volver",
     "upgrade": "Actualizar",
-    "included": "Incluido"
+    "included": "Incluido",
+    "paymentsOff": "Los pagos no están activos en esta demo. Aquí ves tu plan y sus límites, pero el plan Pro no se puede contratar.",
+    "testMode": "Modo de prueba: usa la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC. No se cobra nada.",
+    "perMonth": "/mes",
+    "unavailableInDemo": "No disponible en esta demo"
   },
   "domains": {
     "title": "Dominios personalizados",
@@ -795,7 +828,9 @@
   "upgrade": {
     "compact": "{feature} - Actualizar a Pro",
     "description": "Esta funcionalidad está disponible en el plan Pro. Actualiza para desbloquearla.",
-    "cta": "Actualizar a Pro"
+    "cta": "Actualizar a Pro",
+    "compactDemo": "{feature}: no disponible en esta demo (los pagos no están activos)",
+    "descriptionDemo": "Esta función es del plan Pro, y los pagos no están activos en esta demo."
   },
   "publicPage": {
     "empty": "Esta página no tiene contenido.",

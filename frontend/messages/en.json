@@ -98,8 +98,11 @@
     "registerLink": "Sign up",
     "loginLink": "Log in",
     "passwordDisabledTitle": "We secured your account",
-    "passwordDisabledBody": "This account had a password that was never confirmed from your email. Since you just proved the email is yours, we turned that password off and closed any other open sessions. If you didn't create it, nobody else can get in now. From now on, sign in the way you did today, without a password.",
-    "passwordDisabledContinue": "Continue"
+    "passwordDisabledBody": "We turned off this account's password. It was created with an email that had never been confirmed, and you just proved the email is yours with the sign-in link (or Google). For safety we also closed any other open sessions. If you created that password yourself, nothing is wrong: from now on sign in with an email link or with Google.",
+    "passwordDisabledContinue": "Continue",
+    "required": "This field is required.",
+    "invalidEmail": "Enter a valid email address.",
+    "backToHome": "Back to the home page"
   },
   "guest": {
     "tryButton": "Try it without signing up",
@@ -138,7 +141,10 @@
       "successTitle": "Account created",
       "successBody": "Your pages now belong to your account and won't be deleted.",
       "continue": "Continue"
-    }
+    },
+    "logoutTitle": "Log out of the guest session?",
+    "logoutBody": "You will lose your pages: they are deleted along with the session. Create an account to keep them.",
+    "logoutAnyway": "Log out and lose my pages"
   },
   "errors": {
     "globalTitle": "Something went wrong",
@@ -148,7 +154,15 @@
     "goHome": "Go home",
     "goDashboard": "Go to dashboard",
     "publicNotFoundTitle": "Page not found",
-    "publicNotFoundDescription": "This page does not exist or has not been published."
+    "publicNotFoundDescription": "This page does not exist or has not been published.",
+    "network": "Could not reach the server. Check your connection and try again.",
+    "throttled": "Too many attempts in a row. Wait a minute and try again.",
+    "server": "Something went wrong on our side. Try again in a moment.",
+    "unauthorized": "Your session has expired. Sign in again.",
+    "guestNotAllowed": "This needs an account. Create one to use it.",
+    "notOwner": "Only the page owner can do this.",
+    "billingDisabled": "Payments are not active in this demo.",
+    "billingProvider": "Could not reach the payment provider. Try again in a moment."
   },
   "navigation": {
     "main": "Main navigation",
@@ -172,14 +186,15 @@
     "resources": "Resources",
     "account": "Account",
     "login": "Log in",
-    "register": "Sign up"
+    "register": "Sign up",
+    "menu": "Menu"
   },
   "marketing": {
     "home": {
       "heroTitleBefore": "Build a landing page from blocks",
       "heroTitleAccent": "and publish it in one click.",
       "heroSubtitle": "Paxl is a visual landing page editor. Start from a template, edit the text right on the page and set colors and typography in one place. Your work saves as you go.",
-      "ctaPrimary": "Try the editor",
+      "ctaPrimary": "Create an account",
       "ctaSecondary": "See how it works",
       "login": "Log in",
       "register": "Sign up",
@@ -219,13 +234,14 @@
     "pages": {
       "pricing": {
         "title": "Pricing",
-        "subtitle": "Two plans. Start for free and switch plans whenever you like from the settings.",
+        "subtitle": "Two plans. You can start for free.",
         "demoNotice": "Paxl is a personal project: payments run in Stripe's test mode and nothing is charged.",
         "perMonth": "/month",
         "cta": "Sign up",
         "loading": "Loading plans…",
         "loadError": "The plans could not be loaded. Please try again in a few seconds.",
-        "note": "Each plan's limits are the same ones the app enforces."
+        "note": "These are the limits the app applies to each plan.",
+        "paymentsOffNotice": "Paxl is a personal project: payments are not active in this demo, so the Pro plan cannot be purchased yet."
       },
       "about": {
         "title": "About Paxl",
@@ -253,9 +269,9 @@
         "section2Title": "Visitors to a published page",
         "section2Body": "Analytics on published pages uses no cookies and stores nothing on the visitor's device. It records the page path (without URL parameters), the origin of the referring site, UTM tags, screen size, the block clicked and where its links point, and an anonymous identifier the server computes from the IP and browser with a key that changes every day. The IP and browser are not stored, and the identifier cannot recognise a person across different days. If a visitor sends a page's contact form, their name, email and message are stored for the page author to read; the IP is not stored.",
         "section3Title": "Cookies and browser storage",
-        "section3Body": "Two cookies keep you signed in (bp_access and bp_refresh) and another one remembers the language (paxl-locale). The browser's local storage keeps your light or dark theme preference, a copy of the session and a backup of the page you are editing.",
+        "section3Body": "Two cookies keep you signed in (bp_access and bp_refresh), and they exist only if you sign in or start a guest session. Another cookie, paxl-locale, remembers the language only when you change it with the switcher; if you never touch it, the app uses your browser's language and stores nothing. The browser's local storage keeps your light or dark theme preference (when you change it) and a backup of the page you are editing, so a network failure does not lose your changes. Published pages set no cookies and store nothing on the device of whoever visits them.",
         "section4Title": "Third-party services",
-        "section4Body": "If you use AI generation, your instruction and the block content are sent to Google (Gemini) or Anthropic. If you use your own key, it is only used for that request and is not stored. Payments go through Stripe in test mode: nothing is charged and no real card is needed. If you sign in with Google, Google knows you signed in here.",
+        "section4Body": "If you use AI generation, your instruction and the block content are sent to Google (Gemini) or Anthropic. If you use your own key, it is only used for that request and is not stored. Sign-in with Google loads Google's script only on the sign-in and sign-up screens, and only if the server has that sign-in configured: published pages and the rest of the app never contact Google. If you sign in with Google, Google knows you signed in here. Payments are turned off in the demo; if they are turned on, they go through Stripe in test mode: nothing is charged and no real card is needed.",
         "section5Title": "What is not done",
         "section5Body": "Data is not sold or used for advertising. It is only used to make the app work.",
         "section6Title": "Deleting your data",
@@ -271,7 +287,7 @@
         "section2Title": "Acceptable use",
         "section2Body": "Don't publish illegal or misleading content, or content that infringes other people's rights. Pages or accounts that do may be removed.",
         "section3Title": "Plans and payments",
-        "section3Body": "Paid plans run in Stripe's test mode. Nothing is charged and no real card is needed.",
+        "section3Body": "Payments are turned off in this demo. If they are turned on, they run in Stripe's test mode: nothing is charged and no real card is needed.",
         "section4Title": "Your content",
         "section4Body": "What you create in Paxl is yours. It is only used to show your pages."
       },
@@ -316,7 +332,7 @@
     },
     "usage": "Usage: {current}/{max} pages",
     "currentPlan": "{plan} plan",
-    "loadError": "Could not load pages",
+    "loadError": "Your pages could not be loaded.",
     "templatePickerSubtitle": "Choose a template, start from scratch or generate with AI",
     "aiTemplateDescription": "Describe your page and AI will create it",
     "blankPage": "Blank page",
@@ -350,7 +366,14 @@
     "pageOptions": "Options for {name}",
     "unpublish": "Unpublish",
     "unpublishConfirm": "Unpublish “{name}”? The page will no longer be available at its public address. The draft is kept.",
-    "unpublishError": "The page could not be unpublished."
+    "unpublishError": "The page could not be unpublished.",
+    "usageUnlimited": "Usage: {current, plural, one {# page} other {# pages}} (no limit)",
+    "planLimitDemo": "You have reached your plan's page limit. Delete one to create another.",
+    "ownerOnlyNote": "Only {owner} can duplicate, unpublish or delete this page.",
+    "editPageNamed": "Edit {name}",
+    "deleteTitle": "Delete page",
+    "unpublishTitle": "Unpublish page",
+    "loadMore": "Load more pages"
   },
   "settingsPage": {
     "title": "Settings",
@@ -376,7 +399,13 @@
       "goToBilling": "Go to Billing",
       "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
       "error": "The account could not be deleted. Try again."
-    }
+    },
+    "accountSignedInAs": "You are signed in as {username} ({email}).",
+    "billingTitle": "Billing",
+    "billingDescription": "Your plan, its limits and your payment history.",
+    "billingDescriptionOff": "Your plan and its limits. Payments are not active in this demo.",
+    "preferencesTitle": "Preferences",
+    "preferencesDescription": "Light or dark theme and interface language."
   },
   "editor": {
     "inspector": "Inspector",
@@ -675,7 +704,11 @@
     "pro": "Pro",
     "back": "Back",
     "upgrade": "Upgrade",
-    "included": "Included"
+    "included": "Included",
+    "paymentsOff": "Payments are not active in this demo. You can see your plan and its limits here, but the Pro plan cannot be purchased.",
+    "testMode": "Test mode: use the card 4242 4242 4242 4242, any future date and any CVC. Nothing is charged.",
+    "perMonth": "/month",
+    "unavailableInDemo": "Not available in this demo"
   },
   "domains": {
     "title": "Custom domains",
@@ -795,7 +828,9 @@
   "upgrade": {
     "compact": "{feature} - Upgrade to Pro",
     "description": "This feature is available on the Pro plan. Upgrade to unlock it.",
-    "cta": "Upgrade to Pro"
+    "cta": "Upgrade to Pro",
+    "compactDemo": "{feature}: not available in this demo (payments are not active)",
+    "descriptionDemo": "This feature belongs to the Pro plan, and payments are not active in this demo."
   },
   "publicPage": {
     "empty": "This page has no content.",

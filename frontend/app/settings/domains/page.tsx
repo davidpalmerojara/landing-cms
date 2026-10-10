@@ -206,6 +206,7 @@ export default function DomainsSettingsPage() {
   const router = useRouter();
   const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
   const { features, isLoading: isFeaturesLoading } = useFeatures();
+  const billingEnabled = features?.billing === true;
   // Guest sessions cannot have domains: the API refuses them, so do not ask
   const canUseDomains = Boolean(user && !user.is_guest && features?.custom_domains);
   const {
@@ -306,13 +307,15 @@ export default function DomainsSettingsPage() {
             <p className="text-[13px] text-secondary mb-4">
               {t('domains.proFeatureDescription')}
             </p>
-            <button
-              onClick={() => router.push('/settings/billing')}
-              className="text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors"
-              style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-            >
-              {t('domains.upgradeToPro')}
-            </button>
+            {billingEnabled && (
+              <button
+                onClick={() => router.push('/settings/billing')}
+                className="text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors"
+                style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+              >
+                {t('domains.upgradeToPro')}
+              </button>
+            )}
           </div>
         )}
 

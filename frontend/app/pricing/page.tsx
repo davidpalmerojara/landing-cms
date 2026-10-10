@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import MarketingShell from '@/components/marketing/MarketingShell';
 import PlanFeatureList from '@/components/billing/PlanFeatureList';
 import { usePlans } from '@/hooks/usePlans';
+import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 import { useFeatures } from '@/hooks/useFeatures';
 import { planFeatures } from '@/lib/plan-features';
 
@@ -14,6 +15,7 @@ export default function PricingPage() {
   const { plans, error, isLoading } = usePlans();
   const { features } = useFeatures();
   const customDomains = features?.custom_domains ?? false;
+  const { billingEnabled, isKnown: isBillingKnown } = useBillingEnabled();
 
   return (
     <MarketingShell
@@ -22,7 +24,9 @@ export default function PricingPage() {
     >
       <p className="mb-8 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-secondary">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary-color" aria-hidden="true" />
-        {t('marketing.pages.pricing.demoNotice')}
+        {isBillingKnown && !billingEnabled
+          ? t('marketing.pages.pricing.paymentsOffNotice')
+          : t('marketing.pages.pricing.demoNotice')}
       </p>
 
       {isLoading && (

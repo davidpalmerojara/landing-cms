@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { X, FileText, Loader2, LayoutTemplate, Sparkles } from 'lucide-react';
+import { X, FileText, Loader2, LayoutTemplate, Sparkles, AlertCircle } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { getPageTemplates } from '@/lib/templates';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
@@ -13,6 +13,8 @@ interface TemplatePickerModalProps {
   onSelect: (templateId: string | null) => void;
   onAIGenerate: () => void;
   isCreating: boolean;
+  /** Why creating failed (the plan limit, for one): shown inside the dialog, where the person is looking */
+  error?: string | null;
 }
 
 export default function TemplatePickerModal({
@@ -21,6 +23,7 @@ export default function TemplatePickerModal({
   onSelect,
   onAIGenerate,
   isCreating,
+  error,
 }: TemplatePickerModalProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -147,6 +150,12 @@ export default function TemplatePickerModal({
         </div>
 
         {/* Footer */}
+        {error && (
+          <p role="alert" className="mx-6 mb-3 flex items-start gap-2 rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            {error}
+          </p>
+        )}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80">
           <button
             onClick={onClose}

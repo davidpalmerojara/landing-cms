@@ -87,6 +87,9 @@ class TestMagicLinkTakesOverUnverifiedAccount:
 
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
+    # database_sync_to_async closes "old" connections; inside a test transaction
+    # on PostgreSQL that is the test's own connection, so this test needs real commits
+    @pytest.mark.django_db(transaction=True)
     def test_attacker_token_cannot_open_the_collaboration_socket(self, attacker_account):
         _, access = client_with_session(attacker_account)
         sign_in_with_magic_link()

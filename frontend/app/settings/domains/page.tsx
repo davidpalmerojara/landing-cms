@@ -293,7 +293,7 @@ export default function DomainsSettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-6 py-10 outline-none">
         {error && (
           <div className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
             <AlertCircle className="w-4 h-4 shrink-0" />

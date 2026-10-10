@@ -16,7 +16,7 @@ const PasswordDisabledScreen = ({ onContinue }: PasswordDisabledScreenProps) => 
   const t = useTranslations('auth');
 
   return (
-    <div id="main-content" className="min-h-screen bg-surface flex items-center justify-center px-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-surface flex items-center justify-center px-4 outline-none">
       <div role="status" className="w-full max-w-[calc(100vw-32px)] sm:max-w-sm bg-surface-card border border-default rounded-xl p-6">
         <ShieldCheck className="w-8 h-8 text-success mb-4" aria-hidden="true" />
         <h1 className="text-lg font-semibold text-primary mb-2">{t('passwordDisabledTitle')}</h1>
@@ -31,7 +31,7 @@ const PasswordDisabledScreen = ({ onContinue }: PasswordDisabledScreenProps) => 
           {t('passwordDisabledContinue')}
         </button>
       </div>
-    </div>
+    </main>
   );
 };
 

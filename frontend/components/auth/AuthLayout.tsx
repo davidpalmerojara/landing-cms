@@ -21,7 +21,7 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
   const t = useTranslations();
 
   return (
-    <div id="main-content" className="relative min-h-screen bg-surface flex items-center justify-center px-4 py-16">
+    <main id="main-content" tabIndex={-1} className="relative min-h-screen bg-surface flex items-center justify-center px-4 py-16 outline-none">
       <div className="absolute right-4 top-4 flex items-center gap-1">
         <ThemeToggle />
         <LocaleSwitcher />
@@ -42,6 +42,6 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
 
         {children}
       </div>
-    </div>
+    </main>
   );
 }

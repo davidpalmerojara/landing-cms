@@ -22,7 +22,7 @@ export default function JoinPage() {
   const { state, retry } = useJoinInvite(token);
 
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-surface flex items-center justify-center px-4 outline-none">
       <div className="w-full max-w-sm text-center">
         <h1 className="text-2xl font-black tracking-tighter mb-8" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           {t('common.brand')}

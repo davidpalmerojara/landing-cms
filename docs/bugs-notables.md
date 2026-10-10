@@ -195,3 +195,30 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: Cada ejecución del efecto tiene su propio indicador `disposed`. Una ejecución limpiada no abre socket, y si su socket se cierra más tarde, no toca los temporizadores ni los bloqueos de la ejecución nueva.
 - **Cómo se verificó**: Un test cambia de página mientras el primer ticket está pendiente y comprueba que solo se abre un socket, el de la página nueva. Falla sin el arreglo. En el navegador: una sola conexión y ningún cursor propio. La prueba con dos navegadores de la S10 sigue en 13/13.
 - **Lección**: Un ref compartido entre ejecuciones de un efecto no sirve para saber si *esta* ejecución sigue viva. Lo asíncrono dentro de un efecto necesita su propia bandera de cancelación.
+
+## 24. Lo escrito justo antes de salir del editor se perdía
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El autoguardado espera 3 s (0,8 s con alguien más en la página) desde la última tecla. Si en ese rato la persona pulsaba el logo para ir al dashboard, recargaba o cerraba la pestaña, el cambio no llegaba nunca: al desmontarse, el hook solo cancelaba el temporizador, no había ningún manejador de `pagehide` ni `visibilitychange`, el logo era un `<a href>` que recargaba la página entera, y la copia local no se escribía hasta que se intentaba guardar.
+- **Cómo se detectó**: Ronda 1 de QA (EDITOR-003, COLLAB-004): editar el título y pulsar el logo en menos de un segundo; al volver, el título era el anterior.
+- **Arreglo** (ADR-031): Cada edición se copia al momento en la copia local. Al desmontar el editor, ocultar la pestaña o cerrarla, el cambio pendiente se envía (con `keepalive` al cerrar). El logo espera a que se guarde antes de navegar y, si no puede, pregunta. Al volver a abrir la página, los cambios de la copia local que el servidor no tiene se fusionan sobre su página.
+- **Cómo se verificó**: Tests del hook (desmontar antes de los 3 s envía una vez; `pagehide` y `visibilitychange` envían; la copia se escribe sin esperar) y del controlador (`keepalive`). Playwright: escribir y pulsar el logo enseguida, y escribir y salir del sitio enseguida; en los dos casos el servidor tiene el título.
+- **Lección**: Un debounce es una promesa de guardar más tarde; cada salida posible tiene que cumplirla o dejar el cambio en un sitio del que se recupere.
+
+## 25. Un solo campo no válido bloqueaba todos los guardados y se mostraba como "Sin conexión"
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Un valor que el servidor rechaza (lo más habitual: un enlace escrito como `example.com`, sin `https://`) hacía que el PUT devolviera 400. Como cada autoguardado envía la página entera, todos los guardados siguientes llevaban el mismo valor y fallaban también. La barra superior mostraba "Sin conexión" para cualquier error, y al recargar se perdía todo lo escrito desde el último guardado bueno.
+- **Cómo se detectó**: Ronda 1 de QA (EDITOR-002; COLLAB-013 para el "Sin conexión" de un 404).
+- **Arreglo** (ADR-031): Los campos que el 400 nombra en `details` se dejan fuera de los guardados siguientes mientras conserven el valor rechazado, y el resto de la página se guarda. El campo muestra la regla en el idioma de la interfaz, la barra dice qué campo de qué bloque falló, con "Ir al campo", y "Sin conexión" solo aparece si no hubo respuesta. Los campos del inspector se paran en el límite del servidor (`lib/field-limits.ts`, comprobado contra el Python) y los enlaces sin esquema se completan al salir del campo.
+- **Cómo se verificó**: Tests del controlador (el 400 deja fuera solo ese campo, las ediciones siguientes se guardan sin otro 400, al corregirlo se envía), de la barra (sin conexión frente a error HTTP, nombre del campo y regla en inglés) y de los campos (límite, enlace completado, mensaje en el campo). Playwright: un enlace `javascript:` y un título nuevo; el título llega al servidor, el enlace no, y el campo y el aviso explican por qué.
+- **Lección**: Cuando se guarda todo de una vez, un error de validación tiene que poder aislarse; si no, un detalle bloquea el trabajo entero. Y un mensaje de error genérico es peor que ninguno si dice algo falso.
+
+## 26. Un guardado fallido no se reintentaba y la copia local más nueva se ignoraba
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Si un guardado fallaba (sin red, servidor caído), nada lo volvía a intentar: ni un temporizador, ni el evento `online`, ni la reconexión del WebSocket, que salía antes si la versión del servidor no había cambiado. "Error al guardar" se quedaba aunque un guardado posterior funcionara, porque solo el autoguardado actualizaba ese estado. Al cargar, la copia local solo se usaba si la página no cargaba, aunque tuviera cambios que el servidor no tenía.
+- **Cómo se detectó**: Ronda 1 de QA (EDITOR-003, COLLAB-005, MOBILE-010).
+- **Arreglo** (ADR-031): El controlador pone el estado en todos los caminos de guardado y reintenta a los 2, 5, 15 y cada 30 s, al volver `online` y al reconectar aunque la versión sea la misma. La copia local guarda su base y si tiene cambios sin confirmar; al cargar, esos cambios se fusionan sobre la página del servidor y se guardan, como un paso que se puede deshacer.
+- **Cómo se verificó**: Tests del controlador (reintento al volver `online`, espera creciente, reconexión con la misma versión, copia local fusionada sobre una página que otra persona cambió). Playwright: sin red, editar, ver "Sin conexión", volver a tener red y comprobar que el servidor tiene el cambio.
+- **Lección**: Un error que nadie vuelve a intentar es una pérdida de datos aplazada.

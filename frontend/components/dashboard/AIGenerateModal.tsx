@@ -33,6 +33,15 @@ interface SavedResult {
   demo?: AiDemoInfo;
 }
 
+/** Removes the empty page a failed generation left behind. */
+async function discardBlankPage(pageId: string): Promise<void> {
+  try {
+    await api.pages.delete(pageId);
+  } catch (e) {
+    if (process.env.NODE_ENV === 'development') console.error('Failed to remove the page of a failed generation:', e);
+  }
+}
+
 export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenerateModalProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -61,15 +70,18 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
     { value: 'corporate', label: t('ai.corporateTone') },
   ];
 
-  useEffect(() => {
-    if (!open) return;
-    // Reset state when opening
-    setError(null);
-    setStatusMsg(null);
-    setShowKeySetup(false);
-    setAiKey('');
-    setSavedResult(null);
-  }, [open]);
+  // Opening starts clean. Adjusting state during render (instead of in an effect) avoids a render with the old values
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setError(null);
+      setStatusMsg(null);
+      setShowKeySetup(false);
+      setAiKey('');
+      setSavedResult(null);
+    }
+  }
 
   const pickSuggestion = (suggestion: AiPromptSuggestion) => {
     setPrompt(suggestion.prompt);
@@ -83,9 +95,12 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
     setError(null);
     setStatusMsg(t('ai.creatingPage'));
 
+    // The endpoint needs an existing page, so one is created first and removed if generation fails
+    let blankPageId: string | null = null;
+
     try {
-      // First create a blank page
       const page = await api.pages.create({ name: t('ai.generatedPageName'), blocks: [] });
+      blankPageId = page.id;
       setStatusMsg(t('ai.generatingContent'));
 
       // Then generate blocks
@@ -96,6 +111,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         ...(ownKey ? { provider: aiProvider, api_key: ownKey } : {}),
       });
       setStatusMsg(t('ai.generatedBlocks', { count: result.block_count }));
+      blankPageId = null;
 
       if (result.source === 'demo') {
         setSavedResult({ pageId: page.id, source: result.source, demo: result.demo });
@@ -104,6 +120,7 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         onGenerated(page.id);
       }
     } catch (e) {
+      if (blankPageId) void discardBlankPage(blankPageId);
       const { message, code } = parseApiError(e, t('ai.generateError'));
       // No server key, or the plan doesn't include AI: the user's own key works
       if (code && NEEDS_KEY_CODES.has(code)) setShowKeySetup(true);

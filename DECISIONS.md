@@ -128,6 +128,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Contexto**: `npm audit` marcaba una vulnerabilidad crítica en Next.js 16.2 (denegación de servicio en Server Components) y un *open redirect* en next-intl, además de varias altas en dependencias de desarrollo. Al aplicar `npm audit fix`, `eslint-plugin-react-hooks` pasaba de 7.0.1 a 7.1.1, cuya regla `set-state-in-effect` es más estricta: marca 8 componentes que cargan datos llamando a una función `async` desde un `useEffect`.
 - **Decisión**: Subir `next` a 16.4.0 y aplicar `npm audit fix` sin cambios incompatibles. Fijar `eslint-plugin-react-hooks` en 7.0.1 con `overrides` en `package.json` hasta mover esa carga de datos a hooks (`useSubscription` y `usePlans` ya siguen ese patrón). `eslint-config-next` se queda en 16.2.1.
 - **Consecuencias**: Quedan 5 avisos altos, todos en la cadena de `eslint-config-next` (`fast-glob` → `micromatch` → `braces`). Es una herramienta de desarrollo que no llega al código desplegado, y npm solo ofrece "arreglarlo" bajando a la versión 14. El `override` debe quitarse cuando los 8 componentes usen hooks de datos; entonces la regla nueva pasará sin cambios.
+- **Seguimiento (2026-10-10)**: el `override` se ha quitado. Los ocho componentes (más el aviso de invitado caducado de `/login`) cargan ahora sus datos con hooks (`usePageList`, `useBillingOverview`, `useAnalytics`, `useCollaborators`, `useVersionHistory`, `useAssets`, `useDomainSettings`, `useGuestExpiredNotice`), todos sobre `useAsyncData`, que solo toca el estado desde los callbacks de la promesa. `eslint-plugin-react-hooks` se resuelve a 7.1.1 y `npm run lint` da 0 errores y los mismos 37 avisos de antes.
 
 ---
 
@@ -305,6 +306,39 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - El anillo de foco se dibuja dentro del bloque (el marco del lienzo recorta lo que queda fuera).
 - **Alternativas**: Todos los bloques en el orden de tabulación (más simple, pero cada bloque suma una parada y la edición del inspector queda lejos); `aria-activedescendant` desde el contenedor (no mueve el foco real ni sirve con el desplazamiento del lienzo); un `role="listbox"` (los bloques contienen texto y controles que un `option` no permite).
 - **Consecuencias**: La edición de texto en el propio lienzo sigue siendo con doble clic; con teclado se edita el mismo campo en el inspector. Mover un bloque con teclado depende de Alt más flechas, que algunos lectores de pantalla en modo exploración pueden interceptar. Las paletas predefinidas de color pasan AA para texto principal, secundario (sobre fondo y superficie) y texto sobre el color primario; las páginas ya creadas conservan los colores que guardaron.
+
+## ADR-027: Los dominios personalizados son una función que se activa por entorno
+
+- **Fecha**: 2026-10-10
+- **Contexto**: Un dominio propio necesita verificar DNS y emitir un certificado SSL, y el hosting gratuito de la demo no permite ninguna de las dos cosas: la pantalla existía, aceptaba dominios y no podía hacer que funcionaran. El código además nombraba `builderpro.com` (nombre del proyecto anterior) en el destino del CNAME, en los dominios reservados y en el Caddyfile.
+- **Decisión**:
+  - `CUSTOM_DOMAINS_ENABLED` (variable de entorno, `False` por defecto). Apagada, `/api/domains/**` y `/api/public/resolve-domain/` responden `404 {"error", "code": "FEATURE_DISABLED"}` (incluso sin sesión, antes de comprobar plan o permisos), `check_domains` no hace nada y el frontend lo oculta todo: la tarjeta del hub de ajustes, la página `/settings/domains` (`notFound()`) y la línea "Dominio personalizado" de las listas de planes.
+  - `GET /api/features/` (público, sin base de datos) devuelve `{"custom_domains": bool}`; el frontend lo lee con `useFeatures`. Mientras no responde, o si falla, la función se considera apagada. Cada función opcional futura entra en el mismo objeto.
+  - El destino del CNAME, la IP del registro A y los dominios reservados salen de `CUSTOM_DOMAINS_CNAME_TARGET`, `CUSTOM_DOMAINS_A_RECORD` y `CUSTOM_DOMAINS_RESERVED`, con valores neutros (`tu-dominio.com`). `builderpro.com` ya no aparece en el código ni en la infraestructura (queda en el informe de auditoría de marzo, que es histórico).
+- **Alternativas**: Borrar el módulo (se perdería lo ya hecho para cuando haya hosting con SSL); ocultarlo solo en el frontend (la API seguiría aceptando dominios que nunca funcionarán).
+- **Consecuencias**: Encender la función en un despliegue con Caddy o similar requiere tres variables y los registros DNS reales. La verificación de DNS sigue siendo la del MVP (cualquier dominio que resuelva cuenta como verificado cuando falla el CNAME); antes de activarla en serio hay que endurecerla.
+
+---
+
+## ADR-028: Borrado de cuenta por la propia persona
+
+- **Fecha**: 2026-10-10
+- **Contexto**: La política de privacidad decía que no había forma de borrar la cuenta y que había que escribir al autor. Ya existía el borrado de invitados caducados, con la misma lista de cosas por limpiar.
+- **Decisión**:
+  - `DELETE /api/auth/me/` (autenticado, no para invitados, limitado como un login). Pide `password` si la cuenta tiene contraseña y, si no la tiene (enlace mágico, Google), `confirm_username` con el nombre de usuario exacto (`/api/auth/me/` informa de `has_password`). Un fallo da `400 INVALID_PASSWORD` o `400 CONFIRMATION_MISMATCH` y no borra nada.
+  - Borra el usuario y todo lo suyo: las cascadas de la base de datos se llevan workspaces, suscripción y pagos, páginas con bloques, versiones, mensajes y analítica, invitaciones, dominios, activos y registros de IA; el código (`accounts/deletion.py`, compartido con la limpieza de invitados) borra además los refresh tokens, los archivos subidos, la caché de las páginas publicadas (`revalidate_public_pages`) y el sitemap. Las páginas ajenas donde era colaborador no se tocan. La respuesta es 204 y limpia las cookies de sesión. El registro solo lleva recuentos, sin nombre, email ni id.
+  - Stripe: no hay ninguna función para cancelar suscripciones, así que, mientras exista una suscripción de pago que seguiría cobrando (activa, de prueba o con pago pendiente y sin cancelación programada), la petición se rechaza con `409 ACTIVE_SUBSCRIPTION` y la interfaz lleva a Facturación (portal de Stripe). Nunca se llama a Stripe desde el borrado.
+  - Frontend: sección "Zona de peligro" en ajustes con diálogo accesible (`useDialogFocus`, `aria-modal`, campo etiquetado, error con `role="alert"`), y redirección a la portada al terminar.
+- **Consecuencias**: Es irreversible y no hay periodo de gracia. El cliente de Stripe de quien borra su cuenta sigue existiendo en Stripe (con datos de prueba en esta demo). Una conexión WebSocket abierta de la cuenta borrada no se cierra de forma explícita al borrarla.
+
+---
+
+## ADR-029: Cada campo de un bloque se sanea una sola vez y el saneado es idempotente
+
+- **Fecha**: 2026-10-10
+- **Contexto**: `clean_block_data` pasaba primero por `sanitize_block_data` (tablas por tipo de bloque) y después por las reglas de cada campo, que volvían a sanear. Los campos de texto del primer nivel se saneaban dos veces, y `sanitize_plain_text` decodificaba las entidades que había escrito la persona, de modo que un literal `&amp;lt;` pasaba a `&lt;` y luego a `<`: cada guardado lo degradaba.
+- **Decisión**: Se elimina `sanitize_block_data` y sus tablas; la regla de cada campo (`FieldRule`) valida y sanea una vez. `sanitize_plain_text` escapa todos los `&` antes de pasar por bleach y decodifica una sola vez, así que solo deshace lo que añade el propio bleach; repite hasta que quitar etiquetas no cambia nada (quitar una puede unir el texto en otra: `<<b>script>`). El texto que escribe la persona se guarda tal cual, `&lt;` incluido.
+- **Consecuencias**: Guardar los mismos datos dos veces da el mismo valor almacenado; hay pruebas con `&lt;`, `&amp;lt;`, `<b>`, `a & b`, `5 < 6` y marcado aleatorio. Cambia un caso: un `5 &lt; 6` escrito literalmente ya no se guarda como `5 < 6`. La longitud máxima se comprueba sobre el texto recibido, antes de quitar etiquetas. Los valores ya degradados en la base de datos no se corrigen.
 
 ---
 

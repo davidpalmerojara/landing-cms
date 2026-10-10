@@ -700,7 +700,7 @@ class SitemapDataView(generics.GenericAPIView):
 class CustomDomainViewSet(viewsets.ModelViewSet):
     """
     CRUD for custom domains. Only Pro plan users, and only where the deployment
-    turns the feature on (CUSTOM_DOMAINS_ENABLED, ADR-025): otherwise 404 FEATURE_DISABLED.
+    turns the feature on (CUSTOM_DOMAINS_ENABLED, ADR-027): otherwise 404 FEATURE_DISABLED.
 
     POST   /api/domains/              — create domain
     GET    /api/domains/              — list domains

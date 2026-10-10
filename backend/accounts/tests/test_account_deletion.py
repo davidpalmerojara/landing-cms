@@ -1,4 +1,4 @@
-"""DELETE /api/auth/me/: people delete their own account and everything it owns (ADR-026)."""
+"""DELETE /api/auth/me/: people delete their own account and everything it owns (ADR-028)."""
 import json
 import logging
 from unittest.mock import patch

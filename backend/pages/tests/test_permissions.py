@@ -101,7 +101,7 @@ class TestPageWorkspaceAssignment:
 @pytest.mark.django_db
 class TestResolveDomainPublicResponse:
     def test_resolve_domain_only_returns_slug_and_domain_verified(self, api_client, settings):
-        settings.CUSTOM_DOMAINS_ENABLED = True  # off by default (ADR-025)
+        settings.CUSTOM_DOMAINS_ENABLED = True  # off by default (ADR-027)
         owner = UserFactory()
         workspace = WorkspaceFactory(owner=owner)
         page = PageFactory(owner=owner, workspace=workspace, status='published')

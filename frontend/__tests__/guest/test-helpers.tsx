@@ -7,6 +7,7 @@ export const guestUser: ApiUser = {
   username: 'invitado-ab12cd34',
   avatar: '',
   created_at: '2026-10-09T10:00:00Z',
+  has_password: false,
   is_guest: true,
   expires_at: '2026-10-10T10:00:00Z',
 };
@@ -16,6 +17,7 @@ export const normalUser: ApiUser = {
   id: 'u1',
   email: 'ana@example.com',
   username: 'ana',
+  has_password: true,
   is_guest: false,
   expires_at: null,
 };

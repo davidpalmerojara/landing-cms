@@ -185,6 +185,21 @@ class TestDeleteWithoutPassword:
 
 
 @pytest.mark.django_db
+class TestProfileTellsHowToConfirm:
+    def test_has_password_is_true_for_accounts_with_a_password(self):
+        user = UserFactory()
+
+        assert client_for(user).get(URL).data['has_password'] is True
+
+    def test_has_password_is_false_for_magic_link_and_google_accounts(self):
+        user = UserFactory()
+        user.set_unusable_password()
+        user.save()
+
+        assert client_for(user).get(URL).data['has_password'] is False
+
+
+@pytest.mark.django_db
 class TestWhoCanDelete:
     def test_anonymous_requests_are_refused(self):
         resp = APIClient().delete(URL, {'password': PASSWORD}, format='json')

@@ -33,15 +33,20 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     has_google = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField()
     expires_at = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google', 'is_guest', 'expires_at']
+        fields = ['id', 'email', 'username', 'avatar', 'created_at', 'has_google', 'has_password', 'is_guest', 'expires_at']
         read_only_fields = ['id', 'created_at', 'is_guest']
 
     def get_has_google(self, obj):
         return bool(obj.google_id)
+
+    def get_has_password(self, obj):
+        """Magic-link and Google accounts have none: deleting them is confirmed by typing the username."""
+        return obj.has_usable_password()
 
     def get_expires_at(self, obj):
         """When a guest session is deleted; null for normal accounts."""

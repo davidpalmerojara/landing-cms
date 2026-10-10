@@ -4,12 +4,17 @@ import { useRouter } from 'next/navigation';
 import { Globe, ChevronRight, User, ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
+import { useFeatures } from '@/hooks/useFeatures';
+import DeleteAccountSection from '@/components/settings/DeleteAccountSection';
 import Link from 'next/link';
 
 export default function SettingsPage() {
   const t = useTranslations();
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
+  const { features } = useFeatures();
+  // Hidden unless this deployment has custom domains (ADR-025)
+  const showDomains = features?.custom_domains === true;
 
   if (isAuthLoading || !user) {
     return (
@@ -42,7 +47,7 @@ export default function SettingsPage() {
 
         <div className="space-y-3">
           {/* Domains link card (a guest session sees why it is off instead of a dead end) */}
-          {user.is_guest ? (
+          {!showDomains ? null : user.is_guest ? (
             <div className="w-full flex items-center gap-4 p-5 bg-surface-elevated/30 border border-subtle/50 rounded-xl">
               <div className="w-10 h-10 bg-surface-card border border-default/50 rounded-lg flex items-center justify-center shrink-0">
                 <Globe className="w-5 h-5 text-muted" aria-hidden="true" />
@@ -87,6 +92,8 @@ export default function SettingsPage() {
           </div>
           )}
         </div>
+
+        <DeleteAccountSection user={user} />
       </main>
     </div>
   );

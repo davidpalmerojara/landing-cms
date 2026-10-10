@@ -246,7 +246,7 @@
       "privacy": {
         "title": "Privacy",
         "updated": "Last updated",
-        "updatedDate": "October 9, 2026",
+        "updatedDate": "October 10, 2026",
         "intro": "Paxl is the demo of a personal project. This page explains, plainly, what data the app stores today. I recommend not using real personal data: a test name and email are enough.",
         "section1Title": "Your account",
         "section1Body": "Your username, your email and your password (stored as a hash). If you sign in with Google, also your Google identifier, name and picture. And, of course, the pages you create, their versions and the images you upload.",
@@ -259,7 +259,7 @@
         "section5Title": "What is not done",
         "section5Body": "Data is not sold or used for advertising. It is only used to make the app work.",
         "section6Title": "Deleting your data",
-        "section6Body": "There is no button to delete your account yet. If you want it deleted together with your pages, write to me through davidpalmero.dev."
+        "section6Body": "You can delete your account yourself from Settings, under Delete account (it asks for your password or for you to type your username). Your account, your pages and their versions, the messages received through forms, the analytics and the images you uploaded are permanently deleted. If you have an active paid subscription, it has to be cancelled first. Guest accounts delete themselves after 24 hours. If something goes wrong, write to me through davidpalmero.dev."
       },
       "terms": {
         "title": "Terms of use",
@@ -358,7 +358,25 @@
     "domainsTitle": "Custom domains",
     "domainsDescription": "Connect your own domain to your published pages.",
     "accountTitle": "Account",
-    "accountDescription": "Manage your profile, email and password."
+    "accountDescription": "Manage your profile, email and password.",
+    "deleteAccount": {
+      "sectionTitle": "Danger zone",
+      "title": "Delete account",
+      "description": "Deletes your account and everything in it: pages, versions, form messages, analytics and images. This cannot be undone.",
+      "button": "Delete account",
+      "dialogTitle": "Delete your account?",
+      "dialogBody": "Your account, your pages (published ones too), their versions, the messages received, the analytics and the images you uploaded will be permanently deleted. This cannot be undone.",
+      "passwordLabel": "Current password",
+      "usernameLabel": "To confirm, type your username ({username})",
+      "confirm": "Delete my account",
+      "deleting": "Deleting...",
+      "invalidPassword": "The password is not correct.",
+      "usernameMismatch": "The username does not match.",
+      "activeSubscription": "You have an active paid subscription. Cancel it from Billing before deleting your account.",
+      "goToBilling": "Go to Billing",
+      "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+      "error": "The account could not be deleted. Try again."
+    }
   },
   "editor": {
     "inspector": "Inspector",

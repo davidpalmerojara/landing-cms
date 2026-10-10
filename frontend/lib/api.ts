@@ -138,6 +138,8 @@ export interface ApiUser {
   username: string;
   avatar: string;
   created_at: string;
+  /** False for magic-link and Google accounts: they confirm a deletion with their username */
+  has_password: boolean;
   /** Temporary "try it without signing up" account */
   is_guest: boolean;
   /** When a guest session is deleted (ISO date); null for normal accounts */

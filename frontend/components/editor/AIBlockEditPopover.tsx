@@ -87,6 +87,8 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
         blockId,
         value,
         ownKey ? { provider: aiProvider, api_key: ownKey } : undefined,
+        // Selecting the block took its lock for this connection: say it is us
+        useEditorStore.getState().myConnectionId,
       );
       if (!replaceBlockData(blockId, result.block.type, result.block.data)) {
         // The server answered with a block type this editor does not know

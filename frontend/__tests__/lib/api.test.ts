@@ -178,4 +178,25 @@ describe('api', () => {
       expect(url).toContain('/pages/');
     });
   });
+
+  // COLLAB2-001 / MOBILE2-001: the block's lock is held by this editor's socket
+  describe('ai.editBlock', () => {
+    it('names its own connection, so the lock it holds is not taken for someone else\'s', async () => {
+      mockFetch.mockReturnValue(jsonResponse({ block: {} }));
+
+      await api.ai.editBlock('p1', 'b1', 'Más corto', undefined, 'conn-1');
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/pages/p1/blocks/b1/edit-ai/');
+      expect(options.headers['X-Connection-Id']).toBe('conn-1');
+    });
+
+    it('sends no connection header without a socket', async () => {
+      mockFetch.mockReturnValue(jsonResponse({ block: {} }));
+
+      await api.ai.editBlock('p1', 'b1', 'Más corto');
+
+      expect(mockFetch.mock.calls[0][1].headers['X-Connection-Id']).toBeUndefined();
+    });
+  });
 });

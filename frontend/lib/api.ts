@@ -562,9 +562,11 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    editBlock: (pageId: string, blockId: string, instruction: string, ownKey?: AiOwnKey) =>
+    /** connectionId: this editor's socket, which holds the block's lock while it is selected (else 409 BLOCK_LOCKED). */
+    editBlock: (pageId: string, blockId: string, instruction: string, ownKey?: AiOwnKey, connectionId?: string | null) =>
       request<AiEditBlockResponse>(`/pages/${pageId}/blocks/${blockId}/edit-ai/`, {
         method: 'POST',
+        headers: connectionHeaders(connectionId),
         body: JSON.stringify({ instruction, ...ownKey }),
       }),
   },

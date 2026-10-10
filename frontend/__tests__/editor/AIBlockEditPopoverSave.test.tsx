@@ -65,6 +65,18 @@ describe('AIBlockEditPopover', () => {
     unregister();
   });
 
+  it('COLLAB2-001: asks with this editor\'s connection, which holds the block\'s lock', async () => {
+    act(() => { useEditorStore.setState({ myConnectionId: 'conn-mine' }); });
+    await open();
+    const unregister = registerSaveFlush(async () => true);
+    const editBlock = vi.spyOn(api.ai, 'editBlock').mockResolvedValue(RESPONSE);
+
+    await send('Más corto');
+
+    expect(editBlock).toHaveBeenCalledWith('page-123', 'b1', 'Más corto', undefined, 'conn-mine');
+    unregister();
+  });
+
   it('QA-038: focusing the instruction does not scroll the editor, and the popover undoes the canvas zoom', async () => {
     const focus = vi.spyOn(HTMLElement.prototype, 'focus');
     act(() => { useEditorStore.setState({ viewportState: { zoom: 0.5, x: 0, y: 0 } }); });

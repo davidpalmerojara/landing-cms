@@ -345,7 +345,7 @@ describe('AIBlockEditPopover', () => {
     click(view.container.querySelector<HTMLButtonElement>('button[aria-label="Enviar instrucción"]')!);
     await flush();
 
-    expect(editBlock).toHaveBeenCalledWith('page-123', 'b1', 'Hazlo más corto', undefined);
+    expect(editBlock).toHaveBeenCalledWith('page-123', 'b1', 'Hazlo más corto', undefined, null);
     const block = useEditorStore.getState().page.blocks[0];
     expect(block.data).toMatchObject({ title: 'Variante guardada' });
     expect(onClose).not.toHaveBeenCalled();
@@ -460,6 +460,6 @@ describe('AIBlockEditPopover', () => {
     click(view.container.querySelector<HTMLButtonElement>('button[aria-label="Enviar instrucción"]')!);
     await flush();
 
-    expect(editBlock).toHaveBeenCalledWith('page-123', 'b1', 'Hazlo más corto', { provider: 'gemini', api_key: 'AIza-mine' });
+    expect(editBlock).toHaveBeenCalledWith('page-123', 'b1', 'Hazlo más corto', { provider: 'gemini', api_key: 'AIza-mine' }, null);
   });
 });

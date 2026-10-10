@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import ChartFrame from './ChartFrame';
 
 interface DeviceChartProps {
   data: { desktop: number; tablet: number; mobile: number };
@@ -33,9 +34,9 @@ export default function DeviceChart({ data }: DeviceChartProps) {
     }));
 
   return (
-    <div className="h-48">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+    <ChartFrame className="h-48">
+      {({ width, height }) => (
+        <PieChart width={width} height={height}>
           <Pie
             data={chartData}
             cx="50%"
@@ -54,7 +55,7 @@ export default function DeviceChart({ data }: DeviceChartProps) {
           />
           <Legend wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
-      </ResponsiveContainer>
-    </div>
+      )}
+    </ChartFrame>
   );
 }

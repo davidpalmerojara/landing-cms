@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { apiErrorMessage } from '@/lib/api-errors';
 import UpgradePrompt from '@/components/billing/UpgradePrompt';
 import MetricCard from './MetricCard';
 import ViewsChart from './ViewsChart';
@@ -41,15 +42,32 @@ function MetricSkeleton() {
 export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelProps) {
   const t = useTranslations();
   const [period, setPeriod] = useState('30d');
-  const { data, isLoading: loading, isPlanLimited, errorMessage: error, reload: fetchData } = useAnalytics(pageId, period);
+  const { data, isLoading: loading, isPlanLimited, hasLoadError, loadError, reload: fetchData } = useAnalytics(pageId, period);
   const periods = [
     { value: '7d', label: t('analytics.period7d') },
     { value: '30d', label: t('analytics.period30d') },
     { value: '90d', label: t('analytics.period90d') },
   ];
 
-  // Empty state for unpublished pages
+  // The plan comes first: publishing would not unlock analytics on a plan without it (QA-044)
+  if (isPlanLimited) {
+    return (
+      <UpgradePrompt
+        feature={t('analytics.upgradeFeature')}
+        description={t('analytics.upgradeDescription')}
+      />
+    );
+  }
+
+  // Empty state for unpublished pages (once the plan is known to include analytics)
   if (pageStatus !== 'published') {
+    if (loading && !data && !hasLoadError) {
+      return (
+        <div role="status" className="flex items-center justify-center h-full text-sm text-muted">
+          {t('analytics.loadingPanel')}
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 py-16">
         <div className="w-16 h-16 rounded-2xl bg-surface-card flex items-center justify-center mb-4">
@@ -63,20 +81,12 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
     );
   }
 
-  if (isPlanLimited) {
+  if (hasLoadError) {
     return (
-      <UpgradePrompt
-        feature={t('analytics.upgradeFeature')}
-        description={t('analytics.upgradeDescription')}
-      />
-    );
-  }
-
-  if (error !== null) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-8 py-16">
-        <p className="text-sm text-error mb-3">{error || t('analytics.loadError')}</p>
+      <div role="alert" className="flex flex-col items-center justify-center h-full text-center px-8 py-16">
+        <p className="text-sm text-error mb-3">{apiErrorMessage(loadError, t, 'analytics.loadError')}</p>
         <button
+          type="button"
           onClick={fetchData}
           className="text-sm text-primary-color hover:text-primary-color/80 flex items-center gap-1"
         >

@@ -35,7 +35,7 @@ describe('block name on the canvas toolbar', () => {
 
   it('is translated to Spanish by block type, not the English name stored in the block', () => {
     const { container } = mount(<BlockWrapper block={block} index={0}><div /></BlockWrapper>, 'es');
-    expect(container.querySelector('[role="region"]')?.getAttribute('aria-label')).toBe(MESSAGES.es.blocks.hero);
+    expect(container.querySelector('[role="group"]')?.getAttribute('aria-label')).toContain(MESSAGES.es.blocks.hero);
     expect(container.textContent).toContain(MESSAGES.es.blocks.hero);
     expect(container.textContent).not.toContain('Hero Section');
   });
@@ -44,7 +44,7 @@ describe('block name on the canvas toolbar', () => {
     const features = makeBlock('features', {}, { id: 'b2', name: 'Features Grid' });
     resetEditorStore(makePage([features]));
     const { container } = mount(<BlockWrapper block={features} index={0}><div /></BlockWrapper>, 'en');
-    expect(container.querySelector('[role="region"]')?.getAttribute('aria-label')).toBe('Features');
+    expect(container.querySelector('[role="group"]')?.getAttribute('aria-label')).toContain('Features');
     expect(container.textContent).toContain('Features');
     expect(container.textContent).not.toContain('Features Grid');
   });

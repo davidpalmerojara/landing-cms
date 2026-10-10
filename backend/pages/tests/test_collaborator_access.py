@@ -103,6 +103,34 @@ class TestOwnerOfAPageWithSeveralCollaborators:
         assert client.get(f'/api/pages/{shared_page.id}/analytics/').status_code == status.HTTP_404_NOT_FOUND
 
 
+class FreePlan(ProPlan):
+    name = 'free'
+    has_analytics = False
+
+
+@pytest.mark.django_db
+class TestAnalyticsFollowTheOwnersPlan:
+    """SEC2-008: analytics is a feature of the page owner's plan (ADR-032), not of the viewer's."""
+
+    def test_a_free_collaborator_sees_a_pro_owners_analytics(self, owner, shared_page, collaborator):
+        def plan_of(user):
+            return ProPlan() if user.pk == owner.pk else FreePlan()
+
+        with patch(GET_PLAN, side_effect=plan_of):
+            response = client_for(collaborator).get(f'/api/pages/{shared_page.id}/analytics/')
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_a_pro_collaborator_does_not_unlock_a_free_owners_analytics(self, owner, shared_page, collaborator):
+        def plan_of(user):
+            return FreePlan() if user.pk == owner.pk else ProPlan()
+
+        with patch(GET_PLAN, side_effect=plan_of):
+            response = client_for(collaborator).get(f'/api/pages/{shared_page.id}/analytics/')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
 # --- QA-023 / D1 -------------------------------------------------------------
 
 OWNER_ONLY = [

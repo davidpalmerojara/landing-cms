@@ -58,6 +58,31 @@ describe('useAutoSave (hook)', () => {
     view.unmount();
   });
 
+  it('stops saving once access to the page is revoked', async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const view = render(<Harness save={save} />);
+
+    act(() => { useEditorStore.getState().setCollabStatus('revoked'); });
+    act(() => { useEditorStore.getState().updateBlock(BLOCK, 'title', 'Edited'); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(AUTO_SAVE_DELAY * 2); });
+
+    expect(save).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it('drops a save that was already waiting when access is revoked', async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const view = render(<Harness save={save} />);
+
+    act(() => { useEditorStore.getState().updateBlock(BLOCK, 'title', 'Edited'); });
+    act(() => { useEditorStore.getState().setCollabStatus('revoked'); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(AUTO_SAVE_DELAY * 2); });
+
+    expect(save).not.toHaveBeenCalled();
+    expect(useEditorStore.getState().autoSaveStatus).toBe('idle');
+    view.unmount();
+  });
+
   it('does not save a page that came from the server', async () => {
     const save = vi.fn().mockResolvedValue(true);
     const view = render(<Harness save={save} />);

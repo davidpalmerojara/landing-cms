@@ -44,6 +44,9 @@ export interface PageSyncCallbacks {
 
 const store = () => useEditorStore.getState();
 
+/** The owner stopped sharing the page: the server refuses everything, so nothing is sent or fetched. */
+const isAccessRevoked = () => store().collabStatus === 'revoked';
+
 /** Read-only publication fields from the server, without an undo step or autosave. */
 function applyPublication(apiPage: ApiPage) {
   const page = store().page;
@@ -100,6 +103,7 @@ export class PageSyncController {
    * (it sends the latest state), so at most one PUT is in flight and one waits.
    */
   save(): Promise<boolean> {
+    if (isAccessRevoked()) return Promise.resolve(false);
     if (this.queuedSave) return this.queuedSave;
     const run = this.enqueue(() => {
       this.queuedSave = null;
@@ -110,6 +114,7 @@ export class PageSyncController {
   }
 
   private async saveNow(): Promise<boolean> {
+    if (isAccessRevoked()) return false;
     const current = store().page;
     if (current.id.startsWith('page_')) return this.create(current);
 
@@ -194,6 +199,7 @@ export class PageSyncController {
     const own = change.connectionId !== null && change.connectionId === store().myConnectionId;
     if (own) return Promise.resolve();
     return this.enqueue(async () => {
+      if (isAccessRevoked()) return;
       const base = store().syncBase;
       if (!base) return;
       const known = change.reason === 'reconnect' ? change.version === base.version : change.version <= base.version;

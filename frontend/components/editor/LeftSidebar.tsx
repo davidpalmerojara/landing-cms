@@ -2,14 +2,16 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { BoxSelect, Layers, GripVertical, Layout, Search } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { getBlockDefaults } from '@/lib/block-defaults';
 import type { BlockType } from '@/types/blocks';
 
 export default function LeftSidebar() {
   const t = useTranslations();
+  const locale = useLocale();
   const leftTab = useEditorStore((s) => s.leftTab);
   const setLeftTab = useEditorStore((s) => s.setLeftTab);
   const page = useEditorStore((s) => s.page);
@@ -79,7 +81,7 @@ export default function LeftSidebar() {
   ) => {
     if (e.button !== 0) return;
     initDrag(
-      { action: 'reorder', type: block.type, label: block.name, sourceIndex: index },
+      { action: 'reorder', type: block.type, label: getTranslatedBlockLabel(block.type, t, block.name), sourceIndex: index },
       { x: e.clientX, y: e.clientY }
     );
   };
@@ -148,8 +150,8 @@ export default function LeftSidebar() {
                   <div role="listitem" key={b.type} className="flex">
                   <button
                     type="button"
-                    onPointerDown={(e) => handleComponentPointerDown(e, b.type, b.label, b.initialData)}
-                    onClick={() => addBlock(b.type, b.label, null, b.initialData)}
+                    onPointerDown={(e) => handleComponentPointerDown(e, b.type, b.label, getBlockDefaults(b.type, locale))}
+                    onClick={() => addBlock(b.type, b.label, null, getBlockDefaults(b.type, locale))}
                     className="w-full flex flex-col items-center gap-2 p-3 rounded-lg border border-default/10 bg-surface-elevated/50 hover:bg-surface-card hover:border-default/30 transition-all group text-left cursor-grab active:cursor-grabbing"
                   >
                     <div className="w-10 h-10 rounded-lg bg-surface-card flex items-center justify-center text-secondary group-hover:text-primary-color group-hover:bg-primary/10 transition-colors">

@@ -1,5 +1,6 @@
 import { blockRegistry } from './block-registry';
 import { makeBlock } from './block-data';
+import { getBlockDefaults } from './block-defaults';
 import type { Block, BlockType } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 
@@ -24,7 +25,8 @@ export function isBlockId(id: string): boolean {
   return UUID_RE.test(id);
 }
 
-export function createBlock(type: BlockType): Block {
+/** A new block of `type` with the sample content of `locale` (the interface language). */
+export function createBlock(type: BlockType, locale: string): Block {
   const config = blockRegistry[type];
-  return makeBlock({ id: newBlockId(), name: config.label, styles: { ...defaultBlockStyles } }, type, config.initialData);
+  return makeBlock({ id: newBlockId(), name: config.label, styles: { ...defaultBlockStyles } }, type, getBlockDefaults(type, locale));
 }

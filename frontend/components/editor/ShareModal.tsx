@@ -268,7 +268,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
 
               {collaborators.length === 0 && (
                 <p className="text-xs text-muted text-center py-4">
-                  {t('share.empty')}
+                  {isGuest ? t('share.emptyGuest') : t('share.empty')}
                 </p>
               )}
             </div>

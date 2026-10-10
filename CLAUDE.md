@@ -241,7 +241,7 @@ Estas decisiones estan tomadas y no deben cuestionarse ni cambiarse sin discusio
 
 Las listas son arrays de objetos (ADR-021). Los tipos viven en `types/block-data.ts` (union discriminada por `type`); `normalizeBlockData()` en `lib/block-data.ts` convierte los datos de la API al tipo de cada bloque, y el backend los valida en `clean_block_data` (`pages/block_validators.py`), el unico camino para REST, WebSocket, IA y restauracion de versiones.
 
-Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, y seguir la interfaz `BlockProps` (`blockId`, `data`, `isPreviewMode`).
+Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, tener su contenido de ejemplo en español e inglés en `lib/block-defaults.ts` (y un elemento nuevo por cada lista), y seguir la interfaz `BlockProps` (`blockId`, `data`, `isPreviewMode`). El contenido que crea la app (bloques nuevos, plantillas en `lib/template-content/`) sigue el idioma de la interfaz en el momento de crearlo (ADR-025); nunca se traduce lo ya escrito.
 
 Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mobile-first con las variantes de container query `@tablet:` (>= 640px) y `@desktop:` (>= 1024px); cada superficie que pinta bloques (canvas, vista previa, pagina publica, miniaturas) pone `@container` en su raiz. Nada en un bloque puede depender de `window`, porque la pagina publica se renderiza en el servidor (ADR-019).
 

@@ -5,7 +5,7 @@ import { Sparkles, Loader2, X, Send, Key } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import type { AiDemoInfo, AiSource } from '@/lib/api';
-import { aiErrorMessageKey, parseApiError } from '@/lib/ai';
+import { aiErrorText, parseApiError } from '@/lib/ai';
 import { useAiOptions } from '@/hooks/useAiOptions';
 import { useEditorStore } from '@/store/editor-store';
 import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
@@ -35,10 +35,13 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
   const [aiKey, setAiKey] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const replaceBlockData = useEditorStore((s) => s.replaceBlockData);
-  const { options } = useAiOptions(locale === 'en' ? 'en' : 'es');
+  const { options, error: optionsError } = useAiOptions(locale === 'en' ? 'en' : 'es');
   const ownKey = aiKey.trim();
   // Without their own key, in demo mode the instruction cannot be followed
+  // (and neither can the suggestions, which are instructions: "translate it...")
   const demoEditsAhead = options?.mode === 'demo' && !ownKey;
+  // Wait for the mode so the chips do not flash and vanish; without it (request failed) show them
+  const showSuggestions = (options !== null || optionsError !== null) && !demoEditsAhead;
   const suggestions = [
     t('ai.blockSuggestion1'),
     t('ai.blockSuggestion2'),
@@ -87,8 +90,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
       onClose();
     } catch (e) {
       const { message, code } = parseApiError(e, t('ai.blockEditError'));
-      const translatedKey = aiErrorMessageKey(code);
-      setError(translatedKey ? t(translatedKey) : message);
+      setError(aiErrorText({ message, code }, t, t('ai.blockEditError')));
     } finally {
       setIsLoading(false);
     }
@@ -176,7 +178,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
           )}
 
           {/* Quick suggestions */}
-          {!isLoading && !error && !savedResult && (
+          {!isLoading && !error && !savedResult && showSuggestions && (
             <div className="flex flex-wrap gap-1.5 mt-2.5">
               {suggestions.map((s) => (
                 <button

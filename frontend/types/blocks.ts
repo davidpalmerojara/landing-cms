@@ -59,10 +59,9 @@ export function resolveStyles(block: Block, deviceMode: 'desktop' | 'tablet' | '
 
 export interface BlockDefinition<K extends BlockType> {
   type: K;
+  /** English name, the fallback; the editor shows the translated name by block type. */
   label: string;
   icon: LucideIcon;
-  /** Content of a block added from the editor. */
-  initialData: BlockDataMap[K];
   fields: TypedFieldDefinition<BlockDataMap[K]>[];
   component: ComponentType<BlockProps<BlockDataMap[K]>>;
 }

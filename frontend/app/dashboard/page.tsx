@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Plus, FileText, Copy, Trash2, ExternalLink, Globe,
   Loader2, AlertCircle, MoreVertical, LogOut, Users,
@@ -40,6 +40,7 @@ interface DashboardProps {
 
 function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const { isGuest, openClaim } = useGuestSession();
   const { subscription } = useSubscription({ enabled: Boolean(user) });
@@ -95,7 +96,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const handleCreateFromTemplate = async (templateId: string | null) => {
     setIsCreating(true);
     try {
-      const page = await api.pages.create(buildPagePayload(templateId, t('dashboard.createUntitled')));
+      const page = await api.pages.create(buildPagePayload(templateId, t('dashboard.createUntitled'), locale));
       router.push(`/editor/${page.id}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.createError');

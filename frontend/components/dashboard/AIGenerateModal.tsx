@@ -5,7 +5,7 @@ import { X, Sparkles, Loader2, AlertCircle, Key } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import type { AiDemoInfo, AiPromptSuggestion, AiSource } from '@/lib/api';
-import { aiErrorMessageKey, parseApiError } from '@/lib/ai';
+import { aiErrorText, parseApiError } from '@/lib/ai';
 import { useAiOptions } from '@/hooks/useAiOptions';
 import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
 import AiModeNotice from '@/components/ai/AiModeNotice';
@@ -105,10 +105,9 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
       }
     } catch (e) {
       const { message, code } = parseApiError(e, t('ai.generateError'));
-      const translatedKey = aiErrorMessageKey(code);
       // No server key, or the plan doesn't include AI: the user's own key works
       if (code && NEEDS_KEY_CODES.has(code)) setShowKeySetup(true);
-      setError(translatedKey ? t(translatedKey) : message);
+      setError(aiErrorText({ message, code }, t, t('ai.generateError')));
       setStatusMsg(null);
     } finally {
       setIsGenerating(false);

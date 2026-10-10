@@ -5,6 +5,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import PublicPageClient from '@/app/p/[slug]/PublicPageClient';
 import type { ApiPublicPage } from '@/lib/api';
 import { blockRegistry } from '@/lib/block-registry';
+import { getBlockDefaults } from '@/lib/block-defaults';
+import { isBlockType } from '@/lib/block-data';
 import { MESSAGES } from '@/lib/i18n';
 
 const blockIds = Object.keys(blockRegistry).map((_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`);
@@ -16,13 +18,13 @@ const page: ApiPublicPage = {
   status: 'published',
   name: 'Mi landing',
   design_tokens: {},
-  blocks: Object.entries(blockRegistry).map(([type, definition], order) => ({
+  blocks: Object.entries(blockRegistry).map(([type], order) => ({
     id: blockIds[order],
     type,
     order,
     data: (type === 'hero'
-      ? { ...definition.initialData, title: 'Lanza tu producto hoy', buttonLink: '#pricing' }
-      : { ...definition.initialData }) as Record<string, unknown>,
+      ? { ...getBlockDefaults('hero', 'es'), title: 'Lanza tu producto hoy', buttonLink: '#pricing' }
+      : isBlockType(type) ? { ...getBlockDefaults(type, 'es') } : {}) as Record<string, unknown>,
     styles: type === 'hero'
       ? { paddingTop: 96, responsive: { mobile: { paddingTop: 32 } } }
       : {},

@@ -37,8 +37,6 @@ export interface ListFieldDefinition extends FieldBase {
   itemLabel: string;
   itemFields: ScalarFieldDefinition[];
   maxItems: number;
-  /** Content of an item added from the inspector. */
-  newItem: object;
 }
 
 /** A field as the inspector sees it, without the block type. */
@@ -52,10 +50,9 @@ export type TypedScalarField<T> =
   | (ToggleFieldDefinition & { key: KeysOfType<T, boolean> });
 
 export type TypedListField<T> = {
-  [P in ListKeys<T>]: Omit<ListFieldDefinition, 'key' | 'itemFields' | 'newItem'> & {
+  [P in ListKeys<T>]: Omit<ListFieldDefinition, 'key' | 'itemFields'> & {
     key: P;
     itemFields: TypedScalarField<ItemOf<T[P]>>[];
-    newItem: ItemOf<T[P]>;
   };
 }[ListKeys<T>];
 

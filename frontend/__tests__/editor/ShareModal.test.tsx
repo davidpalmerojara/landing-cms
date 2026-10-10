@@ -71,6 +71,23 @@ describe('ShareModal', () => {
       expect(text(view)).toContain('Invitar por email necesita una cuenta');
       expect(text(view)).toContain('Invitar con un enlace');
     });
+
+    it('an empty list tells a guest to use a link and anyone else to invite by email', async () => {
+      const alone = { owner, collaborators: [] };
+      vi.mocked(api.pages.collaborators).mockResolvedValue({
+        owner: { id: guestUser.id, username: guestUser.username, email: guestUser.email },
+        collaborators: [],
+      });
+      view = await open(guestUser);
+      expect(text(view)).toContain('Crea un enlace de invitación');
+      expect(text(view)).not.toContain('por email.');
+      view.unmount();
+
+      vi.mocked(api.pages.collaborators).mockResolvedValue(alone);
+      view = await open(normalUser);
+      expect(text(view)).toContain('Invita a alguien por email.');
+      expect(text(view)).not.toContain('Crea un enlace de invitación');
+    });
   });
 
   describe('invite link', () => {

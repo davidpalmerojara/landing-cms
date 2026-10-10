@@ -3,12 +3,12 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { Page, SeoFields } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
 import type { ColorTokens, TypographyTokens, SpacingTokens, BorderTokens } from '@/lib/design-tokens';
-import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
-import type { Block, BlockDataMap, BlockStyles, BlockType, DataPath } from '@/types/blocks';
+import type { Block, BlockStyles, BlockType, DataPath } from '@/types/blocks';
 import { defaultBlockStyles } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
 import type { DeviceMode, ViewportState, InteractionState, DragSource } from '@/types/editor';
 import { newBlockId } from '@/lib/block-factory';
+import { getDefaultPage } from '@/lib/default-page';
 import {
   getAtPath,
   insertListItem,
@@ -23,51 +23,6 @@ import {
   splitApiStyles,
   withBlockData,
 } from '@/lib/block-data';
-
-// --- Default page (hardcoded to avoid circular dep: block-registry → blocks → EditableText → editor-store) ---
-
-function defaultBlock<K extends BlockType>(id: string, type: K, name: string, data: Partial<BlockDataMap[K]>): Block {
-  return makeBlock({ id, name, styles: { ...defaultBlockStyles } }, type, data);
-}
-
-function getDefaultPage(): Page {
-  return {
-    id: 'page_default',
-    name: 'Acme Landing',
-    status: 'draft',
-    slug: 'acme-landing',
-    designTokens: cloneDesignTokens(defaultDesignTokens),
-    seo: { ...defaultSeoFields },
-    blocks: [
-      defaultBlock('blk_default_1', 'hero', 'Hero Section', { title: 'Crea landing pages increíbles.', subtitle: 'Un editor visual de próxima generación diseñado para equipos ambiciosos.', buttonText: 'Comenzar gratis', backgroundImage: '', alignment: 'center' }),
-      defaultBlock('blk_default_2', 'features', 'Features Grid', {
-        title: 'Descubre las ventajas',
-        features: [
-          { title: 'Característica 1', description: 'Descripción breve de esta característica increíble.' },
-          { title: 'Característica 2', description: 'Descripción breve de esta característica increíble.' },
-        ],
-      }),
-      defaultBlock('blk_default_3', 'testimonials', 'Testimonials', {
-        title: 'Lo que dicen de nosotros',
-        testimonials: [
-          { quote: 'Este producto ha cambiado por completo la forma en que trabajamos. Simplemente brillante.', author: 'María García', role: 'Product Manager en TechCorp' },
-          { quote: 'La mejor decisión que tomamos este año. El soporte es increíble y los resultados inmediatos.', author: 'Carlos Ruiz', role: 'CTO en Startup.io' },
-        ],
-      }),
-      defaultBlock('blk_default_4', 'cta', 'Call to Action', { title: 'Comienza tu viaje', subtitle: '', buttonText: 'Suscribirse' }),
-      defaultBlock('blk_default_5', 'footer', 'Footer Simple', {
-        brandName: 'Acme Corp',
-        description: 'Construyendo el futuro de la web, un bloque a la vez. Únete a nuestra revolución digital.',
-        copyright: '© 2026 Acme Corporation. Todos los derechos reservados.',
-        links: [
-          { label: 'Producto', url: '' },
-          { label: 'Precios', url: '' },
-          { label: 'Contacto', url: '' },
-        ],
-      }),
-    ],
-  };
-}
 
 /** Blocks with block `id` replaced by `update(block)`. */
 function mapBlock(blocks: Block[], id: string, update: (block: Block) => Block): Block[] {
@@ -318,7 +273,8 @@ export const HISTORY_COALESCE_MS = 1000;
 export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, get) => {
   return ({
   // --- Initial state ---
-  page: getDefaultPage(),
+  // The editor loads the real page before showing it; Spanish only fills the gap until then
+  page: getDefaultPage('es'),
   past: [],
   future: [],
   historyCoalesceKey: null,

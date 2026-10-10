@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, UserPlus, Trash2, Crown, Loader2, Users, Link2, Copy, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
+import { isGuestEmail, isGuestUsername } from '@/lib/collab-names';
 import { useEditorStore } from '@/store/editor-store';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { useInviteLink } from '@/hooks/useInviteLink';
 import { useCollaborators } from '@/hooks/useCollaborators';
 import { useGuestSession } from '@/components/guest/GuestSessionProvider';
@@ -13,6 +15,33 @@ interface ShareModalProps {
   pageId: string;
   onClose: () => void;
 }
+
+type ShareErrorKey =
+  | 'share.shareError'
+  | 'share.removeError'
+  | 'share.invalidEmail'
+  | 'share.cannotShareSelf'
+  | 'share.notOwner'
+  | 'share.notCollaborator'
+  | 'share.throttled';
+
+/** Which translated message explains a failed share or unshare (never the server's raw text). */
+export function shareErrorKey(error: unknown, action: 'share' | 'remove'): ShareErrorKey {
+  const fallback = action === 'share' ? 'share.shareError' : 'share.removeError';
+  if (!(error instanceof ApiError)) return fallback;
+  if (error.status === 429) return 'share.throttled';
+  if (error.status === 403) return 'share.notOwner';
+  if (action === 'remove' && error.status === 404) return 'share.notCollaborator';
+  if (action === 'share' && error.status === 400) {
+    // A field error is the email; without one the only 400 is sharing with yourself
+    return error.details ? 'share.invalidEmail' : 'share.cannotShareSelf';
+  }
+  return fallback;
+}
+
+/** Ids of the people connected to the page, as one comparable string. */
+const presentUserIds = (s: { presence: { userId: string }[] }) =>
+  [...new Set(s.presence.map((e) => e.userId))].sort().join(',');
 
 export default function ShareModal({ pageId, onClose }: ShareModalProps) {
   const t = useTranslations();
@@ -34,19 +63,13 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
     setSuccess(null);
 
     try {
-      const result = await api.pages.share(pageId, email.trim());
-      setSuccess(result.message);
+      await api.pages.share(pageId, email.trim());
+      // The server says the same whether or not the address has an account
+      setSuccess(t('share.shared'));
       setEmail('');
       loadCollaborators();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('share.shareError');
-      // Try to parse JSON error from API
-      try {
-        const parsed = JSON.parse(msg.replace(/^API \d+: /, ''));
-        setError(parsed.error || msg);
-      } catch {
-        setError(msg);
-      }
+      setError(t(shareErrorKey(err, 'share')));
     } finally {
       setIsAdding(false);
     }
@@ -58,55 +81,46 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
     setSuccess(null);
 
     try {
-      const result = await api.pages.unshare(pageId, userId);
-      setSuccess(result.message);
+      await api.pages.unshare(pageId, userId);
+      setSuccess(t('share.removed'));
       loadCollaborators();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('share.removeError'));
+      setError(t(shareErrorKey(err, 'remove')));
     } finally {
       setRemovingId(null);
     }
   };
 
   const modalRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape + focus trap
+  // Focus moves in, Tab stays inside, Escape closes, and focus goes back to
+  // "Compartir" when the dialog closes (QA-062)
+  useDialogFocus(modalRef, true, onClose);
+  // Escape also works when focus fell out of the dialog (the button that
+  // created the invite link is replaced by the link); inside, the hook handles it
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    // Focus first focusable element on mount
-    if (modalRef.current) {
-      const first = modalRef.current.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      first?.focus();
-    }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  // Someone joined with an invite link while the dialog is open: show them (QA-062)
+  const presenceKey = useEditorStore(presentUserIds);
+  const knownIds = useMemo(
+    () => new Set([owner?.id, ...collaborators.map((c) => c.id)].filter(Boolean)),
+    [owner, collaborators],
+  );
+  const lastPresenceKey = useRef(presenceKey);
+  useEffect(() => {
+    if (isLoading || presenceKey === lastPresenceKey.current) return;
+    lastPresenceKey.current = presenceKey;
+    if (presenceKey.split(',').some((id) => id && !knownIds.has(id))) loadCollaborators();
+  }, [presenceKey, isLoading, knownIds, loadCollaborators]);
+
+  /** A guest's generated username and placeholder email mean nothing to people: "Invitado", no email. */
+  const shownName = (username: string) => (isGuestUsername(username) ? t('share.guest') : username);
+  const shownEmail = (address: string | undefined) => (address && !isGuestEmail(address) ? address : null);
 
   const myUserId = useEditorStore((s) => s.myUserId);
   const { isGuest } = useGuestSession();
@@ -200,12 +214,12 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
               {owner && (
                 <div className="flex items-center justify-between py-2 px-2 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-                      {owner.username.charAt(0).toUpperCase()}
+                    <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                      {shownName(owner.username).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm text-primary font-medium">{owner.username}</p>
-                      <p className="text-xs text-muted">{owner.email}</p>
+                      <p className="text-sm text-primary font-medium">{shownName(owner.username)}</p>
+                      {shownEmail(owner.email) && <p className="text-xs text-muted">{shownEmail(owner.email)}</p>}
                     </div>
                   </div>
                   <span className="flex items-center gap-1 text-xs text-warning font-medium">
@@ -219,19 +233,19 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
               {collaborators.map((collab) => (
                 <div key={collab.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-surface-card/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-default flex items-center justify-center text-primary text-xs font-bold">
-                      {collab.username.charAt(0).toUpperCase()}
+                    <div aria-hidden="true" className="w-8 h-8 rounded-full bg-default flex items-center justify-center text-primary text-xs font-bold">
+                      {shownName(collab.username).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm text-primary">{collab.username}</p>
-                      <p className="text-xs text-muted">{collab.email}</p>
+                      <p className="text-sm text-primary">{shownName(collab.username)}</p>
+                      {shownEmail(collab.email) && <p className="text-xs text-muted">{shownEmail(collab.email)}</p>}
                     </div>
                   </div>
                   {isOwner && (
                     <button
                       onClick={() => handleRemove(collab.id)}
                       disabled={removingId === collab.id}
-                      aria-label={`${t('share.removeCollaborator')}: ${collab.username}`}
+                      aria-label={`${t('share.removeCollaborator')}: ${shownName(collab.username)}`}
                       className="p-1.5 text-muted hover:text-red-400 rounded hover:bg-surface-card transition-colors disabled:opacity-50"
                       title={t('share.removeCollaborator')}
                     >

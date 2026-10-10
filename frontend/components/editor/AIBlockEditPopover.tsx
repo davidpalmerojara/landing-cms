@@ -2,14 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, X, Send, Key } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { api } from '@/lib/api';
-import type { AiDemoInfo, AiSource } from '@/lib/api';
-import { aiErrorText, parseApiError } from '@/lib/ai';
-import { flushPendingSave } from '@/lib/save-flush';
-import { useAiOptions } from '@/hooks/useAiOptions';
+import { useTranslations } from 'next-intl';
+import { useAiBlockEdit } from '@/hooks/useAiBlockEdit';
 import { useEditorStore } from '@/store/editor-store';
-import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
+import AiKeyFields from '@/components/ai/AiKeyFields';
 import AiSavedAnswerNotice from '@/components/ai/AiSavedAnswerNotice';
 
 interface AIBlockEditPopoverProps {
@@ -18,41 +14,28 @@ interface AIBlockEditPopoverProps {
   onClose: () => void;
 }
 
-interface SavedResult {
-  source: AiSource;
-  demo?: AiDemoInfo;
-}
-
 export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlockEditPopoverProps) {
   const t = useTranslations();
-  const locale = useLocale();
   const [instruction, setInstruction] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // A saved variant stays on screen with its label until the user closes the popover
-  const [savedResult, setSavedResult] = useState<SavedResult | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
-  const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
-  const [aiKey, setAiKey] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const replaceBlockData = useEditorStore((s) => s.replaceBlockData);
   // The popover lives inside the zoomed canvas: undo the zoom so its text stays readable (QA-038)
   const zoom = useEditorStore((s) => s.viewportState.zoom);
   const counterScale = zoom > 0 ? 1 / zoom : 1;
-  const { options, error: optionsError } = useAiOptions(locale === 'en' ? 'en' : 'es');
-  const ownKey = aiKey.trim();
-  // Without their own key, in demo mode the instruction cannot be followed
-  // (and neither can the suggestions, which are instructions: "translate it...")
-  const demoEditsAhead = options?.mode === 'demo' && !ownKey;
-  // Wait for the mode so the chips do not flash and vanish; without it (request failed) show them
-  const showSuggestions = (options !== null || optionsError !== null) && !demoEditsAhead;
-  const suggestions = [
-    t('ai.blockSuggestion1'),
-    t('ai.blockSuggestion2'),
-    t('ai.blockSuggestion3'),
-    t('ai.blockSuggestion4'),
-    t('ai.blockSuggestion5'),
-  ];
+  // Same flow as Quick Edit (QA-067); a saved variant stays on screen with its label until closed
+  const {
+    submit,
+    isLoading,
+    error,
+    savedResult,
+    demoEditsAhead,
+    showSuggestions,
+    suggestions,
+    provider: aiProvider,
+    setProvider: setAiProvider,
+    apiKey: aiKey,
+    setApiKey: setAiKey,
+  } = useAiBlockEdit(pageId, blockId);
 
   useEffect(() => {
     // Focusing must not scroll the editor shell, which has overflow hidden (QA-038)
@@ -69,43 +52,7 @@ export default function AIBlockEditPopover({ blockId, pageId, onClose }: AIBlock
   }, [isLoading, onClose]);
 
   const handleSubmit = async (text?: string) => {
-    const value = (text || instruction).trim();
-    if (!value || isLoading) return;
-
-    setIsLoading(true);
-    setError(null);
-    setSavedResult(null);
-
-    try {
-      // The server edits its copy of the block: it must have what is on screen (QA-037)
-      if (!(await flushPendingSave())) {
-        setError(t('saveStatus.aiNeedsSave'));
-        return;
-      }
-      const result = await api.ai.editBlock(
-        pageId,
-        blockId,
-        value,
-        ownKey ? { provider: aiProvider, api_key: ownKey } : undefined,
-        // Selecting the block took its lock for this connection: say it is us
-        useEditorStore.getState().myConnectionId,
-      );
-      if (!replaceBlockData(blockId, result.block.type, result.block.data)) {
-        // The server answered with a block type this editor does not know
-        setError(t('ai.blockEditError'));
-        return;
-      }
-      if (result.source === 'demo') {
-        setSavedResult({ source: result.source, demo: result.demo });
-        return;
-      }
-      onClose();
-    } catch (e) {
-      const { message, code } = parseApiError(e, t('ai.blockEditError'));
-      setError(aiErrorText({ message, code }, t, t('ai.blockEditError')));
-    } finally {
-      setIsLoading(false);
-    }
+    if (await submit(text ?? instruction)) onClose();
   };
 
   return (

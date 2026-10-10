@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { api } from '@/lib/api';
+import { aiEditPageVersion, api } from '@/lib/api';
 import type { AiDemoInfo, AiSource } from '@/lib/api';
 import { aiErrorText, parseApiError } from '@/lib/ai';
+import { adoptServerBlock } from '@/lib/page-sync';
 import { flushPendingSave } from '@/lib/save-flush';
 import { useAiOptions } from '@/hooks/useAiOptions';
 import { useEditorStore } from '@/store/editor-store';
@@ -16,16 +17,18 @@ export interface AiSavedResult {
 }
 
 /**
- * Rewrite one block with AI (POST /pages/{id}/blocks/{bid}/edit-ai/), the same
- * flow as the canvas popover: the pending save goes first (the server edits
- * its copy), the answer replaces the block's data as one undo step, and a
- * saved demo variant says so instead of pretending it followed the
- * instruction. Used by Quick Edit's "Mejorar con IA" (QA-067).
+ * Rewrite one block with AI (POST /pages/{id}/blocks/{bid}/edit-ai/): the
+ * pending save goes first (the server edits its copy, QA-037), the answer
+ * replaces the block's data as one undo step and becomes the editor's sync
+ * base with the page version the server reports, because the server already
+ * stored it (MOBILE2-002: otherwise the next save conflicts and undoing the
+ * edit does not stick). A saved demo variant says so instead of pretending it
+ * followed the instruction. Used by the canvas popover and Quick Edit's
+ * "Mejorar con IA" (QA-067).
  */
 export function useAiBlockEdit(pageId: string, blockId: string, enabled = true) {
   const t = useTranslations();
   const locale = useLocale();
-  const replaceBlockData = useEditorStore((s) => s.replaceBlockData);
   const { options, error: optionsError } = useAiOptions(locale === 'en' ? 'en' : 'es', enabled);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +68,11 @@ export function useAiBlockEdit(pageId: string, blockId: string, enabled = true) 
         // Selecting the block took its lock for this connection: say it is us
         useEditorStore.getState().myConnectionId,
       );
-      if (!replaceBlockData(blockId, result.block.type, result.block.data)) {
+      const adopted = adoptServerBlock({
+        block: { id: blockId, type: result.block.type, data: result.block.data },
+        pageVersion: aiEditPageVersion(result),
+      });
+      if (!adopted) {
         // The server answered with a block type this editor does not know
         setError(t('ai.blockEditError'));
         return false;
@@ -82,7 +89,7 @@ export function useAiBlockEdit(pageId: string, blockId: string, enabled = true) 
     } finally {
       setIsLoading(false);
     }
-  }, [blockId, isLoading, ownKey, pageId, provider, replaceBlockData, t]);
+  }, [blockId, isLoading, ownKey, pageId, provider, t]);
 
   const reset = useCallback(() => {
     setError(null);

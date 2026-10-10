@@ -173,12 +173,12 @@ class TestListItemSanitizing:
         data = clean_block_data(block_type, {key: [{field: '<b>bold</b><script>alert(1)</script>'}]})
         assert data[key][0][field] == 'boldalert(1)'
 
-    def test_plain_text_is_unescaped_exactly_once(self):
-        # Same behaviour as the flat fields had: stored as text, not as entities
+    def test_plain_text_is_stored_as_text_and_typed_entities_are_kept(self):
+        # Stored as text, not as entities; an entity the user typed is not decoded
         data = clean_block_data('stats', {'stats': [{'value': '5 &lt; 6', 'label': '<10ms'}]})
-        assert data['stats'][0] == {'value': '5 < 6', 'label': '<10ms'}
+        assert data['stats'][0] == {'value': '5 &lt; 6', 'label': '<10ms'}
         data = clean_block_data('stats', {'stats': [{'value': '&amp;lt;'}]})
-        assert data['stats'][0]['value'] == '&lt;'
+        assert data['stats'][0]['value'] == '&amp;lt;'
 
     def test_alt_text_is_plain_text_with_a_300_char_limit(self):
         data = clean_block_data('gallery', {'images': [{'src': '', 'alt': '<b>A</b> cat'}]})

@@ -258,6 +258,21 @@ class TestBlockStylesOverRest:
         assert 'styles' in str(response.data['details'])
         assert not page.blocks.exists()
 
+    @pytest.mark.parametrize('styles', [
+        {'a': 'x\u0000y'},
+        {'k\u0000': 1},
+        {'responsive': {'mobile': {'bgColor': '\u0000'}}},
+        {'a': 'new\nline'},
+        {'k' * 101: 1},
+    ])
+    def test_nul_and_control_characters_and_huge_names_are_refused(self, auth_client, page, styles):
+        # SEC3-003: PostgreSQL's jsonb cannot store \u0000, so it must never reach the database
+        response = self._put(auth_client, page, styles)
+
+        assert response.status_code == 400, response.data
+        assert 'styles' in str(response.data['details'])
+        assert not page.blocks.exists()
+
     def test_nested_values_past_the_device_overrides_are_dropped(self, auth_client, page):
         response = self._put(auth_client, page, {
             'paddingTop': 16, 'bgColor': '#fff', 'list': [1, 2],

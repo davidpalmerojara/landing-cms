@@ -287,12 +287,17 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
   useEffect(() => {
     mountedRef.current = true;
     stopReconnectRef.current = false;
+    // Per run of this effect, not shared like mountedRef: a run that was
+    // cleaned up while awaiting its ticket must not open a socket when the
+    // ticket arrives, even if a newer run has set mountedRef again (React
+    // mounts effects twice in development, and pageId can change).
+    let disposed = false;
     let attemptCount = 0;
     let wasConnected = false;
     const setStatus = useEditorStore.getState().setCollabStatus;
 
     function scheduleReconnect() {
-      if (!mountedRef.current || stopReconnectRef.current) return;
+      if (disposed || stopReconnectRef.current) return;
       if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
         logCollabWarning('[collab] Max reconnect attempts reached, giving up');
         setStatus('offline');
@@ -306,7 +311,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
 
     async function connect() {
       if (!pageId || pageId.startsWith('page_')) return;
-      if (!mountedRef.current || stopReconnectRef.current) return;
+      if (disposed || stopReconnectRef.current) return;
       setStatus(wasConnected ? 'reconnecting' : 'connecting');
 
       // A fresh single-use ticket per attempt: the socket may be on another
@@ -320,7 +325,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         scheduleReconnect();
         return;
       }
-      if (!mountedRef.current) return;
+      if (disposed) return;
 
       const url = `${WS_BASE}/ws/pages/${pageId}/?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(url);
@@ -353,13 +358,15 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
       };
 
       ws.onclose = (event) => {
+        // A socket of a run that was already cleaned up: its timers, locks and
+        // store state were cleared then; touching the shared refs now would
+        // break the newer run's connection.
+        if (disposed) return;
         cleanup();
         if (wsRef.current === ws) wsRef.current = null;
         // The server dropped this connection's locks and presence: forget them too
         heldLocksRef.current.clear();
         useEditorStore.getState().clearCollaboration();
-
-        if (!mountedRef.current) return;
 
         const status = useEditorStore.getState().collabStatus;
         if (stopReconnectRef.current) return; // revoked / plan limit: status already set
@@ -396,6 +403,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
     connect();
 
     return () => {
+      disposed = true;
       mountedRef.current = false;
       cleanup();
       if (reconnectTimerRef.current) {

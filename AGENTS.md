@@ -214,7 +214,7 @@ Autenticados:
 
 Validación de inputs relevante:
 - `POST /api/pages/{page_id}/generate/` valida `prompt` (max 2000), `tone` por choice y `language` en `es|en`.
-- `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/` valida `instruction` (max 1000) y responde `block` y `page_version` (versión de la página tras escribir, ADR-044).
+- `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/` valida `instruction` (max 1000) y responde `block` y `page_version` (versión de la página tras escribir, ADR-047).
 - `POST /api/billing/checkout/` valida `cycle` en `monthly|yearly`.
 - `POST /api/pages/{id}/share/` valida `email`; `POST /api/pages/{id}/unshare/` valida `user_id`.
 - `POST|PATCH /api/pages/{page_id}/versions/` valida `label` opcional con max 200.

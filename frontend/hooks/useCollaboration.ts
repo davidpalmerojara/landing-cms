@@ -303,7 +303,9 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         } else if (msg.code === 'plan_limit') {
           stopReconnectRef.current = true;
           store.setCollabStatus('unavailable');
-          store.addToast(tRef.current('collab.planLimit'), 'info');
+          // The owner of a Free page is told in the share dialog, not on every open (EDITOR2-007);
+          // a collaborator who expected live editing is told why it is off
+          if (store.page.isOwner === false) store.addToast(tRef.current('collab.planLimit'), 'info');
         } else {
           logCollabWarning('[collab]', msg.code, msg.message);
         }

@@ -51,6 +51,17 @@ describe('ShareModal', () => {
       expect(removeButtons(view)).toHaveLength(1);
     });
 
+    it('EDITOR2-007: on a Free page the owner reads here, not in a toast, that live editing needs Pro', async () => {
+      useEditorStore.setState({ collabStatus: 'unavailable' });
+      view = await open(normalUser);
+      expect(text(view)).toContain('eso necesita el plan Pro');
+      view.unmount();
+
+      useEditorStore.setState({ collabStatus: 'connected' });
+      view = await open(normalUser);
+      expect(text(view)).not.toContain('eso necesita el plan Pro');
+    });
+
     it('a collaborator only sees who has access', async () => {
       view = await open({ ...normalUser, id: collaborator.id, username: collaborator.username });
 

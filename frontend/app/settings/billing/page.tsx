@@ -117,7 +117,7 @@ export default function BillingPage() {
           </div>
         )}
 
-        {/* Payments run only with a Stripe test key (ADR-031): say which mode this is */}
+        {/* Payments run only with a Stripe test key (ADR-036): say which mode this is */}
         {isBillingKnown && !billingEnabled && (
           <p role="note" className="flex items-start gap-2 text-sm text-secondary mb-6 bg-surface-elevated/60 border border-subtle rounded-lg px-4 py-3">
             <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />

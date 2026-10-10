@@ -1,4 +1,4 @@
-"""Optional features of a deployment (ADR-027, ADR-031).
+"""Optional features of a deployment (ADR-027, ADR-036).
 
 Some features need infrastructure the free demo hosting does not have. Each one
 sits behind a setting; the frontend asks GET /api/features/ what is on and

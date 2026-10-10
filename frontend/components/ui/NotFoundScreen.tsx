@@ -7,7 +7,7 @@ export default function NotFoundScreen() {
   const t = useTranslations('errors');
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-surface text-secondary px-6">
+    <main id="main-content" tabIndex={-1} className="flex items-center justify-center min-h-screen bg-surface text-secondary px-6 outline-none">
       <div className="flex flex-col items-center text-center max-w-md">
         <p className="text-6xl md:text-8xl font-extrabold text-surface-card mb-4">404</p>
 
@@ -32,6 +32,6 @@ export default function NotFoundScreen() {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

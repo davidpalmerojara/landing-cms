@@ -41,7 +41,7 @@ export default function MagicVerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-surface flex items-center justify-center px-4 outline-none">
       <div className="w-full max-w-sm text-center">
         <h1 className="sr-only">{t('auth.magicTitle')}</h1>
         <div className="flex flex-col items-center mb-8">
@@ -80,6 +80,6 @@ export default function MagicVerifyPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

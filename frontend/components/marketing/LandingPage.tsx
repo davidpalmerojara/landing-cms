@@ -26,7 +26,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div id="main-content" className="min-h-screen bg-surface font-sans text-secondary selection:bg-primary/30">
+    <div className="min-h-screen bg-surface font-sans text-secondary selection:bg-primary/30">
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-surface/70 backdrop-blur-xl border-b border-subtle/50" aria-label={t('navigation.main')}>
@@ -69,6 +69,9 @@ export default function LandingPage() {
           {t('marketing.home.accountDeletedNotice')}
         </p>
       )}
+
+      {/* The skip link's target: everything between the navigation and the footer */}
+      <main id="main-content" tabIndex={-1} className="outline-none">
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 overflow-hidden" aria-label={t('marketing.home.heroSection')}>
@@ -220,6 +223,7 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="bg-surface border-t border-surface-elevated py-16" aria-label={t('marketing.home.footerSection')}>

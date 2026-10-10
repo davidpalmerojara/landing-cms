@@ -29,9 +29,10 @@ export default function AppIntlProvider({ children, initialLocale }: AppIntlProv
   const router = useRouter();
   const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
 
-  // Screen readers and the API client (Accept-Language) read the language from <html lang>
+  // Screen readers and the API client (Accept-Language) read the language from <html lang>.
+  // A published page keeps the language it is written in (data-content-lang, set by the root layout).
   useEffect(() => {
-    document.documentElement.lang = locale;
+    document.documentElement.lang = document.documentElement.dataset.contentLang || locale;
   }, [locale]);
 
   const setLocale = useCallback((nextLocale: AppLocale) => {

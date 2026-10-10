@@ -13,7 +13,7 @@ describe('blockStylesCss', () => {
   it('writes the desktop values as the base rule', () => {
     const css = blockStylesCss([block({ paddingTop: 64, bgColor: '#0F172A', borderRadius: 12 })]);
 
-    expect(css).toBe(`.paxl-b-${id}{padding-top:64px;border-radius:12px;background-color:#0F172A;--theme-bg:#0F172A}`);
+    expect(css).toBe(`.paxl-b-${id}{padding-top:64px;border-radius:12px;background-color:#0F172A;--block-bg:#0F172A}`);
   });
 
   it('writes nothing for blocks without styles, like the editor', () => {
@@ -30,16 +30,22 @@ describe('blockStylesCss', () => {
     expect(css).toContain(`@container (max-width: 639.98px){.paxl-b-${id}{padding-top:32px;padding-bottom:48px}}`);
   });
 
-  it('mobile builds on desktop, not on tablet, as resolveStyles does', () => {
+  it('mobile inherits what tablet overrides, as resolveStyles does (D10, QA-078)', () => {
     const css = blockStylesCss([block({ paddingTop: 96 }, { tablet: { paddingTop: 64 }, mobile: {} })]);
 
-    expect(css).not.toContain('@container (max-width: 639.98px)');
+    expect(css).toContain(`@container (max-width: 639.98px){.paxl-b-${id}{padding-top:64px}}`);
   });
 
-  it('a device that clears a value resets it, and the background goes back to the page theme', () => {
+  it('a mobile override still wins over the tablet one', () => {
+    const css = blockStylesCss([block({ paddingTop: 96 }, { tablet: { paddingTop: 64 }, mobile: { paddingTop: 20 } })]);
+
+    expect(css).toContain(`@container (max-width: 639.98px){.paxl-b-${id}{padding-top:20px}}`);
+  });
+
+  it('a device that clears a value resets it, and the background goes back to the block\'s own', () => {
     const css = blockStylesCss([block({ paddingTop: 80, bgColor: '#111111' }, { mobile: { paddingTop: 0, bgColor: '' } })]);
 
-    expect(css).toContain(`@container (max-width: 639.98px){.paxl-b-${id}{padding-top:0;background-color:transparent;--theme-bg:inherit}}`);
+    expect(css).toContain(`@container (max-width: 639.98px){.paxl-b-${id}{padding-top:0;background-color:transparent;--block-bg:initial}}`);
   });
 
   it('drops values that are not plain numbers or colours', () => {

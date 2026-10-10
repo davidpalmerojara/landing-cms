@@ -185,6 +185,8 @@ export interface ApiPublicPage {
   og_image?: string;
   og_type?: string;
   noindex?: boolean;
+  /** BCP 47 tag of the language the page is written in (ADR-033); frozen with the published copy */
+  language?: string;
   blocks: Pick<ApiBlock, 'id' | 'type' | 'order' | 'data' | 'styles'>[];
   published_at: string | null;
   updated_at: string | null;
@@ -219,6 +221,8 @@ export interface ApiSeoFields {
   og_image: string;
   og_type: string;
   noindex: boolean;
+  /** BCP 47 tag of the language the page is written in (ADR-033). Absent from older servers. */
+  language?: string;
 }
 
 export interface ApiPage extends ApiSeoFields {
@@ -352,12 +356,15 @@ export interface ContactFormPayload {
 export class ContactSubmitError extends Error {
   readonly status: number;
   readonly code: string;
+  /** Form fields the server rejected (keys of `details` in a 400), e.g. ['email'] */
+  readonly fields: string[];
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, fields: string[] = []) {
     super(message);
     this.name = 'ContactSubmitError';
     this.status = status;
     this.code = code;
+    this.fields = fields;
   }
 }
 
@@ -383,7 +390,8 @@ async function submitContactRequest(slug: string, payload: ContactFormPayload): 
   }
   const message = isRecord(body) && typeof body.error === 'string' ? body.error : `API ${res.status}`;
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : 'ERROR';
-  throw new ContactSubmitError(res.status, code, message);
+  const fields = isRecord(body) && isRecord(body.details) ? Object.keys(body.details) : [];
+  throw new ContactSubmitError(res.status, code, message, fields);
 }
 
 // --- API methods ---

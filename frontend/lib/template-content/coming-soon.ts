@@ -7,6 +7,7 @@ const es: TemplateBlock[] = [
       title: 'Algo increíble está en camino',
       subtitle: 'Estamos construyendo algo que va a cambiar las reglas del juego. Sé el primero en enterarte.',
       buttonText: 'Notificarme al lanzamiento',
+      buttonLink: '#cta',
       backgroundImage: 'https://images.unsplash.com/photo-1534996858221-380b92700493?w=1920&q=80',
     },
   },
@@ -74,6 +75,7 @@ const es: TemplateBlock[] = [
     data: {
       title: 'No te lo pierdas',
       buttonText: 'Unirme a la lista de espera',
+      buttonLink: 'mailto:hola@example.com',
     },
   },
   {
@@ -82,9 +84,9 @@ const es: TemplateBlock[] = [
       brandName: 'NuevoProducto',
       description: 'Próximamente. Algo grande se está cocinando.',
       links: [
-        { label: 'Twitter', url: '' },
-        { label: 'Blog', url: '' },
-        { label: 'Contacto', url: '' },
+        { label: 'Qué incluye', url: '#features' },
+        { label: 'Hoja de ruta', url: '#timeline' },
+        { label: 'Preguntas', url: '#faq' },
       ],
       copyright: '© 2026 NuevoProducto. Todos los derechos reservados.',
     },
@@ -98,6 +100,7 @@ const en: TemplateBlock[] = [
       title: 'Something amazing is on its way',
       subtitle: 'We are building something that will change the rules of the game. Be the first to know.',
       buttonText: 'Notify me at launch',
+      buttonLink: '#cta',
       backgroundImage: 'https://images.unsplash.com/photo-1534996858221-380b92700493?w=1920&q=80',
     },
   },
@@ -165,6 +168,7 @@ const en: TemplateBlock[] = [
     data: {
       title: 'Do not miss it',
       buttonText: 'Join the waitlist',
+      buttonLink: 'mailto:hello@example.com',
     },
   },
   {
@@ -173,9 +177,9 @@ const en: TemplateBlock[] = [
       brandName: 'NewProduct',
       description: 'Coming soon. Something big is cooking.',
       links: [
-        { label: 'Twitter', url: '' },
-        { label: 'Blog', url: '' },
-        { label: 'Contact', url: '' },
+        { label: 'What you get', url: '#features' },
+        { label: 'Roadmap', url: '#timeline' },
+        { label: 'Questions', url: '#faq' },
       ],
       copyright: '© 2026 NewProduct. All rights reserved.',
     },

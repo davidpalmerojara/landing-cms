@@ -4,13 +4,23 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import type { Page } from '@/types/page';
 import { api } from '@/lib/api';
 import { apiPageToLocal } from '@/lib/page-mapping';
 import { pageThemeVars } from '@/lib/page-theme';
 import PageRenderer from '@/components/renderer/PageRenderer';
+import { publishNotice } from '@/lib/publish-checks';
 
-function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublish: () => Promise<void>; publishError: string | null }) {
+interface PreviewTopBarProps {
+  page: Page;
+  onPublish: () => Promise<void>;
+  publishError: string | null;
+  /** Set after a publish from here: where the page now is, and anything worth knowing (QA-098) */
+  published: { path: string; notice: string | null } | null;
+}
+
+function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopBarProps) {
   const t = useTranslations();
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -26,12 +36,13 @@ function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublis
   return (
     <div className="sticky top-0 z-50 h-12 bg-surface border-b border-subtle/80 flex items-center justify-between px-2 sm:px-4">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <a
+        <Link
           href={`/editor/${page.id}`}
-          className="text-[12px] text-muted hover:text-primary transition-colors flex items-center gap-1.5 shrink-0"
+          aria-label={t('preview.backToEditor')}
+          className="min-h-11 min-w-11 text-[12px] text-muted hover:text-primary transition-colors flex items-center gap-1.5 shrink-0"
         >
-          &larr; <span className="hidden sm:inline">{t('preview.backToEditor')}</span>
-        </a>
+          <span aria-hidden="true">&larr;</span> <span className="hidden sm:inline">{t('preview.backToEditor')}</span>
+        </Link>
         <div className="w-px h-5 bg-surface-card hidden sm:block" />
         <span className="text-[12px] text-muted truncate hidden sm:block">{page.name}</span>
         <span
@@ -44,23 +55,32 @@ function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublis
           {page.status === 'published' ? t('common.published') : t('common.draft')}
         </span>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {publishError && (
-          <span className="text-xs text-error hidden sm:block">{publishError}</span>
-        )}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div role="status" className="min-w-0 text-xs">
+          {publishError && <span className="text-error">{publishError}</span>}
+          {published && (
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="text-success shrink-0">{t('preview.published')}</span>
+              <a href={published.path} target="_blank" rel="noopener" className="text-primary-color underline truncate">
+                {published.path}
+                <span className="sr-only"> {t('publishing.opensInNewTab')}</span>
+              </a>
+            </span>
+          )}
+        </div>
         <button
           onClick={handlePublish}
           disabled={isPublishing}
-          className="text-white font-bold text-sm px-4 py-1.5 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+          className="shrink-0 text-white font-bold text-sm px-4 py-1.5 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
         >
           {isPublishing ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
               {t('preview.publishing')}
             </span>
           ) : (
-            t('preview.publish')
+            t(page.status === 'published' ? 'preview.republish' : 'preview.publish')
           )}
         </button>
       </div>
@@ -75,6 +95,25 @@ export default function PreviewPage() {
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [published, setPublished] = useState<PreviewTopBarProps['published']>(null);
+
+  // The tab says which page this is, not just "Paxl" (QA-085)
+  useEffect(() => {
+    if (page) document.title = t('preview.documentTitle', { name: page.name });
+  }, [page, t]);
+
+  // <html lang>: the language the page is written in, as on the published page (QA-091)
+  useEffect(() => {
+    if (!page) return;
+    const root = document.documentElement;
+    const previous = root.lang;
+    root.dataset.contentLang = page.seo.language;
+    root.lang = page.seo.language;
+    return () => {
+      delete root.dataset.contentLang;
+      root.lang = previous;
+    };
+  }, [page]);
 
   useEffect(() => {
     async function loadPage() {
@@ -91,10 +130,12 @@ export default function PreviewPage() {
   const handlePublish = useCallback(async () => {
     if (!page) return;
     setPublishError(null);
+    setPublished(null);
     try {
       // Freezes the saved draft shown here as the public page (ADR-017)
-      const published = await api.pages.publish(page.id);
-      setPage(apiPageToLocal(published));
+      const result = apiPageToLocal(await api.pages.publish(page.id));
+      setPage(result);
+      setPublished({ path: `/p/${result.slug}`, notice: publishNotice(result.blocks, t) });
     } catch (e) {
       setPublishError(t('preview.publishError'));
       if (process.env.NODE_ENV === 'development') console.error('Failed to publish from preview:', e);
@@ -129,19 +170,24 @@ export default function PreviewPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <PreviewTopBar page={page} onPublish={handlePublish} publishError={publishError} />
+      <PreviewTopBar page={page} onPublish={handlePublish} publishError={publishError} published={published} />
+      {published?.notice && (
+        <p role="note" className="m-0 px-4 py-2 text-center text-sm bg-amber-100 text-amber-900 border-b border-amber-300">
+          {published.notice}
+        </p>
+      )}
 
       {page.blocks.length > 0 ? (
-        <PageRenderer blocks={page.blocks} themeVars={themeVars} liveLinks />
+        <PageRenderer blocks={page.blocks} themeVars={themeVars} language={page.seo.language} liveLinks />
       ) : (
-        <div className="flex items-center justify-center min-h-screen text-muted">
+        <main id="main-content" tabIndex={-1} className="flex items-center justify-center min-h-screen text-[#4B5563] outline-none">
           <div className="text-center space-y-4">
             <p className="text-xl">{t('preview.empty')}</p>
-            <a href={`/editor/${page.id}`} className="text-primary-color hover:underline text-sm">
+            <a href={`/editor/${page.id}`} className="text-[#1D4ED8] hover:underline text-sm">
               {t('preview.backToEditor')}
             </a>
           </div>
-        </div>
+        </main>
       )}
     </div>
   );

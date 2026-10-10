@@ -299,7 +299,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
               ...(s.paddingRight ? { paddingRight: s.paddingRight } : {}),
               ...(s.marginTop ? { marginTop: s.marginTop } : {}),
               ...(s.marginBottom ? { marginBottom: s.marginBottom } : {}),
-              ...(s.bgColor ? { backgroundColor: s.bgColor, '--theme-bg': s.bgColor } as React.CSSProperties : {}),
+              ...(s.bgColor ? { backgroundColor: s.bgColor, '--block-bg': s.bgColor } as React.CSSProperties : {}),
               ...(s.borderRadius ? { borderRadius: s.borderRadius } : {}),
               ...(block.type !== 'navbar' ? { overflow: 'hidden' } : {}),
             };

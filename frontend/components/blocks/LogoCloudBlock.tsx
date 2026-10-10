@@ -14,7 +14,7 @@ export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockPr
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-12 px-6 @tablet:py-16 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-surface)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-surface))' }}
     >
       <EditableText
         blockId={blockId}
@@ -37,7 +37,7 @@ export default function LogoCloudBlock({ blockId, data, isPreviewMode }: BlockPr
                 blockId={blockId}
                 fieldKey={['logos', index, 'name']}
                 value={logo.name}
-                className="font-bold opacity-60 text-lg @tablet:text-xl"
+                className="font-bold text-lg @tablet:text-xl"
                 style={{ color: 'var(--theme-text-muted)' }}
               />
             );

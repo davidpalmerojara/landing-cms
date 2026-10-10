@@ -13,7 +13,7 @@ export default function TestimonialsBlock({ blockId, data, isPreviewMode }: Bloc
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-bg)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))' }}
     >
       <EditableText
         blockId={blockId}
@@ -33,7 +33,7 @@ export default function TestimonialsBlock({ blockId, data, isPreviewMode }: Bloc
               className="p-8 rounded-3xl border relative hover:shadow-md transition-shadow"
               style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
             >
-              <Quote className="w-8 h-8 mb-4" style={{ color: 'color-mix(in srgb, var(--theme-primary) 30%, transparent)' }} />
+              <Quote aria-hidden="true" className="w-8 h-8 mb-4" style={{ color: 'color-mix(in srgb, var(--theme-primary) 30%, transparent)' }} />
               <blockquote
                 className="mb-8 leading-relaxed italic text-base @tablet:text-lg"
                 style={{ color: 'var(--theme-text-muted)' }}
@@ -48,7 +48,7 @@ export default function TestimonialsBlock({ blockId, data, isPreviewMode }: Bloc
               <div className="flex items-center gap-4 mt-auto">
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shrink-0"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' }}
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary-text)' }}
                 >
                   {testimonial.author.charAt(0) || '?'}
                 </div>

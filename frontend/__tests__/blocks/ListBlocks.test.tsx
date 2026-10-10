@@ -36,7 +36,9 @@ describe('list blocks render their arrays', () => {
     expect(view.container.querySelector('.grid')?.className).toContain('@tablet:grid-cols-3');
     // The badge sits next to the highlighted plan's name, the first one here
     expect(view.container.querySelector('h3')?.parentElement?.textContent).toBe('ProTop');
-    expect(view.container.querySelectorAll('button')).toHaveLength(3);
+    // No links: the plan buttons show as text, never as buttons that do nothing (D9)
+    expect(view.container.querySelectorAll('button')).toHaveLength(0);
+    expect(view.container.textContent).toContain('Elegir Team');
     view.unmount();
 
     const single = render(<PricingBlock {...props} isPreviewMode data={{ ...data, plans: data.plans.slice(0, 1) }} />);

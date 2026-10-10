@@ -98,7 +98,7 @@ function BlockRenderer({ block, diffStatus, showDiff }: { block: SnapshotBlock; 
     ...(s.paddingRight ? { paddingRight: s.paddingRight } : {}),
     ...(s.marginTop ? { marginTop: s.marginTop } : {}),
     ...(s.marginBottom ? { marginBottom: s.marginBottom } : {}),
-    ...(s.bgColor ? { backgroundColor: s.bgColor, '--theme-bg': s.bgColor } as React.CSSProperties : {}),
+    ...(s.bgColor ? { backgroundColor: s.bgColor, '--block-bg': s.bgColor } as React.CSSProperties : {}),
     ...(s.borderRadius ? { borderRadius: s.borderRadius } : {}),
   };
 

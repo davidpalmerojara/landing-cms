@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { BlockProps, TeamData } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockImage from './BlockImage';
 
 export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps<TeamData>) {
   const t = useTranslations('blocks');
@@ -13,7 +14,7 @@ export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps<T
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-bg)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))' }}
     >
       <div className="max-w-5xl mx-auto">
         <EditableText
@@ -35,23 +36,27 @@ export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps<T
         />
         {data.members.length > 0 && (
           <div className="grid gap-8 grid-cols-1 @tablet:grid-cols-3">
-            {data.members.map((member, index) => (
+            {data.members.map((member, index) => {
+              const initials = (
+                <div
+                  aria-hidden="true"
+                  className="w-24 h-24 rounded-full mb-4 flex items-center justify-center text-2xl font-bold"
+                  style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-text-muted)' }}
+                >
+                  {member.name.charAt(0) || '?'}
+                </div>
+              );
+              return (
               <div key={index} className="flex flex-col items-center text-center">
                 {member.image ? (
-                  <img
+                  <BlockImage
                     src={member.image}
                     alt={member.name || t('teamMemberAlt')}
                     className="w-24 h-24 rounded-full object-cover mb-4 border-2"
                     style={{ borderColor: 'var(--theme-border)' }}
+                    fallback={initials}
                   />
-                ) : (
-                  <div
-                    className="w-24 h-24 rounded-full mb-4 flex items-center justify-center text-2xl font-bold"
-                    style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-text-muted)' }}
-                  >
-                    {member.name.charAt(0) || '?'}
-                  </div>
-                )}
+                ) : initials}
                 <EditableText
                   blockId={blockId}
                   fieldKey={['members', index, 'name']}
@@ -69,7 +74,8 @@ export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps<T
                   style={{ color: 'var(--theme-text-muted)' }}
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

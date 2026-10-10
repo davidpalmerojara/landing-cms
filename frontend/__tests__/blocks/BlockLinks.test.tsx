@@ -37,12 +37,13 @@ describe('block links', () => {
     view.unmount();
   });
 
-  it('falls back to a plain button for empty or unsafe links', () => {
+  it('shows a button without a usable link as plain text, not a button that does nothing (QA-049, D9)', () => {
     const view = render(
       <CtaBlock {...props} isPreviewMode data={normalizeBlockData('cta', { title: 'T', buttonText: 'Go', buttonLink: 'javascript:alert(1)' })} />,
     );
     expect(view.container.querySelector('a')).toBeNull();
-    expect(view.container.querySelector('button')?.textContent).toBe('Go');
+    expect(view.container.querySelector('button')).toBeNull();
+    expect(view.container.textContent).toContain('Go');
     view.unmount();
 
     const empty = render(<CtaBlock {...props} isPreviewMode data={normalizeBlockData('cta', { title: 'T', buttonText: 'Go', buttonLink: '' })} />);
@@ -112,7 +113,7 @@ describe('block links', () => {
       />,
     );
     expect(hrefs(view.container)).toEqual(['/registro']);
-    expect(view.container.querySelectorAll('button')).toHaveLength(1);
+    expect(view.container.querySelectorAll('button')).toHaveLength(0);
     view.unmount();
   });
 });

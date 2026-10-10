@@ -5,6 +5,8 @@ import AppProviders from '@/components/providers/AppProviders';
 import { LOCALE_COOKIE, MESSAGES, resolveLocale } from '@/lib/i18n';
 import { pageFontVariables } from '@/lib/page-fonts';
 import { SITE_URL } from '@/lib/site-url';
+import { publicPageLanguage } from '@/lib/public-page';
+import { PUBLIC_SLUG_HEADER } from '@/lib/public-page-request';
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -72,9 +74,12 @@ export default async function RootLayout({
     cookieStore.get(LOCALE_COOKIE)?.value,
     headerStore.get('accept-language'),
   );
+  // A published page declares the language it is written in, not the visitor's (QA-091, ADR-033)
+  const publicSlug = headerStore.get(PUBLIC_SLUG_HEADER);
+  const pageLang = publicSlug ? await publicPageLanguage(publicSlug) : null;
 
   return (
-    <html lang={initialLocale} suppressHydrationWarning>
+    <html lang={pageLang ?? initialLocale} data-content-lang={pageLang ?? undefined} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

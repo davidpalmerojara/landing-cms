@@ -336,3 +336,21 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: ADR-036. La facturación es una función apagada sin clave de prueba (`GET /api/features/` → `billing`): 503 `FEATURE_DISABLED`, botones ocultos y la interfaz dice que los pagos no están activos en esta demo; con clave de prueba avisa de que es modo de prueba. Las claves reales se rechazan. Los webhooks se procesan una sola vez bajo un bloqueo de fila, se deshacen si fallan y Stripe los reintenta.
 - **Cómo se verificó**: Pruebas de la API sin clave, con clave de prueba y con clave real; de idempotencia (duplicado, misma factura, fallo y reintento); de la interfaz con los dos estados; y de extremo a extremo (503 y nota visible, sin botón de mejorar).
 - **Lección**: "No configurado" es un estado normal del producto, no un error del servidor. Debe tener respuesta, texto y diseño propios.
+
+## 39. En el móvil no se podía volver a publicar
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: En Quick Edit la hoja de publicar solo miraba `status`: una página ya publicada mostraba "Página publicada" y el enlace, sin "Publicar cambios" ni "Despublicar", y la barra no avisaba de cambios sin publicar. Quien editaba desde el móvil creía que su cambio estaba en línea, pero los visitantes seguían viendo la copia congelada (ADR-017).
+- **Cómo se detectó**: Ronda 1 de QA, recorrido en webkit (iPhone 13) y chromium (Pixel 7): publicar, editar el título, volver a abrir la hoja. La API decía `has_unpublished_changes: true` y la página pública conservaba el título viejo.
+- **Arreglo**: `MobilePublishSheet` tiene los tres estados de la barra de escritorio (borrador → "Publicar"; publicada con cambios → aviso y "Publicar cambios"; publicada → enlace) y "Despublicar" con confirmación, a través de `usePublishActions` (solo el propietario; un colaborador lee por qué). El globo de la barra lleva un punto y su nombre dice que hay cambios sin publicar. ADR-040.
+- **Cómo se verificó**: Pruebas de componente de los tres estados y del colaborador, y una prueba de extremo a extremo a 390 px: publicar, editar, "Publicar cambios" y la página pública muestra el título nuevo.
+- **Lección**: Dos interfaces para la misma acción divergen. El estado de publicación tiene tres casos, no dos, y cada pantalla que publica tiene que usar la misma lógica (aquí, el mismo hook).
+
+## 40. Un teléfono en horizontal recibía el editor de escritorio
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El editor elegía Quick Edit solo por el ancho (menos de 768 px). Un teléfono girado (844 × 390 en un iPhone, 863 × 360 en un Pixel 7) pasaba al editor de escritorio, con un lienzo de 240 px de alto y la barra superior pisada, y al girar se perdía la hoja abierta.
+- **Cómo se detectó**: Ronda 1 de QA, Pixel 7 en horizontal.
+- **Arreglo**: `QUICK_EDIT_MEDIA_QUERY`: menos de 768 px de ancho, o pantalla táctil de hasta 500 px de alto. Las tabletas, que tienen 768 px o más en las dos orientaciones, siguen con el editor completo (que otro lote adapta al tacto, D4). ADR-040.
+- **Cómo se verificó**: Pruebas del hook con `matchMedia` simulado (ancho, alto y tipo de puntero: teléfono vertical y horizontal, tableta en las dos orientaciones, ventana de escritorio baja) y de extremo a extremo con 844 × 390 táctil (Quick Edit) y 768 × 1024 (editor completo).
+- **Lección**: "Móvil" no es un ancho. Una media query de solo `max-width` describe la ventana, no el dispositivo: para decidir la interfaz hay que mirar también el alto y el tipo de puntero.

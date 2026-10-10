@@ -209,7 +209,7 @@ Estas decisiones estan tomadas y no deben cuestionarse ni cambiarse sin discusio
 
 **Roles semanticos en bloques.** Los bloques usan roles de color (`backgroundRole: "primary" | "background" | "surface"`, `buttonRole: "primary" | "secondary"`) en vez de colores directos. Las plantillas se disenan con roles y funcionan con cualquier paleta.
 
-**Quick Edit Mode para movil.** No es una version comprimida del editor desktop. Es un modo optimizado para cambios rapidos: lista de bloques como interfaz principal, bottom sheet para edicion, IA para textos, preview a pantalla completa real. Mismo store, misma API, diferente UI.
+**Quick Edit Mode para movil.** No es una version comprimida del editor desktop. Es un modo optimizado para cambios rapidos: lista de bloques como interfaz principal, bottom sheet para edicion, IA para textos, preview a pantalla completa real. Mismo store, misma API, diferente UI. Es el editor de los telefonos: ventana de menos de 768 px de ancho o pantalla tactil de hasta 500 px de alto (telefono en horizontal); las tabletas usan el editor completo. Tema, SEO y versiones se quedan en el ordenador (ADR-040).
 
 **Libertad de sistema, no de pixel.** El spacing usa tokens (sm/md/lg), no pixeles. Los border-radius usan tokens. Los colores se heredan del tema. Los overrides por bloque son la excepcion, no la norma.
 

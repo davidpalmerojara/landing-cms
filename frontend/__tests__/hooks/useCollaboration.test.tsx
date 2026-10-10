@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { useEditorStore, uniquePresenceUsers } from '@/store/editor-store';
-import { useCollaboration } from '@/hooks/useCollaboration';
+import { MAX_RECONNECT_ATTEMPTS, useCollaboration } from '@/hooks/useCollaboration';
 import type { RemotePageChange } from '@/lib/page-sync';
 import { makeBlock, makePage, render, resetEditorStore } from '../mobile-editor/test-utils';
 import type { RenderResult } from '../mobile-editor/test-utils';
@@ -367,5 +367,185 @@ describe('useCollaboration', () => {
     expect(FakeWebSocket.instances).toHaveLength(1);
     expect(FakeWebSocket.instances[0].url).toContain(OTHER_PAGE);
     view.unmount();
+  });
+
+  describe('QA-011: locks are enforced on every path', () => {
+    const toasts = () => state().toasts.map((t) => t.message);
+
+    it('losing a near-simultaneous click lets go of the block', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+      act(() => { state().selectBlock(BLOCK_A); }); // optimistic, before the server answers
+      act(() => { state().requestDeleteBlock(BLOCK_A); });
+
+      receive(ws, { type: 'lock_rejected', block_id: BLOCK_A, holder: ana1 });
+
+      expect(state().selectedBlockId).toBeNull();
+      expect(state().pendingDeleteBlockId).toBeNull();
+      expect(toasts()).toEqual(['Ana está editando este bloque']);
+      // Not ours: nothing is renewed or released for it
+      act(() => { vi.advanceTimersByTime(10_000); });
+      expect(ws.sentOfType('lock_renew')).toEqual([]);
+      expect(ws.sentOfType('lock_release')).toEqual([]);
+    });
+
+    it('a refusal from the store (layers panel, keyboard, Quick Edit) is announced once and checked with the server', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect({ locks: { [BLOCK_B]: ana1 } }));
+
+      act(() => { expect(state().selectBlock(BLOCK_B)).toBe(false); });
+
+      expect(toasts()).toEqual(['Ana está editando este bloque']);
+      expect(ws.sentOfType('lock_acquire')).toEqual([{ type: 'lock_acquire', block_id: BLOCK_B }]);
+      // The server confirms Ana has it: no second message, nothing selected
+      receive(ws, { type: 'lock_rejected', block_id: BLOCK_B, holder: ana1 });
+      expect(toasts()).toHaveLength(1);
+      expect(state().selectedBlockId).toBeNull();
+    });
+
+    it('a lock that had expired without anyone hearing is taken when the user asks for the block', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect({ locks: { [BLOCK_B]: ana1 } }));
+      act(() => { state().selectBlock(BLOCK_B); });
+
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_B, ...me });
+
+      expect(state().selectedBlockId).toBe(BLOCK_B);
+      expect(state().blockLocks[BLOCK_B]?.connectionId).toBe('conn-me');
+    });
+  });
+
+  describe('QA-031: a lapsed lock', () => {
+    it('is taken again while its block is still selected', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+      act(() => { state().selectBlock(BLOCK_A); });
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_A, ...me });
+      ws.sent = [];
+
+      receive(ws, { type: 'lock_released', block_id: BLOCK_A, ...me });
+
+      expect(ws.sentOfType('lock_acquire')).toEqual([{ type: 'lock_acquire', block_id: BLOCK_A }]);
+    });
+
+    it('someone else releasing their lock does not make us take it', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_B, ...ana1 });
+      ws.sent = [];
+
+      receive(ws, { type: 'lock_released', block_id: BLOCK_B, ...ana1 });
+
+      expect(ws.sentOfType('lock_acquire')).toEqual([]);
+      expect(state().blockLocks[BLOCK_B]).toBeUndefined();
+    });
+  });
+
+  describe('QA-035: reconnecting after a long outage', () => {
+    async function exhaustAttempts() {
+      view = render(<Harness />);
+      await act(async () => {});
+      for (let i = 0; i < MAX_RECONNECT_ATTEMPTS + 1; i++) {
+        act(() => { latest().serverClose(1006); });
+        await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+      }
+      act(() => { latest().serverClose(1006); });
+      expect(state().collabStatus).toBe('offline');
+    }
+
+    it('keeps trying every minute once offline', async () => {
+      await exhaustAttempts();
+      const before = FakeWebSocket.instances.length;
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+
+      expect(FakeWebSocket.instances.length).toBe(before + 1);
+    });
+
+    it('tries at once when the browser is back online, and is connected again', async () => {
+      await exhaustAttempts();
+      const before = FakeWebSocket.instances.length;
+
+      await act(async () => { window.dispatchEvent(new Event('online')); });
+
+      expect(FakeWebSocket.instances.length).toBe(before + 1);
+      act(() => {
+        latest().open();
+        latest().receive({ type: 'connected', connection_id: 'conn-back', users: [], locks: {}, version: 3 });
+      });
+      expect(state().collabStatus).toBe('connected');
+    });
+
+    it('tries at once when the user presses "Reconectar" or the tab becomes visible', async () => {
+      await exhaustAttempts();
+      const before = FakeWebSocket.instances.length;
+
+      await act(async () => { state().requestCollabReconnect(); });
+      expect(FakeWebSocket.instances.length).toBe(before + 1);
+
+      act(() => { latest().serverClose(1006); });
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+      expect(FakeWebSocket.instances.length).toBe(before + 2);
+    });
+
+    it('does nothing while connected', async () => {
+      ({ view } = await connect());
+      await act(async () => { window.dispatchEvent(new Event('online')); });
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+  });
+
+  describe('names (QA-108, QA-109)', () => {
+    const guest1 = { connection_id: 'conn-g1', user_id: 'u-g1', username: 'invitado-0a1b2c3d' };
+    const guest2 = { connection_id: 'conn-g2', user_id: 'u-g2', username: 'invitado-9f8e7d6c' };
+
+    it('guests are "Invitado 1", "Invitado 2"… in avatars, locks and restore messages', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect({ users: [me, guest1] }));
+      receive(ws, { type: 'user_joined', ...guest2 });
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_B, ...guest2 });
+      receive(ws, { type: 'page_updated', version: 4, reason: 'restore', by: { user_id: 'u-g1', username: guest1.username }, connection_id: 'conn-g1' });
+
+      expect(state().presence.map((e) => e.username)).toEqual(['yo', 'Invitado 1', 'Invitado 2']);
+      expect(state().blockLocks[BLOCK_B]?.username).toBe('Invitado 2');
+      expect(onRemoteChange).toHaveBeenLastCalledWith(expect.objectContaining({ by: { userId: 'u-g1', username: 'Invitado 1' } }));
+    });
+
+    it('a block held in another tab of mine says so, not my own name', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+      const otherTab = { ...me, connection_id: 'conn-me-2' };
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_B, ...otherTab });
+
+      expect(state().blockLocks[BLOCK_B]?.username).toBe('tu otra pestaña');
+      act(() => { state().selectBlock(BLOCK_B); });
+      expect(state().toasts.map((t) => t.message)).toEqual(['Lo estás editando en otra pestaña']);
+    });
+  });
+
+  describe('deleted page and relays', () => {
+    it('page_deleted: read-only with its own explanation, never reconnects', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+
+      act(() => {
+        ws.receive({ type: 'error', code: 'page_deleted' });
+        ws.serverClose(4003);
+      });
+      await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+
+      expect(state().collabStatus).toBe('revoked');
+      expect(state().revokedReason).toBe('deleted');
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('a relayed edit is recorded with the connection that sent it (QA-033)', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+
+      receive(ws, { type: 'block_updated', block_id: BLOCK_A, data: { title: 'Ana typing', subtitle: 'Sub A' }, ...ana1 });
+
+      expect(state().relayedEdits[BLOCK_A]).toEqual({ connectionId: 'conn-ana-1', data: { title: 'Ana typing' } });
+    });
   });
 });

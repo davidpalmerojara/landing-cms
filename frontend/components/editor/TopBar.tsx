@@ -12,6 +12,7 @@ import ShareModal from './ShareModal';
 import ConnectionIndicator from './ConnectionIndicator';
 import SaveStatusIndicator from './SaveStatusIndicator';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { presenceInitials } from '@/lib/collab-names';
 import { useEditorStore, getUserColor, uniquePresenceUsers } from '@/store/editor-store';
 import type { PresenceEntry } from '@/store/editor-store';
 import ThemeToggle from '@/components/ui/ThemeToggle';
@@ -487,7 +488,7 @@ function PresenceAvatars({ users }: { users: PresenceEntry[] }) {
             style={{ backgroundColor: color.hex }}
             title={user.username}
           >
-            {user.username.charAt(0).toUpperCase()}
+            {presenceInitials(user.username)}
           </div>
         );
       })}

@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/editor-store';
 import type { PresenceEntry } from '@/store/editor-store';
 import { api } from '@/lib/api';
 import { blockStylesToApi, isPlainObject } from '@/lib/block-data';
+import { isGuestUsername } from '@/lib/collab-names';
 import type { PageChangeReason, RemotePageChange } from '@/lib/page-sync';
 import type { BlockData } from '@/types/blocks';
 
@@ -14,9 +15,15 @@ const LOCK_RENEW_INTERVAL = 10_000; // 10s
 const PING_INTERVAL = 25_000; // 25s
 const RECONNECT_BASE_DELAY = 2_000; // 2s initial
 const RECONNECT_MAX_DELAY = 60_000; // 60s max
+/**
+ * Quick attempts before the editor says it is offline. It keeps trying every
+ * RECONNECT_MAX_DELAY after that, and at once when the browser is back online,
+ * the tab becomes visible again or the user presses "Reconectar" (QA-035).
+ */
 export const MAX_RECONNECT_ATTEMPTS = 8;
-/** Close codes after which reconnecting cannot help: unauthenticated, no access, server error. */
+/** Close codes after which retrying on its own cannot help: unauthenticated, no access, server error. */
 const FINAL_CLOSE_CODES = new Set([4001, 4003, 4500]);
+const CLOSE_FORBIDDEN = 4003;
 const PAGE_CHANGE_REASONS: readonly PageChangeReason[] = ['save', 'restore', 'publish', 'ai'];
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -107,6 +114,14 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heldLocksRef = useRef<Set<string>>(new Set());
+  /**
+   * Blocks asked for only to check a lock shown as someone else's: a lock that
+   * expired without anyone renewing it is not announced (ADR-024), so asking
+   * is how a stale one is found out.
+   */
+  const probesRef = useRef<Set<string>>(new Set());
+  /** "Invitado N" numbers by user id, in the order guests were first seen here. */
+  const guestNumbersRef = useRef<Map<string, number>>(new Map());
   /** Access was revoked or the plan has no collaboration: never reconnect. */
   const stopReconnectRef = useRef(false);
   const mountedRef = useRef(true);
@@ -138,6 +153,38 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
     send({ type: 'cursor_move', x, y });
   }, [send]);
 
+  /** The name people see: a guest's generated username becomes "Invitado N" (QA-108). */
+  const displayName = useCallback((userId: string, username: string): string => {
+    if (!isGuestUsername(username)) return username;
+    const numbers = guestNumbersRef.current;
+    if (!numbers.has(userId)) numbers.set(userId, numbers.size + 1);
+    return tRef.current('collab.guestName', { number: numbers.get(userId) ?? 1 });
+  }, []);
+
+  const named = useCallback(
+    (entry: PresenceEntry): PresenceEntry => ({ ...entry, username: displayName(entry.userId, entry.username) }),
+    [displayName],
+  );
+
+  /** A lock holder as the block shows it: this person's other tab is called that, not by their own name (QA-109). */
+  const lockHolder = useCallback((entry: PresenceEntry): PresenceEntry => {
+    const { myUserId, myConnectionId } = useEditorStore.getState();
+    if (entry.userId === myUserId && entry.connectionId !== myConnectionId) {
+      return { ...entry, username: tRef.current('collab.yourOtherTab') };
+    }
+    return named(entry);
+  }, [named]);
+
+  /** Toast: the block is someone else's right now. */
+  const tellLocked = useCallback((holder: PresenceEntry | null) => {
+    const store = useEditorStore.getState();
+    let message: string;
+    if (holder && holder.userId === store.myUserId) message = tRef.current('collab.lockRejectedOwnTab');
+    else if (holder?.username) message = tRef.current('collab.lockRejected', { name: holder.username });
+    else message = tRef.current('collab.lockRejectedAnonymous');
+    store.addToast(message, 'info');
+  }, []);
+
   // Handle incoming messages
   const handleMessage = useCallback((msg: CollabMessage) => {
     const store = useEditorStore.getState();
@@ -146,8 +193,12 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
     switch (msg.type) {
       case 'connected': {
         const connectionId = typeof msg.connection_id === 'string' ? msg.connection_id : null;
-        store.setPresence(connectionId, parseEntries(msg.users));
-        store.setBlockLocks(parseLocks(msg.locks));
+        store.setPresence(connectionId, parseEntries(msg.users).map(named));
+        // After setPresence: naming a holder needs to know which connection is ours
+        const locks = Object.fromEntries(
+          Object.entries(parseLocks(msg.locks)).map(([blockId, holder]) => [blockId, lockHolder(holder)]),
+        );
+        store.setBlockLocks(locks);
         store.setCollabStatus('connected');
         // Locks die with the socket: take the selected block's again
         const selected = useEditorStore.getState().selectedBlockId;
@@ -160,7 +211,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
 
       case 'user_joined': {
         const entry = parsePresenceEntry(msg);
-        if (entry) store.addPresence(entry);
+        if (entry) store.addPresence(named(entry));
         break;
       }
 
@@ -172,35 +223,60 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
 
       case 'lock_acquired': {
         const entry = parsePresenceEntry(msg);
-        if (typeof msg.block_id !== 'string' || !entry) break;
-        store.setBlockLock(msg.block_id, entry);
+        const blockId = msg.block_id;
+        if (typeof blockId !== 'string' || !entry) break;
+        store.setBlockLock(blockId, lockHolder(entry));
+        if (entry.connectionId !== own) break;
         // Track our own locks for renewal
-        if (entry.connectionId === own) heldLocksRef.current.add(msg.block_id);
+        heldLocksRef.current.add(blockId);
+        if (probesRef.current.delete(blockId)) {
+          // The lock we were shown had expired: the block is free, so do what the user asked
+          const { selectedBlockId, selectBlock } = useEditorStore.getState();
+          const free = selectedBlockId === null || selectedBlockId === blockId;
+          if (!free || !selectBlock(blockId)) releaseLock(blockId);
+        }
         break;
       }
 
       case 'lock_released': {
-        if (typeof msg.block_id !== 'string') break;
-        store.setBlockLock(msg.block_id, null);
-        heldLocksRef.current.delete(msg.block_id);
+        const blockId = msg.block_id;
+        if (typeof blockId !== 'string') break;
+        const wasOurs = heldLocksRef.current.delete(blockId);
+        store.setBlockLock(blockId, null);
+        // Our lock lapsed (renewals did not arrive in time) and the block is
+        // still selected here: take it again, or hear who has it now (QA-031)
+        if (wasOurs && useEditorStore.getState().selectedBlockId === blockId) acquireLock(blockId);
         break;
       }
 
       case 'lock_rejected': {
         const holder = parsePresenceEntry(msg.holder);
-        if (typeof msg.block_id === 'string' && holder) store.setBlockLock(msg.block_id, holder);
-        store.addToast(
-          holder?.username
-            ? tRef.current('collab.lockRejected', { name: holder.username })
-            : tRef.current('collab.lockRejectedAnonymous'),
-          'info',
-        );
+        const shown = holder ? lockHolder(holder) : null;
+        const blockId = msg.block_id;
+        let wasProbe = false;
+        if (typeof blockId === 'string') {
+          heldLocksRef.current.delete(blockId);
+          wasProbe = probesRef.current.delete(blockId);
+          if (shown) store.setBlockLock(blockId, shown);
+          // Lost a near-simultaneous click, or our lapsed lock went to someone
+          // else: let the block go so nothing typed here overwrites them (QA-011)
+          const now = useEditorStore.getState();
+          if (now.selectedBlockId === blockId) useEditorStore.setState({ selectedBlockId: null });
+          if (now.pendingDeleteBlockId === blockId) now.cancelDeleteBlock();
+        }
+        // A probe follows a refusal that was already announced
+        if (!wasProbe) tellLocked(shown);
         break;
       }
 
       case 'block_updated':
         if (typeof msg.block_id !== 'string' || (own !== null && msg.connection_id === own)) break;
-        store.applyRemoteBlockUpdate(msg.block_id, msg.data, msg.styles);
+        store.applyRemoteBlockUpdate(
+          msg.block_id,
+          msg.data,
+          msg.styles,
+          typeof msg.connection_id === 'string' ? msg.connection_id : '',
+        );
         break;
 
       case 'cursor_moved':
@@ -211,7 +287,8 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
       case 'page_updated': {
         const change = parsePageChange(msg);
         if (change && (change.connectionId === null || change.connectionId !== own)) {
-          onRemoteChangeRef.current?.(change);
+          const by = change.by ? { ...change.by, username: displayName(change.by.userId, change.by.username) } : null;
+          onRemoteChangeRef.current?.({ ...change, by });
         }
         break;
       }
@@ -220,9 +297,9 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         break;
 
       case 'error':
-        if (msg.code === 'access_revoked') {
+        if (msg.code === 'access_revoked' || msg.code === 'page_deleted') {
           stopReconnectRef.current = true;
-          store.setCollabStatus('revoked');
+          store.setAccessRevoked(msg.code === 'page_deleted' ? 'deleted' : 'unshared');
         } else if (msg.code === 'plan_limit') {
           stopReconnectRef.current = true;
           store.setCollabStatus('unavailable');
@@ -232,7 +309,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         }
         break;
     }
-  }, [acquireLock]);
+  }, [acquireLock, releaseLock, named, lockHolder, displayName, tellLocked]);
 
   // Auto-acquire/release locks when selectedBlockId changes
   useEffect(() => {
@@ -252,6 +329,23 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
 
     return () => unsub();
   }, [acquireLock, releaseLock]);
+
+  // The store refused a block someone else holds (layers, keyboard, Quick Edit...): say so (QA-011)
+  useEffect(() => {
+    const unsub = useEditorStore.subscribe(
+      (state) => state.lockRefusal,
+      (refusal) => {
+        if (!refusal) return;
+        tellLocked(refusal.holder);
+        // The server knows whether that lock is still alive: it grants it or names the holder
+        if (wsRef.current?.readyState === WebSocket.OPEN && !probesRef.current.has(refusal.blockId)) {
+          probesRef.current.add(refusal.blockId);
+          acquireLock(refusal.blockId);
+        }
+      },
+    );
+    return () => unsub();
+  }, [acquireLock, tellLocked]);
 
   // Relay live edits of the blocks we hold; everything else syncs through saves (page_updated)
   useEffect(() => {
@@ -294,13 +388,29 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
     let disposed = false;
     let attemptCount = 0;
     let wasConnected = false;
+    /** A ticket request is under way (the socket itself is tracked by wsRef) */
+    let fetchingTicket = false;
+    const enabled = !!pageId && !pageId.startsWith('page_');
     const setStatus = useEditorStore.getState().setCollabStatus;
+    // The same Set objects for the whole life of the hook
+    const heldLocks = heldLocksRef.current;
+    const probes = probesRef.current;
+
+    function clearReconnectTimer() {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
 
     function scheduleReconnect() {
       if (disposed || stopReconnectRef.current) return;
+      clearReconnectTimer();
       if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
-        logCollabWarning('[collab] Max reconnect attempts reached, giving up');
+        // Tell the user, and keep trying slowly: a long outage ends eventually (QA-035)
+        if (attemptCount === MAX_RECONNECT_ATTEMPTS) logCollabWarning('[collab] Still offline, retrying every minute');
         setStatus('offline');
+        reconnectTimerRef.current = setTimeout(connect, RECONNECT_MAX_DELAY);
         return;
       }
       setStatus(wasConnected ? 'reconnecting' : 'connecting');
@@ -309,29 +419,41 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
       reconnectTimerRef.current = setTimeout(connect, delay);
     }
 
+    /** Busy: a ticket is being fetched or a socket is open or opening. */
+    function isBusy(): boolean {
+      const ws = wsRef.current;
+      return fetchingTicket || (!!ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING));
+    }
+
     async function connect() {
-      if (!pageId || pageId.startsWith('page_')) return;
-      if (disposed || stopReconnectRef.current) return;
-      setStatus(wasConnected ? 'reconnecting' : 'connecting');
+      reconnectTimerRef.current = null;
+      if (!enabled || disposed || stopReconnectRef.current || isBusy()) return;
+      // Once offline, the label stays until a socket really opens
+      if (useEditorStore.getState().collabStatus !== 'offline') setStatus(wasConnected ? 'reconnecting' : 'connecting');
 
       // A fresh single-use ticket per attempt: the socket may be on another
       // domain where the session cookie is not sent (ADR-010)
       let ticket: string;
+      fetchingTicket = true;
       try {
         ({ ticket } = await api.auth.wsTicket());
       } catch (e) {
         logCollabWarning('[collab] Could not get a WebSocket ticket', e);
+        fetchingTicket = false;
         attemptCount++;
         scheduleReconnect();
         return;
       }
+      fetchingTicket = false;
       if (disposed) return;
 
       const url = `${WS_BASE}/ws/pages/${pageId}/?ticket=${encodeURIComponent(ticket)}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
+      let opened = false;
 
       ws.onopen = () => {
+        opened = true;
         attemptCount = 0; // Reset on successful connection
         wasConnected = true;
 
@@ -366,6 +488,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         if (wsRef.current === ws) wsRef.current = null;
         // The server dropped this connection's locks and presence: forget them too
         heldLocksRef.current.clear();
+        probesRef.current.clear();
         useEditorStore.getState().clearCollaboration();
 
         const status = useEditorStore.getState().collabStatus;
@@ -375,18 +498,31 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         if (FINAL_CLOSE_CODES.has(event.code)) {
           logCollabWarning(`[collab] Connection rejected (code ${event.code}), not retrying`);
           // 4003 without a message: access to the page is gone
-          setStatus(event.code === 4003 && status !== 'unavailable' ? 'revoked' : 'offline');
+          if (event.code === CLOSE_FORBIDDEN && status !== 'unavailable') {
+            stopReconnectRef.current = true;
+            setStatus('revoked');
+          } else {
+            setStatus('offline');
+          }
           return;
         }
 
-        // If we never successfully connected, likely server is down — use backoff
-        if (!wasConnected) attemptCount++;
+        // A socket that never opened counts as a failed attempt
+        if (!opened) attemptCount++;
         scheduleReconnect();
       };
 
       ws.onerror = () => {
         // onclose will fire after this, so just let it handle reconnection
       };
+    }
+
+    /** Try now, from the first quick attempt (network back, tab visible again, "Reconectar"). */
+    function reconnectNow() {
+      if (!enabled || disposed || stopReconnectRef.current || isBusy()) return;
+      clearReconnectTimer();
+      attemptCount = 0;
+      void connect();
     }
 
     function cleanup() {
@@ -400,21 +536,30 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
       }
     }
 
-    connect();
+    const handleOnline = () => reconnectNow();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') reconnectNow();
+    };
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibility);
+    const unsubReconnect = useEditorStore.subscribe((state) => state.collabReconnectRequest, reconnectNow);
+
+    void connect();
 
     return () => {
       disposed = true;
       mountedRef.current = false;
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubReconnect();
       cleanup();
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
+      clearReconnectTimer();
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
-      heldLocksRef.current.clear();
+      heldLocks.clear();
+      probes.clear();
       // Clean collaboration state
       useEditorStore.getState().clearCollaboration();
       useEditorStore.getState().setCollabStatus('idle');

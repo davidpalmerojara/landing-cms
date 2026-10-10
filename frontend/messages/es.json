@@ -825,7 +825,14 @@
     "inviteLinkHint": "Ábrelo en una ventana de incógnito para probar la edición en tiempo real.",
     "inviteLinkError": "No se pudo crear el enlace. Inténtalo de nuevo.",
     "guestEmailLocked": "Invitar por email necesita una cuenta. Puedes invitar con un enlace.",
-    "notOwner": "Solo el propietario puede invitar o quitar colaboradores."
+    "notOwner": "Solo el propietario puede invitar o quitar colaboradores.",
+    "guest": "Invitado",
+    "shared": "Listo. Si esa dirección tiene cuenta en Paxl, ya puede editar la página.",
+    "removed": "Esa persona ya no tiene acceso a la página.",
+    "invalidEmail": "Escribe una dirección de email válida.",
+    "cannotShareSelf": "No puedes compartir la página contigo.",
+    "notCollaborator": "Esa persona ya no tenía acceso a la página.",
+    "throttled": "Demasiados intentos seguidos. Espera un momento y vuelve a probar."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -960,10 +967,16 @@
     "saveConflict": "No se pudo guardar: otra persona está cambiando la página a la vez. Se volverá a intentar con tu próximo cambio.",
     "reconnecting": "Reconectando…",
     "offline": "Sin tiempo real",
-    "offlineHint": "Se ha perdido la conexión en tiempo real. Tus cambios se siguen guardando; recarga la página para volver a ver los de los demás al momento.",
+    "offlineHint": "Se ha perdido la conexión en tiempo real. Tus cambios se siguen guardando y se vuelve a intentar sola cada minuto.",
     "revokedTitle": "Ya no tienes acceso a esta página",
-    "revokedBody": "El propietario ha dejado de compartirla contigo. Los cambios que hagas a partir de ahora no se guardarán.",
-    "restoredByCollaborator": "{name} ha restaurado una versión anterior"
+    "revokedBody": "El propietario ha dejado de compartirla contigo. La página queda en solo lectura: lo que no se hubiera guardado ya no se guardará.",
+    "restoredByCollaborator": "{name} ha restaurado una versión anterior",
+    "lockRejectedOwnTab": "Lo estás editando en otra pestaña",
+    "yourOtherTab": "tu otra pestaña",
+    "guestName": "Invitado {number}",
+    "reconnect": "Reconectar",
+    "deletedTitle": "Esta página se ha eliminado",
+    "deletedBody": "El propietario la ha borrado. Ya no se puede editar ni se guardará ningún cambio."
   },
   "join": {
     "joining": "Abriendo la página compartida…",

@@ -32,6 +32,9 @@ CLOSE_UNAUTHENTICATED = 4001
 CLOSE_FORBIDDEN = 4003
 CLOSE_SERVER_ERROR = 4500
 
+# `reason` of an access.revoked group message sent when the page is deleted
+REVOKED_PAGE_DELETED = 'page_deleted'
+
 MAX_STYLES_BYTES = 8_000
 MAX_BLOCK_ID_LENGTH = 64
 # Cursor positions are canvas coordinates (they can be negative once the canvas
@@ -130,7 +133,7 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         { "type": "block_updated", "block_id": "...", "data": {...}, "styles": {...}, "connection_id", "user_id" }
         { "type": "cursor_moved", "connection_id", "user_id", "username", "x": 120, "y": 340 }
         { "type": "page_updated", "version": 4, "reason": "save|restore|publish|ai", "by": {...}, "connection_id": "..."|null }
-        { "type": "error", "code": "...", "message": "..." }   (access_revoked, plan_limit, ...)
+        { "type": "error", "code": "...", "message": "..." }   (access_revoked, page_deleted, plan_limit, ...)
     """
 
     # Who is connected, per page group: {group_name: {connection_id: entry}}.
@@ -362,8 +365,27 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         if not is_valid_block_id(block_id):
             return
 
-        if not await self._lock_call('renew', self.page_id, block_id, self.connection_id):
-            await self.send_json({'type': 'lock_released', 'block_id': block_id, **self.entry})
+        if await self._lock_call('renew', self.page_id, block_id, self.connection_id):
+            return
+
+        # The lock lapsed (renewals did not arrive within the TTL) while this
+        # editor still has the block selected. Every other editor still shows
+        # it as ours, so whatever happens next must reach the whole group
+        # (QA-031): take it again, or tell the requester who has it now.
+        if await get_block_type(self.page_id, block_id) is None:
+            # The block is gone: nobody can hold it
+            await self._safe_group_send({'type': 'broadcast_lock_released', 'block_id': block_id, 'entry': self.entry})
+            return
+        if await self._lock_call('acquire', self.page_id, block_id, self.connection_id):
+            await self._safe_group_send({'type': 'broadcast_lock_acquired', 'block_id': block_id, 'entry': self.entry})
+            return
+        # Someone else took it after it lapsed; the others heard their lock_acquired
+        holder = await self._lock_call('get_lock_holder', self.page_id, block_id)
+        await self.send_json({
+            'type': 'lock_rejected',
+            'block_id': block_id,
+            'holder': self._entry_for(holder) if holder else None,
+        })
 
     async def handle_block_updated(self, content):
         block_id = content.get('block_id')
@@ -472,8 +494,17 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def access_revoked(self, event):
-        """The owner removed a collaborator: their open editors stop now."""
-        if not self._joined or str(self.user.pk) != event.get('user_id'):
+        """The owner removed a collaborator, or deleted the page: those open
+        editors stop now. `user_id` names whose access ended; without it
+        (page deleted) everyone's did. `reason: 'page_deleted'` tells the
+        editor why, so it does not say the page was unshared."""
+        if not self._joined:
             return
-        await self._send_error('access_revoked', 'Ya no tienes acceso a esta página.')
+        user_id = event.get('user_id')
+        if user_id is not None and str(self.user.pk) != user_id:
+            return
+        if event.get('reason') == REVOKED_PAGE_DELETED:
+            await self._send_error('page_deleted', 'Esta página se ha eliminado.')
+        else:
+            await self._send_error('access_revoked', 'Ya no tienes acceso a esta página.')
         await self.close(code=CLOSE_FORBIDDEN)

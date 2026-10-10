@@ -75,6 +75,41 @@ describe('published page structure', () => {
     expect(html.indexOf('<nav')).toBeLessThan(mainEnd);
   });
 
+  it('PUBLIC3-002: with several footers only the last block is the contentinfo; the others stay inside <main>', () => {
+    const order = ['hero', 'footer', 'cta', 'footer', 'footer'] as const;
+    const blocks = order.map((type, index) => {
+      const block = createBlock(type, 'es');
+      return { id: block.id, type, order: index, data: block.data as unknown as Record<string, unknown>, styles: {} };
+    });
+    const html = ssr(<PublicPageClient page={publicPage({ blocks })} />);
+
+    const mainEnd = html.indexOf('</main>');
+    const footers = [...html.matchAll(/<footer/g)].map((match) => match.index ?? -1);
+    expect(footers).toHaveLength(3);
+    expect(footers.filter((at) => at > mainEnd)).toHaveLength(1);
+  });
+
+  it('PUBLIC3-002: a page of a single footer keeps it in <main>', () => {
+    const block = createBlock('footer', 'es');
+    const html = ssr(<PublicPageClient page={publicPage({
+      blocks: [{ id: block.id, type: 'footer', order: 0, data: block.data as unknown as Record<string, unknown>, styles: {} }],
+    })} />);
+
+    expect(html.indexOf('<footer')).toBeLessThan(html.indexOf('</main>'));
+  });
+
+  it('PUBLIC3-003: the footer brand is not a heading, so it cannot skip a level after the hero', () => {
+    const order = ['hero', 'footer'] as const;
+    const blocks = order.map((type, index) => {
+      const block = createBlock(type, 'es');
+      return { id: block.id, type, order: index, data: block.data as unknown as Record<string, unknown>, styles: {} };
+    });
+    const html = ssr(<PublicPageClient page={publicPage({ blocks })} />);
+
+    expect(html).toContain('<footer');
+    expect(html).not.toMatch(/<h3[^>]*>/);
+  });
+
   it('declares the language the page is written in, whatever the visitor\'s (QA-091)', () => {
     const html = ssr(<PublicPageClient page={publicPage({ language: 'en' })} />, 'es');
     expect(html).toMatch(/<div lang="en"[^>]*>[^]*<main/);

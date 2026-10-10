@@ -43,7 +43,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
               blockId={blockId}
               fieldKey="brandName"
               value={data.brandName}
-              as="h3"
+              as="p"
               className="text-xl font-bold tracking-wide"
               style={{ color: 'var(--theme-inverse-text)' }}
             />

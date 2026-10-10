@@ -27,12 +27,16 @@ interface PageRendererProps {
   className?: string;
 }
 
-/** Index of the first of the footer blocks that end the page; the page length when it does not end with one */
-function trailingFooterStart(blocks: Block[]): number {
-  let start = blocks.length;
-  while (start > 0 && blocks[start - 1].type === 'footer') start -= 1;
-  // A page of only footers keeps them in <main>: the skip link needs somewhere to land
-  return start === 0 ? blocks.length : start;
+/**
+ * Index of the block that closes the page after <main>: the last block when it
+ * is a footer; the page length otherwise. Only that one is the page's
+ * contentinfo landmark: any other footer stays in <main>, where it is not one
+ * (two contentinfo landmarks would be announced twice, PUBLIC3-002).
+ */
+function closingFooterIndex(blocks: Block[]): number {
+  const last = blocks.length - 1;
+  // A page of one footer keeps it in <main>: the skip link needs somewhere to land
+  return last > 0 && blocks[last].type === 'footer' ? last : blocks.length;
 }
 
 /**
@@ -43,8 +47,8 @@ function trailingFooterStart(blocks: Block[]): number {
  * container variants and per-device spacing comes from a stylesheet built
  * from the block styles (blockStylesCss).
  *
- * <main> (the skip link's target, QA-090) holds the blocks; footer blocks that
- * close the page sit after it, so they stay the contentinfo landmark. The root
+ * <main> (the skip link's target, QA-090) holds the blocks; a footer that is the
+ * last block sits after it, so it is the contentinfo landmark. The root
  * is its own stacking context: nothing a block draws can cover what Paxl shows
  * around the page (the guest notice, the watermark).
  */
@@ -54,7 +58,7 @@ const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactS
   const messagesLocale = pageMessagesLocale(language);
 
   // A closing footer is the page's contentinfo landmark: inside <main> it would not be one (PUBLIC2-005)
-  const closingFooterStart = trailingFooterStart(blocks);
+  const closingFooterStart = closingFooterIndex(blocks);
 
   const renderBlock = (block: Block) => (
     <div

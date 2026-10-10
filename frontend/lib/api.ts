@@ -84,6 +84,11 @@ export function apiErrorCode(error: unknown): string | null {
   return error instanceof ApiError ? error.code : null;
 }
 
+/** The request needs a plan the user does not have (403 with `{ error: 'plan_limit' }`). */
+export function isPlanLimitError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403 && error.body?.error === 'plan_limit';
+}
+
 /** The server's current page sent with a 409 VERSION_CONFLICT, or null for any other error. */
 export function conflictPage(error: unknown): ApiPage | null {
   if (!(error instanceof ApiError) || error.status !== 409 || error.code !== 'VERSION_CONFLICT') return null;
@@ -166,6 +171,11 @@ export interface ApiPublicPage {
   show_watermark: boolean;
   /** Published by a temporary guest: shown with a notice, the form doesn't send */
   is_guest_page?: boolean;
+}
+
+/** GET /api/features/: what this deployment offers (custom domains need DNS and SSL, which not every host has). */
+export interface ApiFeatures {
+  custom_domains: boolean;
 }
 
 export interface ApiBlock {
@@ -431,6 +441,14 @@ export const api = {
       const res = await fetch(`${API_BASE}/auth/logout/`, { method: 'POST', credentials: 'include' });
       if (!res.ok) throw new Error(`API ${res.status}: logout failed`);
     },
+
+    /**
+     * Deletes the account and everything it owns. A password account sends its
+     * current password; one without a password types its username instead.
+     * The server clears the session cookies.
+     */
+    deleteAccount: (data: { password?: string; confirm_username?: string }) =>
+      request<void>('/auth/me/', { method: 'DELETE', body: JSON.stringify(data) }),
   },
 
   pages: {
@@ -606,6 +624,11 @@ export const api = {
       request<ApiCustomDomain & { dns_error?: string }>(`/domains/${id}/verify/`, {
         method: 'POST',
       }),
+  },
+
+  features: {
+    /** Optional features the deployment has turned on. */
+    get: () => publicRequest<ApiFeatures>('/features/'),
   },
 
   public: {

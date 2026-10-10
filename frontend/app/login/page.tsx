@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
 import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft, Info } from 'lucide-react';
@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { nextPathFromLocation } from '@/lib/safe-redirect';
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 import GuestStartButton from '@/components/guest/GuestStartButton';
+import { useGuestExpiredNotice } from '@/hooks/useGuestExpiredNotice';
 
 const hasGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -25,12 +26,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [securedNextPath, setSecuredNextPath] = useState<string | null>(null);
-  const [guestExpired, setGuestExpired] = useState(false);
-
   // useAuth sends an expired guest here with ?guest=expired
-  useEffect(() => {
-    setGuestExpired(new URLSearchParams(window.location.search).get('guest') === 'expired');
-  }, []);
+  const guestExpired = useGuestExpiredNotice();
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

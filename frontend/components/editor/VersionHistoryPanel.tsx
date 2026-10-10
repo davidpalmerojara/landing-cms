@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   X, History, Clock, Globe, RotateCcw, Sparkles, Save,
   Loader2, Pencil, Check, Trash2, ChevronDown, Crown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { ApiPageVersion } from '@/lib/api';
+import { useVersionHistory } from '@/hooks/useVersionHistory';
 
 interface VersionHistoryPanelProps {
   pageId: string;
@@ -58,45 +58,20 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
   const t = useTranslations('versionHistory');
   const tCommon = useTranslations('common');
   const locale = useLocale();
-  const [versions, setVersions] = useState<ApiPageVersion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const {
+    versions, hasMore, isLoading: loading, isLoadingMore: loadingMore, loadMoreFailed, isPlanLimited, loadMore, updateVersions,
+  } = useVersionHistory(pageId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
-  const [isPlanLimited, setIsPlanLimited] = useState(false);
 
-  const fetchVersions = useCallback(async (page = 1, append = false) => {
-    if (page === 1) setLoading(true);
-    else setLoadingMore(true);
-    try {
-      const res = await api.versions.list(pageId, page);
-      setVersions((prev) => (append ? [...prev, ...res.results] : res.results));
-      setHasMore(res.next !== null);
-      setCurrentPage(page);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('403') && msg.includes('plan_limit')) {
-        setIsPlanLimited(true);
-      }
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [pageId]);
-
-  useEffect(() => {
-    fetchVersions();
-  }, [fetchVersions]);
-
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [failedAction, setActionError] = useState<string | null>(null);
+  const actionError = failedAction ?? (loadMoreFailed ? t('loadMoreError') : null);
 
   const handleUpdateLabel = async (versionId: string) => {
     setActionError(null);
     try {
       const updated = await api.versions.updateLabel(pageId, versionId, editLabel);
-      setVersions((prev) => prev.map((v) => (v.id === versionId ? { ...v, label: updated.label } : v)));
+      updateVersions((prev) => prev.map((v) => (v.id === versionId ? { ...v, label: updated.label } : v)));
     } catch {
       setActionError(t('updateLabelError'));
     }
@@ -108,7 +83,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
     setActionError(null);
     try {
       await api.versions.delete(pageId, versionId);
-      setVersions((prev) => prev.filter((v) => v.id !== versionId));
+      updateVersions((prev) => prev.filter((v) => v.id !== versionId));
     } catch {
       setActionError(t('deleteError'));
     }
@@ -275,7 +250,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
             {hasMore && (
               <div className="flex justify-center mt-3">
                 <button
-                  onClick={() => fetchVersions(currentPage + 1, true)}
+                  onClick={() => loadMore()}
                   disabled={loadingMore}
                   className="flex items-center gap-1 text-xs text-muted hover:text-secondary px-3 py-1.5 rounded hover:bg-surface-card/50 transition-colors disabled:opacity-50"
                 >

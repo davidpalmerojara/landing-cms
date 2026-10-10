@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { api, AnalyticsData } from '@/lib/api';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import UpgradePrompt from '@/components/billing/UpgradePrompt';
 import MetricCard from './MetricCard';
 import ViewsChart from './ViewsChart';
@@ -40,38 +40,13 @@ function MetricSkeleton() {
 
 export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelProps) {
   const t = useTranslations();
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlanLimited, setIsPlanLimited] = useState(false);
   const [period, setPeriod] = useState('30d');
+  const { data, isLoading: loading, isPlanLimited, errorMessage: error, reload: fetchData } = useAnalytics(pageId, period);
   const periods = [
     { value: '7d', label: t('analytics.period7d') },
     { value: '30d', label: t('analytics.period30d') },
     { value: '90d', label: t('analytics.period90d') },
   ];
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await api.analytics.get(pageId, { period });
-      setData(result);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('403') && msg.includes('plan_limit')) {
-        setIsPlanLimited(true);
-      } else {
-        setError(msg || t('analytics.loadError'));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [pageId, period, t]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Empty state for unpublished pages
   if (pageStatus !== 'published') {
@@ -97,10 +72,10 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
     );
   }
 
-  if (error) {
+  if (error !== null) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 py-16">
-        <p className="text-sm text-error mb-3">{error}</p>
+        <p className="text-sm text-error mb-3">{error || t('analytics.loadError')}</p>
         <button
           onClick={fetchData}
           className="text-sm text-primary-color hover:text-primary-color/80 flex items-center gap-1"

@@ -36,7 +36,7 @@ interface SeoFieldProps {
 }
 
 const seoFieldClass =
-  'w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors';
+  'w-full pointer-coarse:min-h-11 bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors';
 
 function SeoInput({ label, value, onChange, maxLength, warnLength, placeholder }: SeoFieldProps) {
   const id = useId();
@@ -231,7 +231,7 @@ export default function SeoPanel() {
                     value={seo.language}
                     onChange={(e) => updateSeo('language', e.target.value)}
                     aria-describedby="seo-language-hint"
-                    className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                    className="w-full pointer-coarse:min-h-11 bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
                   >
                     {languages.map((tag) => (
                       <option key={tag} value={tag} lang={tag}>{languageName(tag, uiLocale)}</option>
@@ -258,17 +258,22 @@ export default function SeoPanel() {
                     aria-labelledby="seo-noindex-label"
                     aria-describedby="seo-noindex-hint"
                     onClick={() => updateSeo('noindex', !seo.noindex)}
-                    className={`relative shrink-0 w-9 h-5 rounded-full transition-colors before:absolute before:-inset-1 ${
-                      seo.noindex ? 'bg-red-500/80' : 'bg-default'
-                    }`}
+                    className="relative shrink-0 flex items-center justify-center w-9 h-5 pointer-coarse:w-11 pointer-coarse:h-11 before:absolute before:-inset-1"
                   >
-                    {/* Knob anchored to the left edge of the track, moved right when on (QA-076) */}
+                    {/* The button is the 44 px target on touch screens; the track is what is drawn */}
                     <span
                       aria-hidden="true"
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                        seo.noindex ? 'translate-x-4' : 'translate-x-0'
+                      className={`relative block w-9 h-5 rounded-full transition-colors ${
+                        seo.noindex ? 'bg-red-500/80' : 'bg-default'
                       }`}
-                    />
+                    >
+                      {/* Knob anchored to the left edge of the track, moved right when on (QA-076) */}
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                          seo.noindex ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </span>
                   </button>
                 </div>
                 {seo.noindex && (
@@ -333,7 +338,7 @@ export default function SeoPanel() {
                         onClick={() => updateSeo('ogImage', '')}
                         aria-label={t('removeOgImage')}
                         title={t('removeOgImage')}
-                        className="absolute top-1.5 right-1.5 p-1.5 bg-surface-elevated/80 rounded-full hover:bg-surface-card transition-colors before:absolute before:-inset-1"
+                        className="absolute top-1.5 right-1.5 p-1.5 pointer-coarse:p-4 bg-surface-elevated/80 rounded-full hover:bg-surface-card transition-colors before:absolute before:-inset-1"
                       >
                         <X aria-hidden="true" className="w-3 h-3 text-secondary" />
                       </button>
@@ -357,7 +362,7 @@ export default function SeoPanel() {
                     id="seo-og-type"
                     value={ogType}
                     onChange={(e) => updateSeo('ogType', e.target.value)}
-                    className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                    className="w-full pointer-coarse:min-h-11 bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
                   >
                     <option value="website">{t('ogTypeWebsite')}</option>
                     <option value="article">{t('ogTypeArticle')}</option>

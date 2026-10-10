@@ -172,7 +172,9 @@ describe('Quick Edit, QA round 2', () => {
     it('a collaborator is not promised a public page: only the owner-only note', () => {
       useEditorStore.setState((s) => ({ page: { ...s.page, isOwner: false } }));
       const view = renderEditor();
-      click(byLabel(view.container, 'Publicar página'));
+      // EDITOR3-004: the button is named for what it opens, not "Publicar página"
+      expect(view.container.querySelector('button[aria-label="Publicar página"]')).toBeNull();
+      click(byLabel(view.container, 'Publicación'));
 
       expect(titleOf()).toBe('Publicación');
       expect(document.body.textContent).not.toContain('será visible');

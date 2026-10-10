@@ -150,10 +150,15 @@ export default function LeftSidebar() {
 
   const openPanel = () => setIsOpen(true);
 
-  // Once the panel is drawn (no longer `invisible`), focus moves into it: its selected tab (EDITOR2-005)
+  // Once the panel is drawn (no longer `invisible`), focus moves into it: its selected tab (EDITOR2-005).
+  // Right in the effect the browser still saw the panel as hidden and ignored the call, so focus
+  // stayed on "Bloques"; the next frame is when it can take it (EDITOR3-001)
   useEffect(() => {
     if (!isOverlayOpen) return;
-    asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+    const frame = requestAnimationFrame(() => {
+      asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
   }, [isOverlayOpen]);
 
   // Esc closes the open panel wherever focus is, and gives focus back to "Bloques" (EDITOR2-005)

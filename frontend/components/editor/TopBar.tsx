@@ -148,7 +148,7 @@ export default function TopBar({
           onClick={leave.onLinkClick}
           aria-label={t('editor.goToDashboard')}
           aria-busy={leave.isLeaving || undefined}
-          className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity shrink-0"
+          className="text-base font-black tracking-tighter hover:opacity-80 transition-opacity shrink-0 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:items-center"
           style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
         >
           {t('common.brand')}

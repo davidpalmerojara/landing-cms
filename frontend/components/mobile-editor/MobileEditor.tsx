@@ -314,8 +314,10 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
             publication === 'live' ? 'text-success' : publication === 'changes' ? 'text-warning' : 'text-secondary active:text-primary'
           }`}
           aria-label={
-            publication === 'draft' ? t('mobile.publishTitle')
-              : publication === 'changes' ? t('mobile.publishPendingAria') : t('mobile.publishedTitle')
+            // Not the owner: the sheet only explains that publishing is the owner's, so the button does not promise it (EDITOR3-004)
+            publication === 'live' ? t('mobile.publishedTitle')
+              : page.isOwner === false ? t('mobile.publishingTitle')
+              : publication === 'draft' ? t('mobile.publishTitle') : t('mobile.publishPendingAria')
           }
         >
           <Globe size={20} aria-hidden="true" />

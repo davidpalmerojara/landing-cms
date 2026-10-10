@@ -42,6 +42,7 @@ describe('LeftSidebar', () => {
       expect(toggle().getAttribute('aria-expanded')).toBe('false');
       act(() => { toggle().focus(); });
       click(toggle());
+      await nextFrame();
 
       expect(toggle()).not.toBeNull();
       expect(toggle().getAttribute('aria-expanded')).toBe('true');

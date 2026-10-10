@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { apiErrorMessage } from '@/lib/api-errors';
@@ -33,6 +33,19 @@ export function usePublishActions({ onPublish, onUnpublish, publicationError, ph
   /** Public path of the page just published, shown with a link until dismissed */
   const [publishedPath, setPublishedPath] = useState<string | null>(null);
 
+  /** The toast that says what the last publish or unpublish did: a newer one replaces it (EDITOR3-003) */
+  const publicationToastId = useRef<string | null>(null);
+
+  const dropPublicationToast = useCallback(() => {
+    if (publicationToastId.current) useEditorStore.getState().removeToast(publicationToastId.current);
+    publicationToastId.current = null;
+  }, []);
+
+  const showPublicationToast = useCallback((message: string, variant: 'success' | 'error' | 'info') => {
+    dropPublicationToast();
+    publicationToastId.current = useEditorStore.getState().addToast(message, variant);
+  }, [dropPublicationToast]);
+
   const explainOwnerOnly = useCallback(() => {
     useEditorStore.getState().addToast(t('publishing.ownerOnly'), 'info');
   }, [t]);
@@ -49,19 +62,20 @@ export function usePublishActions({ onPublish, onUnpublish, publicationError, ph
     }
     setIsPublishing(true);
     setPublishedPath(null);
+    dropPublicationToast();
     const ok = await onPublish();
     setIsPublishing(false);
-    const { page, addToast } = useEditorStore.getState();
+    const page = useEditorStore.getState().page;
     if (ok) {
       setPublishedPath(`/p/${page.slug}`);
       // Published anyway; only a heads-up about what visitors won't be able to use (D9)
       const notice = publishNotice(page.blocks, t, { phone });
-      if (notice) addToast(notice, 'info');
-      else if (phone) addToast(t('mobile.pagePublished'), 'success');
+      if (notice) showPublicationToast(notice, 'info');
+      else if (phone) showPublicationToast(t('mobile.pagePublished'), 'success');
     } else {
-      addToast(failureMessage('editor.publishError'), 'error');
+      showPublicationToast(failureMessage('editor.publishError'), 'error');
     }
-  }, [explainOwnerOnly, failureMessage, isOwner, onPublish, phone, t]);
+  }, [dropPublicationToast, explainOwnerOnly, failureMessage, isOwner, onPublish, phone, showPublicationToast, t]);
 
   const unpublish = useCallback(async () => {
     if (!onUnpublish) return;
@@ -71,12 +85,13 @@ export function usePublishActions({ onPublish, onUnpublish, publicationError, ph
     }
     setIsUnpublishing(true);
     setPublishedPath(null);
+    // "Página publicada…" must not stay next to "Página despublicada"
+    dropPublicationToast();
     const ok = await onUnpublish();
     setIsUnpublishing(false);
-    const { addToast } = useEditorStore.getState();
-    if (ok) addToast(t('publishing.unpublished'), 'success');
-    else addToast(apiErrorMessage(publicationError?.() ?? null, t, 'publishing.unpublishError'), 'error');
-  }, [explainOwnerOnly, isOwner, onUnpublish, publicationError, t]);
+    if (ok) showPublicationToast(t('publishing.unpublished'), 'success');
+    else showPublicationToast(apiErrorMessage(publicationError?.() ?? null, t, 'publishing.unpublishError'), 'error');
+  }, [dropPublicationToast, explainOwnerOnly, isOwner, onUnpublish, publicationError, showPublicationToast, t]);
 
   const dismissPublished = useCallback(() => setPublishedPath(null), []);
 

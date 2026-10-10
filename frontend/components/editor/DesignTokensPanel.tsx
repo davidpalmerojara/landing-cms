@@ -48,7 +48,7 @@ function ColorField({
 
   return (
     <div className="flex items-center gap-3 group">
-      <label className="relative w-8 h-8 rounded-lg border border-default overflow-hidden cursor-pointer shrink-0 shadow-inner hover:border-default transition-colors">
+      <label className="relative w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg border border-default overflow-hidden cursor-pointer shrink-0 shadow-inner hover:border-default transition-colors">
         <input
           type="color"
           aria-label={label}
@@ -68,7 +68,7 @@ function ColorField({
         onChange={(e) => handleText(e.target.value)}
         onBlur={() => setDraft(value)}
         aria-label={t('colorHex', { label })}
-        className="w-[72px] bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-primary"
+        className="w-[72px] pointer-coarse:w-24 pointer-coarse:min-h-11 bg-surface-elevated border border-default rounded-md px-2 py-1 text-[11px] text-secondary font-mono text-center focus:outline-none focus:border-primary"
       />
     </div>
   );
@@ -118,7 +118,7 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="w-full flex items-center gap-2 px-4 py-3 text-xs font-semibold text-secondary uppercase tracking-wider hover:bg-surface-card/30 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-3 pointer-coarse:min-h-11 text-xs font-semibold text-secondary uppercase tracking-wider hover:bg-surface-card/30 transition-colors"
       >
         <Icon aria-hidden="true" className="w-3.5 h-3.5 text-muted" />
         {title}
@@ -257,7 +257,7 @@ function SelectField({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-surface-elevated border border-default rounded-md px-2 py-1.5 text-xs text-secondary focus:outline-none focus:border-primary appearance-none cursor-pointer"
+        className="w-full pointer-coarse:min-h-11 bg-surface-elevated border border-default rounded-md px-2 py-1.5 text-xs text-secondary focus:outline-none focus:border-primary appearance-none cursor-pointer"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>

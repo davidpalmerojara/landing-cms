@@ -133,7 +133,7 @@ describe('Quick Edit, QA round 1', () => {
       useEditorStore.setState((s) => ({ page: { ...s.page, status: 'published', hasUnpublishedChanges: true, isOwner: false } }));
       const view = renderEditor();
 
-      click(byLabel(view.container, 'Publicar cambios (hay cambios sin publicar)'));
+      click(byLabel(view.container, 'Publicación'));
       expect(document.body.textContent).toContain('Solo el propietario de la página puede publicarla');
       expect(() => button(document.body, 'Publicar cambios')).toThrow();
       expect(() => button(document.body, 'Despublicar')).toThrow();

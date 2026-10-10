@@ -328,7 +328,8 @@ interface EditorActions {
   applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: unknown, connectionId?: string) => void;
 
   // Toasts
-  addToast: (message: string, variant?: 'success' | 'error' | 'info') => void;
+  /** Shows a toast and returns its id (to take it down again with `removeToast`) */
+  addToast: (message: string, variant?: 'success' | 'error' | 'info') => string;
   removeToast: (id: string) => void;
 
   // Drag & drop (pointer-event based)
@@ -964,6 +965,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   addToast: (message, variant = 'info') => {
     const id = Math.random().toString(36).slice(2, 9);
     set((s) => ({ toasts: [...s.toasts, { id, message, variant }] }));
+    return id;
   },
   removeToast: (id) => {
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));

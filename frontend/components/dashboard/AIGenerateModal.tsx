@@ -99,7 +99,8 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
     let blankPageId: string | null = null;
 
     try {
-      const page = await api.pages.create({ name: t('ai.generatedPageName'), blocks: [] });
+      // The page is in the language the content is generated in (ADR-033)
+      const page = await api.pages.create({ name: t('ai.generatedPageName'), blocks: [], language });
       blankPageId = page.id;
       setStatusMsg(t('ai.generatingContent'));
 

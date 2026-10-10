@@ -22,6 +22,10 @@ _MESSAGES = {
         'es': 'Las contraseñas no coinciden.',
         'en': 'The passwords do not match.',
     },
+    'magic_sent': {
+        'es': 'Si el email existe, recibirás un enlace de acceso.',
+        'en': 'If the email exists, you will get a sign-in link.',
+    },
     'magic_subject': {
         'es': 'Tu enlace de acceso a Paxl',
         'en': 'Your Paxl sign-in link',

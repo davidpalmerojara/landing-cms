@@ -472,7 +472,13 @@
     "publishError": "The page could not be published. Please try again.",
     "unpublishedChanges": "Unpublished changes",
     "publishChanges": "Publish changes",
-    "viewMessages": "Messages"
+    "viewMessages": "Messages",
+    "openBlocksPanel": "Blocks",
+    "closeBlocksPanel": "Close the blocks panel",
+    "closeInspector": "Close the inspector",
+    "blockPosition": "Block {position} of {total}",
+    "moveBlockUp": "Move {name} up",
+    "moveBlockDown": "Move {name} down"
   },
   "versionHistory": {
     "title": "Version history",
@@ -497,7 +503,20 @@
     "editLabel": "Edit label",
     "deleteVersion": "Delete version",
     "loadMore": "Load more",
-    "upgradeNotice": "The Pro plan includes unlimited version history."
+    "upgradeNotice": "The Pro plan includes unlimited version history.",
+    "loadMoreError": "More versions could not be loaded.",
+    "loadErrorTitle": "The history could not be loaded",
+    "loadError": "Try again in a moment.",
+    "deletePublishedError": "This is the published version: it cannot be deleted while the page shows it.",
+    "publishedBadge": "Published",
+    "labelInput": "Label of version {number}",
+    "previewVersion": "Preview version {number}",
+    "restoreVersion": "Restore version {number}",
+    "editLabelOf": "Edit the label of version {number}",
+    "deleteVersionOf": "Delete version {number}",
+    "deleteTitle": "Delete the version?",
+    "restoreTitle": "Restore version {number}?",
+    "planLimitNote": "Your plan keeps the last {count} versions. When you save more, the oldest are deleted (never the published one)."
   },
   "versionPreview": {
     "title": "Preview - v{number}",
@@ -511,7 +530,11 @@
     "legend": "Legend:",
     "added": "Added",
     "removed": "Removed",
-    "modified": "Modified"
+    "modified": "Modified",
+    "loadError": "This version could not be loaded.",
+    "titleUnknown": "Preview",
+    "viewMode": "View mode",
+    "moved": "Moved"
   },
   "designTokens": {
     "title": "Global styles",
@@ -1003,24 +1026,38 @@
     "removeImage": "Remove image",
     "imageCurrent": "Current image: {name}",
     "imageNone": "No image selected",
-    "hexInput": "Hexadecimal color code"
+    "hexInput": "Hexadecimal color code",
+    "colorFromTheme": "From the theme"
   },
   "assets": {
     "loadError": "Could not load assets",
     "uploadError": "Could not upload the file",
     "deleteError": "Could not delete the file",
-    "invalidType": "\"{name}\" is not a valid file type. Only JPG, PNG, WebP, GIF or SVG.",
+    "invalidType": "\"{name}\" is not a valid file type. Only JPG, PNG, WebP or GIF.",
     "fileTooLarge": "\"{name}\" is too large ({size} MB). Maximum 5 MB.",
     "mediaLibrary": "Media library",
     "filesCount": "{count, plural, one {# file} other {# files}}",
     "uploadPrompt": "Drag images here or click to upload",
-    "uploadHint": "JPG, PNG, WebP, GIF or SVG - max. 5 MB",
+    "uploadHint": "JPG, PNG, WebP or GIF - max. 5 MB",
     "loading": "Loading assets...",
     "emptyTitle": "No images yet",
     "emptyDescription": "Upload your first asset to start building your landing page.",
     "uploadFirst": "Upload first image",
     "noneSelected": "No file selected",
-    "select": "Select"
+    "select": "Select",
+    "uploadRejected": "The server did not accept the file. Upload a JPG, PNG, WebP or GIF image of 5 MB at most.",
+    "uploading": "Uploading… {progress}%",
+    "imageOption": "{name}, {size}",
+    "deleteImage": "Delete {name}",
+    "deleteTitle": "Delete the image?",
+    "deleteMessage": "\"{name}\" will be removed from the library. Pages that use it will stop showing it, published ones too. This cannot be undone.",
+    "sourceLabel": "Image source",
+    "sourceLibrary": "Library",
+    "sourceUrl": "Paste URL",
+    "urlLabel": "Image URL",
+    "urlHint": "An https://… address or a path on this site starting with /. No spaces, quotes or parentheses.",
+    "urlInvalid": "That URL won't work: use https://… or a path starting with /, with no spaces, quotes, parentheses or \";\".",
+    "urlPreview": "Image preview"
   },
   "analytics": {
     "period7d": "7d",
@@ -1055,7 +1092,9 @@
     "noDeviceData": "No device data",
     "noReferrers": "No referrer data",
     "pageviewsStep": "Pageviews",
-    "loadingPanel": "Loading analytics..."
+    "loadingPanel": "Loading analytics...",
+    "scrollFunnelHint": "How many visits reach each depth of the page. In red, the ones lost since the previous step.",
+    "scrollDropoff": "{percent}% do not get here from the previous step"
   },
   "submissions": {
     "title": "Messages",

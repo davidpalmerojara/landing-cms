@@ -2,10 +2,11 @@
 
 import {
   Settings, Type, Palette, ChevronDown, Copy, Trash2, Layout,
-  Monitor, Tablet, Smartphone,
+  Monitor, Tablet, Smartphone, X,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
+import { useBlockBackground } from '@/hooks/useBlockBackground';
 import { blockRegistry, getBlockFields } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { translateFieldDefinition, translateStyleField, translateStyleGroupLabel } from '@/lib/editor-i18n';
@@ -17,6 +18,14 @@ import SpacingField from './SpacingField';
 import ColorField from './ColorField';
 import { styleGroups, getStyleFieldsByGroup } from '@/lib/block-styles-config';
 import { CANVAS_SHORTCUT_KEYS } from '@/lib/keyboard';
+
+/**
+ * Docked at the right on wide screens. Below `xl` it opens over the canvas
+ * while a block is selected and goes away with the selection, so a tablet
+ * keeps the canvas wide (QA-022).
+ */
+const ASIDE_CLASS =
+  'w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:max-w-[85%] max-xl:bg-surface-card max-xl:shadow-2xl';
 
 export default function Inspector() {
   const t = useTranslations();
@@ -30,12 +39,16 @@ export default function Inspector() {
   const updateBlockResponsiveStyle = useEditorStore((s) => s.updateBlockResponsiveStyle);
   const requestDeleteBlock = useEditorStore((s) => s.requestDeleteBlock);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
+  const selectBlock = useEditorStore((s) => s.selectBlock);
 
-  const selectedBlock = page.blocks.find((b) => b.id === selectedBlockId);
+  const selectedIndex = page.blocks.findIndex((b) => b.id === selectedBlockId);
+  const selectedBlock = selectedIndex >= 0 ? page.blocks[selectedIndex] : undefined;
+  // What the theme paints behind the block, for the background field's "from the theme" state
+  const themeBackground = useBlockBackground(selectedBlockId ?? '', [page.designTokens, selectedBlock?.data, deviceMode]);
 
   if (!selectedBlock) {
     return (
-      <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
+      <aside aria-label={t('editor.inspector')} className={`${ASIDE_CLASS} max-xl:hidden`}>
         <div className="h-14 flex items-center px-5 border-b border-default/15 shrink-0">
           <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
             <Settings className="w-4 h-4 text-muted" /> {t('editor.inspector')}
@@ -71,11 +84,21 @@ export default function Inspector() {
   const BlockIcon = blockConfig?.icon || Layout;
 
   return (
-    <aside aria-label={t('editor.inspector')} className="w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20">
-      <div className="h-14 flex items-center px-5 border-b border-default/15 shrink-0">
+    <aside aria-label={t('editor.inspector')} className={ASIDE_CLASS}>
+      <div className="h-14 flex items-center justify-between gap-2 px-5 max-xl:pr-2 border-b border-default/15 shrink-0">
         <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
           <Settings className="w-4 h-4 text-muted" /> {t('editor.inspector')}
         </h2>
+        {/* Over the canvas: closing it ends the selection */}
+        <button
+          type="button"
+          onClick={() => selectBlock(null)}
+          aria-label={t('editor.closeInspector')}
+          title={t('editor.closeInspector')}
+          className="xl:hidden w-11 h-11 shrink-0 flex items-center justify-center rounded-lg text-muted hover:text-primary hover:bg-surface-elevated transition-colors"
+        >
+          <X aria-hidden="true" className="w-4 h-4" />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="pb-10">
@@ -87,7 +110,10 @@ export default function Inspector() {
               </div>
               <div>
                 <span className="font-medium text-[13px] text-primary block">{getTranslatedBlockLabel(selectedBlock.type, t, selectedBlock.name)}</span>
-                <span className="text-[10px] text-muted uppercase tracking-widest">{selectedBlock.type}</span>
+                {/* Where the block is, not its internal type id (QA-081) */}
+                <span className="text-[11px] text-muted">
+                  {t('editor.blockPosition', { position: selectedIndex + 1, total: page.blocks.length })}
+                </span>
               </div>
             </div>
           </div>
@@ -195,11 +221,13 @@ export default function Inspector() {
                                 labelId="style-bgColor-label"
                                 value={styles.bgColor || ''}
                                 onChange={(v) => handleStyleChange('bgColor', v)}
+                                inheritedColor={themeBackground}
                               />
                               {styles.bgColor && (
                                 <button
+                                  type="button"
                                   onClick={() => handleStyleChange('bgColor', '')}
-                                  className="text-[10px] text-muted hover:text-secondary transition-colors"
+                                  className="text-[11px] text-muted hover:text-secondary transition-colors pointer-coarse:min-h-11"
                                 >
                                   {t('editor.resetColor')}
                                 </button>
@@ -285,13 +313,13 @@ export default function Inspector() {
           <div className="p-5 mt-2 flex gap-2">
             <button
               onClick={() => duplicateBlock(selectedBlock.id)}
-              className="flex-1 py-2.5 px-2 bg-surface-elevated/50 border border-default/10 text-secondary rounded-lg text-[11px] font-medium hover:bg-surface-card hover:text-primary transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 px-2 pointer-coarse:min-h-11 bg-surface-elevated/50 border border-default/10 text-secondary rounded-lg text-[11px] font-medium hover:bg-surface-card hover:text-primary transition-all flex items-center justify-center gap-1.5"
             >
               <Copy className="w-3.5 h-3.5" /> {t('common.duplicate')}
             </button>
             <button
               onClick={() => requestDeleteBlock(selectedBlock.id)}
-              className="flex-1 py-2.5 px-2 bg-transparent border border-red-900/30 text-error rounded-lg text-[11px] font-medium hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-300 transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 px-2 pointer-coarse:min-h-11 bg-transparent border border-red-900/30 text-error rounded-lg text-[11px] font-medium hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-300 transition-all flex items-center justify-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
             </button>

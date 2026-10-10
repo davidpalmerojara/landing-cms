@@ -27,7 +27,9 @@ function LockIcon(props: React.SVGProps<SVGSVGElement>) {
 function getCanvasWidthClass(deviceMode: string) {
   switch (deviceMode) {
     // Fixed widths: the canvas centers and fits itself from these numbers
-    // (CANVAS_WIDTHS in CanvasViewport), so they must not depend on content.
+    // (CANVAS_CONTENT_WIDTHS in lib/canvas-zoom), so they must not depend on content.
+    // They are content widths: the frame is box-content, so its border does not
+    // narrow a tablet to 766 px (QA-084).
     case 'mobile':
       return 'w-[375px]';
     case 'tablet':
@@ -49,7 +51,8 @@ const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
     return (
       <div
         ref={ref}
-        className={`${getCanvasWidthClass(deviceMode)} bg-white min-h-[800px] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-default/15 flex flex-col mb-20 overflow-hidden`}
+        data-canvas-frame=""
+        className={`${getCanvasWidthClass(deviceMode)} box-content bg-white min-h-[800px] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-default/15 flex flex-col mb-20 overflow-hidden`}
       >
         {/* Chrome bar */}
         <div className="h-10 bg-surface-elevated/95 border-b border-default/15 flex items-center px-4 gap-4 w-full shrink-0">

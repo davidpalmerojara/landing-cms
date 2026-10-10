@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import { LONG_PRESS_MS, MOUSE_DRAG_THRESHOLD, decidePendingTouch } from '@/lib/touch-drag';
 
-const DRAG_THRESHOLD = 5;
 const SCROLL_THRESHOLD = 120;
 const MAX_SCROLL_SPEED = 25;
 const MIN_SCROLL_SPEED = 4;
@@ -75,6 +75,32 @@ function computeScrollIntent(clientY: number, rect: DOMRect) {
 
 // --- Hook ---
 
+/** The pointer that went down last: a pending drag belongs to it. */
+interface GesturePointer {
+  pointerId: number;
+  pointerType: string;
+  time: number;
+  fromHandle: boolean;
+}
+
+const CLICK_AFTER_DROP_MS = 400;
+let lastDropAt = 0;
+
+/**
+ * True right after a drag ended. A tap-to-add tile checks it so a click the
+ * browser may still send after the drop does not add the block a second time.
+ */
+export function dragEndedRecently(): boolean {
+  const elapsed = Date.now() - lastDropAt;
+  return elapsed >= 0 && elapsed < CLICK_AFTER_DROP_MS;
+}
+
+/**
+ * Pointer-based drag and drop of blocks: components from the sidebar onto the
+ * canvas, and blocks or layers to a new position. Mouse drags start after a
+ * few pixels; touch drags follow lib/touch-drag (handle, long press, or a
+ * sideways move out of the components list).
+ */
 export function useDragManager() {
   const rafRef = useRef<number | null>(null);
   const scrollStateRef = useRef({
@@ -137,7 +163,63 @@ export function useDragManager() {
   }, [stopScrollLoop]);
 
   useEffect(() => {
+    let gesture: GesturePointer | null = null;
+    let longPressTimer: number | null = null;
+    const touchPointers = new Set<number>();
+
+    const clearLongPress = () => {
+      if (longPressTimer !== null) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    const activate = (x: number, y: number) => {
+      const store = useEditorStore.getState();
+      if (!store.dragPending || store.isDragging) return;
+      store.activateDrag({ x, y });
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+      if (gesture?.pointerType === 'touch') {
+        // A long press may have started a text selection; the drag replaces it
+        window.getSelection()?.removeAllRanges();
+        if (typeof navigator.vibrate === 'function') navigator.vibrate(10);
+      }
+    };
+
+    // Capture phase: runs before the touched element's own handler calls initDrag
+    const handlePointerDownCapture = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') {
+        touchPointers.add(e.pointerId);
+        if (touchPointers.size > 1) {
+          // A second finger: pinch or two-finger pan, never a drag
+          clearLongPress();
+          gesture = null;
+          const store = useEditorStore.getState();
+          if (store.dragPending && !store.isDragging) store.cancelDrag();
+          return;
+        }
+      }
+      const target = e.target instanceof Element ? e.target : null;
+      gesture = {
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        time: Date.now(),
+        fromHandle: target?.closest('[data-drag-handle]') != null,
+      };
+      clearLongPress();
+      if (e.pointerType === 'touch') {
+        const { clientX, clientY } = e;
+        // Holding still picks the element up, if what was touched is draggable
+        longPressTimer = window.setTimeout(() => {
+          longPressTimer = null;
+          activate(clientX, clientY);
+        }, LONG_PRESS_MS);
+      }
+    };
+
     const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' && (!gesture || e.pointerId !== gesture.pointerId)) return;
       const store = useEditorStore.getState();
       const { dragPending, isDragging } = store;
 
@@ -145,11 +227,25 @@ export function useDragManager() {
       if (dragPending && !isDragging) {
         const dx = e.clientX - dragPending.origin.x;
         const dy = e.clientY - dragPending.origin.y;
-        if (Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD) {
-          store.activateDrag({ x: e.clientX, y: e.clientY });
-          document.body.style.userSelect = 'none';
-          document.body.style.cursor = 'grabbing';
+        if (gesture?.pointerType === 'touch') {
+          const decision = decidePendingTouch({
+            dx,
+            dy,
+            elapsed: Date.now() - gesture.time,
+            action: dragPending.source.action,
+            fromHandle: gesture.fromHandle,
+          });
+          if (decision === 'cancel') {
+            // The finger is panning the canvas or scrolling a list
+            clearLongPress();
+            store.cancelDrag();
+          } else if (decision === 'activate') {
+            clearLongPress();
+            activate(e.clientX, e.clientY);
+          }
+          return;
         }
+        if (Math.abs(dx) + Math.abs(dy) > MOUSE_DRAG_THRESHOLD) activate(e.clientX, e.clientY);
         return;
       }
 
@@ -190,32 +286,72 @@ export function useDragManager() {
       }
     };
 
-    const handlePointerUp = () => {
+    /** Forgets a lifted finger; true when it was the one a drag belongs to. */
+    const releasePointer = (e: PointerEvent) => {
+      touchPointers.delete(e.pointerId);
+      if (gesture && e.pointerId !== gesture.pointerId) return false;
+      clearLongPress();
+      gesture = null;
+      return true;
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!releasePointer(e)) return;
       const store = useEditorStore.getState();
       if (store.isDragging) {
         store.performDrop();
+        lastDropAt = Date.now();
       } else if (store.dragPending) {
         store.cancelDrag();
       }
       cleanup();
     };
 
+    // The browser took the gesture over (a scroll, a system gesture): nothing is dropped
+    const handlePointerCancel = (e: PointerEvent) => {
+      if (!releasePointer(e)) return;
+      const store = useEditorStore.getState();
+      if (store.isDragging || store.dragPending) store.cancelDrag();
+      cleanup();
+    };
+
+    // While a finger drags, the page must not scroll under it
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.cancelable && useEditorStore.getState().isDragging) e.preventDefault();
+    };
+
+    // A long press opens the context menu on touch screens; not while picking something up
+    const handleContextMenu = (e: MouseEvent) => {
+      const store = useEditorStore.getState();
+      if (gesture?.pointerType === 'touch' && (store.dragPending || store.isDragging)) e.preventDefault();
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         const store = useEditorStore.getState();
         if (store.isDragging || store.dragPending) {
+          clearLongPress();
           store.cancelDrag();
           cleanup();
         }
       }
     };
 
+    window.addEventListener('pointerdown', handlePointerDownCapture, true);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      clearLongPress();
+      window.removeEventListener('pointerdown', handlePointerDownCapture, true);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
       cleanup();
     };

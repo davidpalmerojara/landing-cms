@@ -16,14 +16,14 @@ export const styleFields: StyleFieldDefinition[] = [
   { key: 'paddingRight', label: 'Derecha', type: 'slider', group: 'padding', max: 200 },
   { key: 'marginTop', label: 'Arriba', type: 'slider', group: 'margin', max: 200 },
   { key: 'marginBottom', label: 'Abajo', type: 'slider', group: 'margin', max: 200 },
-  { key: 'borderRadius', label: 'Border Radius', type: 'slider', group: 'border', max: 48 },
+  { key: 'borderRadius', label: 'Esquinas redondeadas', type: 'slider', group: 'border', max: 48 },
 ];
 
 export const styleGroups = [
   { key: 'background', label: 'Color de fondo' },
-  { key: 'padding', label: 'Padding' },
-  { key: 'margin', label: 'Margin' },
-  { key: 'border', label: 'Border Radius' },
+  { key: 'padding', label: 'Relleno' },
+  { key: 'margin', label: 'Margen' },
+  { key: 'border', label: 'Esquinas redondeadas' },
 ] as const;
 
 export type StyleGroupKey = typeof styleGroups[number]['key'];

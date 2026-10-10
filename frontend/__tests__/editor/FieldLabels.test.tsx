@@ -103,7 +103,7 @@ describe('inspector field labels', () => {
       const color = view.container.querySelector('#style-bgColor') as HTMLElement;
 
       expect(nameOf(image)).toContain('Imagen de Fondo');
-      expect(nameOf(color)).toBe('Color de fondo #ffffff');
+      expect(nameOf(color)).toBe('Color de fondo Del tema');
       expect(view.container.querySelector('label[for="style-bgColor"]')).not.toBeNull();
     });
 
@@ -129,7 +129,7 @@ describe('inspector field labels', () => {
       const trigger = view.container.querySelector('#c') as HTMLElement;
 
       expect(trigger.tagName).toBe('BUTTON');
-      expect(nameOf(trigger)).toBe('Color del título #2563eb');
+      expect(nameOf(trigger)).toBe('Color del título #2563EB');
       expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
       click(trigger);
@@ -139,7 +139,7 @@ describe('inspector field labels', () => {
       expect(nameOf(palette)).toBe('Color del título');
       const pressed = palette.querySelectorAll('[aria-pressed="true"]');
       expect(pressed).toHaveLength(1);
-      expect(pressed[0].getAttribute('aria-label')).toBe('Color #2563eb');
+      expect(pressed[0].getAttribute('aria-label')).toBe('Color #2563EB');
       expect(palette.querySelector('input[aria-label="Código de color hexadecimal"]')).not.toBeNull();
     });
 
@@ -148,7 +148,7 @@ describe('inspector field labels', () => {
       const swatches = Array.from(view.container.querySelectorAll<HTMLButtonElement>('[data-swatch]'));
 
       expect(swatches.filter((s) => s.tabIndex === 0)).toHaveLength(1);
-      expect(swatches.find((s) => s.tabIndex === 0)?.getAttribute('aria-label')).toBe('Color #2563eb');
+      expect(swatches.find((s) => s.tabIndex === 0)?.getAttribute('aria-label')).toBe('Color #2563EB');
 
       act(() => swatches[0].focus());
       act(() => {

@@ -135,9 +135,9 @@ export function translateFieldDefinition(field: FieldDefinition, locale: string)
 export function translateStyleGroupLabel(groupKey: StyleGroupKey, locale: string) {
   if (!isEnglish(locale)) {
     if (groupKey === 'background') return 'Color de fondo';
-    if (groupKey === 'padding') return 'Padding';
-    if (groupKey === 'margin') return 'Margin';
-    return 'Border Radius';
+    if (groupKey === 'padding') return 'Relleno';
+    if (groupKey === 'margin') return 'Margen';
+    return 'Esquinas redondeadas';
   }
 
   if (groupKey === 'background') return 'Background color';

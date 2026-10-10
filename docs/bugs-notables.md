@@ -381,3 +381,30 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: ADR-041. Los bloques pintan con colores derivados del tema (`deriveThemeColors`): el color elegido si ya cumple, y si no el más parecido que llegue a 4,5:1 (3:1 en texto grande y bordes de campos). Variables nuevas para el texto sobre el primario y para las secciones inversas, que en las paletas oscuras siguen siendo oscuras. Sin opacidad sobre texto ni blancos fijos.
 - **Cómo se verificó**: Prueba de cada par pintado en los catorce presets y en 300 paletas al azar; pruebas de componente (sin `text-white` ni opacidad sobre texto, variables inversas); prueba de extremo a extremo con la regla `color-contrast` de axe en cada preset a 390 y 1280 px; capturas antes y después de cada preset y plantilla.
 - **Lección**: Un comprobador de contraste solo vale si mira los pares que de verdad se pintan. El panel comprobaba texto sobre fondo y sobre superficie, pero los bloques inventaban otros pares (texto sobre "texto", blanco sobre primario) que nadie medía.
+
+## 44. La biblioteca de medios se abría metida en la columna del inspector
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Al pulsar "Seleccionar imagen" el diálogo `fixed inset-0` aparecía dentro de los 320 px del inspector, con el pie cortado ("N") y el resto del editor sin oscurecer.
+- **Cómo se detectó**: Ronda 1 de QA (QA-020).
+- **Arreglo**: El inspector tiene `backdrop-filter`, y un antecesor con `backdrop-filter` (o `transform`, `filter`) se convierte en el bloque contenedor de los `position: fixed`. El diálogo se pinta con `createPortal` en `document.body`.
+- **Cómo se verificó**: Prueba de componente (un `ImageField` dentro de un elemento con `backdrop-filter`: el diálogo cuelga de `body`) y prueba de extremo a extremo (centrado y más ancho que 600 px a 1440 px).
+- **Lección**: Un modal no debe vivir dentro del árbol del botón que lo abre si ese árbol puede tener efectos visuales. Portal siempre.
+
+## 45. La biblioteca de medios no se podía usar con teclado ni lector de pantalla
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El diálogo no tenía `role="dialog"`, el foco no entraba ni quedaba dentro, y las miniaturas y la zona de subida eran `div` con `onClick`: con teclado no se podía elegir ni subir una imagen. Borrar una imagen no pedía confirmación y dejaba imágenes rotas en las páginas; el SVG se anunciaba como válido y el servidor lo rechazaba con el JSON a la vista.
+- **Cómo se detectó**: Ronda 1 de QA (QA-021, QA-072, QA-074).
+- **Arreglo**: Diálogo modal con nombre y `useDialogFocus` (foco dentro, Tab atrapado, Esc cierra y devuelve el foco), miniaturas como botones `aria-pressed` con el borrar como botón aparte, zona de subida como botón, confirmación antes de borrar, sin SVG y errores por código traducidos. Se añadió "Pegar URL" (QA-079). La firma (`onSelect`, `onClose`) no cambia; `onSelectUrl` es opcional.
+- **Cómo se verificó**: Pruebas de componente (rol, foco, Tab, Esc, selección con teclado, confirmación, SVG, error traducido, URL) y de extremo a extremo.
+- **Lección**: Un `div` clicable nunca es un control. Si se puede pulsar, es un `button`.
+
+## 46. El editor no se podía usar en una tableta
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Con el dedo el lienzo no se desplazaba, pellizcar ampliaba toda la interfaz, arrastrar un componente se cancelaba, un toque a veces arrastraba en vez de seleccionar, a 1024 px el lienzo se cortaba y a 768 px quedaba en 320 px.
+- **Cómo se detectó**: Ronda 1 de QA (QA-022, MOBILE-003/004, EDITOR-014).
+- **Arreglo**: ADR-043. Gestos propios en el lienzo con `touch-action: none` (desplazar, pellizcar, toque, doble toque), arrastre táctil por asa, pulsación larga o movimiento lateral, botones Subir/Bajar, zoom mínimo 0,25, objetivos de 44 px con puntero grueso, e inspector y barra lateral sobre el lienzo en pantallas estrechas.
+- **Cómo se verificó**: Pruebas unitarias de las reglas (zoom, decisión de arrastre) y de los gestos sobre el lienzo; prueba de extremo a extremo con toques reales (Chrome DevTools Protocol) a 1024×768 y 768×1024; y comprobación en WebKit y Chromium con capturas.
+- **Lección**: "Funciona con ratón" no implica "funciona con dedos": un dedo que se mueve suele querer desplazar, no arrastrar. Cada arrastre táctil necesita una intención clara (asa, pulsación larga o dirección).

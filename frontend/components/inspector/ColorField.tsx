@@ -9,8 +9,20 @@ interface ColorFieldProps {
   id: string;
   /** Id of the field's visible label, used as the name of the button and the palette. */
   labelId?: string;
+  /** '' when the field has no colour of its own (see `inheritedColor`) */
   value: string;
   onChange: (value: string) => void;
+  /**
+   * The colour shown while `value` is empty, e.g. what the theme paints
+   * (QA-082). With it the field says "From the theme" instead of a made-up
+   * white.
+   */
+  inheritedColor?: string | null;
+}
+
+/** One way to write a colour everywhere: #RRGGBB in capitals (QA-114). */
+export function formatHex(color: string): string {
+  return color.trim().toUpperCase();
 }
 
 const SWATCH_COLUMNS = 9;
@@ -38,10 +50,13 @@ const PRESET_COLORS = [
   '#fdf2f8', '#fbcfe8', '#f472b6', '#ec4899', '#db2777', '#be185d', '#9d174d', '#831843',
 ];
 
-export default function ColorField({ id, labelId, value, onChange }: ColorFieldProps) {
+export default function ColorField({ id, labelId, value, onChange, inheritedColor }: ColorFieldProps) {
   const t = useTranslations('inspector');
+  const isInherited = !value && inheritedColor !== undefined;
+  // What the swatch shows and the palette starts from
+  const shownColor = formatHex(value || inheritedColor || '#FFFFFF');
   const [isOpen, setIsOpen] = useState(false);
-  const [hexInput, setHexInput] = useState(value || '#ffffff');
+  const [hexInput, setHexInput] = useState(shownColor);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const nativeRef = useRef<HTMLInputElement>(null);
@@ -68,16 +83,17 @@ export default function ColorField({ id, labelId, value, onChange }: ColorFieldP
   const handleHexSubmit = () => {
     const cleaned = hexInput.trim();
     if (/^#[0-9a-fA-F]{6}$/.test(cleaned)) {
-      onChange(cleaned);
+      // Leaving the field untouched keeps an inherited colour inherited
+      if (formatHex(cleaned) !== shownColor) onChange(formatHex(cleaned));
     } else if (/^[0-9a-fA-F]{6}$/.test(cleaned)) {
-      onChange(`#${cleaned}`);
-      setHexInput(`#${cleaned}`);
+      onChange(formatHex(`#${cleaned}`));
+      setHexInput(formatHex(`#${cleaned}`));
     }
   };
 
   const handleToggleOpen = () => {
     if (!isOpen) {
-      setHexInput(value || '#ffffff');
+      setHexInput(shownColor);
     }
     setIsOpen((open) => !open);
   };
@@ -132,12 +148,19 @@ export default function ColorField({ id, labelId, value, onChange }: ColorFieldP
       >
         <div
           aria-hidden="true"
-          className="w-7 h-7 rounded-md border border-default shadow-sm shrink-0"
-          style={{ backgroundColor: value || '#ffffff' }}
+          className={`w-7 h-7 rounded-md border shadow-sm shrink-0 ${isInherited ? 'border-dashed border-default' : 'border-default'}`}
+          style={{ backgroundColor: isInherited ? (inheritedColor ?? 'transparent') : shownColor }}
         />
-        <span className="text-[12px] text-secondary font-mono uppercase flex-1">
-          {value || '#ffffff'}
-        </span>
+        {isInherited ? (
+          <span className="flex-1 min-w-0 flex items-baseline gap-2">
+            <span className="text-[12px] text-secondary">{t('colorFromTheme')}</span>
+            {inheritedColor && <span className="text-[11px] text-muted font-mono">{formatHex(inheritedColor)}</span>}
+          </span>
+        ) : (
+          <span className="text-[12px] text-secondary font-mono flex-1">
+            {shownColor}
+          </span>
+        )}
       </button>
 
       {/* Popover */}
@@ -157,7 +180,7 @@ export default function ColorField({ id, labelId, value, onChange }: ColorFieldP
                 type="button"
                 data-swatch=""
                 tabIndex={index === tabStopSwatch ? 0 : -1}
-                aria-label={t('colorOption', { value: color })}
+                aria-label={t('colorOption', { value: formatHex(color) })}
                 aria-pressed={value.toLowerCase() === color}
                 onKeyDown={(e) => handleSwatchKeyDown(e, index)}
                 className={`w-6 h-6 rounded-md border transition-all hover:scale-110 ${
@@ -167,10 +190,10 @@ export default function ColorField({ id, labelId, value, onChange }: ColorFieldP
                 }`}
                 style={{ backgroundColor: color }}
                 onClick={() => {
-                  onChange(color);
-                  setHexInput(color);
+                  onChange(formatHex(color));
+                  setHexInput(formatHex(color));
                 }}
-                title={color}
+                title={formatHex(color)}
               />
             ))}
           </div>
@@ -210,10 +233,10 @@ export default function ColorField({ id, labelId, value, onChange }: ColorFieldP
               type="color"
               tabIndex={-1}
               aria-hidden="true"
-              value={value || '#ffffff'}
+              value={shownColor.toLowerCase()}
               onChange={(e) => {
-                onChange(e.target.value);
-                setHexInput(e.target.value);
+                onChange(formatHex(e.target.value));
+                setHexInput(formatHex(e.target.value));
               }}
               className="w-0 h-0 opacity-0 absolute"
             />

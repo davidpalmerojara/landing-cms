@@ -1,5 +1,5 @@
 /**
- * Content-Security-Policy of the frontend (ADR-033, QA-102).
+ * Content-Security-Policy of the frontend (ADR-038, QA-102).
  *
  * Two policies, because the two kinds of page have different jobs:
  * - `public`: what a visitor of a published page gets. Strict: no third party at

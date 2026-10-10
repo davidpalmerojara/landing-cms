@@ -350,7 +350,7 @@ AI_LIVE_DAILY_LIMIT = int(os.environ.get('AI_LIVE_DAILY_LIMIT', '30'))
 AI_LIVE_USER_DAILY_LIMIT = int(os.environ.get('AI_LIVE_USER_DAILY_LIMIT', '2'))
 
 
-# Stripe (ADR-031): billing is a feature that exists only with a TEST key (sk_test_…).
+# Stripe (ADR-036): billing is a feature that exists only with a TEST key (sk_test_…).
 # Without a key the billing endpoints answer 503 FEATURE_DISABLED; a live key is refused.
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')

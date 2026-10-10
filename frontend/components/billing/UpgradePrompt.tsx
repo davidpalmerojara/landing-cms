@@ -17,7 +17,7 @@ export default function UpgradePrompt({ feature, description, className = '', co
   const t = useTranslations();
   const { billingEnabled, isKnown } = useBillingEnabled();
 
-  // Without payments (ADR-031) there is nothing to upgrade to: say so instead of leading to a dead end
+  // Without payments (ADR-036) there is nothing to upgrade to: say so instead of leading to a dead end
   if (isKnown && !billingEnabled) {
     if (compact) {
       return (

@@ -46,9 +46,9 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 ### Infraestructura
 
 - **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL)
-- **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth (el script de Google solo se carga en `/login` y `/register`, ADR-034), Magic Links. Email y usuario son unicos sin distinguir mayusculas (ADR-032)
+- **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth (el script de Google solo se carga en `/login` y `/register`, ADR-039), Magic Links. Email y usuario son unicos sin distinguir mayusculas (ADR-037)
 - **Storage**: Media files via Django FileField (upload_to `assets/%Y/%m/`)
-- **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-033)
+- **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-038)
 - **Realtime**: Django Channels. Sin `REDIS_URL`: capa de canales y bloqueos en memoria (un solo proceso); con `REDIS_URL`: Redis
 
 ---
@@ -296,7 +296,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 | GET | `/api/sitemap/` | No | Sitemap XML (cache 1h) |
 | GET | `/api/public/sitemap-data/` | No | JSON para Next.js sitemap |
 | GET | `/api/public/resolve-domain/` | No | Resolver dominio custom (404 `FEATURE_DISABLED` si `CUSTOM_DOMAINS_ENABLED` está apagado, ADR-027) |
-| GET | `/api/features/` | No | Funciones opcionales del despliegue: `{ "custom_domains": bool, "billing": bool }` (ADR-027, ADR-031) |
+| GET | `/api/features/` | No | Funciones opcionales del despliegue: `{ "custom_domains": bool, "billing": bool }` (ADR-027, ADR-036) |
 
 ### Assets, Domains, AI, Analytics, Billing
 
@@ -312,7 +312,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 | GET | `/api/pages/{id}/analytics/` | Si | Analitica de pagina |
 | GET | `/api/billing/plans/` | No | Planes disponibles |
 | GET | `/api/billing/subscription/` | Si | Suscripcion actual y `usage` (`pages` propias, `visible_pages`, `published_pages`, `blocks`) |
-| POST | `/api/billing/checkout/` | Si | Crear sesion Stripe. `503 FEATURE_DISABLED` sin clave de prueba de Stripe (ADR-031) |
+| POST | `/api/billing/checkout/` | Si | Crear sesion Stripe. `503 FEATURE_DISABLED` sin clave de prueba de Stripe (ADR-036) |
 | POST | `/api/billing/portal/` | Si | Portal de facturacion de Stripe; igual que checkout |
 | POST | `/api/billing/webhook/` | No | Webhook de Stripe, idempotente por evento; `503` si la facturacion esta apagada |
 

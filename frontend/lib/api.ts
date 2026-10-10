@@ -196,7 +196,7 @@ export interface ApiPublicPage {
 /** GET /api/features/: what this deployment offers (custom domains need DNS and SSL, which not every host has). */
 export interface ApiFeatures {
   custom_domains: boolean;
-  /** Payments run only with a Stripe test key (ADR-031): without one the billing endpoints answer 503 */
+  /** Payments run only with a Stripe test key (ADR-036): without one the billing endpoints answer 503 */
   billing: boolean;
 }
 

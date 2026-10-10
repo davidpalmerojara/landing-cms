@@ -18,6 +18,7 @@ Behavior:
 import socket
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
@@ -36,6 +37,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if not settings.CUSTOM_DOMAINS_ENABLED:
+            self.stdout.write('Custom domains are disabled (CUSTOM_DOMAINS_ENABLED); nothing to check.')
+            return
+
         dry_run = options['dry_run']
         now = timezone.now()
         five_min_ago = now - timedelta(minutes=5)
@@ -92,7 +97,7 @@ class Command(BaseCommand):
             verified = False
             try:
                 import dns.resolver
-                cname_target = 'domains.builderpro.com'
+                cname_target = settings.CUSTOM_DOMAINS_CNAME_TARGET
                 answers = dns.resolver.resolve(domain_obj.domain, 'CNAME')
                 for rdata in answers:
                     if str(rdata.target).rstrip('.') == cname_target:

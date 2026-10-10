@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 import re
@@ -239,7 +240,11 @@ class VersionLabelSerializer(serializers.Serializer):
 DOMAIN_RE = re.compile(
     r'^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z0-9-]{1,63})*\.[a-zA-Z]{2,}$'
 )
-SYSTEM_DOMAINS = {'builderpro.com', 'www.builderpro.com', 'app.builderpro.com', 'api.builderpro.com'}
+
+
+def is_reserved_domain(domain):
+    """The app's own domains (settings.CUSTOM_DOMAINS_RESERVED) and their subdomains."""
+    return any(domain == reserved or domain.endswith(f'.{reserved}') for reserved in settings.CUSTOM_DOMAINS_RESERVED)
 
 
 class CustomDomainSerializer(serializers.ModelSerializer):
@@ -269,13 +274,13 @@ class CustomDomainSerializer(serializers.ModelSerializer):
             'cname': {
                 'type': 'CNAME',
                 'name': obj.domain.split('.')[0] if '.' in obj.domain else '@',
-                'value': 'domains.builderpro.com',
+                'value': settings.CUSTOM_DOMAINS_CNAME_TARGET,
                 'ttl': 3600,
             },
             'alternative_a_record': {
                 'type': 'A',
                 'name': '@',
-                'value': '76.223.0.1',  # Placeholder — replace with real IP in production
+                'value': settings.CUSTOM_DOMAINS_A_RECORD,
             },
         }
 
@@ -283,7 +288,7 @@ class CustomDomainSerializer(serializers.ModelSerializer):
         value = value.strip().lower()
         if not DOMAIN_RE.match(value):
             raise serializers.ValidationError('Formato de dominio inválido.')
-        if value in SYSTEM_DOMAINS or value.endswith('.builderpro.com'):
+        if is_reserved_domain(value):
             raise serializers.ValidationError('No puedes usar un dominio del sistema.')
         # Check uniqueness (handled by model unique but give better error)
         existing = CustomDomain.objects.filter(domain=value)

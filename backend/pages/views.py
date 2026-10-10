@@ -1,5 +1,6 @@
 import logging
 import uuid
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.utils import timezone
@@ -10,6 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from accounts.permissions import IsNotGuest
+from config.features import CustomDomainsEnabled
 from .block_validators import clean_block_data
 from .models import Page, Block, Asset, PageVersion, PageInvite, CustomDomain, create_version_snapshot
 from .revalidation import revalidate_public_pages
@@ -628,12 +630,12 @@ class SitemapView(generics.GenericAPIView):
 
 class ResolveDomainView(generics.GenericAPIView):
     """
-    GET /api/public/resolve-domain/?domain=landing.miempresa.com
+    GET /api/public/resolve-domain/?domain=landing.tu-dominio.com
     Returns the page slug for an active custom domain.
     Called by Next.js middleware to route custom domain requests.
-    Cached for 5 minutes.
+    Cached for 5 minutes. 404 FEATURE_DISABLED where custom domains are off.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [CustomDomainsEnabled, AllowAny]
     authentication_classes = []
 
     def get(self, request):
@@ -697,7 +699,8 @@ class SitemapDataView(generics.GenericAPIView):
 
 class CustomDomainViewSet(viewsets.ModelViewSet):
     """
-    CRUD for custom domains. Only Pro plan users.
+    CRUD for custom domains. Only Pro plan users, and only where the deployment
+    turns the feature on (CUSTOM_DOMAINS_ENABLED, ADR-025): otherwise 404 FEATURE_DISABLED.
 
     POST   /api/domains/              — create domain
     GET    /api/domains/              — list domains
@@ -708,7 +711,7 @@ class CustomDomainViewSet(viewsets.ModelViewSet):
     """
     serializer_class = CustomDomainSerializer
     lookup_field = 'id'
-    permission_classes = [IsAuthenticated, IsNotGuest]
+    permission_classes = [CustomDomainsEnabled, IsAuthenticated, IsNotGuest]
 
     MAX_DOMAINS_PER_USER = 5
 
@@ -769,7 +772,7 @@ class CustomDomainViewSet(viewsets.ModelViewSet):
 
         try:
             # Try CNAME resolution
-            cname_target = 'domains.builderpro.com'
+            cname_target = settings.CUSTOM_DOMAINS_CNAME_TARGET
             try:
                 import dns.resolver
                 answers = dns.resolver.resolve(domain_obj.domain, 'CNAME')

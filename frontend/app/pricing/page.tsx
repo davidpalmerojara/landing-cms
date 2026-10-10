@@ -6,11 +6,14 @@ import { useTranslations } from 'next-intl';
 import MarketingShell from '@/components/marketing/MarketingShell';
 import PlanFeatureList from '@/components/billing/PlanFeatureList';
 import { usePlans } from '@/hooks/usePlans';
+import { useFeatures } from '@/hooks/useFeatures';
 import { planFeatures } from '@/lib/plan-features';
 
 export default function PricingPage() {
   const t = useTranslations();
   const { plans, error, isLoading } = usePlans();
+  const { features } = useFeatures();
+  const customDomains = features?.custom_domains ?? false;
 
   return (
     <MarketingShell
@@ -53,7 +56,7 @@ export default function PricingPage() {
                 </p>
 
                 <PlanFeatureList
-                  features={planFeatures(plan, t)}
+                  features={planFeatures(plan, t, { customDomains })}
                   includedLabel={t('billing.included')}
                   notIncludedLabel={t('billing.notIncluded')}
                 />

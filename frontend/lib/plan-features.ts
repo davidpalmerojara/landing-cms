@@ -14,12 +14,17 @@ export interface PlanFeature {
 /**
  * Features shown for a plan, derived from the plan's real limits so the
  * pricing page and the billing settings always say the same thing.
- * Only features that exist in the product are listed.
+ * Only features that exist in the product are listed: custom domains only on
+ * deployments that have them (`customDomains`, from /api/features/).
  */
-export function planFeatures(plan: ApiBillingPlan, t: Translate): PlanFeature[] {
+export function planFeatures(
+  plan: ApiBillingPlan,
+  t: Translate,
+  { customDomains }: { customDomains: boolean },
+): PlanFeature[] {
   const limit = (value: number) => (value === -1 ? t('billing.unlimited') : `${value}`);
 
-  return [
+  const features: PlanFeature[] = [
     { key: 'max_pages', label: t('billing.featurePages'), detail: limit(plan.max_pages), included: plan.max_pages !== 0 },
     {
       key: 'max_ai_generations_per_hour',
@@ -38,4 +43,6 @@ export function planFeatures(plan: ApiBillingPlan, t: Translate): PlanFeature[] 
       included: plan.max_version_history !== 0,
     },
   ];
+
+  return customDomains ? features : features.filter((feature) => feature.key !== 'has_custom_domain');
 }

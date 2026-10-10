@@ -309,7 +309,8 @@ class TestGuestAbuseLimits:
         assert resp.status_code == status.HTTP_403_FORBIDDEN
         assert resp.data['code'] == 'GUEST_NOT_ALLOWED'
 
-    def test_custom_domains_are_refused_despite_the_pro_plan(self):
+    def test_custom_domains_are_refused_despite_the_pro_plan(self, settings):
+        settings.CUSTOM_DOMAINS_ENABLED = True  # off by default (ADR-025); guests are refused when it is on
         client, guest = start_guest()
         page = PageFactory(owner=guest)
         resp = client.post('/api/domains/', {'domain': 'demo.example.com', 'page': str(page.id)}, format='json')

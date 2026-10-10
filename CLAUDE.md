@@ -261,10 +261,10 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
 | POST | `/register/` | No | Crear cuenta + tokens. Usuario nuevo: solo letras ASCII, números y `_ . -` (ADR-047) |
-| POST | `/login/` | No | Login + httpOnly cookies |
+| POST | `/login/` | No | Login + httpOnly cookies. Usuario o contraseña incorrectos o vacíos: `401 INVALID_CREDENTIALS` en el idioma de la petición (ADR-048) |
 | POST | `/refresh/` | No | Renovar access token |
 | POST | `/logout/` | No | Limpiar cookies |
-| POST | `/google/` | No | Login con Google ID token |
+| POST | `/google/` | No | Login con Google ID token. Una cuenta nueva toma el usuario de la parte local del correo, con lo que no sea `[A-Za-z0-9_.-]` cambiado por `_` (igual con el enlace mágico, ADR-048) |
 | POST | `/magic/request/` | No | Enviar magic link (como mucho 3 por buzón cada 15 min; pasado el límite, la misma respuesta sin envío, ADR-047) |
 | POST | `/magic/verify/` | No | Verificar magic token |
 | POST | `/guest/` | No | Sesión de invitado temporal, 24 h (ADR-022) |

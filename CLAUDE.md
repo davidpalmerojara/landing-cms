@@ -86,6 +86,7 @@ landing-cms/
     hooks/                       # useAuth, usePageSync, useAutoSave, useEditorShortcuts, etc.
     lib/                         # block-registry, block-factory, api, themes, design-tokens
     types/                       # blocks.ts, page.ts, editor.ts, inspector.ts
+    public/templates/            # Fotos de las plantillas, webp propios (ADR-045): ninguna plantilla enlaza a terceros
 
   backend/
     config/                      # settings.py, urls.py, asgi.py

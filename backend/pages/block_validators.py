@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Callable
 
@@ -398,11 +399,19 @@ def clean_block_data(block_type: str, data, *, partial: bool = False) -> dict:
     return validate_block_data(block_type, data, partial=partial)
 
 
+# NUL and the other control characters (C0, DEL, C1): PostgreSQL's jsonb refuses
+# \u0000 and no style value or name needs any of them (SEC3-003)
+_CONTROL_CHARS = re.compile(r'[\x00-\x1f\x7f-\x9f]')
+MAX_STYLE_KEY_LENGTH = 100
+
+
 def clean_block_styles(styles) -> dict:
     """Single validation path for a block's styles (REST and WebSocket, SEC2-007):
     an object of primitives (numbers, text, booleans, null) with nested objects
     two levels deep at most (the per-device 'responsive' overrides); anything
-    else inside it is dropped. Not an object, or too big: ValidationError.
+    else inside it is dropped. Not an object, too big, a name over 100
+    characters or a control character (NUL included) in a name or text value:
+    ValidationError.
     The frontend still checks each value before it reaches CSS (block-styles-css)."""
     if not isinstance(styles, dict):
         raise serializers.ValidationError('Los estilos deben ser un objeto JSON.')
@@ -412,6 +421,11 @@ def clean_block_styles(styles) -> dict:
     def primitives(obj: dict, depth: int = 0) -> dict:
         cleaned = {}
         for key, value in obj.items():
+            key_text = str(key)
+            if len(key_text) > MAX_STYLE_KEY_LENGTH:
+                raise serializers.ValidationError('Un nombre de estilo es demasiado largo.')
+            if _CONTROL_CHARS.search(key_text) or (isinstance(value, str) and _CONTROL_CHARS.search(value)):
+                raise serializers.ValidationError('Los estilos no pueden contener caracteres de control.')
             if isinstance(value, (str, int, float, bool)) or value is None:
                 cleaned[str(key)] = value
             elif isinstance(value, dict) and depth < 2:

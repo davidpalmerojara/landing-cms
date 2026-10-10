@@ -117,3 +117,11 @@ def test_clean_styles_keeps_primitives_and_drops_the_rest():
     }
     assert clean_styles('not a dict') is None
     assert clean_styles({'x': 'y' * 9000}) is None
+
+
+@pytest.mark.parametrize('styles', [
+    {'a': 'x\u0000y'}, {'k\u0000': 1}, {'a': 'line\nbreak'}, {'responsive': {'mobile': {'a': '\u0000'}}}, {'k' * 101: 1},
+])
+def test_clean_styles_refuses_control_characters_and_long_names(styles):
+    # SEC3-003: same rule as the REST API
+    assert clean_styles(styles) is None

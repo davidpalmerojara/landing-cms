@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
@@ -8,10 +8,11 @@ import {
   Loader2, AlertCircle, MoreVertical, LogOut, Users,
   FolderOpen, Settings, Search, Layers, Pencil, Menu, X, EyeOff,
 } from 'lucide-react';
-import { api, apiErrorCode } from '@/lib/api';
-import type { ApiPageListItem, ApiUser } from '@/lib/api';
+import { api, apiErrorCode, isPlanLimitError } from '@/lib/api';
+import type { ApiUser } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePageList } from '@/hooks/usePageList';
 import { buildPagePayload } from '@/lib/templates';
 import { apiToTokens } from '@/lib/design-tokens';
 import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
@@ -45,9 +46,11 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const { isGuest, openClaim } = useGuestSession();
   const { subscription } = useSubscription({ enabled: Boolean(user) });
   const plan = subscription?.plan ?? null;
-  const [pages, setPages] = useState<ApiPageListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { pages, isLoading, hasError: hasLoadError, error: loadFailure, reload, updatePages } = usePageList();
+  // The last failed action; a failed load has its own message until the list loads again
+  const [actionError, setActionError] = useState<string | null>(null);
+  const loadError = hasLoadError ? (loadFailure instanceof Error ? loadFailure.message : t('dashboard.loadError')) : null;
+  const error = actionError ?? loadError;
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -60,26 +63,15 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     { label: t('dashboard.sidebar.settings'), icon: Settings, href: '/settings', active: false },
   ];
 
-  const loadPages = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await api.pages.list();
-      setPages(res.results);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('dashboard.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    loadPages();
-  }, [loadPages]);
+  const refreshPages = useCallback(() => {
+    setActionError(null);
+    reload();
+  }, [reload]);
 
   // Re-fetch when tab becomes visible (e.g. returning from editor)
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') loadPages();
+      if (document.visibilityState === 'visible') refreshPages();
     };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleVisibility);
@@ -87,7 +79,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleVisibility);
     };
-  }, [loadPages]);
+  }, [refreshPages]);
 
   const handleOpenCreate = () => {
     setShowTemplatePicker(true);
@@ -101,11 +93,11 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.createError');
       if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
-        setError(t('guest.pageLimit'));
-      } else if (msg.includes('403') && msg.includes('plan_limit')) {
-        setError(t('dashboard.planLimit'));
+        setActionError(t('guest.pageLimit'));
+      } else if (isPlanLimitError(e)) {
+        setActionError(t('dashboard.planLimit'));
       } else {
-        setError(msg);
+        setActionError(msg);
       }
       setIsCreating(false);
     }
@@ -115,15 +107,15 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     setOpenMenuId(null);
     try {
       await api.pages.duplicate(id);
-      loadPages();
+      refreshPages();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.duplicateError');
       if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
-        setError(t('guest.pageLimit'));
-      } else if (msg.includes('403') && msg.includes('plan_limit')) {
-        setError(t('dashboard.planLimit'));
+        setActionError(t('guest.pageLimit'));
+      } else if (isPlanLimitError(e)) {
+        setActionError(t('dashboard.planLimit'));
       } else {
-        setError(msg);
+        setActionError(msg);
       }
     }
   };
@@ -133,9 +125,9 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     if (!window.confirm(t('dashboard.unpublishConfirm', { name }))) return;
     try {
       const updated = await api.pages.unpublish(id);
-      setPages((prev) => prev.map((p) => (p.id === id ? { ...p, status: updated.status, has_unpublished_changes: false } : p)));
+      updatePages((prev) => prev.map((p) => (p.id === id ? { ...p, status: updated.status, has_unpublished_changes: false } : p)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('dashboard.unpublishError'));
+      setActionError(e instanceof Error ? e.message : t('dashboard.unpublishError'));
     }
   };
 
@@ -144,9 +136,9 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     if (!window.confirm(t('dashboard.deleteConfirm', { name }))) return;
     try {
       await api.pages.delete(id);
-      setPages((prev) => prev.filter((p) => p.id !== id));
+      updatePages((prev) => prev.filter((p) => p.id !== id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('dashboard.deleteError'));
+      setActionError(e instanceof Error ? e.message : t('dashboard.deleteError'));
     }
   };
 

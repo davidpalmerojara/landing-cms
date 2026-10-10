@@ -1,18 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, UserPlus, Trash2, Crown, Loader2, Users, Link2, Copy, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import { useEditorStore } from '@/store/editor-store';
 import { useInviteLink } from '@/hooks/useInviteLink';
+import { useCollaborators } from '@/hooks/useCollaborators';
 import { useGuestSession } from '@/components/guest/GuestSessionProvider';
-
-interface Collaborator {
-  id: string;
-  username: string;
-  email: string;
-}
 
 interface ShareModalProps {
   pageId: string;
@@ -22,29 +17,13 @@ interface ShareModalProps {
 export default function ShareModal({ pageId, onClose }: ShareModalProps) {
   const t = useTranslations();
   const [email, setEmail] = useState('');
-  const [owner, setOwner] = useState<Collaborator | null>(null);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { owner, collaborators, isLoading, hasError: hasLoadError, reload: loadCollaborators } = useCollaborators(pageId);
   const [isAdding, setIsAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const loadCollaborators = useCallback(async () => {
-    try {
-      const data = await api.pages.collaborators(pageId);
-      setOwner(data.owner);
-      setCollaborators(data.collaborators);
-    } catch {
-      setError(t('share.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pageId, t]);
-
-  useEffect(() => {
-    loadCollaborators();
-  }, [loadCollaborators]);
+  const error = actionError ?? (hasLoadError ? t('share.loadError') : null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +37,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
       const result = await api.pages.share(pageId, email.trim());
       setSuccess(result.message);
       setEmail('');
-      await loadCollaborators();
+      loadCollaborators();
     } catch (err) {
       const msg = err instanceof Error ? err.message : t('share.shareError');
       // Try to parse JSON error from API
@@ -81,7 +60,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
     try {
       const result = await api.pages.unshare(pageId, userId);
       setSuccess(result.message);
-      await loadCollaborators();
+      loadCollaborators();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('share.removeError'));
     } finally {

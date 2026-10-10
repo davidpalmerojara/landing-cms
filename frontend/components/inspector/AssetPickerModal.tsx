@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ApiAsset } from '@/lib/api';
+import { useAssets } from '@/hooks/useAssets';
 import GuestFeatureNotice from '@/components/guest/GuestFeatureNotice';
 import { useGuestSession } from '@/components/guest/GuestSessionProvider';
 
@@ -20,12 +21,13 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
   const t = useTranslations();
   const locale = useLocale();
   const { isGuest } = useGuestSession();
-  const [assets, setAssets] = useState<ApiAsset[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { assets, isLoading, hasError: hasLoadError, error: loadFailure, updateAssets } = useAssets();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
+  const loadError = hasLoadError ? (loadFailure instanceof Error ? loadFailure.message : t('assets.loadError')) : null;
+  const error = actionError ?? loadError;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = useCallback((bytes: number) => {
@@ -38,22 +40,6 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
     if (bytes < 1024 * 1024) return `${decimalFormatter.format(bytes / 1024)} KB`;
     return `${decimalFormatter.format(bytes / (1024 * 1024))} MB`;
   }, [locale]);
-
-  const loadAssets = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await api.assets.list();
-      setAssets(res.results);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('assets.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    loadAssets();
-  }, [loadAssets]);
 
   // Close on Escape
   useEffect(() => {
@@ -99,7 +85,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
     try {
       for (const file of validFiles) {
         const asset = await api.assets.upload(file);
-        setAssets((prev) => [asset, ...prev]);
+        updateAssets((prev) => [asset, ...prev]);
       }
       setUploadProgress(100);
     } catch (e) {
@@ -111,18 +97,18 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
         setUploadProgress(0);
       }, 300);
     }
-  }, [locale, t]);
+  }, [locale, t, updateAssets]);
 
   const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await api.assets.delete(id);
-      setAssets((prev) => prev.filter((a) => a.id !== id));
+      updateAssets((prev) => prev.filter((a) => a.id !== id));
       if (selectedId === id) setSelectedId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('assets.deleteError'));
     }
-  }, [selectedId, t]);
+  }, [selectedId, t, updateAssets]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

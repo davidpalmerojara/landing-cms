@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { notFound, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Globe, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle,
@@ -10,9 +10,9 @@ import {
 import { api } from '@/lib/api';
 import type { ApiCustomDomain, ApiPageListItem } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useDomainSettings } from '@/hooks/useDomainSettings';
+import { useFeatures } from '@/hooks/useFeatures';
 import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
-
-type DomainWithError = ApiCustomDomain & { dns_error?: string };
 
 function StatusBadge({ domain }: { domain: ApiCustomDomain }) {
   const t = useTranslations();
@@ -205,58 +205,34 @@ export default function DomainsSettingsPage() {
   const t = useTranslations();
   const router = useRouter();
   const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
-  const [domains, setDomains] = useState<DomainWithError[]>([]);
-  const [pages, setPages] = useState<ApiPageListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { features, isLoading: isFeaturesLoading } = useFeatures();
+  // Guest sessions cannot have domains: the API refuses them, so do not ask
+  const canUseDomains = Boolean(user && !user.is_guest && features?.custom_domains);
+  const {
+    domains, pages, isPro, isLoading, hasError: hasLoadError, error: loadFailure, reload, updateDomains,
+  } = useDomainSettings({ enabled: canUseDomains });
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [isPro, setIsPro] = useState<boolean | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      const [domainRes, pagesRes] = await Promise.all([
-        api.domains.list(),
-        api.pages.list(),
-      ]);
-      setDomains(domainRes.results);
-      setPages(pagesRes.results);
-
-      // Check plan
-      try {
-        const sub = await api.billing.subscription();
-        setIsPro(sub.subscription?.plan?.has_custom_domain ?? false);
-      } catch {
-        setIsPro(false);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('domains.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    // Guest sessions cannot have domains: the API refuses them, so do not ask
-    if (user && !user.is_guest) loadData();
-  }, [user, loadData]);
+  const loadError = hasLoadError ? (loadFailure instanceof Error ? loadFailure.message : t('domains.loadError')) : null;
+  const error = actionError ?? loadError;
 
   const handleAdd = async (domain: string, pageId: string | undefined) => {
     const payload: { domain: string; page?: string } = { domain };
     if (pageId) payload.page = pageId;
     await api.domains.create(payload);
-    loadData();
+    reload();
   };
 
   const handleVerify = async (id: string) => {
     setVerifyingId(id);
     try {
       const result = await api.domains.verify(id);
-      setDomains((prev) =>
+      updateDomains((prev) =>
         prev.map((d) => (d.id === id ? { ...d, ...result } : d))
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('domains.verifyError'));
+      setActionError(e instanceof Error ? e.message : t('domains.verifyError'));
     } finally {
       setVerifyingId(null);
     }
@@ -266,19 +242,22 @@ export default function DomainsSettingsPage() {
     if (!window.confirm(t('domains.deleteConfirm', { domain }))) return;
     try {
       await api.domains.delete(id);
-      setDomains((prev) => prev.filter((d) => d.id !== id));
+      updateDomains((prev) => prev.filter((d) => d.id !== id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('domains.deleteError'));
+      setActionError(e instanceof Error ? e.message : t('domains.deleteError'));
     }
   };
 
-  if (isAuthLoading || !user) {
+  if (isAuthLoading || !user || isFeaturesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-surface text-secondary">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
+
+  // This deployment has no custom domains (ADR-025): the page does not exist
+  if (!features?.custom_domains) notFound();
 
   if (user.is_guest) {
     return (
@@ -314,7 +293,7 @@ export default function DomainsSettingsPage() {
           <div className="flex items-center gap-2 text-error text-sm mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
-            <button onClick={() => setError(null)} className="ml-auto text-error hover:text-red-300">×</button>
+            <button onClick={() => setActionError(null)} className="ml-auto text-error hover:text-red-300">×</button>
           </div>
         )}
 

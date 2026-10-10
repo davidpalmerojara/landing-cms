@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { planFeatures } from '@/lib/plan-features';
@@ -9,9 +9,10 @@ import {
   ArrowLeft, Loader2, Crown, CreditCard, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { ApiBillingPlan, ApiSubscription, ApiPayment } from '@/lib/api';
+import type { ApiBillingPlan } from '@/lib/api';
 import { useAppLocale } from '@/components/providers/AppIntlProvider';
 import { useAuth } from '@/hooks/useAuth';
+import { useBillingOverview } from '@/hooks/useBillingOverview';
 import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
 
 type BillingCycle = 'monthly' | 'yearly';
@@ -22,57 +23,37 @@ export default function BillingPage() {
   const router = useRouter();
   const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
 
-  const [plans, setPlans] = useState<ApiBillingPlan[]>([]);
-  const [subscription, setSubscription] = useState<ApiSubscription | null>(null);
-  const [payments, setPayments] = useState<ApiPayment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // A guest session has no plan to manage: it never reaches the billing API
+  const { plans, subscription, payments, isLoading, hasError, error: loadFailure } = useBillingOverview({
+    enabled: Boolean(user && !user.is_guest),
+  });
+  const [actionError, setActionError] = useState<string | null>(null);
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
-
-  const loadData = useCallback(async () => {
-    try {
-      const [plansRes, subRes, paymentsRes] = await Promise.all([
-        api.billing.plans(),
-        api.billing.subscription(),
-        api.billing.payments(),
-      ]);
-      setPlans(plansRes);
-      setSubscription(subRes.subscription);
-      setPayments(paymentsRes.payments);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('billing.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    // A guest session has no plan to manage: it never reaches the billing API
-    if (user && !user.is_guest) loadData();
-  }, [user, loadData]);
+  const loadError = hasError ? (loadFailure instanceof Error ? loadFailure.message : t('billing.loadError')) : null;
+  const error = actionError ?? loadError;
 
   const handleCheckout = async () => {
     setIsCheckingOut(true);
-    setError(null);
+    setActionError(null);
     try {
       const { checkout_url } = await api.billing.checkout(cycle);
       window.location.href = checkout_url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('billing.checkoutError'));
+      setActionError(e instanceof Error ? e.message : t('billing.checkoutError'));
       setIsCheckingOut(false);
     }
   };
 
   const handlePortal = async () => {
     setIsOpeningPortal(true);
-    setError(null);
+    setActionError(null);
     try {
       const { portal_url } = await api.billing.portal();
       window.location.href = portal_url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('billing.portalError'));
+      setActionError(e instanceof Error ? e.message : t('billing.portalError'));
       setIsOpeningPortal(false);
     }
   };

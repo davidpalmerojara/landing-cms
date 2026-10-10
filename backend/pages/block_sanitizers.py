@@ -1,23 +1,22 @@
 import html
 import re
-from urllib.parse import urlparse
-
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 from rest_framework import serializers
 
-ALLOWED_TAGS = ['strong', 'em', 'a', 'br', 'ul', 'ol', 'li', 'p', 'span']
-ALLOWED_ATTRIBUTES = {'a': ['href', 'title', 'target', 'rel']}
 ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
 
-CUSTOM_HTML_ALLOWED_TAGS = ALLOWED_TAGS + [
+CUSTOM_HTML_ALLOWED_TAGS = [
+    'strong', 'em', 'a', 'br', 'ul', 'ol', 'li', 'p', 'span',
     'div', 'section', 'article', 'header', 'footer', 'nav',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'img', 'video', 'source', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
     'blockquote', 'pre', 'code', 'hr', 'figure', 'figcaption',
 ]
 CUSTOM_HTML_ALLOWED_ATTRIBUTES = {
-    'a': ['href', 'title', 'target', 'rel'],
+    # No "target": a link could send the whole window away ("_top"). The block
+    # renders in a sandboxed iframe whose <base target="_blank"> opens links in a new tab.
+    'a': ['href', 'title', 'rel'],
     'img': ['src', 'alt', 'width', 'height', 'loading'],
     'video': ['src', 'controls', 'autoplay', 'muted', 'loop', 'poster'],
     'source': ['src', 'type'],
@@ -33,19 +32,6 @@ CUSTOM_HTML_CSS_SANITIZER = CSSSanitizer(
         'display', 'width', 'height', 'max-width', 'border', 'border-radius',
     ]
 )
-
-
-def sanitize_text(value):
-    """Allow a small safe subset of formatting tags."""
-    if not isinstance(value, str):
-        return value
-    return bleach.clean(
-        value,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        protocols=ALLOWED_PROTOCOLS,
-        strip=True,
-    )
 
 
 def _strip_tags_once(value):
@@ -81,12 +67,30 @@ def sanitize_plain_text(value):
     return cleaned
 
 
+# Elements whose content is code or hidden markup, not text. bleach drops the
+# tags but would leave their content behind as visible text.
+_NON_TEXT_ELEMENTS = re.compile(
+    r'<(script|style|noscript|template)\b[^>]*>.*?(?:</\1\s*>|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _remove_non_text_elements(value):
+    # Removing one element can join the text around it into another one: repeat
+    # until nothing changes (each pass only removes characters, so it ends).
+    while True:
+        cleaned = _NON_TEXT_ELEMENTS.sub('', value)
+        if cleaned == value:
+            return cleaned
+        value = cleaned
+
+
 def sanitize_custom_html(value):
     """Sanitize the free-form custom HTML block with a wider safe whitelist."""
     if not isinstance(value, str):
         return value
     return bleach.clean(
-        value,
+        _remove_non_text_elements(value),
         tags=CUSTOM_HTML_ALLOWED_TAGS,
         attributes=CUSTOM_HTML_ALLOWED_ATTRIBUTES,
         protocols=ALLOWED_PROTOCOLS,
@@ -95,16 +99,32 @@ def sanitize_custom_html(value):
     )
 
 
-def validate_safe_url(value):
+# An image URL ends up inside CSS (`background-image: url(...)`) as well as in
+# `src`, so it must not be able to close the `url(`, open a string, start a new
+# declaration or block, or smuggle markup: quotes, parentheses, `;`, braces,
+# angle brackets, backticks, backslashes, whitespace and control characters
+# are refused (QA-005). Encode them (%28, %29...) if a file name really has them.
+_IMAGE_URL_FORBIDDEN_CHARS = re.compile(r'[\s\x00-\x20\x7f-\x9f\\\'"()<>;{}`]')
+_IMAGE_URL_ABSOLUTE = re.compile(r'https?://[^/?#].*', re.IGNORECASE)
+
+
+def validate_safe_image_url(value):
+    """Validate the URL of an image: http(s)://host/... or a site-relative path
+    ("/media/assets/a.png", not "//host"). Empty is allowed."""
     if value in (None, ''):
         return value
     if not isinstance(value, str):
         raise serializers.ValidationError('URL inválida.')
-
-    parsed = urlparse(value)
-    if parsed.scheme not in ('http', 'https', ''):
-        raise serializers.ValidationError(f'URL no permitida: {value}')
-    return value
+    if _IMAGE_URL_FORBIDDEN_CHARS.search(value):
+        raise serializers.ValidationError(
+            'La URL de la imagen no puede contener espacios, comillas, paréntesis, ";" ni otros caracteres especiales. '
+            'Codifícalos (por ejemplo %28 y %29) o sube la imagen.'
+        )
+    if value.startswith('/') and not value.startswith('//'):
+        return value
+    if _IMAGE_URL_ABSOLUTE.fullmatch(value):
+        return value
+    raise serializers.ValidationError('URL de imagen no permitida. Usa https://, http:// o una ruta que empiece por /.')
 
 
 # Whitespace, control characters (incl. NUL, DEL, C1) and backslash anywhere in

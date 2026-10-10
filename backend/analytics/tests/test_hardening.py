@@ -45,6 +45,9 @@ class TestSecondsAreClampedOnWrite:
         (-5, 0),
         (1e308, MAX_SECONDS_ON_PAGE),
         (10**30, MAX_SECONDS_ON_PAGE),
+        # SEC2-005: too big for a float, math.isfinite raised OverflowError
+        pytest.param(10**400, MAX_SECONDS_ON_PAGE, id='10**400'),
+        pytest.param(-(10**400), 0, id='-10**400'),
         (MAX_SECONDS_ON_PAGE + 1, MAX_SECONDS_ON_PAGE),
     ])
     def test_values(self, sent, stored):
@@ -69,6 +72,16 @@ class TestTheDashboardSurvivesHugeValues:
             response = auth_client.get(f'/api/pages/{published.id}/analytics/')
         assert response.status_code == 200
         assert response.data['avg_time_on_page'] == MAX_SECONDS_ON_PAGE
+
+    def test_sec2_005_a_huge_integer_is_clamped_not_a_500(self, api_client, published):
+        # Sent as raw JSON: 10**400 is a valid JSON number that no float can hold
+        body = '{"page_id": "%s", "events": [{"event_type": "time_on_page", "event_data": {"seconds": %d}}]}' % (
+            published.pk, 10**400,
+        )
+        response = api_client.post(COLLECT, body, content_type='application/json')
+
+        assert response.status_code == 204
+        assert [e.event_data['seconds'] for e in AnalyticsEvent.objects.all()] == [MAX_SECONDS_ON_PAGE]
 
     def test_rows_stored_before_the_clamp_existed_do_not_break_the_read(self, auth_client, published):
         # Written straight into the table, like the rows a visitor could create before the fix

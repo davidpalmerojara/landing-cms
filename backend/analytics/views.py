@@ -1,5 +1,4 @@
 import logging
-import math
 from datetime import timedelta
 
 from django.db.models import Count, F, Value, CharField
@@ -13,7 +12,7 @@ from rest_framework.views import APIView
 
 from pages.models import Page, pages_accessible_to
 from .models import AnalyticsEvent
-from .privacy import MAX_SECONDS_ON_PAGE, daily_visitor_hash, referrer_origin, sanitize_event_data
+from .privacy import MAX_SECONDS_ON_PAGE, daily_visitor_hash, is_finite_number, referrer_origin, sanitize_event_data
 from .serializers import EventBatchSerializer
 
 logger = logging.getLogger(__name__)
@@ -134,7 +133,7 @@ def _stored_seconds(event_data) -> float:
     number: rows written before the collect endpoint clamped values may hold
     1e308 or worse, and one of them must not break the whole dashboard."""
     raw = event_data.get('seconds', 0) if isinstance(event_data, dict) else event_data
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw):
+    if not is_finite_number(raw):
         return 0.0
     return float(min(max(raw, 0), MAX_SECONDS_ON_PAGE))
 

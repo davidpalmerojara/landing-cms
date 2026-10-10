@@ -265,6 +265,33 @@ describe('AIGenerateModal', () => {
     expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('La IA del servidor no está disponible ahora mismo. Puedes usar tu propia clave.');
     expect(view.container.querySelector('input[type="password"]')).not.toBeNull();
   });
+
+  it('deletes the blank page it created when the generation fails', async () => {
+    await openModal();
+    const remove = vi.spyOn(api.pages, 'delete').mockResolvedValue(undefined);
+    vi.spyOn(api.ai, 'generate').mockRejectedValue(new Error('API 502: boom'));
+    typeInto(prompt(), 'Un restaurante');
+
+    click(buttonByText(view.container, 'Generar página'));
+    await flush();
+
+    expect(remove).toHaveBeenCalledWith('p1');
+    expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(onGenerated).not.toHaveBeenCalled();
+  });
+
+  it('keeps the page when the generation works', async () => {
+    await openModal();
+    const remove = vi.spyOn(api.pages, 'delete').mockResolvedValue(undefined);
+    vi.spyOn(api.ai, 'generate').mockResolvedValue(generated({ source: 'live', provider: 'gemini' }));
+    typeInto(prompt(), 'Un restaurante');
+
+    click(buttonByText(view.container, 'Generar página'));
+    await flush();
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(onGenerated).toHaveBeenCalledWith('p1');
+  });
 });
 
 describe('AIBlockEditPopover', () => {

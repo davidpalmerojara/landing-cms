@@ -40,23 +40,24 @@ describe('asset picker in a guest session', () => {
     const upload = vi.spyOn(api.assets, 'upload');
     await openAssetPicker(guestUser);
 
-    expect(view.container.textContent).toContain('Subir imágenes necesita una cuenta');
-    expect(view.container.textContent).not.toContain('Subir primera imagen');
-    expect([...view.container.querySelectorAll('p')].some((p) => p.textContent === 'Arrastra imágenes aquí o haz clic para subir')).toBe(false);
+    expect(document.body.textContent).toContain('Subir imágenes necesita una cuenta');
+    expect(document.body.textContent).not.toContain('Subir primera imagen');
+    expect([...document.body.querySelectorAll('p')].some((p) => p.textContent === 'Arrastra imágenes aquí o haz clic para subir')).toBe(false);
     expect(upload).not.toHaveBeenCalled();
   });
 
   it('offers the way to get an account from there', async () => {
     await openAssetPicker(guestUser);
-    click(buttonByText(view.container, 'Crear cuenta y guardarlo'));
-    expect(view.container.querySelector('[role="dialog"]')).not.toBeNull();
+    click(buttonByText(document.body, 'Crear cuenta y guardarlo'));
+    // The picker is a dialog itself (QA-021): the account dialog opens on top of it
+    expect(document.body.querySelectorAll('[role="dialog"]').length).toBeGreaterThan(1);
   });
 
   it('keeps the upload zone for a normal account', async () => {
     await openAssetPicker(normalUser);
-    expect(view.container.textContent).not.toContain('Subir imágenes necesita una cuenta');
-    expect(view.container.querySelector('input[type="file"]')).not.toBeNull();
-    expect(view.container.textContent).toContain('Subir primera imagen');
+    expect(document.body.textContent).not.toContain('Subir imágenes necesita una cuenta');
+    expect(document.body.querySelector('input[type="file"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('Subir primera imagen');
   });
 });
 

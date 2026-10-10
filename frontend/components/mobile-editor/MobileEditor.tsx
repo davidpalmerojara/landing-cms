@@ -375,7 +375,6 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
                     transform: `translateY(${dragOffset}px) scale(1.02)`,
                     position: 'relative',
                     zIndex: 20,
-                    opacity: 0.9,
                     boxShadow: '0 12px 28px rgb(0 0 0 / 0.35)',
                   } : undefined}
                 >

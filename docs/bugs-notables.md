@@ -223,7 +223,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Tests del controlador (reintento al volver `online`, espera creciente, reconexión con la misma versión, copia local fusionada sobre una página que otra persona cambió). Playwright: sin red, editar, ver "Sin conexión", volver a tener red y comprobar que el servidor tiene el cambio.
 - **Lección**: Un error que nadie vuelve a intentar es una pérdida de datos aplazada.
 
-## 24. Los "&", "<" y ">" de los textos largos se veían como "&amp;", "&lt;" y "&gt;"
+## 27. Los "&", "<" y ">" de los textos largos se veían como "&amp;", "&lt;" y "&gt;"
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Escribir `Q&A` en el subtítulo de un hero, en la respuesta de una pregunta frecuente, en las características de un plan o en una cita y guardar hacía que el editor, el inspector y la página publicada mostraran `Q&amp;A`. Pasaba en todos los bloques con texto largo.
@@ -233,7 +233,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Tests de que `'Q&A <3 "x" 5>3'` se guarda igual en doce campos de diez tipos de bloque y no cambia en un segundo guardado, y de que la migración convierte `A &amp; B` en `A & B`, deja un `&amp;lt;` literal como `&lt;` y cambia también las versiones publicadas sin tocar `updated_at`. Fallan sin el arreglo.
 - **Lección**: Cuando un dato se escapa al guardar y otra vez al mostrar, el fallo solo aparece con los caracteres que se escapan; los tests con "Hola mundo" nunca lo ven. Hay que probar cada campo con `& < > "`.
 
-## 25. El propietario recibía un error 500 en versiones y analítica cuando la página tenía dos colaboradores
+## 28. El propietario recibía un error 500 en versiones y analítica cuando la página tenía dos colaboradores
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: En cuanto una página tenía dos o más colaboradores, el historial de versiones del propietario no cargaba (decía "Sin versiones guardadas"), no se podían guardar ni restaurar versiones y la analítica daba un error.
@@ -243,7 +243,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Un test con dos colaboradores que lista, crea, restaura y borra versiones y pide la analítica como propietario y como cada colaborador. Daba 500 antes. Un segundo test confirma que quien no tiene acceso recibe 404.
 - **Lección**: Un `.get()` sobre una consulta con unión a una relación muchos-a-muchos solo es seguro con `.distinct()`, y el caso que lo rompe (dos filas relacionadas) es justo el que los datos de prueba mínimos no tienen.
 
-## 26. Una URL de imagen podía tapar toda la página, incluido el aviso de página de prueba
+## 29. Una URL de imagen podía tapar toda la página, incluido el aviso de página de prueba
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Una persona invitada podía poner en el fondo de un hero una URL como `https://x.test/a.png);position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647`, publicar, y la página pública mostraba un bloque a pantalla completa por encima del aviso "página creada por un invitado" (ADR-022): una suplantación posible en el dominio de la propia app.
@@ -253,7 +253,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Tests con veinte URLs aceptadas o rechazadas, la inyección rechazada en los cuatro campos de imagen y en `og_image` por el endpoint, y la migración sobre bloques, instantáneas y páginas.
 - **Lección**: Validar el esquema no es validar el uso. Un valor que va dentro de otro lenguaje (CSS, HTML, SQL) se valida contra los caracteres de ese lenguaje y se cita al escribirlo; las dos cosas, no una.
 
-## 27. Un robot pidiendo páginas que no existen dejaba todas las páginas publicadas en error 500
+## 30. Un robot pidiendo páginas que no existen dejaba todas las páginas publicadas en error 500
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Con unas 60 peticiones por minuto a direcciones inexistentes, todas las páginas publicadas empezaban a dar error 500, también para visitantes normales.
@@ -263,7 +263,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Un test con el límite de 60/min restaurado hace cien peticiones a slugs inexistentes y a uno publicado y comprueba que ninguna da 429; otro comprueba que 70 envíos de analítica no gastan el cupo del resto. Fallan sin el arreglo.
 - **Lección**: Un límite por IP delante de un proxy limita al proxy. Antes de poner un límite hay que preguntarse quién es "el cliente" en ese endpoint.
 
-## 28. Restaurar una versión duplicaba el bloque que otra persona estaba editando
+## 31. Restaurar una versión duplicaba el bloque que otra persona estaba editando
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Si alguien restauraba una versión mientras otra persona tenía un cambio sin guardar en un bloque, al sincronizar a las dos les aparecía ese bloque dos veces.
@@ -273,7 +273,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Tests de que los ids restaurados son los de la instantánea (y los casos raros), de que el bloque que existe ahora y en la instantánea conserva el id, y, en el trabajo de PostgreSQL, de que cuatro generaciones simultáneas dejan un solo resultado sin errores 500 (falla sin el bloqueo).
 - **Lección**: Si el modelo de fusión se apoya en ids estables, cualquier operación que "borra y recrea" tiene que respetarlos; si no, la fusión interpreta el cambio como borrado.
 
-## 29. Cualquier colaborador podía publicar la página y borrar la versión publicada
+## 32. Cualquier colaborador podía publicar la página y borrar la versión publicada
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Una persona invitada a editar podía publicar, despublicar, duplicar la página del propietario, regenerarla entera con IA y borrar versiones, incluida la que veía el público, que dejaba la página pública en 404 mientras seguía "publicada". El propietario veía cómo su barra pasaba a "Publicada" sin saber por qué.
@@ -283,7 +283,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Un test parametrizado por acción que comprueba el 403 y que no cambió nada, los mismos casos como propietario (200), lo que el colaborador sí puede hacer, y que borrar la versión publicada se rechaza y la página pública sigue en 200.
 - **Lección**: Los permisos que solo existen en la interfaz son sugerencias. Cada acción que cambia lo que ve el público necesita su propia comprobación en el servidor, y la lista de qué puede cada rol tiene que estar escrita en un solo sitio.
 
-## 24. Un bloque que otra persona estaba editando se podía seleccionar, editar y borrar
+## 33. Un bloque que otra persona estaba editando se podía seleccionar, editar y borrar
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: Con un bloque bloqueado por otra persona, el lienzo lo rechazaba, pero desde el panel Capas, el teclado (Supr) o Quick Edit se seleccionaba igual: el inspector se abría con los campos editables y el texto de uno pisaba al del otro sin aviso. Si dos personas hacían clic casi a la vez, la que perdía seguía con el bloque seleccionado. Desde Capas se podía incluso borrar el bloque mientras el otro escribía, y el borrado se deshacía solo cuando el otro seguía escribiendo.
@@ -292,3 +292,47 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: La regla está en el store: `selectBlock` devuelve `false` y no selecciona un bloque cuyo bloqueo es de otra conexión, `requestDeleteBlock` y `confirmDeleteBlock` lo rechazan, y las acciones de edición no tocan ese bloque. `lock_rejected` quita la selección. `useCollaboration` anuncia el rechazo y pregunta al servidor por si el bloqueo había caducado (ADR-031).
 - **Cómo se verificó**: Tests del store (seleccionar, borrar y editar un bloque ajeno no hacen nada; un borrado confirmado tras perder el bloque se rechaza), del hook (`lock_rejected` quita la selección, el rechazo se anuncia una vez) y una prueba e2e con dos navegadores: el propietario no puede seleccionar desde Capas, ni con Intro ni con Supr, el Hero que edita el invitado. Fallan sin el arreglo.
 - **Lección**: Una regla de seguridad de datos que se comprueba en la interfaz se comprueba en un sitio y se olvida en otro. Va en la capa por la que pasan todos los caminos.
+## 34. Todos los visitantes compartían el mismo límite de peticiones
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Los límites de peticiones (cinco sesiones de invitado por hora, cinco mensajes de contacto por minuto, intentos de registro y de acceso) y el identificador anónimo de la analítica se calculan con la IP del cliente. Con `NUM_PROXIES=0`, que era el valor del `.env.example`, Django ve la dirección del proxy que tiene delante (el frontend que reescribe `/api` y el router de la plataforma), así que todas las personas caían en el mismo cupo: tras cinco invitados en una hora nadie más podía pulsar "Probar sin registrarse". Subir el número a ciegas tampoco vale: deja a cualquiera falsear su IP con `X-Forwarded-For`.
+- **Cómo se detectó**: Ronda 1 de QA, auditoría de seguridad. No se reprodujo en local (allí no hay proxy): se dedujo de la cadena de saltos y de cómo DRF lee la cabecera.
+- **Arreglo**: Comprobaciones de sistema (`config/checks.py`): con `DJANGO_DEBUG=False`, `manage.py check` (y por tanto `migrate`, que es el paso de release) y el arranque de Daphne (`config/asgi.py` las ejecuta) se niegan a seguir si `NUM_PROXIES` es 0. El mensaje explica cómo medir el valor real en el despliegue y está documentado en los dos `.env.example`. ADR-033.
+- **Cómo se verificó**: Pruebas de la comprobación (0 en producción es un error, un recuento real pasa, en desarrollo no se exige) y ejecución manual de `manage.py check` con `DJANGO_DEBUG=False`. Lo que no se puede probar en local es el número correcto: queda por medir en el primer despliegue.
+- **Lección**: Un valor por defecto que es correcto en el portátil puede ser un fallo silencioso en producción. Si el valor seguro depende de dónde se despliega, el arranque tiene que negarse a continuar, no confiar en que alguien lea el comentario.
+
+## 35. En el móvil no había forma de iniciar sesión
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: La cabecera de la portada ocultaba "Iniciar sesión" y la navegación por debajo de 768 px, y la de las páginas de marketing por debajo de 640 px, sin menú que las sustituyera. Una persona con cuenta que abría Paxl en el móvil solo veía "Crear cuenta". Tema e idioma estaban igual de escondidos, también dentro de la aplicación.
+- **Cómo se detectó**: Ronda 1 de QA, recorrido a 390 px: ninguna página de marketing tenía un enlace a `/login`.
+- **Arreglo**: "Iniciar sesión" se muestra siempre (con 44 px de alto), y por debajo de `md` un botón de menú (`MobileMenu`) abre la navegación, el tema y el idioma, con Escape para cerrar y `aria-expanded`. Las pantallas de acceso, el panel (cajón lateral) y los ajustes tienen tema e idioma. Una prueba de extremo a extremo con un viewport de 390 px comprueba el enlace, el menú y que no haya desplazamiento horizontal.
+- **Cómo se verificó**: Pruebas de componente de las dos cabeceras y la prueba de extremo a extremo a 390 px (falla con la cabecera anterior).
+- **Lección**: `hidden md:block` sin una alternativa móvil convierte una pantalla en una puerta cerrada. Revisar cada clase responsive que oculta algo con la pregunta "¿dónde está esto en el móvil?".
+
+## 36. El panel solo cargaba las primeras 20 páginas
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: `usePageList` se quedaba con `results` y tiraba `next` y `count`. A partir de la página 21 no se veían las páginas, los totales ("N páginas", "publicadas", "bloques") eran los de las 20 cargadas, y el buscador solo filtraba esas 20.
+- **Cómo se detectó**: Ronda 1 de QA, cuenta con más de 20 páginas.
+- **Arreglo**: El hook sigue la paginación del servidor (botón "Cargar más páginas"), la búsqueda se hace en el servidor (`?search=` por nombre o slug, con una espera de 300 ms al teclear) y los totales vienen de la API (`usage` en la suscripción: páginas propias para el límite del plan, y visibles, publicadas y bloques para las tarjetas). Recargar al volver a la pestaña vuelve a pedir todas las páginas ya cargadas, para que la lista no se encoja. Una carga fallida muestra el error con "Reintentar" y no el estado vacío.
+- **Cómo se verificó**: Pruebas del hook (paginación, búsqueda, recarga de varias páginas, fallo y reintento), de la página (totales, "cargar más", búsqueda al servidor) y del backend (`search`, `usage` con páginas compartidas).
+- **Lección**: Una lista paginada que se trata como si fuera completa miente en cuanto crece. Los totales, los buscadores y los límites tienen que salir del servidor, no de lo que se haya cargado.
+
+## 37. Dos cuentas con el mismo email en distinta capitalización
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El email y el usuario se comparaban con mayúsculas y minúsculas. Se podía registrar `Demo@Example.com` teniendo `demo@example.com`, y un enlace mágico pedido con otra capitalización no entraba en la cuenta existente: creaba una nueva y vacía.
+- **Cómo se detectó**: Ronda 1 de QA: cuentas duplicadas en la base de pruebas (`Magic.Tester6663` y `magic.tester6663`).
+- **Arreglo**: ADR-032. El email se guarda en minúsculas, restricciones únicas sobre `Lower(email)` y `Lower(username)`, búsquedas `iexact` y entrada que ignora las mayúsculas del usuario. La migración se niega a continuar si ya hay duplicados y los lista, en vez de elegir a quién borrar.
+- **Cómo se verificó**: Pruebas de registro, acceso, enlace mágico, Google y las restricciones de la base de datos; pruebas de la migración (lista las colisiones, pone en minúsculas lo demás); y una prueba de extremo a extremo que intenta registrar de nuevo con otra capitalización y entra con el usuario en minúsculas.
+- **Lección**: "Único" es una propiedad de la base de datos, no de un `filter()`. Y una migración que arregla datos ambiguos debe parar y avisar, no adivinar.
+
+## 38. "Mejorar a Pro" terminaba en un error 500 con el texto de Stripe
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Sin clave de Stripe (la demo se despliega sin cuenta) checkout y portal devolvían 500 con `{"error":"STRIPE_SECRET_KEY not configured"}` y la página lo mostraba tal cual. Los webhooks, además, respondían 200 aunque su manejador fallara, así que Stripe no reintentaba, y dos eventos iguales a la vez podían procesarse dos veces.
+- **Cómo se detectó**: Ronda 1 de QA: el fallo más visible que puede encontrar quien pulsa "Mejorar plan".
+- **Arreglo**: ADR-031. La facturación es una función apagada sin clave de prueba (`GET /api/features/` → `billing`): 503 `FEATURE_DISABLED`, botones ocultos y la interfaz dice que los pagos no están activos en esta demo; con clave de prueba avisa de que es modo de prueba. Las claves reales se rechazan. Los webhooks se procesan una sola vez bajo un bloqueo de fila, se deshacen si fallan y Stripe los reintenta.
+- **Cómo se verificó**: Pruebas de la API sin clave, con clave de prueba y con clave real; de idempotencia (duplicado, misma factura, fallo y reintento); de la interfaz con los dos estados; y de extremo a extremo (503 y nota visible, sin botón de mejorar).
+- **Lección**: "No configurado" es un estado normal del producto, no un error del servidor. Debe tener respuesta, texto y diseño propios.

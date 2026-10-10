@@ -17,7 +17,7 @@ interface RouteMeta {
 const ROUTES: Record<RouteKey, RouteMeta> = {
   home: { path: '/', title: (m) => m.common.brand },
   pricing: { path: '/pricing', title: (m) => m.marketing.pages.pricing.title },
-  about: { path: '/about', title: (m) => m.marketing.pages.about.title },
+  about: { path: '/about', title: (m) => m.navigation.about },
   contact: { path: '/contact', title: (m) => m.marketing.pages.contact.title },
   privacy: { path: '/privacy', title: (m) => m.marketing.pages.privacy.title },
   terms: { path: '/terms', title: (m) => m.marketing.pages.terms.title },

@@ -10,11 +10,13 @@ import { tokenPresets } from '@/lib/design-tokens';
 import GuestStartButton from '@/components/guest/GuestStartButton';
 import MobileMenu from '@/components/marketing/MobileMenu';
 import { toContentLocale } from '@/lib/content-locale';
+import { useAccountDeletedNotice } from '@/hooks/useAccountDeletedNotice';
 
 export default function LandingPage() {
   const t = useTranslations();
   // Product screenshots in the visitor's language
   const shotLocale = toContentLocale(useLocale());
+  const accountDeleted = useAccountDeletedNotice();
   const menuLinks = [
     { href: '#features', label: t('navigation.features') },
     { href: '#how-it-works', label: t('navigation.howItWorks') },
@@ -61,6 +63,12 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
+
+      {accountDeleted && (
+        <p role="status" className="fixed top-16 left-0 right-0 z-40 border-b border-success/30 bg-success/10 px-6 py-3 text-center text-sm text-secondary backdrop-blur-xl">
+          {t('marketing.home.accountDeletedNotice')}
+        </p>
+      )}
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 overflow-hidden" aria-label={t('marketing.home.heroSection')}>

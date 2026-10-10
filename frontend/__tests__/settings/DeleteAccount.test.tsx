@@ -119,7 +119,7 @@ describe('DeleteAccountDialog', () => {
     await confirm();
 
     expect(remove).toHaveBeenCalledWith({ password: 'secret' });
-    expect(replace).toHaveBeenCalledWith('/');
+    expect(replace).toHaveBeenCalledWith('/?deleted=1');
   });
 
   it('sends the username (trimmed) when there is no password', async () => {
@@ -130,7 +130,7 @@ describe('DeleteAccountDialog', () => {
     await confirm();
 
     expect(remove).toHaveBeenCalledWith({ confirm_username: 'ana' });
-    expect(replace).toHaveBeenCalledWith('/');
+    expect(replace).toHaveBeenCalledWith('/?deleted=1');
   });
 
   it('shows a wrong password as an alert tied to the field and stays open', async () => {
@@ -208,6 +208,6 @@ describe('DeleteAccountDialog', () => {
     expect(buttonByText(view.container, 'Eliminando...').getAttribute('aria-busy')).toBe('true');
 
     await act(async () => finish());
-    expect(replace).toHaveBeenCalledWith('/');
+    expect(replace).toHaveBeenCalledWith('/?deleted=1');
   });
 });

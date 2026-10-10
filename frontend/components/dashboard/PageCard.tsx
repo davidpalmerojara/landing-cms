@@ -20,7 +20,7 @@ interface PageCardProps {
 
 /**
  * One page of the dashboard. Duplicating, unpublishing and deleting are the
- * owner's (ADR-032): on a page shared with the user those items are left out
+ * owner's (D1, solo el propietario): on a page shared with the user those items are left out
  * and the menu says why.
  */
 export default function PageCard({ page, onDuplicate, onUnpublish, onDelete }: PageCardProps) {

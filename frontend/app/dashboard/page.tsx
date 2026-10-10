@@ -10,6 +10,7 @@ import {
 import type { ApiUser } from '@/lib/api';
 import { accountErrorMessage } from '@/lib/account-errors';
 import { useAuth } from '@/hooks/useAuth';
+import { loginRedirectFor } from '@/lib/login-redirect';
 import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
@@ -28,7 +29,7 @@ import GuestSessionProvider, { useGuestSession } from '@/components/guest/GuestS
 import GuestBanner from '@/components/guest/GuestBanner';
 
 export default function DashboardPage() {
-  const { user, setUser, isLoading, logout } = useAuth({ redirectTo: '/login' });
+  const { user, setUser, isLoading, logout } = useAuth({ redirectTo: loginRedirectFor('/dashboard') });
 
   return (
     <GuestSessionProvider user={user} onClaimed={setUser}>

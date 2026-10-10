@@ -13,6 +13,7 @@ import type { ApiBillingPlan } from '@/lib/api';
 import { accountErrorMessage } from '@/lib/account-errors';
 import { useAppLocale } from '@/components/providers/AppIntlProvider';
 import { useAuth } from '@/hooks/useAuth';
+import { loginRedirectFor } from '@/lib/login-redirect';
 import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 import { useBillingOverview } from '@/hooks/useBillingOverview';
 import { useFeatures } from '@/hooks/useFeatures';
@@ -24,7 +25,7 @@ export default function BillingPage() {
   const t = useTranslations();
   const { locale } = useAppLocale();
   const router = useRouter();
-  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
+  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: loginRedirectFor('/settings/billing') });
 
   // A guest session has no plan to manage: it never reaches the billing API
   const { plans, subscription, payments, isLoading, hasError, error: loadFailure } = useBillingOverview({

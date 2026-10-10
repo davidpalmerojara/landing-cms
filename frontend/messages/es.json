@@ -61,7 +61,8 @@
     "language": "Idioma",
     "languageEs": "Español",
     "languageEn": "English",
-    "appearance": "Preferencias"
+    "appearance": "Preferencias",
+    "languageGroup": "Idioma"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -229,7 +230,8 @@
       "heroSection": "Sección principal",
       "featuresSection": "Características",
       "ctaSection": "Llamada a la acción",
-      "footerSection": "Pie de página"
+      "footerSection": "Pie de página",
+      "accountDeletedNotice": "Tu cuenta y todo lo que contenía se han eliminado. Gracias por probar Paxl."
     },
     "pages": {
       "pricing": {
@@ -813,7 +815,7 @@
         "daily_limit": "Se ha alcanzado el límite diario de la demo: esta es una variante guardada del bloque y no sigue tu instrucción.",
         "provider_quota": "El servicio de IA ha agotado su cuota por ahora: esta es una variante guardada del bloque y no sigue tu instrucción."
       },
-      "noExampleMatched": "Tu descripción no coincide con ninguno de los ejemplos, así que se ha elegido uno. Con tu propia clave, la página se genera a partir de tu texto."
+      "noExampleMatched": "Tu descripción no coincide con ninguno de los ejemplos, así que se ha elegido uno."
     },
     "notice": {
       "demo": "Modo demo: tu texto no se envía a ningún servicio de IA y recibirás una página guardada. Con tu propia clave sí se genera de verdad.",

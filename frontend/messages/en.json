@@ -61,7 +61,8 @@
     "language": "Language",
     "languageEs": "Español",
     "languageEn": "English",
-    "appearance": "Preferences"
+    "appearance": "Preferences",
+    "languageGroup": "Language"
   },
   "auth": {
     "login": "Log in",
@@ -229,7 +230,8 @@
       "heroSection": "Main section",
       "featuresSection": "Features",
       "ctaSection": "Call to action",
-      "footerSection": "Footer"
+      "footerSection": "Footer",
+      "accountDeletedNotice": "Your account and everything in it have been deleted. Thanks for trying Paxl."
     },
     "pages": {
       "pricing": {
@@ -813,7 +815,7 @@
         "daily_limit": "The demo's daily limit has been reached: this is a saved variant of the block and does not follow your instruction.",
         "provider_quota": "The AI service has run out of quota for now: this is a saved variant of the block and does not follow your instruction."
       },
-      "noExampleMatched": "Your description does not match any of the examples, so one was picked for you. With your own key, the page is generated from your text."
+      "noExampleMatched": "Your description does not match any of the examples, so one was picked for you."
     },
     "notice": {
       "demo": "Demo mode: your text is not sent to any AI service and you will get a saved page. With your own key, the page is really generated.",

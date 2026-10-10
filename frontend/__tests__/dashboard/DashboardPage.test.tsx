@@ -7,9 +7,10 @@ import { buttonByText, guestUser, normalUser, typeInto } from '../guest/test-hel
 import { click, keyDown, render, type RenderResult } from '../mobile-editor/test-utils';
 
 const push = vi.hoisted(() => vi.fn());
+const replace = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, replace: vi.fn() }),
+  useRouter: () => ({ push, replace }),
 }));
 // These need the app's locale provider, which is not what is under test
 vi.mock('@/components/ui/LocaleSwitcher', () => ({ default: () => null }));
@@ -77,6 +78,7 @@ const byLabel = (label: string) => view.container.querySelector<HTMLElement>(`bu
 
 beforeEach(() => {
   push.mockReset();
+  replace.mockReset();
 });
 
 afterEach(() => {
@@ -350,5 +352,19 @@ describe('dashboard, leaving a guest session (QA-061)', () => {
 
     expect(logout).toHaveBeenCalledTimes(1);
     expect(view.container.ownerDocument.querySelector('[role="dialog"]')).toBeNull();
+  });
+});
+
+describe('dashboard, without a session', () => {
+  it('QA-099: sends the visitor to the login page, which brings them back to the dashboard', async () => {
+    vi.spyOn(api.auth, 'me').mockRejectedValue(new ApiError(401, '{"detail":"x"}'));
+    vi.spyOn(api.features, 'get').mockResolvedValue({ custom_domains: false, billing: false });
+
+    await act(async () => {
+      view = render(<DashboardPage />);
+    });
+    await act(async () => {});
+
+    expect(replace).toHaveBeenCalledWith('/login?next=%2Fdashboard');
   });
 });

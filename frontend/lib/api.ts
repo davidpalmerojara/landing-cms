@@ -102,10 +102,20 @@ export function conflictPage(error: unknown): ApiPage | null {
 
 // --- Core fetch with one refresh-and-retry on 401 ---
 
-async function fetchWithRetry<T>(doFetch: () => Promise<Response>): Promise<T> {
+/**
+ * Endpoints that sign in or out: their 401 means wrong credentials or no
+ * session to start, never an expired access token, so refreshing first only
+ * adds a second 401 and a slower error (APP2-008).
+ */
+const NO_REFRESH_PATHS = new Set([
+  '/auth/login/', '/auth/register/', '/auth/google/', '/auth/magic/request/', '/auth/magic/verify/',
+  '/auth/guest/', '/auth/refresh/', '/auth/logout/',
+]);
+
+async function fetchWithRetry<T>(doFetch: () => Promise<Response>, refreshOn401 = true): Promise<T> {
   let res = await doFetch();
 
-  if (res.status === 401 && (await refreshSession())) {
+  if (res.status === 401 && refreshOn401 && (await refreshSession())) {
     res = await doFetch();
   }
 
@@ -145,7 +155,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...interfaceLanguage(),
     ...(options?.headers as Record<string, string>),
   };
-  return fetchWithRetry<T>(() => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }));
+  return fetchWithRetry<T>(
+    () => fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' }),
+    !NO_REFRESH_PATHS.has(path),
+  );
 }
 
 // --- Types ---

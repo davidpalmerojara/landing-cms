@@ -87,6 +87,13 @@ describe('api', () => {
       expect(refreshOptions.body).toBeUndefined();
     });
 
+    it('APP2-008: a wrong password is a 401 of its own, with no session refresh before it', async () => {
+      mockFetch.mockReturnValueOnce(errorResponse(401, 'Credenciales incorrectas'));
+
+      await expect(api.auth.login({ username: 'ana', password: 'mal' })).rejects.toThrow('API 401');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     it('gives up with the original 401 when the refresh fails', async () => {
       mockFetch
         .mockReturnValueOnce(errorResponse(401, 'Unauthorized'))

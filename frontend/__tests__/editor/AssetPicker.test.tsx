@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act } from 'react';
+import { act, useState } from 'react';
 import ImageField from '@/components/inspector/ImageField';
 import AssetPickerModal from '@/components/inspector/AssetPickerModal';
 import { api } from '@/lib/api';
@@ -172,5 +172,40 @@ describe('media library dialog', () => {
     view = render(<AssetPickerModal onSelect={vi.fn()} onClose={vi.fn()} />);
     await flush();
     expect([...document.body.querySelectorAll('button')].some((b) => b.textContent?.includes('Pegar URL'))).toBe(false);
+  });
+});
+
+describe('focus around the media library (EDITOR2-006)', () => {
+  function Field() {
+    const [value, setValue] = useState('');
+    return <ImageField id="field-image" value={value} onChange={(next) => setValue(String(next))} />;
+  }
+
+  it('after choosing an image, focus is on the field again (its button is now "Cambiar")', async () => {
+    view = render(<Field />);
+    const opener = view.container.querySelector<HTMLButtonElement>('#field-image')!;
+    act(() => opener.focus());
+    click(opener);
+    await flush();
+
+    click(buttonNamed('portada.png, 2 KB'));
+    click(buttonNamed('Seleccionar'));
+    await act(() => new Promise<void>((resolve) => { requestAnimationFrame(() => resolve()); }));
+
+    expect(dialog()).toBeNull();
+    const field = view.container.querySelector<HTMLButtonElement>('#field-image')!;
+    expect(field).not.toBe(opener);
+    expect(document.activeElement).toBe(field);
+  });
+
+  it('the page behind the open dialog is inert, and only while it is open', async () => {
+    view = render(<Field />);
+    click(view.container.querySelector('#field-image')!);
+    await flush();
+    expect(view.container.inert).toBe(true);
+    expect(dialog()!.closest('[inert]')).toBeNull();
+
+    keyDown(dialog()!, 'Escape');
+    expect(view.container.inert).toBe(false);
   });
 });

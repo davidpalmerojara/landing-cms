@@ -28,14 +28,24 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
   // Each button keeps its own action as its name and adds the field it belongs to
   const withFieldLabel = (ownId: string) => (labelId ? `${ownId} ${labelId}` : undefined);
 
+  /**
+   * Focus goes back to the field once the picker is gone. Choosing an image
+   * swaps "Seleccionar imagen" for "Cambiar" (same id), so the button that
+   * opened the picker no longer exists to take it back (EDITOR2-006).
+   */
+  const closePicker = () => {
+    setShowPicker(false);
+    requestAnimationFrame(() => document.getElementById(id)?.focus());
+  };
+
   const handleSelect = (asset: ApiAsset) => {
     onChange(asset.url);
-    setShowPicker(false);
+    closePicker();
   };
 
   const handleSelectUrl = (url: string) => {
     onChange(url);
-    setShowPicker(false);
+    closePicker();
   };
 
   const handleRemove = () => {
@@ -99,7 +109,7 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
         <AssetPickerModal
           onSelect={handleSelect}
           onSelectUrl={handleSelectUrl}
-          onClose={() => setShowPicker(false)}
+          onClose={closePicker}
         />
       )}
     </>

@@ -290,7 +290,25 @@ describe('useCollaboration', () => {
       expect(wsTicket).toHaveBeenCalledTimes(1);
     });
 
-    it('plan_limit: explains it once and does not retry', async () => {
+    it('plan_limit: the owner editing alone gets no toast (EDITOR2-007), and it does not retry', async () => {
+      act(() => { useEditorStore.setState((s) => ({ page: { ...s.page, isOwner: true } })); });
+      view = render(<Harness />);
+      await act(async () => {});
+      const ws = latest();
+      act(() => {
+        ws.open();
+        ws.receive({ type: 'error', code: 'plan_limit', message: 'Pro' });
+        ws.serverClose(4003);
+      });
+      await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+
+      expect(state().collabStatus).toBe('unavailable');
+      expect(state().toasts).toEqual([]);
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('plan_limit: a collaborator is told why live editing is off', async () => {
+      act(() => { useEditorStore.setState((s) => ({ page: { ...s.page, isOwner: false } })); });
       view = render(<Harness />);
       await act(async () => {});
       const ws = latest();

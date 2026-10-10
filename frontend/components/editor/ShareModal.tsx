@@ -126,6 +126,8 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
   const { isGuest } = useGuestSession();
   // Invite, share and remove are the owner's (the server refuses them to collaborators)
   const isOwner = owner !== null && myUserId !== null && owner.id === myUserId;
+  // Live editing is off on this plan: said here instead of a toast on every open (EDITOR2-007)
+  const realtimeUnavailable = useEditorStore((s) => s.collabStatus === 'unavailable');
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -187,6 +189,9 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
         )}
         {isOwner && isGuest && (
           <p className="px-5 pt-4 text-xs text-secondary">{t('share.guestEmailLocked')}</p>
+        )}
+        {isOwner && realtimeUnavailable && (
+          <p className="px-5 pt-4 text-xs text-secondary">{t('share.realtimeNeedsPro')}</p>
         )}
         {!isLoading && owner && !isOwner && (
           <p className="px-5 py-4 border-b border-subtle text-xs text-secondary">{t('share.notOwner')}</p>

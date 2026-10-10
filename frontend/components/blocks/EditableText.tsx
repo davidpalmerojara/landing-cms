@@ -18,8 +18,22 @@ interface EditableTextProps {
   multiline?: boolean;
 }
 
-// An empty text on the canvas keeps a height and says so, so it can still be found and double-clicked (QA-040)
-const EMPTY_CLASS = 'empty:before:content-[attr(data-placeholder)] empty:before:opacity-50 empty:before:italic empty:inline-block empty:min-w-[4ch] empty:min-h-[1lh]';
+// An empty text on the canvas keeps a height and says so, so it can still be found and double-clicked (QA-040);
+// on touch screens it says double tap (EDITOR2-014)
+const EMPTY_CLASS = 'empty:before:content-[attr(data-placeholder)] pointer-coarse:empty:before:content-[attr(data-placeholder-touch)] empty:before:opacity-50 empty:before:italic empty:inline-block empty:min-w-[4ch] empty:min-h-[1lh]';
+
+/**
+ * What an inline edit stores. A contentEditable emptied in the browser keeps a
+ * `<br>`, so `innerText` reads "\n": a text with nothing visible is stored
+ * empty, or its placeholder never shows and the element collapses to 0 px
+ * (EDITOR2-001). A single-line field keeps no line breaks.
+ */
+export function typedText(innerText: string, multiline: boolean, maxLength: number | null): string {
+  if (!innerText.trim()) return '';
+  const withoutTrailingBreak = innerText.replace(/\n+$/, '');
+  const text = multiline ? withoutTrailingBreak : withoutTrailingBreak.replace(/\n/g, ' ');
+  return maxLength === null ? text : text.slice(0, maxLength);
+}
 
 /** Inserts `text` at the caret of a contentEditable, as plain text. */
 function insertPlainText(text: string) {
@@ -83,6 +97,8 @@ export default function EditableText({
     return <Tag className={className} style={style}>{value}</Tag>;
   }
 
+  // Nothing visible (e.g. a "\n" stored before EDITOR2-001): render nothing so the placeholder shows
+  const shown = value.trim() ? value : '';
   const roomLeft = (element: HTMLElement) => (maxLength === null ? Infinity : maxLength - element.innerText.length);
 
   if (isActiveEditing) {
@@ -92,11 +108,11 @@ export default function EditableText({
         contentEditable
         suppressContentEditableWarning
         data-placeholder={t('emptyText')}
+        data-placeholder-touch={t('emptyTextTouch')}
         style={style}
         className={`${className} ${EMPTY_CLASS} pointer-events-auto outline-none ring-2 ring-[#2563EB]/40 ring-offset-2 ring-offset-transparent rounded-sm cursor-text`}
         onBlur={(e: React.FocusEvent<HTMLElement>) => {
-          const typed = e.currentTarget.innerText || '';
-          const newValue = maxLength === null ? typed : typed.slice(0, maxLength);
+          const newValue = typedText(e.currentTarget.innerText || '', multiline, maxLength);
           if (newValue !== value) {
             updateBlockField(blockId, path, newValue);
           }
@@ -131,7 +147,7 @@ export default function EditableText({
         onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
         onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
       >
-        {value}
+        {shown}
       </Tag>
     );
   }
@@ -140,6 +156,7 @@ export default function EditableText({
     <Tag
       style={style}
       data-placeholder={t('emptyText')}
+      data-placeholder-touch={t('emptyTextTouch')}
       className={`${className} ${EMPTY_CLASS} ${
         isSelected
           ? 'pointer-events-auto cursor-text hover:ring-2 hover:ring-[#2563EB]/20 hover:ring-offset-2 hover:ring-offset-transparent active:ring-2 active:ring-[#2563EB]/20 active:ring-offset-2 active:ring-offset-transparent rounded-sm transition-shadow'
@@ -152,7 +169,7 @@ export default function EditableText({
         }
       }}
     >
-      {value}
+      {shown}
     </Tag>
   );
 }

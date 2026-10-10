@@ -325,6 +325,16 @@ export interface AiGenerateResponse extends AiAnswer {
 
 export interface AiEditBlockResponse extends AiAnswer {
   block: { id: string; type: string; order: number; data: Record<string, unknown>; styles: Record<string, unknown> };
+  /** The page version after the server wrote the block (MOBILE2-002) */
+  page_version?: number;
+  /** The same number under its older name (servers that do not send page_version yet) */
+  version?: number;
+}
+
+/** The page version an AI block edit left, or null when the response does not say. */
+export function aiEditPageVersion(response: Pick<AiEditBlockResponse, 'page_version' | 'version'>): number | null {
+  if (typeof response.page_version === 'number') return response.page_version;
+  return typeof response.version === 'number' ? response.version : null;
 }
 
 export interface PaginatedResponse<T> {

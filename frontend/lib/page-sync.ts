@@ -28,7 +28,7 @@ import { api, conflictPage } from '@/lib/api';
 import type { ApiPage } from '@/lib/api';
 import { apiErrorKind, isRetryableError, validationErrors } from '@/lib/api-errors';
 import type { ApiErrorKind } from '@/lib/api-errors';
-import { getAtPath, makeBlock, setAtPath, withBlockData } from '@/lib/block-data';
+import { getAtPath, isBlockType, makeBlock, setAtPath, withBlockData } from '@/lib/block-data';
 import { apiPageToLocal, localPageToApi } from '@/lib/page-mapping';
 import { deepEqual, mergePages, rebaseSnapshot, sameBlockContent, samePageContent, withoutRelayedEdits } from '@/lib/page-merge';
 import { logSyncError, readBackup, writeBackup } from '@/lib/page-backup';
@@ -100,7 +100,17 @@ export interface SaveOptions {
   keepalive?: boolean;
 }
 
+/** A block the server already wrote outside a save (an AI edit), and the page version that write made. */
+export interface ServerBlockWrite {
+  block: { id: string; type: string; data: unknown };
+  /** The page version right after the write; null when the response did not say */
+  pageVersion: number | null;
+}
+
 const store = () => useEditorStore.getState();
+
+/** The controller of the open editor (one per tab), for writes made through other endpoints. */
+let activeController: PageSyncController | null = null;
 
 /** The owner stopped sharing the page: the server refuses everything, so nothing is sent or fetched. */
 const isAccessRevoked = () => store().collabStatus === 'revoked';
@@ -225,11 +235,13 @@ export class PageSyncController {
   /** (Re)start retries after `dispose` (React mounts effects twice in development). */
   start() {
     this.disposed = false;
+    activeController = this;
   }
 
   /** Stop the timers (the editor closed). Saves already asked for still run. */
   dispose() {
     this.disposed = true;
+    if (activeController === this) activeController = null;
     this.clearRetry();
     if (this.savedTimer) clearTimeout(this.savedTimer);
     this.savedTimer = null;
@@ -543,6 +555,59 @@ export class PageSyncController {
     });
   }
 
+  /**
+   * The server wrote a block itself (AI edit) and bumped the page version
+   * (MOBILE2-002). The block goes on screen as one undo step and into the
+   * sync base, because the server already has it: the next save is based on
+   * the new version, so it neither conflicts nor rebases the undo history
+   * onto the new text (which made undoing the edit impossible).
+   *
+   * When the version is not the next one after the base (someone saved in
+   * between, or the response did not say), the page is fetched and merged on
+   * top of a base that already holds the block. False when the block type is
+   * unknown to this editor (nothing changes).
+   */
+  adoptServerBlock({ block, pageVersion }: ServerBlockWrite): boolean {
+    if (!isBlockType(block.type)) return false;
+    const { id, type, data } = block;
+    const withServerBlock = (page: Page): Page => ({
+      ...page,
+      blocks: page.blocks.map((b) => (b.id === id ? makeBlock(b, type, data) : b)),
+    });
+    const base = store().syncBase;
+    if (base && blockById(base.page, id)) {
+      const exact = pageVersion !== null && pageVersion === base.version + 1;
+      // Already known (a 409 merge brought that version or a later one): the base has it
+      const known = pageVersion !== null && pageVersion <= base.version;
+      if (!known) {
+        // Base first: the edit below is backed up against it
+        store().setSyncBase({ page: withServerBlock(base.page), version: exact ? pageVersion : base.version });
+      }
+      if (!exact && !known) void this.resyncWithServerBlock(withServerBlock);
+    }
+    return store().replaceBlockData(id, type, data);
+  }
+
+  /** Fetch the page after a server write we could not place by version, keeping that write in the base. */
+  private resyncWithServerBlock(withServerBlock: (page: Page) => Page): Promise<void> {
+    return this.enqueue(async () => {
+      if (isAccessRevoked()) return;
+      try {
+        const fresh = await api.pages.get(this.id());
+        const latest = store().syncBase;
+        if (!latest) return;
+        // A save that finished meanwhile set a base without the block: put it back
+        store().setSyncBase({ page: withServerBlock(latest.page), version: latest.version });
+        if (fresh.version === latest.version) return;
+        const needsSave = this.mergeRemote(fresh);
+        // Not awaited: the save is queued behind this task
+        if (needsSave) void this.save();
+      } catch (e) {
+        logSyncError('Failed to fetch the page after an AI edit:', e);
+      }
+    });
+  }
+
   /** Restore a version for everyone: the editor takes the restored page as is. */
   restoreVersion(versionId: string): Promise<void> {
     return this.enqueue(async () => {
@@ -592,4 +657,14 @@ export class PageSyncController {
       }
     });
   }
+}
+
+/**
+ * Put a block the server already wrote (AI edit) into the open editor and its
+ * sync base (MOBILE2-002). Without an open editor it is a plain edit. False
+ * when the block type is unknown.
+ */
+export function adoptServerBlock(write: ServerBlockWrite): boolean {
+  if (activeController) return activeController.adoptServerBlock(write);
+  return store().replaceBlockData(write.block.id, write.block.type, write.block.data);
 }

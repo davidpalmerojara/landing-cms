@@ -39,8 +39,8 @@ function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopB
   }, [onPublish]);
 
   return (
-    <div className="sticky top-0 z-50 h-12 bg-surface border-b border-subtle/80 flex items-center justify-between px-2 sm:px-4">
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <div className="sticky top-0 z-50 min-h-12 bg-surface border-b border-subtle/80 flex flex-wrap items-center gap-x-2 sm:gap-x-3 px-2 sm:px-4">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 mr-auto">
         <Link
           href={`/editor/${page.id}`}
           aria-label={t('preview.backToEditor')}
@@ -60,40 +60,39 @@ function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopB
           {page.status === 'published' ? t('common.published') : t('common.draft')}
         </span>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div role="status" className="min-w-0 text-xs">
-          {publishError && <span className="text-error">{publishError}</span>}
-          {published && (
-            <span className="flex items-center gap-2 min-w-0">
-              <span className="text-success shrink-0">{t('preview.published')}</span>
-              <a href={published.path} target="_blank" rel="noopener" className="text-primary-color underline truncate">
-                {published.path}
-                <span className="sr-only"> {t('publishing.opensInNewTab')}</span>
-              </a>
-            </span>
-          )}
-        </div>
-        {isOwner ? (
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={isPublishing || isUpToDate}
-            className="shrink-0 min-h-11 text-white font-bold text-sm px-4 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
-            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-          >
-            {isPublishing ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                {t('preview.publishing')}
-              </span>
-            ) : (
-              t(isUpToDate ? 'preview.upToDate' : isPublished ? 'preview.republish' : 'preview.publish')
-            )}
-          </button>
-        ) : (
-          <p className="min-w-0 max-w-[16rem] text-xs leading-snug text-muted">{t('publishing.ownerOnly')}</p>
+      {/* On a phone the confirmation and the new address get a row of their own under the bar's controls (PUBLIC3-001) */}
+      <div role="status" className="order-last basis-full min-w-0 pb-1.5 text-xs empty:pb-0 sm:order-0 sm:basis-auto sm:pb-0">
+        {publishError && <span className="text-error">{publishError}</span>}
+        {published && (
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-success">{t('preview.published')}</span>
+            <a href={published.path} target="_blank" rel="noopener" className="text-primary-color underline break-all">
+              {published.path}
+              <span className="sr-only"> {t('publishing.opensInNewTab')}</span>
+            </a>
+          </span>
         )}
       </div>
+      {isOwner ? (
+        <button
+          type="button"
+          onClick={handlePublish}
+          disabled={isPublishing || isUpToDate}
+          className="shrink-0 min-h-11 text-white font-bold text-sm px-4 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+        >
+          {isPublishing ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+              {t('preview.publishing')}
+            </span>
+          ) : (
+            t(isUpToDate ? 'preview.upToDate' : isPublished ? 'preview.republish' : 'preview.publish')
+          )}
+        </button>
+      ) : (
+        <p className="min-w-0 max-w-[16rem] py-1 text-xs leading-snug text-muted">{t('publishing.ownerOnly')}</p>
+      )}
     </div>
   );
 }

@@ -775,7 +775,8 @@
     "empty": "This page has no blocks.",
     "documentTitle": "Preview: {name} — Paxl",
     "published": "Published at",
-    "republish": "Publish changes"
+    "republish": "Publish changes",
+    "upToDate": "Published, no changes"
   },
   "billing": {
     "title": "Billing",

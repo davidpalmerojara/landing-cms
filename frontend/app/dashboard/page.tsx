@@ -74,6 +74,16 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     refreshUsage();
   }, [reload, refreshUsage]);
 
+  // Claiming a guest account changes the plan (Pro-like guest -> Free) and the page counts: ask again (QA-051)
+  const wasGuest = useRef(user?.is_guest ?? null);
+  const isGuestNow = user?.is_guest ?? null;
+  useEffect(() => {
+    if (wasGuest.current === true && isGuestNow === false) {
+      refreshAll();
+    }
+    wasGuest.current = isGuestNow;
+  }, [isGuestNow, refreshAll]);
+
   const {
     actionError, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove,
   } = usePageActions({ onChanged: refreshUsage, updatePages, billingEnabled });

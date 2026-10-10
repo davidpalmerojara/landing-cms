@@ -775,7 +775,8 @@
     "empty": "Esta página no tiene bloques.",
     "documentTitle": "Vista previa: {name} — Paxl",
     "published": "Publicada en",
-    "republish": "Publicar cambios"
+    "republish": "Publicar cambios",
+    "upToDate": "Publicada, sin cambios"
   },
   "billing": {
     "title": "Facturación",

@@ -23,6 +23,10 @@ interface PreviewTopBarProps {
 function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopBarProps) {
   const t = useTranslations();
   const [isPublishing, setIsPublishing] = useState(false);
+  // Publishing is the owner's (D1, ADR-032): a collaborator is told so instead of getting a button that fails (PUBLIC2-001)
+  const isOwner = page.isOwner !== false;
+  const isPublished = page.status === 'published';
+  const isUpToDate = isPublished && !page.hasUnpublishedChanges;
 
   const handlePublish = useCallback(async () => {
     setIsPublishing(true);
@@ -46,7 +50,7 @@ function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopB
         <div className="w-px h-5 bg-surface-card hidden sm:block" />
         <span className="text-[12px] text-muted truncate hidden sm:block">{page.name}</span>
         <span
-          className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-widest border shrink-0 ${
+          className={`text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider border shrink-0 ${
             page.status === 'published'
               ? 'bg-emerald-500/10 border-emerald-500/20 text-success'
               : 'bg-surface-card border-default text-muted'
@@ -68,21 +72,26 @@ function PreviewTopBar({ page, onPublish, publishError, published }: PreviewTopB
             </span>
           )}
         </div>
-        <button
-          onClick={handlePublish}
-          disabled={isPublishing}
-          className="shrink-0 text-white font-bold text-sm px-4 py-1.5 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
-        >
-          {isPublishing ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-              {t('preview.publishing')}
-            </span>
-          ) : (
-            t(page.status === 'published' ? 'preview.republish' : 'preview.publish')
-          )}
-        </button>
+        {isOwner ? (
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={isPublishing || isUpToDate}
+            className="shrink-0 min-h-11 text-white font-bold text-sm px-4 rounded-md shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+            style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
+          >
+            {isPublishing ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                {t('preview.publishing')}
+              </span>
+            ) : (
+              t(isUpToDate ? 'preview.upToDate' : isPublished ? 'preview.republish' : 'preview.publish')
+            )}
+          </button>
+        ) : (
+          <p className="min-w-0 max-w-[16rem] text-xs leading-snug text-muted">{t('publishing.ownerOnly')}</p>
+        )}
       </div>
     </div>
   );
@@ -102,18 +111,8 @@ export default function PreviewPage() {
     if (page) document.title = t('preview.documentTitle', { name: page.name });
   }, [page, t]);
 
-  // <html lang>: the language the page is written in, as on the published page (QA-091)
-  useEffect(() => {
-    if (!page) return;
-    const root = document.documentElement;
-    const previous = root.lang;
-    root.dataset.contentLang = page.seo.language;
-    root.lang = page.seo.language;
-    return () => {
-      delete root.dataset.contentLang;
-      root.lang = previous;
-    };
-  }, [page]);
+  // <html lang> stays the interface language (the bar is Paxl's); the page's own area declares the page's
+  // language through PageRenderer (PUBLIC2-006)
 
   useEffect(() => {
     async function loadPage() {

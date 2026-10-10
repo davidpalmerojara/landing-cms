@@ -67,4 +67,16 @@ describe('public page rendered on the server', () => {
   it('shows the watermark text', () => {
     expect(html).toContain(MESSAGES.es.publicPage.madeWith);
   });
+
+  it('PUBLIC2-006: Paxl\'s own words are marked with the visitor\'s language, the page area with the page\'s', () => {
+    const english = renderToString(
+      <NextIntlClientProvider locale="en" messages={MESSAGES.en}>
+        <PublicPageClient page={{ ...page, language: 'es', is_guest_page: true }} />
+      </NextIntlClientProvider>,
+    );
+
+    expect(english).toMatch(new RegExp(`<aside lang="en"[^>]*>[^]*${MESSAGES.en.publicPage.madeWith}`));
+    expect(english).toMatch(/<aside lang="en"[^>]*><p role="note"/);
+    expect(english).toMatch(/<main[^>]*lang="es"/);
+  });
 });

@@ -3,7 +3,7 @@ import { act } from 'react';
 import DashboardPage from '@/app/dashboard/page';
 import { ApiError, api } from '@/lib/api';
 import type { ApiBillingPlan, ApiPageListItem, ApiSubscription, ApiUsage, PaginatedResponse } from '@/lib/api';
-import { buttonByText, guestUser, normalUser, typeInto } from '../guest/test-helpers';
+import { buttonByText, field, guestUser, normalUser, typeInto } from '../guest/test-helpers';
 import { click, keyDown, render, type RenderResult } from '../mobile-editor/test-utils';
 
 const push = vi.hoisted(() => vi.fn());
@@ -331,6 +331,29 @@ describe('dashboard, page menu keyboard (QA-060)', () => {
     });
 
     expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+});
+
+describe('dashboard, claiming a guest account (QA-051)', () => {
+  it('asks for the plan and the counts again once the guest has an account, so "Plan Pro" does not linger', async () => {
+    await mount({ user: guestUser });
+    expect(api.billing.subscription).toHaveBeenCalledTimes(1);
+    vi.spyOn(api.auth, 'claimGuest').mockResolvedValue({ user: normalUser });
+
+    click(buttonByText(view.container, 'Crear cuenta y guardarlo'));
+    const form = document.querySelector('form') as HTMLFormElement;
+    typeInto(field(form, 'Usuario'), 'ana');
+    typeInto(field(form, 'Email'), 'ana@example.com');
+    typeInto(field(form, 'Contraseña'), 'Str0ng-pass-123');
+    typeInto(field(form, 'Confirmar contraseña'), 'Str0ng-pass-123');
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    await act(async () => buttonByText(document.body, 'Continuar').click());
+    await act(async () => {});
+
+    expect(api.billing.subscription).toHaveBeenCalledTimes(2);
+    expect(api.pages.list).toHaveBeenCalledTimes(2);
   });
 });
 

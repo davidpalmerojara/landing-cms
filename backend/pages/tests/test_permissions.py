@@ -79,7 +79,7 @@ class TestPageWorkspaceAssignment:
 
     @patch(CHECK_LIMIT)
     def test_duplicate_of_a_shared_page_is_owner_only(self, mock_limit, api_client):
-        # D1 / ADR-031: a collaborator cannot take a copy of the owner's page
+        # D1 / ADR-032: a collaborator cannot take a copy of the owner's page
         owner = UserFactory()
         owner_workspace = WorkspaceFactory(owner=owner)
         page = PageFactory(owner=owner, workspace=owner_workspace)

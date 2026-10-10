@@ -1,4 +1,4 @@
-"""Who may do what with a page (ADR-031).
+"""Who may do what with a page (ADR-032).
 
 A collaborator edits the content: blocks, theme, SEO, AI edit of one block,
 creating and restoring versions. What decides what the public sees or takes

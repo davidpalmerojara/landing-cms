@@ -117,7 +117,7 @@ class PageListSerializer(serializers.ModelSerializer):
 class PageDetailSerializer(serializers.ModelSerializer):
     blocks = BlockSerializer(many=True)
     # Whether the requesting user owns the page: collaborators cannot publish,
-    # duplicate, delete versions or regenerate it with AI (ADR-031)
+    # duplicate, delete versions or regenerate it with AI (ADR-032)
     is_owner = serializers.SerializerMethodField()
 
     def get_is_owner(self, obj):

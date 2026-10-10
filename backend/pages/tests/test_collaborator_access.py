@@ -1,4 +1,4 @@
-"""Owner and collaborators (QA-002, QA-013, QA-023, D1 / ADR-031).
+"""Owner and collaborators (QA-002, QA-013, QA-023, D1 / ADR-032).
 
 An owner with two or more collaborators got a 500 on versions and analytics
 (the collaborators join repeated the page). What decides what the public sees

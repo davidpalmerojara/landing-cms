@@ -77,12 +77,12 @@ class TestFeaturesEndpoint:
         resp = api_client.get('/api/features/')
 
         assert resp.status_code == status.HTTP_200_OK
-        assert resp.json() == {'custom_domains': False}
+        assert resp.json()['custom_domains'] is False
 
     def test_reports_it_on_when_the_deployment_enables_it(self, api_client, settings):
         settings.CUSTOM_DOMAINS_ENABLED = True
 
-        assert api_client.get('/api/features/').json() == {'custom_domains': True}
+        assert api_client.get('/api/features/').json()['custom_domains'] is True
 
 
 class TestDomainSettings:

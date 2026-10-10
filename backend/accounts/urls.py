@@ -72,7 +72,8 @@ class CookieTokenRefreshView(APIView):
         serializer = TokenRefreshSerializer(data={'refresh': raw_refresh})
         try:
             serializer.is_valid(raise_exception=True)
-        except (TokenError, InvalidToken, ValidationError):
+        except (TokenError, InvalidToken, ValidationError, User.DoesNotExist):
+            # User.DoesNotExist: the account was deleted while its refresh token was still valid (QA-101)
             response = Response({'error': 'La sesión ha caducado.', 'code': 'INVALID_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
             clear_auth_cookies(response)
             return response

@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from rest_framework import serializers
 
 from .guests import GUEST_EMAIL_DOMAIN, guest_expires_at
+from .messages import message
 
 User = get_user_model()
 
@@ -14,15 +16,36 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'username', 'password', 'password2']
+        # The default UniqueValidators compare case-sensitively; validate_email
+        # and validate_username below ignore case (D8)
+        extra_kwargs = {
+            'email': {'validators': []},
+            'username': {'validators': [UnicodeUsernameValidator()]},
+        }
+
+    def _others(self):
+        """Every account except the one being updated (a guest claiming its account)."""
+        queryset = User.objects.all()
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        return queryset
 
     def validate_email(self, value):
-        if value.lower().endswith(f'@{GUEST_EMAIL_DOMAIN}'):
-            raise serializers.ValidationError('Usa un email real.')
+        value = value.strip().lower()
+        if value.endswith(f'@{GUEST_EMAIL_DOMAIN}'):
+            raise serializers.ValidationError(message('real_email'))
+        if self._others().filter(email__iexact=value).exists():
+            raise serializers.ValidationError(message('email_taken'))
+        return value
+
+    def validate_username(self, value):
+        if self._others().filter(username__iexact=value).exists():
+            raise serializers.ValidationError(message('username_taken'))
         return value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({'password2': 'Las contraseñas no coinciden.'})
+            raise serializers.ValidationError({'password2': message('passwords_differ')})
         return attrs
 
     def create(self, validated_data):
@@ -61,6 +84,10 @@ class GoogleAuthSerializer(serializers.Serializer):
 
 class MagicLinkRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        # `MAGIC@x.com` and `magic@x.com` are the same inbox and the same account (D8)
+        return value.strip().lower()
 
 
 class MagicLinkVerifySerializer(serializers.Serializer):

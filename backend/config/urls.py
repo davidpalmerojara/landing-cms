@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from config.admin_guard import limit_admin_login
 from config.features import features_view
 
 
@@ -16,7 +17,6 @@ def healthz(request):
 urlpatterns = [
     path('healthz', healthz),
     path('api/features/', features_view),
-    path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('pages.urls')),
     path('api/', include('ai_generation.urls')),
@@ -24,6 +24,11 @@ urlpatterns = [
     path('api/', include('billing.urls')),
     path('api/', include('submissions.urls')),
 ]
+
+if settings.ADMIN_ENABLED:
+    # Rate limit the sign-in before the site builds its URLs (it reads `login` then)
+    admin.site.login = limit_admin_login(admin.site.login)
+    urlpatterns.append(path(settings.ADMIN_URL_PATH, admin.site.urls))
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -303,7 +303,8 @@ class TestGuestAbuseLimits:
         assert client.get('/api/assets/').status_code == status.HTTP_200_OK
 
     @pytest.mark.parametrize('url', ['/api/billing/checkout/', '/api/billing/portal/'])
-    def test_billing_is_refused(self, url):
+    def test_billing_is_refused(self, url, settings):
+        settings.STRIPE_SECRET_KEY = 'sk_test_unit'  # billing is off without a test key (D2)
         client, _ = start_guest()
         resp = client.post(url, {'cycle': 'monthly'}, format='json')
         assert resp.status_code == status.HTTP_403_FORBIDDEN

@@ -348,6 +348,17 @@ def _create_version_row(page, user, trigger, label):
         )
 
 
+def max_versions_for(page):
+    """How many versions the page keeps: the owner's plan decides (-1: all).
+    Guests keep GUEST_MAX_VERSIONS. Older ones are pruned when a new one is saved."""
+    from billing.permissions import get_user_plan
+
+    if getattr(page.owner, 'is_guest', False):
+        from accounts.guests import GUEST_MAX_VERSIONS
+        return GUEST_MAX_VERSIONS
+    return getattr(get_user_plan(page.owner), 'max_version_history', 5)
+
+
 def create_version_snapshot(page, user, trigger, label=''):
     """
     Capture the current state of a page's blocks as a PageVersion.
@@ -355,8 +366,6 @@ def create_version_snapshot(page, user, trigger, label=''):
     Handles auto-incrementing version_number and plan-based version limits.
     Returns the created PageVersion instance.
     """
-    from billing.permissions import get_user_plan
-
     for attempt in range(1, VERSION_NUMBER_ATTEMPTS + 1):
         try:
             version = _create_version_row(page, user, trigger, label)
@@ -368,11 +377,7 @@ def create_version_snapshot(page, user, trigger, label=''):
                 raise
 
     # Enforce plan-based version limit
-    plan = get_user_plan(page.owner)
-    max_versions = getattr(plan, 'max_version_history', 5)
-    if getattr(page.owner, 'is_guest', False):
-        from accounts.guests import GUEST_MAX_VERSIONS
-        max_versions = GUEST_MAX_VERSIONS
+    max_versions = max_versions_for(page)
     if max_versions != -1:
         version_ids = list(
             page.versions.order_by('-version_number')

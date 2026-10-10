@@ -8,14 +8,16 @@ import { useAsyncData } from '@/hooks/useAsyncData';
 export function useAnalytics(pageId: string, period: string) {
   const load = useCallback(() => api.analytics.get(pageId, { period }), [pageId, period]);
   const { data, isLoading, hasError, error, reload } = useAsyncData(load);
+  const isPlanLimited = hasError && isPlanLimitError(error);
 
   return {
     data,
     isLoading,
-    /** The plan does not include analytics (the panel offers the upgrade) */
-    isPlanLimited: hasError && isPlanLimitError(error),
-    /** The load failed for any other reason; the text to show, or '' when the error has none */
-    errorMessage: hasError && !isPlanLimitError(error) ? (error instanceof Error ? error.message : '') : null,
+    /** The plan does not include analytics: the panel says so before anything else (QA-044) */
+    isPlanLimited,
+    /** The load failed for any other reason; `loadError` is what was thrown (turn it into text with apiErrorMessage) */
+    hasLoadError: hasError && !isPlanLimited,
+    loadError: error,
     reload,
   };
 }

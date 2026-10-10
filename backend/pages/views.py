@@ -16,7 +16,7 @@ from config.features import CustomDomainsEnabled
 from .block_validators import clean_block_data
 from .models import (
     Page, Block, Asset, PageVersion, PageInvite, CustomDomain,
-    DEFAULT_PAGE_LANGUAGE, OG_TYPE_CHOICES, create_version_snapshot, language_tag_validator, lock_page,
+    DEFAULT_PAGE_LANGUAGE, OG_TYPE_CHOICES, create_version_snapshot, language_tag_validator, lock_page, max_versions_for,
     pages_accessible_to,
 )
 from .permissions import require_page_owner
@@ -432,12 +432,15 @@ class PageVersionViewSet(viewsets.GenericViewSet):
         return PageVersionListSerializer
 
     def list(self, request, page_id=None):
-        """GET — list all versions (lightweight, no snapshot)."""
+        """GET — list all versions (lightweight, no snapshot), plus `max_versions`:
+        how many the owner's plan keeps (-1: all), so the panel can say so (QA-086)."""
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = PageVersionListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            response = self.get_paginated_response(serializer.data)
+            response.data['max_versions'] = max_versions_for(self._get_page())
+            return response
         serializer = PageVersionListSerializer(queryset, many=True)
         return Response(serializer.data)
 

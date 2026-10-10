@@ -2,7 +2,6 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -11,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import ChartFrame from './ChartFrame';
 
 interface ViewsChartProps {
   data: Array<{ date: string; views: number; unique_visitors: number }>;
@@ -38,9 +38,9 @@ export default function ViewsChart({ data }: ViewsChartProps) {
   }
 
   return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={formatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+    <ChartFrame className="h-64">
+      {({ width, height }) => (
+        <LineChart width={width} height={height} data={formatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
           <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
           <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} allowDecimals={false} />
@@ -52,7 +52,7 @@ export default function ViewsChart({ data }: ViewsChartProps) {
           <Line type="monotone" dataKey="views" stroke="#6366f1" name={t('analytics.metricViews')} strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="unique_visitors" stroke="#22d3ee" name={t('analytics.metricUnique')} strokeWidth={2} dot={false} />
         </LineChart>
-      </ResponsiveContainer>
-    </div>
+      )}
+    </ChartFrame>
   );
 }

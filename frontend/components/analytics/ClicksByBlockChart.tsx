@@ -2,7 +2,6 @@
 
 import { useTranslations } from 'next-intl';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -10,6 +9,7 @@ import {
   Tooltip,
   Cell,
 } from 'recharts';
+import ChartFrame from './ChartFrame';
 
 interface ClicksByBlockChartProps {
   data: Array<{ block_id: string | null; block_type: string | null; click_count: number; ctr: number }>;
@@ -56,9 +56,9 @@ export default function ClicksByBlockChart({ data }: ClicksByBlockChartProps) {
   }));
 
   return (
-    <div className="h-48">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+    <ChartFrame className="h-48">
+      {({ width, height }) => (
+        <BarChart width={width} height={height} data={chartData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
           <XAxis type="number" tick={{ fill: '#a1a1aa', fontSize: 11 }} allowDecimals={false} />
           <YAxis type="category" dataKey="name" tick={{ fill: '#a1a1aa', fontSize: 11 }} width={80} />
           <Tooltip
@@ -77,7 +77,7 @@ export default function ClicksByBlockChart({ data }: ClicksByBlockChartProps) {
             ))}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
-    </div>
+      )}
+    </ChartFrame>
   );
 }

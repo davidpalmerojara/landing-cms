@@ -21,6 +21,8 @@ export default function ScrollFunnel({ data, totalPageviews }: ScrollFunnelProps
 
   return (
     <div className="flex flex-col gap-2">
+      {/* What the red figure means: visits lost since the previous step (QA-087) */}
+      <p className="text-[11px] text-muted leading-relaxed mb-1">{t('scrollFunnelHint')}</p>
       {steps.map((step, i) => {
         const pct = Math.round((step.value / max) * 100);
         const dropoff = i > 0 && steps[i - 1].value > 0
@@ -39,9 +41,14 @@ export default function ScrollFunnel({ data, totalPageviews }: ScrollFunnelProps
                 {step.value}
               </span>
             </div>
-            {i > 0 && dropoff > 0 && (
-              <span className="text-xs text-error w-10">-{dropoff}%</span>
-            )}
+            <span className="text-xs text-error w-12 text-right shrink-0">
+              {i > 0 && dropoff > 0 && (
+                <>
+                  <span aria-hidden="true">−{dropoff} %</span>
+                  <span className="sr-only">{t('scrollDropoff', { percent: dropoff })}</span>
+                </>
+              )}
+            </span>
           </div>
         );
       })}

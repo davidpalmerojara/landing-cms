@@ -12,8 +12,10 @@ interface SaveIssueActions {
   onShowField: (field: RejectedField) => void;
 }
 
-function issueIcon(issue: SaveIssue) {
-  return issue.kind === 'failed' && issue.error === 'offline' ? CloudOff : AlertCircle;
+function IssueIcon({ issue, className }: { issue: SaveIssue; className: string }) {
+  return issue.kind === 'failed' && issue.error === 'offline'
+    ? <CloudOff className={className} aria-hidden="true" />
+    : <AlertCircle className={className} aria-hidden="true" />;
 }
 
 /**
@@ -39,21 +41,18 @@ export default function SaveStatusIndicator({ onRetry, onShowField }: SaveIssueA
           <span className="sr-only xl:not-sr-only">{t('common.saved')}</span>
         </span>
       )}
-      {text && issue && (() => {
-        const Icon = issueIcon(issue);
-        return (
-          <button
-            type="button"
-            onClick={() => (issue.kind === 'rejected' ? onShowField(issue.fields[0]) : onRetry())}
-            title={text.full}
-            className="flex items-center gap-1 text-error rounded-md px-1.5 py-1 hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          >
-            <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden xl:inline" aria-hidden="true">{text.short}</span>
-            <span className="sr-only">{text.full}</span>
-          </button>
-        );
-      })()}
+      {text && issue && (
+        <button
+          type="button"
+          onClick={() => (issue.kind === 'rejected' ? onShowField(issue.fields[0]) : onRetry())}
+          title={text.full}
+          className="flex items-center gap-1 text-error rounded-md px-1.5 py-1 hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+        >
+          <IssueIcon issue={issue} className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden xl:inline" aria-hidden="true">{text.short}</span>
+          <span className="sr-only">{text.full}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -66,11 +65,10 @@ export function SaveIssueBanner({ onRetry, onShowField }: SaveIssueActions) {
   const t = useTranslations();
   const { issue, text } = useSaveIssueText();
   if (!issue || !text) return null;
-  const Icon = issueIcon(issue);
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 text-[12px] bg-error/10 border-b border-error/30 text-primary shrink-0">
-      <Icon className="w-4 h-4 text-error shrink-0" aria-hidden="true" />
+      <IssueIcon issue={issue} className="w-4 h-4 text-error shrink-0" />
       <p className="flex-1 min-w-0">{text.full}</p>
       <button
         type="button"

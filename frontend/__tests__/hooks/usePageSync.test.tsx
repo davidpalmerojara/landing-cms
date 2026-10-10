@@ -7,6 +7,7 @@ import { usePageSync } from '@/hooks/usePageSync';
 import type { RemotePageChange } from '@/hooks/usePageSync';
 import { MAX_CONFLICT_RETRIES } from '@/lib/page-sync';
 import { presetTokens, tokensToApi } from '@/lib/design-tokens';
+import { apiPageToLocal } from '@/lib/page-mapping';
 import { render } from '../mobile-editor/test-utils';
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -20,6 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
         create: vi.fn(),
         list: vi.fn(),
         publish: vi.fn(),
+        unpublish: vi.fn(),
       },
       versions: {
         restore: vi.fn(),
@@ -32,6 +34,7 @@ const { api } = await import('@/lib/api');
 const getPage = vi.mocked(api.pages.get);
 const updatePage = vi.mocked(api.pages.update);
 const publishPage = vi.mocked(api.pages.publish);
+const unpublishPage = vi.mocked(api.pages.unpublish);
 const restoreVersion = vi.mocked(api.versions.restore);
 
 const PAGE_ID = '11111111-1111-4111-8111-111111111111';
@@ -84,9 +87,10 @@ type Sync = ReturnType<typeof usePageSync>;
 let sync: Sync;
 const onRemoteMerged = vi.fn();
 const onSaveFailed = vi.fn();
+const onLocalChangesRecovered = vi.fn();
 
 function Harness({ pageId, onSync }: { pageId: string; onSync: (s: Sync) => void }) {
-  const result = usePageSync(pageId, { onRemoteMerged, onSaveFailed });
+  const result = usePageSync(pageId, { onRemoteMerged, onSaveFailed, onLocalChangesRecovered });
   useEffect(() => onSync(result));
   return null;
 }
@@ -125,6 +129,7 @@ describe('usePageSync', () => {
     localStorage.clear();
     useEditorStore.setState({
       past: [], future: [], selectedBlockId: null, syncBase: null, myConnectionId: null, presence: [], collabStatus: 'idle',
+      saveIssue: null, autoSaveStatus: 'idle',
     });
   });
 
@@ -564,6 +569,280 @@ describe('usePageSync', () => {
       await save();
 
       expect(state().page.hasUnpublishedChanges).toBe(true);
+      view.unmount();
+    });
+  });
+  describe('nothing typed is lost (QA-003, QA-004, QA-008)', () => {
+    /** A 400 like the server's for one field of the block at `index`. */
+    function refused(index: number, field: string, message = 'Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.') {
+      const blocks: Record<string, unknown>[] = [{}, {}];
+      blocks[index] = { data: { [field]: [message] } };
+      return new ApiError(400, JSON.stringify({ error: 'Error de validación.', code: 'BAD_REQUEST', details: { blocks } }));
+    }
+    const sentData = (call: number, index: number) => sentBody(call).blocks[index].data as Record<string, unknown>;
+    const heroData = () => state().page.blocks.find((b) => b.id === BLOCK_A)?.data as unknown as Record<string, unknown>;
+
+    it('QA-004: a refused field is left out, the rest of the page saves, and the field is named', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => {
+        state().updateBlock(BLOCK_A, 'buttonLink', 'javascript:alert(1)');
+        state().updateBlock(BLOCK_B, 'title', 'Saved anyway');
+      });
+      updatePage
+        .mockRejectedValueOnce(refused(0, 'buttonLink'))
+        .mockImplementation(async (_id, body) => echo(body, (body as { version: number }).version + 1));
+
+      expect(await save()).toBe(false);
+
+      expect(updatePage).toHaveBeenCalledTimes(2);
+      expect(sentData(1, 0).buttonLink).toBe('');
+      expect(sentData(1, 1).title).toBe('Saved anyway');
+      expect(state().syncBase?.version).toBe(2);
+      expect(state().autoSaveStatus).toBe('error');
+      expect(state().saveIssue).toEqual({
+        kind: 'rejected',
+        fields: [expect.objectContaining({ blockId: BLOCK_A, blockType: 'hero', path: ['buttonLink'], value: 'javascript:alert(1)' })],
+      });
+      // What the user typed stays on screen to be fixed
+      expect(heroData().buttonLink).toBe('javascript:alert(1)');
+
+      // Later edits keep saving without the refused value, and without another 400
+      act(() => { state().updateBlock(BLOCK_B, 'title', 'Again'); });
+      expect(await save()).toBe(false);
+      expect(updatePage).toHaveBeenCalledTimes(3);
+      expect(sentData(2, 0).buttonLink).toBe('');
+      expect(sentData(2, 1).title).toBe('Again');
+
+      // Once the user fixes it, it is sent and the problem goes away
+      act(() => { state().updateBlock(BLOCK_A, 'buttonLink', 'https://example.com'); });
+      expect(await save()).toBe(true);
+      expect(sentData(3, 0).buttonLink).toBe('https://example.com');
+      expect(state().saveIssue).toBeNull();
+      expect(state().autoSaveStatus).toBe('saved');
+      view.unmount();
+    });
+
+    it('QA-004: a refused page field (SEO) is left out the same way', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => {
+        state().updateSeo('seoTitle', 'x'.repeat(80));
+        state().updateBlock(BLOCK_A, 'title', 'Kept');
+      });
+      updatePage
+        .mockRejectedValueOnce(new ApiError(400, JSON.stringify({
+          error: 'Error de validación.', code: 'BAD_REQUEST',
+          details: { seo_title: ['Asegúrese de que este campo no tenga más de 70 caracteres.'] },
+        })))
+        .mockImplementation(async (_id, body) => echo(body, 2));
+
+      await save();
+
+      const second = updatePage.mock.calls[1][1] as Record<string, unknown>;
+      expect(second.seo_title).toBe('');
+      expect(sentData(1, 0).title).toBe('Kept');
+      expect(state().saveIssue).toEqual({
+        kind: 'rejected',
+        fields: [expect.objectContaining({ blockId: null, path: ['seo', 'seoTitle'] })],
+      });
+      view.unmount();
+    });
+
+    it('QA-004: no answer is "offline"; an HTTP error is not', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Edited'); });
+
+      updatePage.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      expect(await save()).toBe(false);
+      expect(state().saveIssue).toEqual({ kind: 'failed', error: 'offline', retrying: true });
+
+      updatePage.mockRejectedValueOnce(new ApiError(404, JSON.stringify({ error: 'Recurso no encontrado.', code: 'NOT_FOUND' })));
+      expect(await save()).toBe(false);
+      expect(state().saveIssue).toEqual({ kind: 'failed', error: 'notFound', retrying: false });
+      view.unmount();
+    });
+
+    it('QA-008: a failed save is sent again as soon as the browser is back online', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Typed offline'); });
+      updatePage
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockImplementation(async (_id, body) => echo(body, 2));
+      await save();
+      expect(state().autoSaveStatus).toBe('error');
+
+      await act(async () => { window.dispatchEvent(new Event('online')); });
+      await act(async () => {});
+
+      expect(updatePage).toHaveBeenCalledTimes(2);
+      expect(sentData(1, 0).title).toBe('Typed offline');
+      expect(state().saveIssue).toBeNull();
+      expect(state().autoSaveStatus).toBe('saved');
+      view.unmount();
+    });
+
+    it('QA-008: and by itself after a growing wait', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      vi.useFakeTimers();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Edited'); });
+      updatePage
+        .mockRejectedValueOnce(new ApiError(503, 'Service unavailable'))
+        .mockRejectedValueOnce(new ApiError(503, 'Service unavailable'))
+        .mockImplementation(async (_id, body) => echo(body, 2));
+      await save();
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(1999); });
+      expect(updatePage).toHaveBeenCalledTimes(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(updatePage).toHaveBeenCalledTimes(2);
+      // The second wait is longer
+      await act(async () => { await vi.advanceTimersByTimeAsync(4999); });
+      expect(updatePage).toHaveBeenCalledTimes(2);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(updatePage).toHaveBeenCalledTimes(3);
+      expect(state().saveIssue).toBeNull();
+      view.unmount();
+    });
+
+    it('QA-008: reconnecting at the same version still sends the changes the server never got', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Typed offline'); });
+      updatePage.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      await save();
+      updatePage.mockImplementation(async (_id, body) => echo(body, 2));
+
+      await remoteChange({ version: 1, reason: 'reconnect' });
+
+      expect(updatePage).toHaveBeenCalledTimes(2);
+      expect(sentData(1, 0).title).toBe('Typed offline');
+      view.unmount();
+    });
+
+    it('QA-008: changes kept in this browser are merged over a newer server page on load, as one undo step', async () => {
+      const server = apiPageToLocal(apiPage());
+      const typed = {
+        ...server,
+        blocks: server.blocks.map((b) => (b.id === BLOCK_A ? { ...b, data: { ...b.data, title: 'Typed before closing' } } : b)),
+      };
+      localStorage.setItem(`paxl-page-backup:${PAGE_ID}`, JSON.stringify({
+        format: 2, page: typed, base: { page: server, version: 1 }, unsaved: true, savedAt: 1,
+      }));
+      // Someone else changed another block meanwhile
+      getPage.mockResolvedValue(apiPage({ version: 2, blocks: apiBlocks({ b: 'Theirs' }) }));
+      updatePage.mockImplementation(async (_id, body) => echo(body, 3));
+
+      const view = await mount();
+      await act(async () => {});
+
+      expect(title(BLOCK_A)).toBe('Typed before closing');
+      expect(title(BLOCK_B)).toBe('Theirs');
+      expect(onLocalChangesRecovered).toHaveBeenCalledTimes(1);
+      expect(updatePage).toHaveBeenCalledTimes(1);
+      expect(sentBody(0).version).toBe(2);
+      act(() => { state().undo(); });
+      expect(title(BLOCK_A)).toBe('A');
+      view.unmount();
+    });
+
+    it('QA-008: a backup too old to have its base is not merged over a page that loaded', async () => {
+      const server = apiPageToLocal(apiPage());
+      localStorage.setItem(`paxl-page-backup:${PAGE_ID}`, JSON.stringify({
+        ...server, blocks: server.blocks.map((b) => ({ ...b, data: { ...b.data, title: 'Old copy' } })),
+      }));
+      getPage.mockResolvedValue(apiPage({ version: 2 }));
+
+      const view = await mount();
+
+      expect(title(BLOCK_A)).toBe('A');
+      expect(onLocalChangesRecovered).not.toHaveBeenCalled();
+      view.unmount();
+    });
+
+    it('QA-012: a restore that arrived through a 409 is still announced', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Mine'); });
+      updatePage
+        .mockRejectedValueOnce(conflict(apiPage({ version: 2, blocks: apiBlocks({ b: 'Restored' }) })))
+        .mockImplementation(async (_id, body) => echo(body, 3));
+      await save();
+      getPage.mockClear();
+
+      // The socket's notice of that restore arrives after the merge
+      await remoteChange({ version: 2, reason: 'restore', by: { userId: 'u2', username: 'ana' }, connectionId: 'conn-ana' });
+
+      expect(getPage).not.toHaveBeenCalled();
+      expect(onRemoteMerged).toHaveBeenCalledWith(expect.objectContaining({ version: 2, reason: 'restore' }));
+      view.unmount();
+    });
+
+    it('QA-110: losing access removes the copy kept in this browser', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      localStorage.setItem(`paxl-page-backup:${PAGE_ID}`, '{}');
+
+      act(() => { state().setCollabStatus('revoked'); });
+
+      expect(localStorage.getItem(`paxl-page-backup:${PAGE_ID}`)).toBeNull();
+      view.unmount();
+    });
+
+    it('QA-003: leaving sends the pending change with keepalive, unless another request is in flight', async () => {
+      getPage.mockResolvedValue(apiPage());
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'Typed just before closing'); });
+      let respond: (page: ApiPage) => void = () => {};
+      updatePage.mockReturnValueOnce(new Promise((resolve) => { respond = resolve; }));
+
+      let started = false;
+      act(() => { started = sync.saveOnLeave(); });
+      await act(async () => {});
+      expect(started).toBe(true);
+      expect(updatePage).toHaveBeenCalledTimes(1);
+      expect(updatePage.mock.calls[0][3]).toEqual({ keepalive: true });
+
+      // A second leave while that request is out cannot start another one
+      act(() => { state().updateBlock(BLOCK_A, 'title', 'More'); });
+      expect(sync.saveOnLeave()).toBe(false);
+      await act(async () => { respond(apiPage({ version: 2, blocks: apiBlocks({ a: 'Typed just before closing' }) })); });
+      view.unmount();
+    });
+  });
+
+  describe('unpublish (QA-098)', () => {
+    it('takes the page offline and merges the new version', async () => {
+      getPage.mockResolvedValue(apiPage({ status: 'published', published_at: '2026-10-09T10:00:00Z' }));
+      const view = await mount();
+      useEditorStore.setState({ myConnectionId: 'conn-me' });
+      unpublishPage.mockResolvedValue(apiPage({ version: 2, status: 'draft', published_at: null }));
+
+      let ok = false;
+      await act(async () => { ok = await sync.unpublishToApi(); });
+
+      expect(ok).toBe(true);
+      expect(unpublishPage).toHaveBeenCalledWith(PAGE_ID, 'conn-me');
+      expect(state().page.status).toBe('draft');
+      expect(state().syncBase?.version).toBe(2);
+      view.unmount();
+    });
+
+    it('keeps why the server refused it', async () => {
+      getPage.mockResolvedValue(apiPage({ status: 'published' }));
+      const view = await mount();
+      const notOwner = new ApiError(403, JSON.stringify({ error: 'Solo el propietario.', code: 'NOT_OWNER' }));
+      unpublishPage.mockRejectedValue(notOwner);
+
+      let ok = true;
+      await act(async () => { ok = await sync.unpublishToApi(); });
+
+      expect(ok).toBe(false);
+      expect(sync.lastPublicationError()).toBe(notOwner);
+      expect(state().page.status).toBe('published');
       view.unmount();
     });
   });

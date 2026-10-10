@@ -8,7 +8,7 @@ const es: TemplateBlock[] = [
       subtitle: 'Estamos construyendo algo que va a cambiar las reglas del juego. Sé el primero en enterarte.',
       buttonText: 'Notificarme al lanzamiento',
       buttonLink: '#cta',
-      backgroundImage: 'https://images.unsplash.com/photo-1534996858221-380b92700493?w=1920&q=80',
+      backgroundImage: '/templates/coming-soon-hero.webp',
     },
   },
   {
@@ -101,7 +101,7 @@ const en: TemplateBlock[] = [
       subtitle: 'We are building something that will change the rules of the game. Be the first to know.',
       buttonText: 'Notify me at launch',
       buttonLink: '#cta',
-      backgroundImage: 'https://images.unsplash.com/photo-1534996858221-380b92700493?w=1920&q=80',
+      backgroundImage: '/templates/coming-soon-hero.webp',
     },
   },
   {

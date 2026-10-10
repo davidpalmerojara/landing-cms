@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeBlockData } from '@/lib/block-data';
 import { CONTENT_LOCALES } from '@/lib/content-locale';
@@ -117,6 +119,22 @@ describe('instantiateTemplate', () => {
       const { blocks, name } = instantiateTemplate(getPageTemplates(locale)[0]);
       expect(name).toBe('SaaS Landing');
       expect(blocks.length).toBeGreaterThan(0);
+    }
+  });
+
+  it.each(CONTENT_LOCALES)('PUBLIC2-007: every %s template image is a file of this site, never a third-party address', (locale) => {
+    const sources: string[] = [];
+    for (const template of getPageTemplates(locale)) {
+      for (const block of template.blocks) {
+        for (const value of stringsIn(block.data)) {
+          if (/^https?:\/\//.test(value) || /\.(webp|jpe?g|png)\b/.test(value)) sources.push(value);
+        }
+      }
+    }
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of sources) {
+      expect(source, source).toMatch(/^\/templates\/[a-z0-9-]+\.webp$/);
+      expect(existsSync(path.join(process.cwd(), 'public', source)), source).toBe(true);
     }
   });
 });

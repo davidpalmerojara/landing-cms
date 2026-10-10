@@ -103,7 +103,7 @@ Nota operativa: `start-dev.sh` usa por defecto `frontend:3000` y `backend:8001`.
 Frameworks:
 - Backend: `pytest` + `pytest-django` + `factory-boy`
 - Frontend: `Vitest` + Testing Library + `jsdom`
-- E2E: No configurado
+- E2E: Playwright (solo Chromium) en `frontend/e2e/`, contra el stack real (ADR-030)
 
 Backend:
 ```bash
@@ -133,7 +133,16 @@ npm run test:coverage
 Frontend, dónde mirar:
 - Tests: `frontend/__tests__/`
 - Setup global: `frontend/vitest.setup.ts`
-- Helpers/page objects/fixtures E2E: No configurado
+- Tests E2E: `frontend/e2e/*.spec.ts`; helpers y fixture de idioma en `frontend/e2e/support.ts`; arranque de servidores en `frontend/e2e/scripts/`
+
+E2E (Playwright):
+```bash
+make e2e                       # o: cd frontend && npm run e2e
+cd frontend && npx playwright install chromium   # solo la primera vez
+```
+- Necesita `make install` (venv del backend y `node_modules`). Arranca solo los dos servidores: Daphne en `127.0.0.1:8101` con una SQLite desechable (`backend/e2e.sqlite3`, se recrea en cada ejecución) y `next build` + `next start` en `127.0.0.1:3100`, en modo reescritura. No toca `backend/db.sqlite3` ni `.env`.
+- Variables: `E2E_FRONTEND_PORT`, `E2E_BACKEND_PORT`, `E2E_PYTHON` (intérprete del backend), `E2E_SKIP_BUILD=1` (reutiliza el último `next build`), `E2E_REUSE_SERVERS=1` (usa servidores ya levantados con `bash e2e/scripts/start-backend.sh` y `start-frontend.sh`).
+- Una prueba: `cd frontend && npx playwright test account`; con interfaz: `npx playwright test --ui`. Si falla, la traza queda en `frontend/test-results/` (`npx playwright show-trace <trace.zip>`); en CI, el trabajo `e2e` la sube como artefacto.
 
 Linting, formateo y type checking:
 ```bash
@@ -276,7 +285,7 @@ NO implementar sin instrucciones explícitas:
 2. Ejecuta los tests existentes antes de hacer cambios. Si alguno falla, documéntalo pero no lo arregles a menos que te lo pidan.
 3. Usa los patrones existentes. Si ya hay tests, sigue el mismo estilo (imports, naming, fixtures, assertions). No inventes un estilo nuevo.
 4. Tests de backend: usar `pytest` + `factory-boy`. Cada test debe ser independiente. Reutiliza `backend/conftest.py` y `backend/tests/factories.py`.
-5. Tests E2E: usar Playwright. En este repo no está configurado; no introducirlo sin aprobación.
+5. Tests E2E: Playwright, en `frontend/e2e/` (ADR-030). Selectores por rol o nombre accesible, sin esperas fijas.
 6. Cuando termines, ejecuta la suite relevante y reporta cuántos pasan, cuántos fallan y, por cada fallo, el error completo con una hipótesis de causa.
 7. No arregles código de producción a menos que la tarea lo pida explícitamente. Si un test falla por un bug real, documenta el bug pero no lo corrijas.
 

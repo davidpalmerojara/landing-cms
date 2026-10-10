@@ -497,7 +497,12 @@ npm run dev                    # http://localhost:3000
 # Tests
 cd frontend && npx vitest run
 cd backend && pytest
+
+# E2E (Playwright, Chromium; arranca Daphne en 8101 y next start en 3100 con una SQLite desechable)
+cd frontend && npx playwright install chromium   # primera vez
+make e2e                                         # o: cd frontend && npm run e2e
 ```
+Las pruebas E2E viven en `frontend/e2e/` (ADR-030); CI las ejecuta en el trabajo `e2e`.
 
 ### Paleta Paxl
 

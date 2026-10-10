@@ -122,7 +122,8 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            # SQLITE_PATH lets the e2e suite use a throwaway database
+            'NAME': os.environ.get('SQLITE_PATH') or BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -199,7 +200,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '60/minute',
         'user': '120/minute',
-        'auth': '10/minute',
+        # AUTH_RATE exists for the e2e suite (every test comes from one IP); keep the default elsewhere
+        'auth': os.environ.get('AUTH_RATE', '10/minute'),
         'login_username': '5/minute',
         'contact': '5/minute',
         'guest': os.environ.get('GUEST_CREATION_RATE', '5/hour'),

@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 
 from billing.models import Plan, Subscription
 from collaboration.locks import get_lock_manager
-from pages.models import Page, PageVersion, Workspace
+from pages.models import Block, Page, PageVersion, Workspace, create_version_snapshot
 from tests.factories import BlockFactory, PageFactory, UserFactory
 
 from .helpers import (
@@ -297,12 +297,72 @@ class TestLocks:
         assert get_lock_manager().get_lock_holder(str(foreign.page_id), str(foreign.id)) is None
 
     @async_test
-    async def test_renewing_a_lock_you_do_not_hold_says_it_is_released(self, owner, block, page):
+    async def test_renewing_a_free_lock_takes_it_again_for_everyone(self, owner, collaborator, block, page):
+        # A renewal says "I still have this block selected": a lock nobody holds is taken
         async with open_socket(page.id, owner) as (communicator, connected):
-            await communicator.send_json_to({'type': 'lock_renew', 'block_id': str(block.id)})
-            released = await next_message(communicator, 'lock_released')
-            assert released['block_id'] == str(block.id)
-            assert released['connection_id'] == connected['connection_id']
+            async with open_socket(page.id, collaborator) as (other, _):
+                await communicator.send_json_to({'type': 'lock_renew', 'block_id': str(block.id)})
+                acquired = await next_message(other, 'lock_acquired')
+                assert acquired['block_id'] == str(block.id)
+                assert acquired['connection_id'] == connected['connection_id']
+
+    @async_test
+    async def test_renewing_a_lock_of_a_deleted_block_releases_it_for_everyone(self, owner, collaborator, page):
+        async with open_socket(page.id, owner) as (communicator, connected):
+            async with open_socket(page.id, collaborator) as (other, _):
+                await communicator.send_json_to({'type': 'lock_renew', 'block_id': '00000000-0000-4000-8000-000000000000'})
+                released = await next_message(other, 'lock_released')
+                assert released['connection_id'] == connected['connection_id']
+
+
+class TestLapsedLocks:
+    """QA-031: a lock whose renewals stopped arriving for longer than its TTL."""
+
+    @staticmethod
+    def _after_ttl():
+        """The lock manager's clock jumps past the TTL. Only its own: asyncio
+        keeps the real clock, or every timeout in the test would stop."""
+        import time as real_time
+        from types import SimpleNamespace
+        from collaboration import locks
+        later = SimpleNamespace(monotonic=lambda: real_time.monotonic() + locks.LOCK_TTL + 1)
+        return patch.object(locks, 'time', later)
+
+    @async_test
+    async def test_the_next_renewal_takes_it_again_and_everyone_hears(self, owner, collaborator, block, page):
+        async with open_socket(page.id, owner) as (holder, holder_connected):
+            async with open_socket(page.id, collaborator) as (other, _):
+                await holder.send_json_to({'type': 'lock_acquire', 'block_id': str(block.id)})
+                await next_message(other, 'lock_acquired')
+
+                with self._after_ttl():
+                    assert get_lock_manager().get_lock_holder(str(page.id), str(block.id)) is None
+                    await holder.send_json_to({'type': 'lock_renew', 'block_id': str(block.id)})
+                    again = await next_message(other, 'lock_acquired')
+                    assert again['connection_id'] == holder_connected['connection_id']
+                    assert get_lock_manager().get_lock_holder(str(page.id), str(block.id)) == holder_connected['connection_id']
+
+    @async_test
+    async def test_when_someone_else_took_it_the_late_holder_is_told_who(self, owner, collaborator, block, page):
+        async with open_socket(page.id, owner) as (late, _):
+            async with open_socket(page.id, collaborator) as (other, other_connected):
+                await late.send_json_to({'type': 'lock_acquire', 'block_id': str(block.id)})
+                await next_message(other, 'lock_acquired')
+                await collect(late)
+
+                with self._after_ttl():
+                    await other.send_json_to({'type': 'lock_acquire', 'block_id': str(block.id)})
+                    taken = await next_message(late, 'lock_acquired')
+                    assert taken['connection_id'] == other_connected['connection_id']
+
+                    await late.send_json_to({'type': 'lock_renew', 'block_id': str(block.id)})
+                    rejected = await next_message(late, 'lock_rejected')
+                    assert rejected['holder']['connection_id'] == other_connected['connection_id']
+                    # The new holder keeps it: nobody hears it was released or taken back
+                    heard = await collect(other)
+                    assert not [m for m in heard if m['type'] == 'lock_released']
+                    assert not [m for m in heard if m['type'] == 'lock_acquired' and m['connection_id'] != other_connected['connection_id']]
+                    assert get_lock_manager().get_lock_holder(str(page.id), str(block.id)) == other_connected['connection_id']
 
 
 # ─── Live edits and cursors ─────────────────────────────────
@@ -507,6 +567,60 @@ class TestAccessRevoked:
                 await next_message(kept, 'user_left')
                 await kept.send_json_to({'type': 'ping'})
                 assert (await next_message(kept, 'pong'))['type'] == 'pong'
+
+
+class TestRestoreKeepsBlockIds:
+    """QA-012: a restore recreates blocks with the ids the snapshot stored, so
+    an editor with an unsaved edit merges into the same block (no duplicate)."""
+
+    def _restore(self, user, page, version):
+        response = api_client(user).post(f'/api/pages/{page.id}/versions/{version.id}/restore/', {}, format='json')
+        assert response.status_code == 200, response.content
+        return response
+
+    def test_restored_blocks_have_the_snapshot_ids(self, owner, collaborator, page):
+        hero_id = BlockFactory(page=page, type='hero', order=0, data={'title': 'H0'}).pk
+        cta_id = BlockFactory(page=page, type='cta', order=1, data={'title': 'C0'}).pk
+        version = create_version_snapshot(page=page, user=owner, trigger='manual', label='orig')
+        # Afterwards: the hero is deleted, a block is added, the CTA edited
+        Block.objects.filter(pk=hero_id).delete()
+        BlockFactory(page=page, type='faq', order=2)
+        Block.objects.filter(pk=cta_id).update(data={'title': 'C1'})
+
+        response = self._restore(collaborator, page, version)
+
+        restored = [(b['id'], b['data'].get('title')) for b in response.json()['blocks']]
+        assert restored == [(str(hero_id), 'H0'), (str(cta_id), 'C0')]
+        assert list(page.blocks.order_by('order').values_list('id', flat=True)) == [hero_id, cta_id]
+
+    def test_an_id_now_used_by_another_page_gets_a_new_one(self, owner, page):
+        hero_id = BlockFactory(page=page, type='hero', order=0).pk
+        version = create_version_snapshot(page=page, user=owner, trigger='manual', label='orig')
+        Block.objects.filter(pk=hero_id).delete()
+        squatter = BlockFactory(id=hero_id, page=PageFactory(owner=owner), type='hero')
+
+        response = self._restore(owner, page, version)
+
+        [restored] = response.json()['blocks']
+        assert restored['id'] != str(hero_id)
+        assert Block.objects.get(pk=squatter.pk).page_id == squatter.page_id
+
+
+class TestPageDeleted:
+    """QA-036 (the socket side): deleting a page closes every open editor with its own reason."""
+
+    @async_test
+    async def test_everyone_on_the_page_is_told_and_disconnected(self, owner, collaborator, page):
+        async with open_socket(page.id, owner) as (owner_tab, _):
+            async with open_socket(page.id, collaborator) as (collaborator_tab, _):
+                from pages import sync as page_sync
+                await sync_to_async(page_sync._send_to_page_group)(
+                    page.id, {'type': 'access.revoked', 'user_id': None, 'reason': 'page_deleted'},
+                )
+                for tab in (owner_tab, collaborator_tab):
+                    error = await next_message(tab, 'error')
+                    assert error['code'] == 'page_deleted'
+                    assert (await tab.receive_output(timeout=TIMEOUT))['code'] == 4003
 
 
 # ─── Event loop ─────────────────────────────────────────────

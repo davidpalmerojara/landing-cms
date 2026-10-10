@@ -17,6 +17,18 @@ User = get_user_model()
 ASCII_USERNAME = re.compile(r'[A-Za-z0-9_.-]+')
 
 
+_NOT_ASCII_USERNAME_CHAR = re.compile(r'[^A-Za-z0-9_.-]')
+USERNAME_FROM_EMAIL_MAX = 30
+
+
+def username_base_from_email(email: str) -> str:
+    """The start of a username for an account created from an email (magic
+    link, Google): the part before the "@" with every character the username
+    rule does not allow ("+", "'", accents...) turned into "_" (SEC3-005)."""
+    local_part = email.split('@')[0][:USERNAME_FROM_EMAIL_MAX]
+    return _NOT_ASCII_USERNAME_CHAR.sub('_', local_part) or 'user'
+
+
 def ascii_username_validator(value):
     if not isinstance(value, str) or not ASCII_USERNAME.fullmatch(value):
         raise serializers.ValidationError(message('username_chars'))

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.urls import path
 from rest_framework import permissions, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -34,15 +34,20 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        # A username or password that is empty (or only spaces) matches no
+        # account: the same answer as a wrong password, not a "validation
+        # error" the sign-in page reads as a server failure (APP2-009). A wrong
+        # password gets it too, instead of simplejwt's English text (SEC3-004)
+        wrong_credentials = Response(
+            {'error': message('invalid_credentials'), 'code': 'INVALID_CREDENTIALS'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
         if not self._has_credentials(request.data):
-            # A username or password that is empty (or only spaces) matches no
-            # account: the same answer as a wrong password, not a "validation
-            # error" the sign-in page reads as a server failure (APP2-009)
-            return Response(
-                {'error': message('invalid_credentials'), 'code': 'INVALID_CREDENTIALS'},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        response = super().post(request, *args, **kwargs)
+            return wrong_credentials
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            return wrong_credentials
         if response.status_code == 200:
             set_auth_cookies(response, response.data['access'], response.data['refresh'])
             response.data = {'message': message('signed_in')}

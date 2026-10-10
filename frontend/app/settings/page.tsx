@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
   const { features } = useFeatures();
-  // Hidden unless this deployment has custom domains (ADR-025)
+  // Hidden unless this deployment has custom domains (ADR-027)
   const showDomains = features?.custom_domains === true;
 
   if (isAuthLoading || !user) {

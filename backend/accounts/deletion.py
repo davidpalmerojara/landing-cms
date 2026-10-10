@@ -1,4 +1,4 @@
-"""Deleting accounts with everything they own (ADR-026).
+"""Deleting accounts with everything they own (ADR-028).
 
 Used for expired guests (accounts/guests.py) and for people who delete their
 own account (DELETE /api/auth/me/). The database cascades remove each user's

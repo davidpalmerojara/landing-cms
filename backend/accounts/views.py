@@ -193,7 +193,7 @@ class GuestClaimView(APIView):
 class MeView(APIView):
     """GET /api/auth/me/ — return current user.
 
-    DELETE /api/auth/me/ — delete the account and everything it owns (ADR-026).
+    DELETE /api/auth/me/ — delete the account and everything it owns (ADR-028).
     Body: `password` for accounts with a password, `confirm_username` for the
     rest. 409 ACTIVE_SUBSCRIPTION while a paid Stripe subscription still runs.
     """

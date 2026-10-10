@@ -256,7 +256,7 @@ export default function DomainsSettingsPage() {
     );
   }
 
-  // This deployment has no custom domains (ADR-025): the page does not exist
+  // This deployment has no custom domains (ADR-027): the page does not exist
   if (!features?.custom_domains) notFound();
 
   if (user.is_guest) {

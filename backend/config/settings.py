@@ -296,7 +296,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 REVALIDATE_SECRET = os.environ.get('REVALIDATE_SECRET', '')
 
 
-# --- Custom domains (ADR-025) ---
+# --- Custom domains (ADR-027) ---
 # Off by default: they need DNS verification and SSL on the host, which the free
 # demo hosting does not provide. Off: the endpoints answer 404 FEATURE_DISABLED
 # and the frontend hides every trace of the feature.

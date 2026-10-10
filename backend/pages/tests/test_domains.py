@@ -61,7 +61,7 @@ def make_paid_user():
 
 @pytest.fixture(autouse=True)
 def custom_domains_on(settings):
-    """The feature is off by default (ADR-025); these tests exercise it."""
+    """The feature is off by default (ADR-027); these tests exercise it."""
     settings.CUSTOM_DOMAINS_ENABLED = True
 
 

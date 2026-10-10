@@ -264,6 +264,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/guest/claim/` | Si (invitado) | Convertir el invitado en cuenta normal y conservar sus páginas |
 | POST | `/join/` | No | Canjear un enlace de invitación: colaborador (usuario con sesión) o invitado nuevo (ADR-024) |
 | GET | `/me/` | Si | Usuario actual |
+| DELETE | `/me/` | Si (no invitado) | Borrar la cuenta y todo lo suyo; pide `password` o `confirm_username` (ADR-028) |
 
 ### Pages (`/api/pages/`)
 
@@ -291,14 +292,15 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/api/public/pages/{slug}/contact/` | No | Enviar el formulario de contacto (throttle + honeypot) |
 | GET | `/api/sitemap/` | No | Sitemap XML (cache 1h) |
 | GET | `/api/public/sitemap-data/` | No | JSON para Next.js sitemap |
-| GET | `/api/public/resolve-domain/` | No | Resolver dominio custom |
+| GET | `/api/public/resolve-domain/` | No | Resolver dominio custom (404 `FEATURE_DISABLED` si `CUSTOM_DOMAINS_ENABLED` está apagado, ADR-027) |
+| GET | `/api/features/` | No | Funciones opcionales del despliegue: `{ "custom_domains": bool }` (ADR-027) |
 
 ### Assets, Domains, AI, Analytics, Billing
 
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
 | GET/POST | `/api/assets/` | Si | Listar/subir assets |
-| GET/POST/DELETE | `/api/domains/` | Si (Pro) | CRUD dominios custom |
+| GET/POST/DELETE | `/api/domains/` | Si (Pro) | CRUD dominios custom; solo con `CUSTOM_DOMAINS_ENABLED` (ADR-027) |
 | POST | `/api/domains/{id}/verify/` | Si | Verificar DNS |
 | GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |
 | POST | `/api/pages/{id}/generate/` | Si | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |

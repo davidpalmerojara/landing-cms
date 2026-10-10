@@ -1,4 +1,4 @@
-"""Custom domains are behind CUSTOM_DOMAINS_ENABLED (ADR-025)."""
+"""Custom domains are behind CUSTOM_DOMAINS_ENABLED (ADR-027)."""
 from unittest.mock import patch
 
 import pytest

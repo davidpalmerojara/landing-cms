@@ -356,6 +356,24 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-031: Guardar sin perder nada: un campo rechazado no bloquea el resto, reintentos y copia local con su base
+
+- **Fecha**: 2026-10-10
+- **Contexto**: La ronda 1 de QA encontró tres formas de perder lo escrito sin aviso (QA-003, QA-004, QA-008): salir del editor durante los 3 s de espera del autoguardado; un solo valor que el servidor rechazaba (un enlace escrito como `example.com`) hacía fallar todos los guardados siguientes con el mensaje "Sin conexión", y al recargar se perdía todo; y un guardado fallido no se reintentaba nunca, ni al volver la conexión, mientras la copia local solo se usaba si la página no cargaba.
+- **Decisión**:
+  - Todo sigue pasando por `PageSyncController` (ADR-024: un PUT en vuelo, versión, fusión en 409). El controlador pone `autoSaveStatus` y `saveIssue` en el store en todos los caminos de guardado (autoguardado, botón, fusión, publicar, móvil).
+  - `saveIssue` distingue "sin respuesta" (`failed` con `offline`), un error del servidor (`failed` con el tipo: sesión, permiso, no existe, servidor...) y campos rechazados (`rejected`). "Sin conexión" solo se muestra para el primero. Los textos salen del tipo de error (`lib/api-errors.ts`), nunca del cuerpo de la respuesta, que está en español.
+  - Un 400 con `details` se traduce a campos concretos (bloque por índice, ruta dentro de `data`, o campo de página). Esos campos se dejan fuera de los PUT siguientes (se envía el valor que tiene el servidor) mientras conserven el valor rechazado; el resto de la página se guarda. En pantalla el valor se queda, con el mensaje de la regla en el propio campo y un aviso con "Ir al campo". En cuanto la persona lo cambia, se vuelve a enviar.
+  - Sin respuesta, error 5xx o 429: se reintenta a los 2, 5, 15 y luego cada 30 s, al volver `online` y al reconectar el WebSocket aunque la versión no haya cambiado. Un 4xx no se reintenta solo.
+  - Al salir: el logo espera a que se guarde (`flushPendingSave`, `lib/save-flush.ts`) y, si falla, pregunta; al ocultar o cerrar la pestaña se envía el cambio con `fetch(..., { keepalive: true })` (hasta 60 KB; si no cabe o hay otra petición en vuelo, el navegador pregunta antes de cerrar). "Guardar versión" y "Editar con IA" también guardan antes, porque trabajan sobre la copia del servidor.
+  - La copia local (`lib/page-backup.ts`) se escribe en cada edición y guarda la página, la base (página y versión del servidor sobre la que se editó) y si tiene cambios sin confirmar. Al cargar, si los tiene, se fusionan en tres vías sobre la página del servidor como un paso de deshacer, se guardan y se avisa. Las copias antiguas, sin base, no se fusionan. Si la persona pierde el acceso a la página, su copia se borra.
+  - `lib/field-limits.ts` copia los límites de `block_validators.py` y de `Page` para que los campos del inspector se paren en el límite y los enlaces se completen (`example.com` → `https://example.com`); una prueba lee los ficheros de Python y falla si las dos copias se separan.
+  - Publicar y despublicar son del propietario (D1): con `is_owner: false` en la página, el botón queda `aria-disabled` y explica por qué. Sin el campo (servidor antiguo) se muestra como antes y decide el servidor.
+- **Alternativas**: Rechazar en el cliente cualquier valor no válido antes de guardar (no evita valores que vienen de la IA, de otra persona o de datos antiguos, y el servidor seguiría bloqueando); guardar por bloque o por campo (otra API y otra fusión, cuando la de página ya existe); `navigator.sendBeacon` (no permite PUT ni cabeceras); una pregunta en cada cierre de pestaña (molesta y Chrome la ignora sin interacción previa).
+- **Consecuencias**: Mientras quede un campo rechazado, publicar falla con "antes hay que guardar todos los cambios" y "Guardar versión" no se hace. La copia local ocupa el doble (página y base) y se escribe en cada pulsación. Los mensajes del servidor se clasifican por su texto (`ruleMessage`); una prueba comprueba que los textos de `block_validators.py` y `block_sanitizers.py` siguen ahí. La edición en el lienzo (`EditableText`) y el editor móvil aún no usan `field-limits`; el servidor sigue siendo la barrera.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

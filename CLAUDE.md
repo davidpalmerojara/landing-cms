@@ -169,7 +169,7 @@ Store centralizado con `subscribeWithSelector`. Acciones principales:
 
 ### Auto-save
 
-Hook `useAutoSave` suscrito al store via `subscribeWithSelector`. Detecta cambios, aplica debounce de 3s, envia PUT a la API. Indicador visual en TopBar (Guardando.../Guardado/Error). localStorage como fallback si la red falla.
+Hook `useAutoSave` suscrito al store via `subscribeWithSelector`. Detecta cambios, aplica debounce de 3s (0,8s con mas conexiones) y guarda a traves de `PageSyncController` (`lib/page-sync.ts`). Cada edicion se copia al momento en localStorage (`lib/page-backup.ts`, con la base del servidor); al cargar, los cambios sin confirmar se fusionan sobre la pagina del servidor. El cambio pendiente se envia al desmontar, ocultar o cerrar la pestana (`keepalive`), y `flushPendingSave()` (`lib/save-flush.ts`) lo envia antes de acciones que usan la copia del servidor (guardar version, IA, salir). El controlador pone `autoSaveStatus` y `saveIssue` en el store, reintenta (2/5/15/30s, `online`, reconexion) y deja fuera de los PUT los campos que el servidor rechaza, sin bloquear el resto (ADR-031). Limites de campos del servidor en `lib/field-limits.ts`; mensajes de error por codigo en `lib/api-errors.ts`.
 
 ### Owner-based filtering
 

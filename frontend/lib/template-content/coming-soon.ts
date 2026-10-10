@@ -32,17 +32,17 @@ const es: TemplateBlock[] = [
       title: 'Roadmap de lanzamiento',
       events: [
         {
-          date: 'Q1 2026',
+          date: 'Q1 2027',
           title: 'Beta cerrada',
           description: 'Acceso exclusivo para los primeros 500 suscriptores de la lista de espera.',
         },
         {
-          date: 'Q2 2026',
+          date: 'Q2 2027',
           title: 'Beta pública',
           description: 'Abrimos las puertas al público con un plan gratuito generoso.',
         },
         {
-          date: 'Q3 2026',
+          date: 'Q3 2027',
           title: 'Lanzamiento oficial',
           description: 'Versión 1.0 con todas las funcionalidades y planes de pago disponibles.',
         },
@@ -56,7 +56,7 @@ const es: TemplateBlock[] = [
       questions: [
         {
           question: '¿Cuándo será el lanzamiento?',
-          answer: 'Estamos en fase de desarrollo activo. El lanzamiento público está previsto para Q2 2026.',
+          answer: 'Estamos en fase de desarrollo activo. El lanzamiento público está previsto para Q2 2027.',
         },
         {
           question: '¿Es gratuito?',
@@ -123,17 +123,17 @@ const en: TemplateBlock[] = [
       title: 'Launch roadmap',
       events: [
         {
-          date: 'Q1 2026',
+          date: 'Q1 2027',
           title: 'Closed beta',
           description: 'Exclusive access for the first 500 subscribers on the waitlist.',
         },
         {
-          date: 'Q2 2026',
+          date: 'Q2 2027',
           title: 'Public beta',
           description: 'We open the doors to everyone with a generous free plan.',
         },
         {
-          date: 'Q3 2026',
+          date: 'Q3 2027',
           title: 'Official launch',
           description: 'Version 1.0 with every feature and paid plans available.',
         },
@@ -147,7 +147,7 @@ const en: TemplateBlock[] = [
       questions: [
         {
           question: 'When is the launch?',
-          answer: 'We are in active development. The public launch is planned for Q2 2026.',
+          answer: 'We are in active development. The public launch is planned for Q2 2027.',
         },
         {
           question: 'Is it free?',

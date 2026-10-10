@@ -46,6 +46,10 @@ class TestRegistration:
         assert resp.data['user']['email'] == 'mixed.case@example.com'
         assert User.objects.get(username='newuser').email == 'mixed.case@example.com'
 
+    def test_the_format_checks_survive_replacing_the_unique_validators(self):
+        assert 'email' in register(APIClient(), email='not-an-email').data['details']
+        assert 'username' in register(APIClient(), username='bad name!').data['details']
+
     def test_qa054_both_errors_come_back_together(self):
         UserFactory(username='taken', email='taken@example.com')
 

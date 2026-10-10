@@ -156,7 +156,8 @@ describe('Quick Edit, QA round 1', () => {
     });
 
     it('"Mejorar con IA" rewrites the block with the edit-ai answer', async () => {
-      useEditorStore.setState((s) => ({ page: { ...s.page, id: '11111111-1111-4111-8111-111111111111' } }));
+      // MOBILE2-001: the sheet's own block lock belongs to this connection
+      useEditorStore.setState((s) => ({ page: { ...s.page, id: '11111111-1111-4111-8111-111111111111' }, myConnectionId: 'conn-phone' }));
       vi.spyOn(api.ai, 'options').mockResolvedValue({ mode: 'live', examples: [] } as unknown as Awaited<ReturnType<typeof api.ai.options>>);
       const editBlock = vi.spyOn(api.ai, 'editBlock').mockResolvedValue({
         block: { id: HERO, type: 'hero', data: { title: 'Título mejorado' } },
@@ -171,7 +172,7 @@ describe('Quick Edit, QA round 1', () => {
         button(view.container, 'Hazlo más profesional').click();
       });
 
-      expect(editBlock).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', HERO, 'Hazlo más profesional', undefined);
+      expect(editBlock).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', HERO, 'Hazlo más profesional', undefined, 'conn-phone');
       expect(useEditorStore.getState().page.blocks[0].data).toMatchObject({ title: 'Título mejorado' });
       view.unmount();
     });

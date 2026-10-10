@@ -31,10 +31,8 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
   // The server named the fields it refused: take the visitor to the first one (QA-093)
   useEffect(() => {
     if (invalidFields.length === 0) return;
-    const first = formRef.current?.querySelector<HTMLElement>(`#${CSS.escape(fieldId(invalidFields[0]))}`);
+    const first = formRef.current?.querySelector<HTMLElement>(`[name="${invalidFields[0]}"]`);
     first?.focus();
-    // fieldId only depends on blockId, which never changes for a mounted block
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invalidFields]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

@@ -171,6 +171,10 @@ Store centralizado con `subscribeWithSelector`. Acciones principales:
 
 Hook `useAutoSave` suscrito al store via `subscribeWithSelector`. Detecta cambios, aplica debounce de 3s (0,8s con mas conexiones) y guarda a traves de `PageSyncController` (`lib/page-sync.ts`). Cada edicion se copia al momento en localStorage (`lib/page-backup.ts`, con la base del servidor); al cargar, los cambios sin confirmar se fusionan sobre la pagina del servidor. El cambio pendiente se envia al desmontar, ocultar o cerrar la pestana (`keepalive`), y `flushPendingSave()` (`lib/save-flush.ts`) lo envia antes de acciones que usan la copia del servidor (guardar version, IA, salir). El controlador pone `autoSaveStatus` y `saveIssue` en el store, reintenta (2/5/15/30s, `online`, reconexion) y deja fuera de los PUT los campos que el servidor rechaza, sin bloquear el resto (ADR-031). Limites de campos del servidor en `lib/field-limits.ts`; mensajes de error por codigo en `lib/api-errors.ts`.
 
+### Editor en pantallas táctiles (ADR-043)
+
+El editor completo funciona con los dedos (Quick Edit queda para teléfonos). El lienzo es `touch-none` y `hooks/useCanvasTouchGestures.ts` traduce los gestos: un dedo desplaza, dos hacen zoom, toque = clic, doble toque = `dblclick` (edición en línea). Los arrastres táctiles los decide `lib/touch-drag.ts` (asa de la barra del bloque, pulsación larga de 450 ms, o un componente movido de lado); el zoom vive en `lib/canvas-zoom.ts` (0,25–2). Con `pointer-coarse:` los controles miden 44 px; por debajo de `xl` inspector e historial se abren sobre el lienzo y por debajo de `lg` la barra de componentes es un panel con el botón "Bloques".
+
 ### Owner-based filtering
 
 Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca accede a datos de otro. El ViewSet de Pages usa `get_queryset()` filtrado.
@@ -282,7 +286,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/{id}/unpublish/` | Si (propietario) | Despublicar |
 | GET | `/{id}/submissions/` | Si | Mensajes del formulario de contacto (paginado) |
 | DELETE | `/{id}/submissions/{sid}/` | Si | Borrar un mensaje |
-| GET/POST | `/{id}/versions/` | Si | Listar/crear versiones |
+| GET/POST | `/{id}/versions/` | Si | Listar/crear versiones (la lista incluye `max_versions`: cuántas guarda el plan del propietario, -1 todas) |
 | DELETE | `/{id}/versions/{vid}/` | Si (propietario) | Borrar version (`400 PUBLISHED_VERSION` si es la publicada) |
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
 | POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |

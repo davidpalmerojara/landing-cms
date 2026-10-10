@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { GripVertical, Copy, Trash2, Lock, Sparkles } from 'lucide-react';
+import { GripVertical, Copy, Trash2, Lock, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore, getUserColor } from '@/store/editor-store';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { isTextEntryTarget } from '@/lib/keyboard';
+import { revealInViewport } from '@/lib/canvas-reveal';
 import { useRemoveFromTabOrder } from '@/hooks/useRemoveFromTabOrder';
 import type { Block } from '@/types/blocks';
 import AIBlockEditPopover from './AIBlockEditPopover';
@@ -20,29 +21,9 @@ interface BlockWrapperProps {
   children: React.ReactNode;
 }
 
-const REVEAL_MARGIN = 24; // px kept between a focused block and the viewport edge
-
-/**
- * Brings a keyboard-focused block into view. The canvas is panned with
- * viewportState, not scrolled, so the offset the browser adds to the
- * overflow:hidden viewport when focusing is undone and replaced by a pan.
- */
-function revealInViewport(el: HTMLElement) {
-  const viewport = el.closest<HTMLElement>('[data-canvas-viewport]');
-  if (!viewport) return;
-  viewport.scrollTop = 0;
-  viewport.scrollLeft = 0;
-  const view = viewport.getBoundingClientRect();
-  const box = el.getBoundingClientRect();
-  let dy = 0;
-  if (box.top < view.top + REVEAL_MARGIN) {
-    dy = view.top + REVEAL_MARGIN - box.top;
-  } else if (box.bottom > view.bottom - REVEAL_MARGIN) {
-    // Never push the top of a tall block out of view
-    dy = Math.max(view.bottom - REVEAL_MARGIN - box.bottom, view.top + REVEAL_MARGIN - box.top);
-  }
-  if (dy !== 0) useEditorStore.getState().setViewportState((prev) => ({ ...prev, y: prev.y + dy }));
-}
+/** Toolbar buttons: readable at any zoom (the toolbar is counter-scaled), 44 px on touch screens. */
+const TOOLBAR_BUTTON_CLASS =
+  'px-2.5 pointer-coarse:w-11 h-full flex items-center justify-center cursor-pointer transition-colors border-r border-white/20 disabled:opacity-40 disabled:cursor-default';
 
 function focusBlockAt(position: number) {
   const target = useEditorStore.getState().page.blocks[position];
@@ -72,6 +53,7 @@ export default function BlockWrapper({ block, index, isTabStop = true, onFocusBl
   const myConnectionId = useEditorStore((s) => s.myConnectionId);
   const myUserId = useEditorStore((s) => s.myUserId);
   const pageId = useEditorStore((s) => s.page.id);
+  const zoom = useEditorStore((s) => s.viewportState.zoom);
   // Held by another connection: another person, or this person in another tab
   const lockedByOther = lockHolder && lockHolder.connectionId !== myConnectionId ? lockHolder : null;
   const isLockedByOther = !!lockedByOther;
@@ -135,6 +117,10 @@ export default function BlockWrapper({ block, index, isTabStop = true, onFocusBl
   const handlePointerDown = (e: React.PointerEvent) => {
     if (interactionState.isSpacePressed) return;
     if (e.button !== 0) return; // left click only
+    // The toolbar's buttons act on the block; only its grip picks it up
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('[data-block-toolbar] button')) return;
+    // A finger picks a block up with the grip at once, or anywhere with a long press (useDragManager)
     initDrag(
       { action: 'reorder', type: block.type, label: blockLabel, sourceIndex: index },
       { x: e.clientX, y: e.clientY }
@@ -280,79 +266,123 @@ export default function BlockWrapper({ block, index, isTabStop = true, onFocusBl
           className="pointer-events-none absolute inset-0 z-20 rounded-sm border-2 border-transparent opacity-0 shadow-[inset_0_0_0_3px_var(--bp-color-primary),inset_0_0_0_5px_#fff] group-focus-visible:opacity-100"
         />
 
-        {/* Floating tooltips are editor UI inside the themed canvas: they keep the app font */}
-        {/* Floating tooltip — locked by other user */}
-        {isLockedByOther && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg z-30 flex items-center opacity-100 scale-100"
-            style={{ backgroundColor: otherColor ? `${otherColor.hex}` : '#f59e0b' }}
-          >
-            <div className="px-3 h-full flex items-center gap-1.5 rounded-full">
-              <Lock className="w-3 h-3 opacity-70" />
-              <span className="tracking-wide">{blockLabel}</span>
-              <span className="text-white/60">— {lockedByOther.username}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Floating tooltip — own selection / hover */}
-        {!isLockedByOther && (
-          <div
-            className={`absolute left-1/2 -translate-x-1/2 -top-3.5 h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg z-30 flex items-center transition-all duration-200 ${
-              isSelected && !interactionState.isSpacePressed && !isDragging
-                ? 'opacity-100 scale-100'
-                : isDragging
-                  ? 'opacity-0 scale-95 pointer-events-none'
-                  : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
-            }`}
-            style={{ backgroundColor: myColor?.hex || '#2563EB' }}
-          >
-            <div className="px-3 h-full flex items-center gap-1.5 rounded-l-full transition-colors cursor-grab active:cursor-grabbing hover:brightness-110">
-              <GripVertical className="w-3.5 h-3.5 opacity-60" />
-              <span className="tracking-wide">{blockLabel}</span>
-            </div>
-            {isSelected && (
-              <div className="h-full py-1.5 flex items-center">
-                <div className="w-[1px] h-full bg-white/20" />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAIEdit(true);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  aria-label={t('ai.title')}
-                  className="px-2.5 h-full hover:text-violet-300 transition-colors flex items-center justify-center cursor-pointer border-r border-white/20"
-                  title={t('ai.title')}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    duplicateBlock(block.id);
-                  }}
-                  aria-label={t('common.duplicate')}
-                  className="px-2.5 h-full hover:text-white/80 transition-colors flex items-center justify-center cursor-pointer border-r border-white/20"
-                  title={t('common.duplicate')}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    requestDeleteBlock(block.id);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  aria-label={t('common.delete')}
-                  className="px-2.5 h-full hover:text-red-300 transition-colors flex items-center justify-center cursor-pointer rounded-r-full"
-                  title={t('common.delete')}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+        {/*
+          Floating toolbar: editor UI inside the themed canvas, so it keeps the app font.
+          It sits centred on the block's top edge and is scaled by 1/zoom, so it keeps
+          the same size on screen at any zoom (QA-039) and 44 px targets on touch screens.
+        */}
+        <div
+          data-block-toolbar=""
+          className={`absolute left-1/2 top-0 z-30 ${isSelected ? '' : 'pointer-coarse:pointer-events-none'}`}
+          style={{ transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
+        >
+          {/* Locked by another user */}
+          {isLockedByOther && (
+            <div
+              className="h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg flex items-center opacity-100 scale-100"
+              style={{ backgroundColor: otherColor ? `${otherColor.hex}` : '#f59e0b' }}
+            >
+              <div className="px-3 h-full flex items-center gap-1.5 rounded-full">
+                <Lock className="w-3 h-3 opacity-70" />
+                <span className="tracking-wide">{blockLabel}</span>
+                <span className="text-white/60">— {lockedByOther.username}</span>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+
+          {/* Own selection / hover */}
+          {!isLockedByOther && (
+            <div
+              className={`h-7 pointer-coarse:h-11 text-white text-[11px] pointer-coarse:text-[13px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg flex items-center transition-all duration-200 ${
+                isSelected && !interactionState.isSpacePressed && !isDragging
+                  ? 'opacity-100 scale-100'
+                  : isDragging
+                    ? 'opacity-0 scale-95 pointer-events-none'
+                    : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
+              }`}
+              style={{ backgroundColor: myColor?.hex || '#2563EB' }}
+            >
+              {/* The grip: drag it (mouse or finger) to move the block */}
+              <div
+                data-drag-handle=""
+                className="px-3 h-full flex items-center gap-1.5 rounded-l-full transition-colors cursor-grab active:cursor-grabbing hover:brightness-110 touch-none select-none"
+              >
+                <GripVertical aria-hidden="true" className="w-3.5 h-3.5 opacity-60" />
+                <span className="tracking-wide">{blockLabel}</span>
+              </div>
+              {isSelected && (
+                <div className="h-full flex items-center">
+                  <div className="w-[1px] h-4 bg-white/20" />
+                  {/* Moving without dragging: for touch, keyboard and switch users alike */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!refuseLocked()) moveBy(-1);
+                    }}
+                    disabled={index === 0}
+                    aria-label={t('editor.moveBlockUp', { name: blockLabel })}
+                    className={`${TOOLBAR_BUTTON_CLASS} hover:text-white/80`}
+                    title={t('editor.moveUp')}
+                  >
+                    <ArrowUp aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!refuseLocked()) moveBy(1);
+                    }}
+                    disabled={index === blocksLength - 1}
+                    aria-label={t('editor.moveBlockDown', { name: blockLabel })}
+                    className={`${TOOLBAR_BUTTON_CLASS} hover:text-white/80`}
+                    title={t('editor.moveDown')}
+                  >
+                    <ArrowDown aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAIEdit(true);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    aria-label={t('ai.title')}
+                    className={`${TOOLBAR_BUTTON_CLASS} hover:text-violet-300`}
+                    title={t('ai.title')}
+                  >
+                    <Sparkles aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      duplicateBlock(block.id);
+                    }}
+                    aria-label={t('common.duplicate')}
+                    className={`${TOOLBAR_BUTTON_CLASS} hover:text-white/80`}
+                    title={t('common.duplicate')}
+                  >
+                    <Copy aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      requestDeleteBlock(block.id);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    aria-label={t('common.delete')}
+                    className={`${TOOLBAR_BUTTON_CLASS} border-r-0 hover:text-red-300 rounded-r-full`}
+                    title={t('common.delete')}
+                  >
+                    <Trash2 aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* AI Edit Popover */}
         {showAIEdit && isSelected && (
@@ -365,6 +395,7 @@ export default function BlockWrapper({ block, index, isTabStop = true, onFocusBl
 
         <div
           ref={contentRef}
+          data-block-content=""
           className={`${isSelected ? 'opacity-100' : 'opacity-95 group-hover:opacity-100 transition-opacity'} ${isLockedByOther ? 'pointer-events-none opacity-70' : ''}`}
         >
           {children}

@@ -472,7 +472,13 @@
     "publishError": "No se ha podido publicar. Inténtalo de nuevo.",
     "unpublishedChanges": "Cambios sin publicar",
     "publishChanges": "Publicar cambios",
-    "viewMessages": "Mensajes"
+    "viewMessages": "Mensajes",
+    "openBlocksPanel": "Bloques",
+    "closeBlocksPanel": "Cerrar el panel de bloques",
+    "closeInspector": "Cerrar el inspector",
+    "blockPosition": "Bloque {position} de {total}",
+    "moveBlockUp": "Subir {name}",
+    "moveBlockDown": "Bajar {name}"
   },
   "versionHistory": {
     "title": "Historial de versiones",
@@ -497,7 +503,20 @@
     "editLabel": "Editar etiqueta",
     "deleteVersion": "Eliminar versión",
     "loadMore": "Cargar más",
-    "upgradeNotice": "El plan Pro incluye historial ilimitado de versiones."
+    "upgradeNotice": "El plan Pro incluye historial ilimitado de versiones.",
+    "loadMoreError": "No se pudieron cargar más versiones.",
+    "loadErrorTitle": "No se pudo cargar el historial",
+    "loadError": "Inténtalo de nuevo en un momento.",
+    "deletePublishedError": "Es la versión publicada: no se puede eliminar mientras la página la muestre.",
+    "publishedBadge": "Publicada",
+    "labelInput": "Etiqueta de la versión {number}",
+    "previewVersion": "Previsualizar la versión {number}",
+    "restoreVersion": "Restaurar la versión {number}",
+    "editLabelOf": "Editar la etiqueta de la versión {number}",
+    "deleteVersionOf": "Eliminar la versión {number}",
+    "deleteTitle": "¿Eliminar la versión?",
+    "restoreTitle": "¿Restaurar la versión {number}?",
+    "planLimitNote": "Tu plan guarda las últimas {count} versiones. Al guardar más, se borran las más antiguas (nunca la publicada)."
   },
   "versionPreview": {
     "title": "Previsualización - v{number}",
@@ -511,7 +530,11 @@
     "legend": "Leyenda:",
     "added": "Nuevo",
     "removed": "Eliminado",
-    "modified": "Modificado"
+    "modified": "Modificado",
+    "loadError": "No se pudo cargar esta versión.",
+    "titleUnknown": "Previsualización",
+    "viewMode": "Modo de vista",
+    "moved": "Movido"
   },
   "designTokens": {
     "title": "Estilos globales",
@@ -1003,24 +1026,38 @@
     "removeImage": "Quitar imagen",
     "imageCurrent": "Imagen actual: {name}",
     "imageNone": "Ninguna imagen seleccionada",
-    "hexInput": "Código de color hexadecimal"
+    "hexInput": "Código de color hexadecimal",
+    "colorFromTheme": "Del tema"
   },
   "assets": {
     "loadError": "Error al cargar recursos",
     "uploadError": "Error al subir el archivo",
     "deleteError": "Error al eliminar el archivo",
-    "invalidType": "\"{name}\" no es un tipo válido. Solo JPG, PNG, WebP, GIF o SVG.",
+    "invalidType": "\"{name}\" no es un tipo válido. Solo JPG, PNG, WebP o GIF.",
     "fileTooLarge": "\"{name}\" es demasiado grande ({size} MB). Máximo 5 MB.",
     "mediaLibrary": "Biblioteca de medios",
     "filesCount": "{count, plural, one {# archivo} other {# archivos}}",
     "uploadPrompt": "Arrastra imágenes aquí o haz clic para subir",
-    "uploadHint": "JPG, PNG, WebP, GIF o SVG - máx. 5 MB",
+    "uploadHint": "JPG, PNG, WebP o GIF - máx. 5 MB",
     "loading": "Cargando recursos...",
     "emptyTitle": "No hay imágenes aún",
     "emptyDescription": "Sube tu primer asset para empezar a construir tu landing page.",
     "uploadFirst": "Subir primera imagen",
     "noneSelected": "Ningún archivo seleccionado",
-    "select": "Seleccionar"
+    "select": "Seleccionar",
+    "uploadRejected": "El servidor no aceptó el archivo. Sube una imagen JPG, PNG, WebP o GIF de 5 MB como máximo.",
+    "uploading": "Subiendo… {progress} %",
+    "imageOption": "{name}, {size}",
+    "deleteImage": "Eliminar {name}",
+    "deleteTitle": "¿Eliminar la imagen?",
+    "deleteMessage": "Se borrará \"{name}\" de la biblioteca. Las páginas que la usan dejarán de mostrarla, también las publicadas. No se puede deshacer.",
+    "sourceLabel": "Origen de la imagen",
+    "sourceLibrary": "Biblioteca",
+    "sourceUrl": "Pegar URL",
+    "urlLabel": "URL de la imagen",
+    "urlHint": "Una dirección https://… o una ruta de este sitio que empiece por /. Sin espacios, comillas ni paréntesis.",
+    "urlInvalid": "Esa URL no vale: usa https://… o una ruta que empiece por /, sin espacios, comillas, paréntesis ni \";\".",
+    "urlPreview": "Vista previa de la imagen"
   },
   "analytics": {
     "period7d": "7d",
@@ -1055,7 +1092,9 @@
     "noDeviceData": "Sin datos de dispositivos",
     "noReferrers": "Sin datos de referencia",
     "pageviewsStep": "Pageview",
-    "loadingPanel": "Cargando analítica..."
+    "loadingPanel": "Cargando analítica...",
+    "scrollFunnelHint": "Cuántas visitas llegan a cada profundidad de la página. En rojo, las que se pierden respecto al paso anterior.",
+    "scrollDropoff": "El {percent} % no llega desde el paso anterior"
   },
   "submissions": {
     "title": "Mensajes",

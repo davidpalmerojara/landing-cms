@@ -4,34 +4,22 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { Layout } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
-import type { CursorPosition } from '@/store/editor-store';
 import { getAvailableBlocks } from '@/lib/block-registry';
 import BlockContent from '@/components/blocks/BlockContent';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { getBlockDefaults } from '@/lib/block-defaults';
-import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
+import { resolveStyles } from '@/types/blocks';
 import { pageThemeVars } from '@/lib/page-theme';
 import { CANVAS_SHORTCUT_KEYS, isKeyOperableTarget } from '@/lib/keyboard';
+import { fitCanvas, stepZoom } from '@/lib/canvas-zoom';
+import { useCanvasTouchGestures } from '@/hooks/useCanvasTouchGestures';
 import BrowserFrame from './BrowserFrame';
 import BlockWrapper from './BlockWrapper';
 import FloatingViewportControls from './FloatingViewportControls';
 
-// Must match the fixed widths in BrowserFrame.
-const CANVAS_WIDTHS: Record<string, number> = { mobile: 375, tablet: 768, desktop: 1200 };
-const CANVAS_MARGIN = 24; // px kept free on each side when fitting
-const CANVAS_TOP = 40;
-
-/** Zoom ≤ 100% that fits the frame in the viewport, centered horizontally. */
-function fitCanvas(viewportWidth: number, deviceMode: string) {
-  const frameWidth = CANVAS_WIDTHS[deviceMode] ?? CANVAS_WIDTHS.desktop;
-  const available = Math.max(viewportWidth - CANVAS_MARGIN * 2, 0);
-  const zoom = Math.max(Math.min(1, Math.floor((available / frameWidth) * 20) / 20), 0.5);
-  return { zoom, x: (viewportWidth - frameWidth * zoom) / 2, y: CANVAS_TOP };
-}
-
 const CURSOR_THROTTLE = 50; // ms between cursor sends
 
-function RemoteCursors({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+function RemoteCursors() {
   const cursorPositions = useEditorStore((s) => s.cursorPositions);
   const viewportState = useEditorStore((s) => s.viewportState);
   const [now, setNow] = useState(() => Date.now());
@@ -203,15 +191,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
         const rect = viewport.getBoundingClientRect();
         const cx = e.clientX - rect.left;
         const cy = e.clientY - rect.top;
-        setViewportState((prev) => {
-          const delta = e.deltaY > 0 ? -0.1 : 0.1;
-          const newZoom = Math.min(Math.max(Math.round((prev.zoom + delta) * 10) / 10, 0.5), 2);
-          if (newZoom === prev.zoom) return prev;
-          const scaleRatio = newZoom / prev.zoom;
-          const newX = cx - (cx - prev.x) * scaleRatio;
-          const newY = cy - (cy - prev.y) * scaleRatio;
-          return { zoom: newZoom, x: newX, y: newY };
-        });
+        setViewportState((prev) => stepZoom(prev, e.deltaY > 0 ? -1 : 1, cx, cy));
       } else {
         setViewportState((prev) => ({ ...prev, x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
       }
@@ -219,6 +199,16 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
 
     viewport.addEventListener('wheel', handleWheel, { passive: false });
     return () => viewport.removeEventListener('wheel', handleWheel);
+  }, [setViewportState]);
+
+  // --- Touch: one finger pans, two fingers pinch, double tap edits text ---
+  useCanvasTouchGestures(viewportRef);
+
+  /** Zoom buttons zoom around the middle of the viewport. */
+  const handleZoomStep = useCallback((direction: 1 | -1) => {
+    const el = viewportRef.current;
+    if (!el) return;
+    setViewportState((prev) => stepZoom(prev, direction, el.clientWidth / 2, el.clientHeight / 2));
   }, [setViewportState]);
 
   // --- Pan handlers ---
@@ -246,6 +236,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
     }
   };
 
+  // The viewport is `touch-none`: fingers pan and pinch the canvas (useCanvasTouchGestures), not the page
   let cursorClass = '';
   if (interactionState.isPanning) cursorClass = 'cursor-grabbing';
   else if (interactionState.isSpacePressed) cursorClass = 'cursor-grab';
@@ -254,7 +245,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
     <div
       ref={viewportRef}
       data-canvas-viewport
-      className={`flex-1 overflow-hidden relative bg-surface ${cursorClass}`}
+      className={`flex-1 min-w-0 overflow-hidden relative bg-surface touch-none [-webkit-touch-callout:none] ${cursorClass}`}
       style={{
         backgroundImage: 'radial-gradient(var(--bp-color-border) 1px, transparent 1px)',
         backgroundSize: `${24 * viewportState.zoom}px ${24 * viewportState.zoom}px`,
@@ -360,8 +351,8 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
         </BrowserFrame>
       </div>
 
-      <RemoteCursors containerRef={viewportRef} />
-      <FloatingViewportControls onCenterCanvas={handleCenterCanvas} />
+      <RemoteCursors />
+      <FloatingViewportControls onCenterCanvas={handleCenterCanvas} onZoomStep={handleZoomStep} />
     </div>
   );
 }

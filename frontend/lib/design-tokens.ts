@@ -152,31 +152,106 @@ export function tokensToCssVars(tokens: DesignTokens): Record<string, string> {
 
 // --- Page colors: the --theme-* variables blocks read ---
 
+/** WCAG AA minimums: body text, and large text (24px, or 18.66px bold) or UI parts. */
+export const TEXT_CONTRAST = 4.5;
+export const LARGE_TEXT_CONTRAST = 3;
+
+/**
+ * The colors blocks paint with, derived from the palette so that every text
+ * reaches WCAG AA on the background it is drawn on (D3, ADR-040). A color that
+ * already passes is kept as chosen; one that doesn't is moved toward black or
+ * white just enough to pass, so the page keeps the palette's look.
+ *
+ * "Inverse" sections (footer, statistics, the highlighted pricing plan) stand
+ * out from the page: on a light palette they are dark (the text color), on a
+ * dark palette they stay dark and use the surface color.
+ */
+export interface ThemeColors {
+  text: string;
+  textMuted: string;
+  /** Text and icons on a primary-colored background (buttons, CTA section) */
+  onPrimary: string;
+  onPrimaryMuted: string;
+  /** The primary color used as text (links, dates, a button on the page background) */
+  primaryText: string;
+  inverseBg: string;
+  inverseText: string;
+  inverseMuted: string;
+  inverseBorder: string;
+  /** Large numbers on the inverse background */
+  inverseAccent: string;
+  /** Edge of form fields: a UI part, 3:1 against the page and the cards */
+  fieldBorder: string;
+  error: string;
+}
+
+export function isDarkColor(hex: string): boolean {
+  return contrastRatio(hex, '#000000') < contrastRatio(hex, '#ffffff');
+}
+
+export function deriveThemeColors(colors: ColorTokens): ThemeColors {
+  const pageBackgrounds = [colors.background, colors.surface];
+  const inverseBg = isDarkColor(colors.background) ? colors.surface : colors.textPrimary;
+  const inverseText = ensureContrast(isDarkColor(colors.background) ? colors.textPrimary : colors.background, [inverseBg]);
+  const onPrimary = ensureContrast(colors.textOnPrimary, [colors.primary]);
+  return {
+    text: ensureContrast(colors.textPrimary, pageBackgrounds),
+    textMuted: ensureContrast(colors.textSecondary, pageBackgrounds),
+    onPrimary,
+    onPrimaryMuted: ensureContrast(mixColors(onPrimary, colors.primary, 0.85), [colors.primary]),
+    primaryText: ensureContrast(colors.primary, pageBackgrounds),
+    inverseBg: toHex(hexToRgb(inverseBg)),
+    inverseText,
+    inverseMuted: ensureContrast(mixColors(inverseText, inverseBg, 0.7), [inverseBg]),
+    inverseBorder: mixColors(inverseText, inverseBg, 0.2),
+    inverseAccent: ensureContrast(colors.accent, [inverseBg], LARGE_TEXT_CONTRAST),
+    fieldBorder: ensureContrast(colors.border, pageBackgrounds, LARGE_TEXT_CONTRAST),
+    error: ensureContrast(colors.error, pageBackgrounds),
+  };
+}
+
 export function tokensToThemeVars(tokens: DesignTokens): Record<string, string> {
+  const derived = deriveThemeColors(tokens.colors);
   return {
     '--theme-primary': tokens.colors.primary,
     '--theme-secondary': tokens.colors.secondary,
     '--theme-bg': tokens.colors.background,
     '--theme-surface': tokens.colors.surface,
-    '--theme-text': tokens.colors.textPrimary,
-    '--theme-text-muted': tokens.colors.textSecondary,
+    '--theme-text': derived.text,
+    '--theme-text-muted': derived.textMuted,
     '--theme-border': tokens.colors.border,
     '--theme-accent': tokens.colors.accent,
+    '--theme-text-on-primary': derived.onPrimary,
+    '--theme-text-on-primary-muted': derived.onPrimaryMuted,
+    '--theme-primary-text': derived.primaryText,
+    '--theme-inverse-bg': derived.inverseBg,
+    '--theme-inverse-text': derived.inverseText,
+    '--theme-inverse-muted': derived.inverseMuted,
+    '--theme-inverse-border': derived.inverseBorder,
+    '--theme-inverse-accent': derived.inverseAccent,
+    '--theme-field-border': derived.fieldBorder,
+    '--theme-error': derived.error,
   };
 }
 
 // --- Preset Palettes ---
 
+/** A palette to start from. Its name is the message `designTokens.presets.<id>` (ES/EN). */
 export interface TokenPreset {
   id: string;
-  name: string;
   colors: ColorTokens;
+}
+
+/** The preset whose colors are exactly `colors`, if any (the active one in the Styles panel). */
+export function matchingPresetId(colors: ColorTokens): string | null {
+  const keys = Object.keys(colors) as (keyof ColorTokens)[];
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  return tokenPresets.find((preset) => keys.every((key) => same(preset.colors[key], colors[key])))?.id ?? null;
 }
 
 export const tokenPresets: TokenPreset[] = [
   {
     id: 'professional-blue',
-    name: 'Profesional Azul',
     colors: {
       primary: '#2563eb',
       secondary: '#7c3aed',
@@ -193,7 +268,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'startup-green',
-    name: 'Startup Verde',
     colors: {
       primary: '#10b981',
       secondary: '#06b6d4',
@@ -210,7 +284,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'elegant-dark',
-    name: 'Elegante Oscuro',
     colors: {
       primary: '#a78bfa',
       secondary: '#818cf8',
@@ -227,7 +300,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'warm-orange',
-    name: 'Cálido Naranja',
     colors: {
       primary: '#ea580c',
       secondary: '#f59e0b',
@@ -244,7 +316,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'minimal-slate',
-    name: 'Minimalista',
     colors: {
       primary: '#18181b',
       secondary: '#3f3f46',
@@ -261,7 +332,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'ocean-teal',
-    name: 'Océano',
     colors: {
       primary: '#0891b2',
       secondary: '#0d9488',
@@ -280,7 +350,6 @@ export const tokenPresets: TokenPreset[] = [
   // are the old theme ids, so a template or an old page can name one.
   {
     id: 'default',
-    name: 'Predeterminado',
     colors: {
       primary: '#4f46e5',
       secondary: '#8b5cf6',
@@ -297,7 +366,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'ocean',
-    name: 'Mar',
     colors: {
       primary: '#0891b2',
       secondary: '#06b6d4',
@@ -314,7 +382,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'sunset',
-    name: 'Atardecer',
     colors: {
       primary: '#ea580c',
       secondary: '#f97316',
@@ -331,7 +398,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'forest',
-    name: 'Bosque',
     colors: {
       primary: '#16a34a',
       secondary: '#22c55e',
@@ -348,7 +414,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'dark',
-    name: 'Oscuro',
     colors: {
       primary: '#818cf8',
       secondary: '#a78bfa',
@@ -365,7 +430,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'slate',
-    name: 'Pizarra',
     colors: {
       primary: '#14b8a6',
       secondary: '#06b6d4',
@@ -382,7 +446,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'ember',
-    name: 'Brasa',
     colors: {
       primary: '#ea580c',
       secondary: '#f59e0b',
@@ -399,7 +462,6 @@ export const tokenPresets: TokenPreset[] = [
   },
   {
     id: 'rose',
-    name: 'Rosa',
     colors: {
       primary: '#e11d48',
       secondary: '#f43f5e',
@@ -488,6 +550,10 @@ function hexToRgb(hex: string): [number, number, number] {
   if (h.length === 3) {
     h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
   }
+  // #rrggbbaa (the server accepts it): contrast is judged on the opaque color
+  if (h.length === 8) {
+    h = h.slice(0, 6);
+  }
   if (!/^[0-9a-f]{6}$/.test(h)) {
     return [0, 0, 0]; // Safe fallback for invalid input
   }
@@ -514,6 +580,39 @@ export function contrastRatio(hex1: string, hex2: string): number {
   const lighter = Math.max(l1, l2);
   const darker = Math.min(l1, l2);
   return (lighter + 0.05) / (darker + 0.05);
+}
+
+function toHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** `weight` of `color` and the rest of `other`, mixed in sRGB (like CSS color-mix). */
+export function mixColors(color: string, other: string, weight: number): string {
+  const a = hexToRgb(color);
+  const b = hexToRgb(other);
+  return toHex([0, 1, 2].map((i) => a[i] * weight + b[i] * (1 - weight)) as [number, number, number]);
+}
+
+function worstContrast(color: string, backgrounds: string[]): number {
+  return Math.min(...backgrounds.map((background) => contrastRatio(color, background)));
+}
+
+/**
+ * `color` if it reaches `minimum` on every one of `backgrounds`; otherwise the
+ * least change of it toward black or white that does. When nothing does
+ * (backgrounds of opposite lightness), the better of black and white.
+ */
+export function ensureContrast(color: string, backgrounds: string[], minimum: number = TEXT_CONTRAST): string {
+  const original = toHex(hexToRgb(color));
+  if (worstContrast(original, backgrounds) >= minimum) return original;
+  const black = '#000000';
+  const white = '#ffffff';
+  const target = worstContrast(black, backgrounds) >= worstContrast(white, backgrounds) ? black : white;
+  for (let step = 1; step <= 50; step += 1) {
+    const candidate = mixColors(target, original, step / 50);
+    if (worstContrast(candidate, backgrounds) >= minimum) return candidate;
+  }
+  return target;
 }
 
 /** Check if contrast meets WCAG AA (4.5:1 for normal text) */

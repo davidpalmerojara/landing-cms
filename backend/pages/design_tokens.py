@@ -34,6 +34,8 @@ ALLOWED_FONTS = (
 # Keep in sync with `scaleRatios` in frontend/lib/design-tokens.ts
 ALLOWED_SCALE_RATIOS = (1.2, 1.25, 1.333, 1.5, 1.618)
 
+# Always use fullmatch with these: `$` also matches before a trailing newline,
+# so `.match` let "#fff\n" through (SEC2-010)
 HEX_COLOR_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$')
 # A CSS length: digits, optional decimals, a unit. Nothing that could close a
 # declaration or open a function.
@@ -58,13 +60,13 @@ def _is_whole_number(value) -> bool:
 
 
 def _color(value):
-    if not isinstance(value, str) or not HEX_COLOR_RE.match(value):
+    if not isinstance(value, str) or not HEX_COLOR_RE.fullmatch(value):
         raise ValueError('Debe ser un color hexadecimal (#rgb, #rrggbb o #rrggbbaa).')
     return value
 
 
 def _length(value):
-    match = LENGTH_RE.match(value) if isinstance(value, str) else None
+    match = LENGTH_RE.fullmatch(value) if isinstance(value, str) else None
     if not match or float(match.group(1)) > MAX_LENGTH_VALUE:
         raise ValueError('Debe ser una medida CSS válida (por ejemplo 16px o 1.5rem).')
     return value

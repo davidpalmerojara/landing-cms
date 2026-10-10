@@ -224,5 +224,21 @@ class TestPageLanguage:
         page.refresh_from_db()
         assert page.language == 'es'
 
+    def test_sec2_010_a_trailing_newline_never_reaches_the_stored_language(self, auth_client, page):
+        response = auth_client.put(
+            f'/api/pages/{page.id}/', {'name': page.name, 'blocks': [], 'language': 'en\n', 'version': page.version},
+            format='json',
+        )
+        page.refresh_from_db()
+        assert response.status_code in (200, 400)
+        assert page.language in ('en', 'es')
+
+    def test_sec2_010_a_language_with_a_trailing_newline_is_not_restored(self, auth_client, user):
+        page = PageFactory(owner=user, language='en')
+        version = PageVersionFactory(page=page, created_by=user, snapshot=[], page_metadata={'language': 'fr\n'})
+        restore(auth_client, page, version, restore_metadata='true')
+        page.refresh_from_db()
+        assert page.language == 'es'
+
     def test_existing_pages_are_spanish_by_default(self):
         assert PageFactory().language == 'es'

@@ -354,3 +354,30 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: `QUICK_EDIT_MEDIA_QUERY`: menos de 768 px de ancho, o pantalla táctil de hasta 500 px de alto. Las tabletas, que tienen 768 px o más en las dos orientaciones, siguen con el editor completo (que otro lote adapta al tacto, D4). ADR-040.
 - **Cómo se verificó**: Pruebas del hook con `matchMedia` simulado (ancho, alto y tipo de puntero: teléfono vertical y horizontal, tableta en las dos orientaciones, ventana de escritorio baja) y de extremo a extremo con 844 × 390 táctil (Quick Edit) y 768 × 1024 (editor completo).
 - **Lección**: "Móvil" no es un ancho. Una media query de solo `max-width` describe la ventana, no el dispositivo: para decidir la interfaz hay que mirar también el alto y el tipo de puntero.
+
+## 41. Elegir "Producto" como tipo Open Graph tumbaba la página publicada
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El panel SEO ofrecía `product`, el servidor lo guardaba y `generateMetadata` lo pasaba tal cual a Next, que lanza un error con un tipo Open Graph que no conoce. Los robots de LinkedIn, Slack o Facebook recibían un 500 y cualquier visitante una página sin `<title>`.
+- **Cómo se detectó**: Ronda 1 de QA (QA-009).
+- **Arreglo**: El servidor solo acepta `website` y `article` y migró los valores viejos (lote del backend). En el frontend, `ogTypeOf()` (`lib/public-metadata.ts`) convierte cualquier otro valor en `website` antes de llegar a Next, el panel ya no ofrece `product` y muestra un valor antiguo como `website`, que es lo que la página publica. La etiqueta "OG type" pasa a "Tipo de contenido".
+- **Cómo se verificó**: Prueba de `publicPageMetadata` con `og_type: 'product'` (sale `website`) y del panel (solo dos opciones, valor antiguo mostrado como `website`).
+- **Lección**: Un valor que acaba en una API que lanza excepciones (aquí los metadatos de Next) se filtra con una lista cerrada en el último paso, aunque el servidor ya valide: los datos guardados antes de la validación siguen ahí.
+
+## 42. El bloque de HTML personalizado no se veía en la página publicada
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El marco del bloque empezaba con altura 0 y solo se medía en su evento `load`. El HTML del servidor trae el marco con `srcdoc`, que carga antes de que React se enganche, y React nunca dispara `onLoad` para un marco ya cargado: el bloque ocupaba 0 px en casi todas las visitas (y siempre sin JavaScript). Además su título era la clave del mensaje sin traducir.
+- **Cómo se detectó**: Ronda 1 de QA (QA-010, QA-041), en Chromium, WebKit y Firefox.
+- **Arreglo**: El marco empieza con una altura razonable (150 px), se mide al montar si el documento ya está completo, se vuelve a medir cuando cambia de ancho (`ResizeObserver`) y se mide la altura del contenido, no `scrollHeight`, que nunca baja de la del marco. Recibe del tema el color del texto, de los enlaces y la fuente. La clave `blocks.customHtmlPreview` existe y un test comprueba todas las claves que usan los bloques.
+- **Cómo se verificó**: Prueba de componente con un marco ya cargado antes de montar (altura medida), prueba del HTML del servidor (altura inicial y título traducido) y prueba de extremo a extremo: cinco cargas seguidas de `/p/<slug>` con el contenido visible y sin avisos de la política de contenido.
+- **Lección**: Con renderizado en el servidor, cualquier evento que pueda ocurrir antes de la hidratación (`load`, `error` de imágenes y marcos) hay que comprobarlo también al montar.
+
+## 43. Las páginas publicadas no llegaban a AA de contraste en ninguna paleta
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: El pie, las estadísticas y el plan destacado usaban el color del texto como fondo y encima el texto secundario de la página (hasta 1,27:1, prácticamente invisible); los logos y las etiquetas se atenuaban con opacidad; los botones primarios eran blancos aunque la paleta dijera otra cosa (2,5:1 en nueve de catorce paletas); y en las paletas oscuras el pie salía claro.
+- **Cómo se detectó**: Ronda 1 de QA (QA-019, QA-024), con axe sobre una página con todos los bloques en cada paleta: entre 12 y 31 fallos de contraste por página.
+- **Arreglo**: ADR-041. Los bloques pintan con colores derivados del tema (`deriveThemeColors`): el color elegido si ya cumple, y si no el más parecido que llegue a 4,5:1 (3:1 en texto grande y bordes de campos). Variables nuevas para el texto sobre el primario y para las secciones inversas, que en las paletas oscuras siguen siendo oscuras. Sin opacidad sobre texto ni blancos fijos.
+- **Cómo se verificó**: Prueba de cada par pintado en los catorce presets y en 300 paletas al azar; pruebas de componente (sin `text-white` ni opacidad sobre texto, variables inversas); prueba de extremo a extremo con la regla `color-contrast` de axe en cada preset a 390 y 1280 px; capturas antes y después de cada preset y plantilla.
+- **Lección**: Un comprobador de contraste solo vale si mira los pares que de verdad se pintan. El panel comprobaba texto sobre fondo y sobre superficie, pero los bloques inventaban otros pares (texto sobre "texto", blanco sobre primario) que nadie medía.

@@ -12,7 +12,7 @@ import {
 } from '@/lib/design-tokens';
 
 /**
- * Every text/background pair the blocks paint (D3, ADR-040; QA-019, QA-024):
+ * Every text/background pair the blocks paint (D3, ADR-041; QA-019, QA-024):
  * [what, text color, background, minimum].
  */
 function paintedPairs(colors: ColorTokens): [string, string, string, number][] {

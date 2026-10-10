@@ -243,6 +243,8 @@ Las listas son arrays de objetos (ADR-021). Los tipos viven en `types/block-data
 
 Cada bloque nuevo debe: registrarse en `block-registry.ts`, tener componente en `components/blocks/`, tener su contenido de ejemplo en español e inglés en `lib/block-defaults.ts` (y un elemento nuevo por cada lista), y seguir la interfaz `BlockProps` (`blockId`, `data`, `isPreviewMode`). El contenido que crea la app (bloques nuevos, plantillas en `lib/template-content/`) sigue el idioma de la interfaz en el momento de crearlo (ADR-025); nunca se traduce lo ya escrito.
 
+Lo que ve el visitante (ADR-042): un boton sin enlace valido se pinta como texto (`BlockButton`), un texto vacio no se pinta (en el lienzo muestra un marcador), la seccion de cada bloque pinta `var(--block-bg, <su color>)` y los ajustes por dispositivo caen en cascada escritorio → tableta → movil. Los bloques nuevos y las plantillas traen enlaces a anclas de la pagina.
+
 Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mobile-first con las variantes de container query `@tablet:` (>= 640px) y `@desktop:` (>= 1024px); cada superficie que pinta bloques (canvas, vista previa, pagina publica, miniaturas) pone `@container` en su raiz. Nada en un bloque puede depender de `window`, porque la pagina publica se renderiza en el servidor (ADR-019).
 
 ---
@@ -367,7 +369,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 - Auto-save con debounce 3s
 - Paginas publicas en `/p/[slug]` renderizadas en el servidor con SEO metadata; datos en cache de Next que Django invalida al publicar (`REVALIDATE_SECRET`, ADR-019); fuentes del tema autoalojadas con next/font
 - Version history con snapshots y restore
-- Tema de pagina = Design Tokens (color, tipografia, spacing, borders) editables en la vista Estilos, con 14 presets de paleta (los 8 temas antiguos incluidos; las plantillas usan `presetId`). Se resuelven en `lib/page-theme.ts` (ADR-020)
+- Tema de pagina = Design Tokens (color, tipografia, spacing, borders) editables en la vista Estilos, con 14 presets de paleta (los 8 temas antiguos incluidos; las plantillas usan `presetId`). Se resuelven en `lib/page-theme.ts` (ADR-020). Los bloques pintan con colores derivados que garantizan contraste AA (`deriveThemeColors`, ADR-041)
 - Responsive styles por bloque (tablet/mobile overrides)
 - AI generation (full page + edit block) con Anthropic y Google
 - Analytics tracking (pageview, click, scroll, CTA conversion)

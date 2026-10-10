@@ -241,13 +241,13 @@ Rutas App Router principales:
 - `/editor` redirección al primer page o creación inicial
 - `/editor/[pageId]` editor principal
 - `/preview/[pageId]` preview autenticado
-- `/p/[slug]` página pública: se renderiza en el servidor con `components/renderer/PageRenderer.tsx` y cachea los datos hasta que Django llama a `POST /revalidate` al publicar, despublicar o borrar (ADR-019). Los bloques usan container queries (`@tablet:`, `@desktop:`), no `isMobile`/`isTablet`.
+- `/p/[slug]` página pública: se renderiza en el servidor con `components/renderer/PageRenderer.tsx` y cachea los datos hasta que Django llama a `POST /revalidate` al publicar, despublicar o borrar (ADR-019). Los bloques usan container queries (`@tablet:`, `@desktop:`), no `isMobile`/`isTablet`. `<html lang>` es el idioma de la página (el proxy pasa el slug al layout raíz); la página es el `<main id="main-content">`; botones sin enlace se pintan como texto y textos vacíos no se pintan (ADR-042). Los ajustes por dispositivo caen en cascada escritorio → tableta → móvil.
 - `/settings`, `/settings/billing`, `/settings/domains`
 
 ## Decisiones De Arquitectura Que NO Debes Cambiar
 Bloques grandes tipados. Cada bloque es una unidad atómica con schema definido. No crear sistemas de section → row → column → componente libre.
 
-El tema manda. Los colores y tipografías se definen en Design Tokens. Los bloques consumen tokens. No añadir color pickers dentro de bloques individuales.
+El tema manda. Los colores y tipografías se definen en Design Tokens. Los bloques consumen tokens. No añadir color pickers dentro de bloques individuales. Los bloques pintan con las variables derivadas de `tokensToThemeVars` (`--theme-text-on-primary`, `--theme-inverse-*`, `--theme-primary-text`...), que garantizan contraste AA; nada de blancos fijos ni opacidad sobre texto (ADR-041). La sección de cada bloque pinta `var(--block-bg, <su color>)` para que el fondo propio del bloque se vea (ADR-042).
 
 Owner-based filtering. Todas las queries de Django filtran por workspace del usuario. Todo nuevo endpoint debe incluir este filtrado.
 

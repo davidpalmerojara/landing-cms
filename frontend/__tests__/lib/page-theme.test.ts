@@ -57,7 +57,7 @@ function legacyThemeVars(colors: Record<string, string>): Vars {
   };
 }
 
-/** The --theme-* variables legacy themes had; derived ones (contrast, ADR-040) are tested in design-tokens. */
+/** The --theme-* variables legacy themes had; derived ones (contrast, ADR-041) are tested in design-tokens. */
 const LEGACY_THEME_VARS = ['--theme-primary', '--theme-secondary', '--theme-bg', '--theme-surface', '--theme-text', '--theme-text-muted', '--theme-border', '--theme-accent'];
 
 function themeVarsOf(vars: Vars): Vars {

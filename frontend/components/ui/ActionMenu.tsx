@@ -50,7 +50,8 @@ function placeMenu(trigger: DOMRect, menu: { width: number; height: number }): C
 /**
  * A "more actions" button with a menu (WAI-ARIA menu button pattern): Enter,
  * Space or the arrow keys open it and move through the items, Escape closes it
- * and returns focus to the button, Tab or a click anywhere else closes it.
+ * and returns focus to the button, Tab closes it and moves on from the button,
+ * a click anywhere else closes it.
  * Items are 44 px tall on touch screens. The menu is drawn in a portal on
  * <body> with fixed coordinates, so no ancestor (a card with rounded
  * `overflow-hidden`, a scroll area) can clip it or let a click fall through to
@@ -144,7 +145,9 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
         close(true);
         break;
       case 'Tab':
-        close(false);
+        // Focus the button and let the browser's own Tab move on from it: the menu
+        // unmounts with the focused item, and focus would otherwise fall to <body> (APP3-001)
+        close(true);
         break;
       default:
     }

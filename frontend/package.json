@@ -14,7 +14,8 @@
     "check:classes": "node scripts/check-classes.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
@@ -28,6 +29,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/node": "^20",

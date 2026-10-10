@@ -342,6 +342,20 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-030: Pruebas de extremo a extremo con Playwright contra el stack real
+
+- **Fecha**: 2026-10-10
+- **Contexto**: Las pruebas unitarias y de API no detectan fallos que solo aparecen al juntar piezas: la reescritura de `/api` en Next, las cookies de sesión, el WebSocket de colaboración, el autosave o la caché de la página pública (ADR-019).
+- **Decisión**:
+  - Única dependencia nueva: `@playwright/test` (versión exacta, solo desarrollo, solo Chromium). Las pruebas viven en `frontend/e2e/` y no las recoge Vitest (que solo lee `__tests__/`).
+  - Se prueba el stack real, no mocks: Django con Daphne (ASGI) sobre una base SQLite desechable con las migraciones aplicadas (`SQLITE_PATH`, variable opcional nueva) y Next.js compilado (`next build` + `next start`) en modo reescritura, con `REVALIDATE_SECRET` en ambos lados. `playwright.config.ts` arranca los dos servidores con `frontend/e2e/scripts/` (puertos 3100/8101 para no chocar con `make dev`).
+  - La IA sigue en modo demo y los límites de creación de invitados (`GUEST_CREATION_RATE`) y de registro, invitaciones y renovación de sesión (`AUTH_RATE`, nueva variable opcional) se suben solo en esta ejecución, sin tocar los valores por defecto: todas las pruebas salen de una IP y el camino completo ya gastaba 7 de las 10 peticiones por minuto.
+  - Cubren el camino principal: invitado que edita y publica (con el HTML del servidor sin JavaScript), registro, plantilla, bloque, publicar y volver a entrar, colaboración con enlace de invitación y navegación por teclado del lienzo. Los selectores son roles y nombres accesibles.
+  - CI: un trabajo `e2e` aparte, con navegadores en caché; sube el informe y las trazas solo si falla.
+- **Consecuencias**: El trabajo tarda más que los demás (compila el frontend). Las pruebas dependen de los textos en español (cookie `paxl-locale=es` explícita). Se ejecutan en serie y con una sola IP, así que cuentan contra los límites de peticiones.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

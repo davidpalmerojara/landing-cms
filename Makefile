@@ -6,7 +6,7 @@ VENV_BIN := venv/bin
 
 UV_COMPILE := uv pip compile requirements.in -o requirements.txt --python-version 3.13 --universal --generate-hashes
 
-.PHONY: install env dev backend frontend migrate test test-backend test-frontend lint typecheck build check lock lock-upgrade
+.PHONY: install env dev backend frontend migrate test test-backend test-frontend e2e lint typecheck build check lock lock-upgrade
 
 # --- Setup ---
 
@@ -43,6 +43,11 @@ test-backend:
 
 test-frontend:
 	cd $(FRONTEND_DIR) && npm test
+
+# End-to-end tests (Playwright): builds the frontend and starts Daphne + next start on 3100/8101.
+# Needs: make install, then 'cd frontend && npx playwright install chromium' once.
+e2e:
+	cd $(FRONTEND_DIR) && npm run e2e
 
 lint:
 	cd $(FRONTEND_DIR) && npm run lint && npm run check:classes

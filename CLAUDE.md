@@ -285,7 +285,7 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
 | POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
 
-Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-033).
+Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-034).
 
 ### Public
 

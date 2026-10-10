@@ -19,7 +19,7 @@ Ubicación real:
 - Backend: `backend/`
 - Tests backend: `backend/accounts/tests/`, `backend/pages/tests/`, `backend/tests/`
 - Tests frontend: `frontend/__tests__/`
-- Configuración: `frontend/package.json`, `frontend/vitest.config.ts`, `frontend/eslint.config.mjs`, `frontend/tsconfig.json`, `backend/requirements.txt`, `backend/pytest.ini`, `backend/config/settings.py`, `backend/config/urls.py`
+- Configuración: `frontend/package.json`, `frontend/vitest.config.mts`, `frontend/eslint.config.mjs`, `frontend/tsconfig.json`, `backend/requirements.txt`, `backend/pytest.ini`, `backend/config/settings.py`, `backend/config/urls.py`
 
 ## Cómo Levantar El Entorno
 Hay un script de arranque en raíz y un `Makefile` para el flujo diario.

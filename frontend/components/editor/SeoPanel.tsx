@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Search, Share2, Globe, Eye, EyeOff, ChevronDown, Image as ImageIcon, X,
@@ -8,60 +8,72 @@ import {
 import { useEditorStore } from '@/store/editor-store';
 import type { SeoFields } from '@/types/page';
 
-function CharCounter({ value, max, warn }: { value: string; max: number; warn: number }) {
+function CharCounter({ id, value, max, warn }: { id: string; value: string; max: number; warn: number }) {
+  const t = useTranslations('seo');
   const len = value.length;
   const isWarn = len > warn;
   const isOver = len > max;
+  const status = isOver ? t('charCountOver') : isWarn ? t('charCountWarn') : '';
+  const count = t('charCount', { count: len, max });
   return (
-    <span className={`text-[10px] tabular-nums ${isOver ? 'text-red-400' : isWarn ? 'text-amber-400' : 'text-muted'}`}>
-      {len}/{max}
+    <span id={id} className={`text-[10px] tabular-nums ${isOver ? 'text-error' : isWarn ? 'text-warning' : 'text-muted'}`}>
+      <span aria-hidden="true">{len}/{max}</span>
+      <span className="sr-only">{status ? `${count}, ${status}` : count}</span>
     </span>
   );
 }
 
-function SeoInput({
-  label, value, onChange, maxLength, warnLength, placeholder,
-}: {
-  label: string; value: string; onChange: (v: string) => void;
-  maxLength: number; warnLength: number; placeholder?: string;
-}) {
+interface SeoFieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  maxLength: number;
+  warnLength: number;
+  placeholder?: string;
+}
+
+const seoFieldClass =
+  'w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors';
+
+function SeoInput({ label, value, onChange, maxLength, warnLength, placeholder }: SeoFieldProps) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</label>
-        <CharCounter value={value} max={maxLength} warn={warnLength} />
+        <label htmlFor={id} className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</label>
+        <CharCounter id={`${id}-count`} value={value} max={maxLength} warn={warnLength} />
       </div>
       <input
+        id={id}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength + 10}
         placeholder={placeholder}
-        className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+        aria-describedby={`${id}-count`}
+        className={seoFieldClass}
       />
     </div>
   );
 }
 
-function SeoTextarea({
-  label, value, onChange, maxLength, warnLength, placeholder,
-}: {
-  label: string; value: string; onChange: (v: string) => void;
-  maxLength: number; warnLength: number; placeholder?: string;
-}) {
+function SeoTextarea({ label, value, onChange, maxLength, warnLength, placeholder }: SeoFieldProps) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</label>
-        <CharCounter value={value} max={maxLength} warn={warnLength} />
+        <label htmlFor={id} className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</label>
+        <CharCounter id={`${id}-count`} value={value} max={maxLength} warn={warnLength} />
       </div>
       <textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength + 10}
         placeholder={placeholder}
         rows={3}
-        className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors resize-none"
+        aria-describedby={`${id}-count`}
+        className={`${seoFieldClass} resize-none`}
       />
     </div>
   );
@@ -74,13 +86,13 @@ function GooglePreview({ title, url, description }: { title: string; url: string
     <div className="bg-white rounded-lg p-4 space-y-1">
       <div className="flex items-center gap-2">
         <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
-          <Globe className="w-3 h-3 text-gray-500" />
+          <Globe aria-hidden="true" className="w-3 h-3 text-gray-500" />
         </div>
         <span className="text-[11px] text-gray-600 truncate">{url || t('domainFallback')}</span>
       </div>
-      <h3 className="text-[15px] text-[#1a0dab] font-medium leading-snug line-clamp-2 cursor-pointer hover:underline">
+      <p className="text-[15px] text-[#1a0dab] font-medium leading-snug line-clamp-2">
         {title || t('titleFallback')}
-      </h3>
+      </p>
       <p className="text-[12px] text-[#545454] leading-relaxed line-clamp-2">
         {description || t('descriptionFallback')}
       </p>
@@ -97,18 +109,18 @@ function SocialPreview({
     <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
       {image ? (
         <div className="h-32 bg-gray-100 overflow-hidden">
-          <img src={image} alt="OG" className="w-full h-full object-cover" />
+          <img src={image} alt="" className="w-full h-full object-cover" />
         </div>
       ) : (
         <div className="h-32 bg-gray-100 flex items-center justify-center">
-          <ImageIcon className="w-8 h-8 text-gray-300" />
+          <ImageIcon aria-hidden="true" className="w-8 h-8 text-gray-300" />
         </div>
       )}
       <div className="p-3 space-y-1">
         <p className="text-[10px] text-gray-500 uppercase tracking-wider">{domain || t('domainFallback')}</p>
-        <h4 className="text-[13px] text-gray-900 font-semibold leading-snug line-clamp-2">
+        <p className="text-[13px] text-gray-900 font-semibold leading-snug line-clamp-2">
           {title || t('titleFallback')}
-        </h4>
+        </p>
         <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">
           {description || t('socialDescriptionFallback')}
         </p>
@@ -146,7 +158,7 @@ export default function SeoPanel() {
   })();
 
   return (
-    <aside className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col shrink-0 z-20">
+    <aside aria-label={t('panelTitle')} className="w-64 lg:w-72 xl:w-80 bg-surface border-l border-surface-elevated/80 flex flex-col shrink-0 z-20">
       <div className="h-14 flex items-center px-5 border-b border-surface-elevated/80 shrink-0">
         <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
           <Search className="w-4 h-4 text-muted" /> {t('panelTitle')}
@@ -158,17 +170,20 @@ export default function SeoPanel() {
           {/* Basic SEO */}
           <div className="border-b border-surface-elevated/50">
             <button
+              type="button"
               onClick={() => toggleSection('seo')}
+              aria-expanded={openSections.seo}
+              aria-controls="seo-section-seo"
               className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Search className="w-4 h-4 text-muted" />
                 <span className="text-[12px] font-medium tracking-wide">{t('metaTags')}</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.seo ? '' : '-rotate-90'}`} />
+              <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.seo ? '' : '-rotate-90'}`} />
             </button>
             {openSections.seo && (
-              <div className="px-5 pb-6 space-y-5">
+              <div id="seo-section-seo" className="px-5 pb-6 space-y-5">
                 <SeoInput
                   label={t('seoTitle')}
                   value={seo.seoTitle}
@@ -193,16 +208,26 @@ export default function SeoPanel() {
                   warnLength={500}
                   placeholder={`https://paxl.com/p/${page.slug}`}
                 />
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                    <label
+                      id="seo-noindex-label"
+                      htmlFor="seo-noindex"
+                      className="text-[10px] font-bold text-muted uppercase tracking-widest block"
+                    >
                       {t('hideFromSearch')}
                     </label>
-                    <p className="text-[10px] text-muted mt-0.5">{t('hideFromSearchHint')}</p>
+                    <p id="seo-noindex-hint" className="text-[10px] text-muted mt-0.5">{t('hideFromSearchHint')}</p>
                   </div>
                   <button
+                    type="button"
+                    id="seo-noindex"
+                    role="switch"
+                    aria-checked={seo.noindex}
+                    aria-labelledby="seo-noindex-label"
+                    aria-describedby="seo-noindex-hint"
                     onClick={() => updateSeo('noindex', !seo.noindex)}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${
+                    className={`relative shrink-0 w-9 h-5 rounded-full transition-colors before:absolute before:-inset-1 ${
                       seo.noindex ? 'bg-red-500/80' : 'bg-default'
                     }`}
                   >
@@ -214,9 +239,9 @@ export default function SeoPanel() {
                   </button>
                 </div>
                 {seo.noindex && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                    <EyeOff className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                    <span className="text-[11px] text-red-300">
+                  <div role="status" className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <EyeOff aria-hidden="true" className="w-3.5 h-3.5 text-error shrink-0" />
+                    <span className="text-[11px] text-error">
                       {t('hideFromSearchWarning')}
                     </span>
                   </div>
@@ -228,17 +253,20 @@ export default function SeoPanel() {
           {/* Open Graph */}
           <div className="border-b border-surface-elevated/50">
             <button
+              type="button"
               onClick={() => toggleSection('og')}
+              aria-expanded={openSections.og}
+              aria-controls="seo-section-og"
               className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Share2 className="w-4 h-4 text-muted" />
                 <span className="text-[12px] font-medium tracking-wide">{t('openGraph')}</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.og ? '' : '-rotate-90'}`} />
+              <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.og ? '' : '-rotate-90'}`} />
             </button>
             {openSections.og && (
-              <div className="px-5 pb-6 space-y-5">
+              <div id="seo-section-og" className="px-5 pb-6 space-y-5">
                 <SeoInput
                   label={t('ogTitle')}
                   value={seo.ogTitle}
@@ -256,34 +284,44 @@ export default function SeoPanel() {
                   placeholder={seo.seoDescription || t('ogDescriptionPlaceholder')}
                 />
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                  <label
+                    id="seo-og-image-label"
+                    htmlFor="seo-og-image"
+                    className="text-[10px] font-bold text-muted uppercase tracking-widest block"
+                  >
                     {t('ogImage')}
                   </label>
                   {seo.ogImage ? (
                     <div className="relative rounded-lg overflow-hidden border border-surface-elevated/50">
-                      <img src={seo.ogImage} alt="OG" className="w-full h-24 object-cover" />
+                      <img src={seo.ogImage} alt="" className="w-full h-24 object-cover" />
                       <button
+                        type="button"
+                        id="seo-og-image"
                         onClick={() => updateSeo('ogImage', '')}
-                        className="absolute top-1.5 right-1.5 p-1 bg-surface-elevated/80 rounded-full hover:bg-surface-card transition-colors"
+                        aria-label={t('removeOgImage')}
+                        title={t('removeOgImage')}
+                        className="absolute top-1.5 right-1.5 p-1.5 bg-surface-elevated/80 rounded-full hover:bg-surface-card transition-colors before:absolute before:-inset-1"
                       >
-                        <X className="w-3 h-3 text-secondary" />
+                        <X aria-hidden="true" className="w-3 h-3 text-secondary" />
                       </button>
                     </div>
                   ) : (
                     <input
+                      id="seo-og-image"
                       type="text"
                       value={seo.ogImage}
                       onChange={(e) => updateSeo('ogImage', e.target.value)}
                       placeholder={t('ogImagePlaceholder')}
-                      className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary placeholder:text-muted focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                      className={seoFieldClass}
                     />
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                  <label htmlFor="seo-og-type" className="text-[10px] font-bold text-muted uppercase tracking-widest block">
                     {t('ogType')}
                   </label>
                   <select
+                    id="seo-og-type"
                     value={seo.ogType}
                     onChange={(e) => updateSeo('ogType', e.target.value)}
                     className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
@@ -300,17 +338,20 @@ export default function SeoPanel() {
           {/* Preview */}
           <div className="border-b border-surface-elevated/50">
             <button
+              type="button"
               onClick={() => toggleSection('preview')}
+              aria-expanded={openSections.preview}
+              aria-controls="seo-section-preview"
               className="w-full flex items-center justify-between p-5 hover:bg-surface-elevated/30 transition-colors"
             >
               <div className="flex items-center gap-2 text-secondary">
                 <Eye className="w-4 h-4 text-muted" />
                 <span className="text-[12px] font-medium tracking-wide">{t('previews')}</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.preview ? '' : '-rotate-90'}`} />
+              <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted transition-transform duration-200 ${openSections.preview ? '' : '-rotate-90'}`} />
             </button>
             {openSections.preview && (
-              <div className="px-5 pb-6 space-y-5">
+              <div id="seo-section-preview" className="px-5 pb-6 space-y-5">
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Search className="w-3 h-3 text-muted" />

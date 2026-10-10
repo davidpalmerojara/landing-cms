@@ -11,6 +11,7 @@ import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { getBlockDefaults } from '@/lib/block-defaults';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import { pageThemeVars } from '@/lib/page-theme';
+import { CANVAS_SHORTCUT_KEYS, isKeyOperableTarget } from '@/lib/keyboard';
 import BrowserFrame from './BrowserFrame';
 import BlockWrapper from './BlockWrapper';
 import FloatingViewportControls from './FloatingViewportControls';
@@ -59,6 +60,7 @@ function RemoteCursors({ containerRef }: { containerRef: React.RefObject<HTMLDiv
         return (
           <div
             key={cursor.connectionId}
+            aria-hidden="true"
             className="absolute pointer-events-none z-50 transition-all duration-100 ease-out"
             style={{ left: screenX, top: screenY }}
           >
@@ -110,6 +112,10 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
     () => pageThemeVars(page.designTokens),
     [page.designTokens],
   );
+
+  // Roving tabindex: the canvas is a single Tab stop, arrows move between blocks
+  const [tabStopId, setTabStopId] = useState<string | null>(null);
+  const tabStopBlockId = page.blocks.some((b) => b.id === tabStopId) ? tabStopId : (page.blocks[0]?.id ?? null);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const browserFrameRef = useRef<HTMLDivElement>(null);
@@ -164,7 +170,8 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
   // --- Space key for panning ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      // Space belongs to fields, buttons, switches and focused blocks; it pans only from the page itself
+      if (isKeyOperableTarget(e.target)) return;
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         setInteractionState((prev) => ({ ...prev, isSpacePressed: true }));
@@ -271,7 +278,18 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
         }}
       >
         <BrowserFrame ref={browserFrameRef}>
-          <div className="@container" style={themeVars}>
+          <div
+            className="@container"
+            style={themeVars}
+            role="group"
+            aria-label={t('a11y.canvasLabel', { count: page.blocks.length })}
+            aria-describedby={isPreviewMode ? undefined : 'canvas-keyboard-help'}
+          >
+          {!isPreviewMode && (
+            <p id="canvas-keyboard-help" className="sr-only">
+              {CANVAS_SHORTCUT_KEYS.map((key) => t(`a11y.${key}`)).join('. ')}
+            </p>
+          )}
           {page.blocks.map((block, index) => {
             const s = resolveStyles(block, deviceMode);
             const blockStyle: React.CSSProperties = {
@@ -287,7 +305,13 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
             };
 
             return (
-              <BlockWrapper key={block.id} block={block} index={index}>
+              <BlockWrapper
+                key={block.id}
+                block={block}
+                index={index}
+                isTabStop={block.id === tabStopBlockId}
+                onFocusBlock={setTabStopId}
+              >
                 <div style={blockStyle}>
                   <BlockContent block={block} isPreviewMode={isPreviewMode} />
                 </div>

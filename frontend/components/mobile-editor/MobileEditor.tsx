@@ -345,14 +345,14 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
               onChange={(e) => setNameValue(e.target.value)}
               onBlur={handleNameSubmit}
               onKeyDown={handleNameKeyDown}
-              className="text-sm font-medium text-primary bg-surface-card border border-default/30 rounded-lg px-3 py-1 outline-none focus:border-primary/50 max-w-[180px] text-center"
+              className="text-sm font-medium text-primary bg-surface-card border border-default/30 rounded-lg px-3 py-1 min-h-11 outline-none focus:border-primary/50 max-w-[180px] text-center"
               aria-label={t('mobile.pageName')}
             />
           ) : (
             <button
               onClick={handleNameTap}
-              className="text-sm font-medium text-primary truncate max-w-[160px] px-2 py-1 rounded-lg active:bg-surface-card transition-colors"
-              aria-label={t('mobile.editPageName')}
+              className="text-sm font-medium text-primary truncate max-w-[160px] px-2 py-1 min-h-11 rounded-lg active:bg-surface-card transition-colors"
+              aria-label={`${t('mobile.editPageName')}: ${page.name}`}
             >
               {page.name}
             </button>
@@ -470,7 +470,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
           style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
           aria-label={t('mobile.addBlock')}
         >
-          <Plus size={24} className="text-black" />
+          <Plus size={24} className="text-white" />
         </button>
       )}
 
@@ -543,7 +543,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
                 href={`/p/${page.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full py-3.5 rounded-xl text-center text-sm font-semibold text-black active:opacity-80"
+                className="block w-full py-3.5 rounded-xl text-center text-sm font-semibold text-white active:opacity-80"
                 style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
               >
                 {t('mobile.viewPublicPage')}
@@ -562,7 +562,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
                 <button
                   onClick={handlePublish}
                   disabled={isPublishing}
-                  className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-black active:opacity-80 disabled:opacity-50"
+                  className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white active:opacity-80 disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
                 >
                   {isPublishing ? t('editor.publishLoading') : t('common.publish')}

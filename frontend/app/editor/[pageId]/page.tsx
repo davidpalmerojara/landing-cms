@@ -116,7 +116,7 @@ export default function EditorPage() {
           </p>
           <a
             href="/dashboard"
-            className="mt-4 px-6 py-2.5 rounded-full text-black text-sm font-bold transition-all active:scale-95"
+            className="mt-4 px-6 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95"
             style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
           >
             {t('editor.goToDashboard')}

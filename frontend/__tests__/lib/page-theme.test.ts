@@ -29,6 +29,20 @@ const legacyThemes: Record<string, Record<string, string>> = {
   rose: { primary: '#e11d48', secondary: '#f43f5e', background: '#ffffff', surface: '#fff1f2', text: '#1c1917', textMuted: '#78716c', border: '#fecdd3', accent: '#fb7185' },
 };
 
+/**
+ * Legacy themes whose muted text was below WCAG AA (1.5:1 and 4.4:1). The
+ * presets, which seed new pages and templates, now use these readable colors.
+ * Pages that already had such a theme keep the tokens they stored, so the
+ * equivalence tests below expect the preset to match the frozen legacy theme
+ * in every value except this one.
+ */
+const readableMutedText: Record<string, string> = { ocean: '#0f766e', rose: '#57534e' };
+
+function expectedFromLegacy(id: string): Vars {
+  const colors = legacyThemes[id];
+  return legacyThemeVars(id in readableMutedText ? { ...colors, textMuted: readableMutedText[id] } : colors);
+}
+
 /** What the old pageThemeVars emitted for a legacy theme, minus the unused hover color. */
 function legacyThemeVars(colors: Record<string, string>): Vars {
   return {
@@ -58,13 +72,21 @@ describe('pageThemeVars', () => {
     it.each(Object.keys(legacyThemes))('theme "%s" renders the same through its preset tokens', (id) => {
       const vars = pageThemeVars(presetTokens(id)) as Vars;
 
-      expect(themeVarsOf(vars)).toEqual(legacyThemeVars(legacyThemes[id]));
+      expect(themeVarsOf(vars)).toEqual(expectedFromLegacy(id));
+    });
+
+    it.each(Object.keys(readableMutedText))('theme "%s" differs from its legacy palette only in a muted text that now passes AA', (id) => {
+      const { background, surface, textMuted } = legacyThemes[id];
+
+      expect(contrastRatio(textMuted, surface)).toBeLessThan(4.5);
+      expect(contrastRatio(readableMutedText[id], background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(readableMutedText[id], surface)).toBeGreaterThanOrEqual(4.5);
     });
 
     it.each(Object.keys(legacyThemes))('theme "%s" still renders the same after a save and reload (API format)', (id) => {
       const reloaded = apiToTokens(tokensToApi(presetTokens(id)));
 
-      expect(themeVarsOf(pageThemeVars(reloaded) as Vars)).toEqual(legacyThemeVars(legacyThemes[id]));
+      expect(themeVarsOf(pageThemeVars(reloaded) as Vars)).toEqual(expectedFromLegacy(id));
     });
 
     it('a custom theme renders the same through the tokens the data migration writes for it', () => {

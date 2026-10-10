@@ -16,6 +16,7 @@ import BlockFields from './BlockFields';
 import SpacingField from './SpacingField';
 import ColorField from './ColorField';
 import { styleGroups, getStyleFieldsByGroup } from '@/lib/block-styles-config';
+import { CANVAS_SHORTCUT_KEYS } from '@/lib/keyboard';
 
 export default function Inspector() {
   const t = useTranslations();
@@ -49,6 +50,16 @@ export default function Inspector() {
             <p className="text-[12px] leading-relaxed">
               {t('editor.nothingSelectedDescription')}
             </p>
+          </div>
+          <div className="text-left w-full">
+            <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">
+              {t('a11y.shortcutsTitle')}
+            </h3>
+            <ul className="space-y-1.5 text-[11px] leading-relaxed text-muted">
+              {CANVAS_SHORTCUT_KEYS.map((key) => (
+                <li key={key}>{t(`a11y.${key}`)}</li>
+              ))}
+            </ul>
           </div>
         </div>
       </aside>
@@ -172,10 +183,16 @@ export default function Inspector() {
                         if (group.key === 'background') {
                           return (
                             <div key={group.key} className="space-y-2.5">
-                              <label className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                              <label
+                                id="style-bgColor-label"
+                                htmlFor="style-bgColor"
+                                className="text-[10px] font-bold text-muted uppercase tracking-widest block"
+                              >
                                 {translateStyleGroupLabel(group.key, locale)}
                               </label>
                               <ColorField
+                                id="style-bgColor"
+                                labelId="style-bgColor-label"
                                 value={styles.bgColor || ''}
                                 onChange={(v) => handleStyleChange('bgColor', v)}
                               />
@@ -229,11 +246,15 @@ export default function Inspector() {
                           const borderField = groupFields[0];
                           return (
                             <div key={group.key} className="space-y-2.5">
-                              <label className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                              <label
+                                htmlFor="style-borderRadius"
+                                className="text-[10px] font-bold text-muted uppercase tracking-widest block"
+                              >
                                 {borderField.label}
                               </label>
                               <div className="flex items-center gap-3">
                                 <input
+                                  id="style-borderRadius"
                                   type="range"
                                   min={0}
                                   max={borderField.max || 48}

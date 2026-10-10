@@ -5,10 +5,15 @@ import { Pipette } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface ColorFieldProps {
-  id?: string;
+  /** Id of the button that opens the palette; the field label points at it. */
+  id: string;
+  /** Id of the field's visible label, used as the name of the button and the palette. */
+  labelId?: string;
   value: string;
   onChange: (value: string) => void;
 }
+
+const SWATCH_COLUMNS = 9;
 
 const PRESET_COLORS = [
   // Grays
@@ -33,13 +38,17 @@ const PRESET_COLORS = [
   '#fdf2f8', '#fbcfe8', '#f472b6', '#ec4899', '#db2777', '#be185d', '#9d174d', '#831843',
 ];
 
-export default function ColorField({ id, value, onChange }: ColorFieldProps) {
+export default function ColorField({ id, labelId, value, onChange }: ColorFieldProps) {
   const t = useTranslations('inspector');
   const [isOpen, setIsOpen] = useState(false);
   const [hexInput, setHexInput] = useState(value || '#ffffff');
   const popoverRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const nativeRef = useRef<HTMLInputElement>(null);
+  const popoverId = `${id}-palette`;
+  // Roving tabindex: the palette is one Tab stop, arrows move between swatches
+  const selectedSwatch = PRESET_COLORS.indexOf(value.toLowerCase());
+  const tabStopSwatch = selectedSwatch >= 0 ? selectedSwatch : 0;
 
   // Close on outside click
   useEffect(() => {
@@ -73,36 +82,86 @@ export default function ColorField({ id, value, onChange }: ColorFieldProps) {
     setIsOpen((open) => !open);
   };
 
+  const closeAndReturnFocus = () => {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleSwatchKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const step: Record<string, number> = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -SWATCH_COLUMNS,
+      ArrowDown: SWATCH_COLUMNS,
+    };
+    let next: number | undefined;
+    if (e.key in step) next = Math.min(Math.max(index + step[e.key], 0), PRESET_COLORS.length - 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = PRESET_COLORS.length - 1;
+    if (next === undefined) return;
+    e.preventDefault();
+    popoverRef.current?.querySelectorAll<HTMLButtonElement>('[data-swatch]')[next]?.focus();
+  };
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && isOpen) {
+          e.stopPropagation();
+          closeAndReturnFocus();
+        }
+      }}
+      onBlur={(e) => {
+        // Tabbing out of the field closes the palette; clicks are handled by the outside-click listener
+        const next = e.relatedTarget;
+        if (isOpen && next instanceof Node && !e.currentTarget.contains(next)) setIsOpen(false);
+      }}
+    >
       {/* Trigger */}
-      <div
+      <button
+        type="button"
+        id={id}
         ref={triggerRef}
-        className="flex items-center gap-3 p-2 rounded-lg bg-surface-elevated border border-default/10 cursor-pointer hover:border-default transition-colors shadow-inner"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? popoverId : undefined}
+        aria-labelledby={labelId ? `${labelId} ${id}` : undefined}
+        className="w-full flex items-center gap-3 p-2 rounded-lg bg-surface-elevated border border-default/10 cursor-pointer hover:border-default transition-colors shadow-inner text-left"
         onClick={handleToggleOpen}
       >
         <div
+          aria-hidden="true"
           className="w-7 h-7 rounded-md border border-default shadow-sm shrink-0"
           style={{ backgroundColor: value || '#ffffff' }}
         />
         <span className="text-[12px] text-secondary font-mono uppercase flex-1">
           {value || '#ffffff'}
         </span>
-      </div>
+      </button>
 
       {/* Popover */}
       {isOpen && (
         <div
           ref={popoverRef}
+          id={popoverId}
+          role="group"
+          aria-labelledby={labelId}
           className="absolute z-50 top-full left-0 mt-2 w-66 max-w-[calc(100vw-32px)] bg-surface-card border border-default/20 rounded-xl shadow-2xl shadow-black/50 p-3 space-y-3"
         >
           {/* Swatches grid */}
           <div className="grid grid-cols-9 gap-1">
-            {PRESET_COLORS.map((color) => (
+            {PRESET_COLORS.map((color, index) => (
               <button
                 key={color}
+                type="button"
+                data-swatch=""
+                tabIndex={index === tabStopSwatch ? 0 : -1}
+                aria-label={t('colorOption', { value: color })}
+                aria-pressed={value.toLowerCase() === color}
+                onKeyDown={(e) => handleSwatchKeyDown(e, index)}
                 className={`w-6 h-6 rounded-md border transition-all hover:scale-110 ${
-                  value === color
+                  value.toLowerCase() === color
                     ? 'border-primary ring-1 ring-primary scale-110'
                     : 'border-default hover:border-default'
                 }`}
@@ -131,21 +190,26 @@ export default function ColorField({ id, value, onChange }: ColorFieldProps) {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleHexSubmit();
                 }}
+                aria-label={t('hexInput')}
                 className="flex-1 bg-transparent text-[12px] text-primary font-mono py-1.5 px-1 outline-none uppercase"
                 maxLength={6}
                 spellCheck={false}
               />
             </div>
             <button
+              type="button"
               className="w-8 h-8 rounded-lg bg-surface-elevated border border-default/10 hover:border-default flex items-center justify-center transition-colors"
               onClick={() => nativeRef.current?.click()}
+              aria-label={t('advancedPicker')}
               title={t('advancedPicker')}
             >
-              <Pipette className="w-3.5 h-3.5 text-secondary" />
+              <Pipette aria-hidden="true" className="w-3.5 h-3.5 text-secondary" />
             </button>
             <input
               ref={nativeRef}
               type="color"
+              tabIndex={-1}
+              aria-hidden="true"
               value={value || '#ffffff'}
               onChange={(e) => {
                 onChange(e.target.value);

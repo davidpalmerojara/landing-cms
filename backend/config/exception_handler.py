@@ -3,6 +3,7 @@
 import logging
 
 from django.conf import settings
+from django.utils.translation import get_language
 from rest_framework.views import exception_handler
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,22 @@ _STATUS_TO_CODE = {
     409: 'CONFLICT',
     429: 'THROTTLED',
 }
+
+
+# The envelope's own texts, in the language of the request (LocaleMiddleware reads
+# Accept-Language; DRF already translates its field messages and the throttle text).
+# The frontend picks what to show by `code`; these are for any other client and logs.
+_ENVELOPE_TEXTS = {
+    'internal': {'es': 'Error interno del servidor.', 'en': 'Internal server error.'},
+    'not_found': {'es': 'Recurso no encontrado.', 'en': 'Resource not found.'},
+    'validation': {'es': 'Error de validación.', 'en': 'Validation error.'},
+}
+
+
+def _text(key: str) -> str:
+    language = (get_language() or 'es')[:2]
+    variants = _ENVELOPE_TEXTS[key]
+    return variants.get(language, variants['es'])
 
 
 def custom_exception_handler(exc, context):
@@ -45,12 +62,12 @@ def custom_exception_handler(exc, context):
             exc_info=True,
         )
         response.data = {
-            'error': 'Error interno del servidor.',
+            'error': _text('internal'),
             'code': 'INTERNAL_ERROR',
         }
     elif status_code == 404:
         response.data = {
-            'error': 'Recurso no encontrado.',
+            'error': _text('not_found'),
             'code': 'NOT_FOUND',
         }
     elif isinstance(response.data, dict):
@@ -64,7 +81,7 @@ def custom_exception_handler(exc, context):
         else:
             # Field-level errors: { field: [messages] }
             response.data = {
-                'error': 'Error de validación.',
+                'error': _text('validation'),
                 'code': _STATUS_TO_CODE.get(status_code, 'VALIDATION_ERROR'),
                 'details': response.data,
             }

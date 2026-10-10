@@ -262,7 +262,7 @@ class GoogleLoginView(APIView):
         client_id = settings.GOOGLE_CLIENT_ID
         if not client_id:
             return Response(
-                {'error': 'Google OAuth no está configurado.'},
+                {'error': message('google_not_configured'), 'code': 'GOOGLE_NOT_CONFIGURED'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -273,13 +273,13 @@ class GoogleLoginView(APIView):
             )
         except ValueError:
             return Response(
-                {'error': 'Token de Google inválido o expirado.'},
+                {'error': message('google_invalid'), 'code': 'GOOGLE_TOKEN_INVALID'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not idinfo.get('email_verified'):
             return Response(
-                {'error': 'El email de Google no está verificado.'},
+                {'error': message('google_unverified'), 'code': 'GOOGLE_EMAIL_UNVERIFIED'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -396,14 +396,14 @@ class MagicLinkVerifyView(APIView):
 
         if updated_count == 0:
             return Response(
-                {'error': 'Enlace inválido o expirado.'},
+                {'error': message('magic_invalid'), 'code': 'MAGIC_LINK_INVALID'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         magic = MagicToken.objects.get(token=token)
         if magic.is_expired():
             return Response(
-                {'error': 'Enlace inválido o expirado.'},
+                {'error': message('magic_invalid'), 'code': 'MAGIC_LINK_INVALID'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -442,7 +442,7 @@ class LogoutView(APIView):
             except TokenError:
                 # Already expired or revoked: there is nothing left to invalidate
                 logger.info('Logout with an invalid refresh token')
-        response = Response({'message': 'Sesión cerrada.'})
+        response = Response({'message': message('signed_out')})
         clear_auth_cookies(response)
         return response
 

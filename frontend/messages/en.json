@@ -912,7 +912,8 @@
     "deviceMobile": "Mobile",
     "noDeviceData": "No device data",
     "noReferrers": "No referrer data",
-    "pageviewsStep": "Pageviews"
+    "pageviewsStep": "Pageviews",
+    "loadingPanel": "Loading analytics..."
   },
   "submissions": {
     "title": "Messages",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import TopBar from '@/components/editor/TopBar';
@@ -14,7 +15,7 @@ import SeoPanel from '@/components/editor/SeoPanel';
 import DesignTokensPanel from '@/components/editor/DesignTokensPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { ToastContainer } from '@/components/ui/Toast';
-import AnalyticsPanel from '@/components/analytics/AnalyticsPanel';
+import AnalyticsPanelLoading from '@/components/analytics/AnalyticsPanelLoading';
 import SubmissionsPanel from '@/components/editor/SubmissionsPanel';
 import MobileEditor from '@/components/mobile-editor/MobileEditor';
 import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
@@ -28,6 +29,11 @@ import { useCollaboration } from '@/hooks/useCollaboration';
 import { useAuth } from '@/hooks/useAuth';
 import GuestSessionProvider from '@/components/guest/GuestSessionProvider';
 import GuestBanner from '@/components/guest/GuestBanner';
+
+// Recharts weighs more than the rest of the editor together: it loads when the analytics tab opens
+const AnalyticsPanel = dynamic(() => import('@/components/analytics/AnalyticsPanel'), {
+  loading: () => <AnalyticsPanelLoading />,
+});
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
 
@@ -55,7 +61,7 @@ export default function EditorPage() {
     if (user) setMyUserId(user.id);
   }, [user, setMyUserId]);
   useEditorShortcuts();
-  const { isLoading, error, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange } = usePageSync(pageId, {
+  const { isLoading, error, errorStatus, saveError, saveToApi, publishToApi, restoreVersion, handleRemoteChange } = usePageSync(pageId, {
     onRemoteMerged: (change) => {
       // A restore by someone else (not by this person in another tab) is worth a notice
       if (change.reason === 'restore' && change.by && change.by.userId !== useEditorStore.getState().myUserId) {
@@ -99,7 +105,7 @@ export default function EditorPage() {
   }
 
   if (error) {
-    const is404 = error.includes('404');
+    const is404 = errorStatus === 404;
     return (
       <div className="flex items-center justify-center h-dvh bg-surface text-secondary">
         <div className="flex flex-col items-center gap-3 text-center max-w-sm">

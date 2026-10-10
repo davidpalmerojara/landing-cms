@@ -168,11 +168,15 @@ function stillRefused(page: Page, field: RejectedField): boolean {
   return deepEqual(value, field.value);
 }
 
-/** `page` with a refused field put back to what the server has (`base`), or to empty for a new block. */
+/**
+ * `page` with a refused field put back to what the server has (`base`), or to
+ * empty for a new block or when what the server has is refused too.
+ */
 function withoutField(page: Page, base: Page, field: RejectedField): Page {
   if (field.blockId === null) {
-    const restored = setAtPath(page, field.path, getAtPath(base, field.path));
-    return restored as Page;
+    const serverValue = getAtPath(base, field.path);
+    const refusedToo = typeof serverValue === 'string' && deepEqual(serverValue, field.value);
+    return setAtPath(page, field.path, refusedToo ? '' : serverValue) as Page;
   }
   const block = blockById(page, field.blockId);
   if (!block) return page;
@@ -184,7 +188,10 @@ function withoutField(page: Page, base: Page, field: RejectedField): Page {
   } else {
     const empty = makeBlock({ id: block.id, name: block.name, styles: block.styles }, block.type, {});
     const serverValue = baseBlock && baseBlock.type === block.type ? getAtPath(baseBlock.data, field.path) : undefined;
-    const value = serverValue ?? getAtPath(empty.data, field.path) ?? '';
+    // The server's own copy is what it refused (a value stored before a rule, SEC3-001):
+    // sending it back would fail again forever, so the field goes out empty
+    const serverRefusesItsOwn = serverValue !== undefined && deepEqual(serverValue, field.value);
+    const value = (serverRefusesItsOwn ? undefined : serverValue) ?? getAtPath(empty.data, field.path) ?? '';
     replacement = withBlockData(block, setAtPath(block.data, field.path, value));
   }
   return {

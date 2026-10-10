@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MESSAGES } from '@/lib/i18n';
 import { act } from 'react';
 import AnalyticsPanel from '@/components/analytics/AnalyticsPanel';
 import ScrollFunnel from '@/components/analytics/ScrollFunnel';
@@ -67,5 +68,12 @@ describe('analytics charts (QA-087)', () => {
     view = render(<ScrollFunnel data={{ 25: 0, 50: 0, 75: 0, 100: 0 }} totalPageviews={2} />);
     expect(view.container.textContent).toContain('se pierden respecto al paso anterior');
     expect(view.container.querySelector('.sr-only')?.textContent).toBe('El 100 % no llega desde el paso anterior');
+  });
+});
+
+describe('analytics labels in Spanish (EDITOR2-008)', () => {
+  it('no English left in the metrics and the scroll funnel', () => {
+    expect(MESSAGES.es.analytics.metricBounce).toBe('Tasa de rebote');
+    expect(MESSAGES.es.analytics.pageviewsStep).toBe('Visitas a la página');
   });
 });

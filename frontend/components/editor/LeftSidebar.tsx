@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BoxSelect, Layers, GripVertical, Layout, Search, X } from 'lucide-react';
+import { BoxSelect, Layers, GripVertical, Layout, Lock, Search, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
@@ -34,6 +34,8 @@ export default function LeftSidebar() {
   const addBlock = useEditorStore((s) => s.addBlock);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const initDrag = useEditorStore((s) => s.initDrag);
+  const blockLocks = useEditorStore((s) => s.blockLocks);
+  const myConnectionId = useEditorStore((s) => s.myConnectionId);
 
   const isOverlay = useMediaQuery(OVERLAY_QUERY);
   // Only matters while isOverlay: on wide screens the sidebar is always there
@@ -144,21 +146,38 @@ export default function LeftSidebar() {
   };
 
   const isHidden = isOverlay && !isOpen;
+  const isOverlayOpen = isOverlay && isOpen;
 
-  const openPanel = () => {
-    setIsOpen(true);
-    requestAnimationFrame(() => asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
-  };
+  const openPanel = () => setIsOpen(true);
+
+  // Once the panel is drawn (no longer `invisible`), focus moves into it: its selected tab (EDITOR2-005)
+  useEffect(() => {
+    if (!isOverlayOpen) return;
+    asideRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  }, [isOverlayOpen]);
+
+  // Esc closes the open panel wherever focus is, and gives focus back to "Bloques" (EDITOR2-005)
+  useEffect(() => {
+    if (!isOverlayOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      closePanel(true);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOverlayOpen, closePanel]);
 
   return (
     <>
-      {/* Narrow screens: the panel opens over the canvas from this button */}
-      {isHidden && (
+      {/* Narrow screens: the panel opens over the canvas from this button. It stays mounted
+          under the open panel, so it can say it is expanded and take focus back (EDITOR2-005) */}
+      {isOverlay && (
         <button
           ref={toggleRef}
           type="button"
-          onClick={openPanel}
-          aria-expanded={false}
+          onClick={() => (isOpen ? closePanel(true) : openPanel())}
+          aria-expanded={isOpen}
           aria-controls="editor-left-sidebar"
           className="lg:hidden absolute top-3 left-3 z-30 flex items-center gap-2 h-11 px-4 rounded-full bg-surface-card/95 backdrop-blur-2xl border border-default/20 shadow-xl text-[13px] font-medium text-primary hover:bg-surface-elevated transition-colors"
         >
@@ -177,18 +196,12 @@ export default function LeftSidebar() {
         ref={asideRef}
         id="editor-left-sidebar"
         aria-label={t('editor.components')}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && isOverlay && isOpen) {
-            e.stopPropagation();
-            closePanel(true);
-          }
-        }}
         className={`w-48 lg:w-56 xl:w-64 bg-surface-card/80 backdrop-blur-2xl border-r border-default/15 flex flex-col shrink-0 z-20 max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-[85%] max-lg:bg-surface-card max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-200 ${
           isHidden ? 'max-lg:-translate-x-full max-lg:invisible' : ''
         }`}
       >
         <div className="p-4 border-b border-default/15 shrink-0 flex items-center gap-2">
-          <div role="tablist" aria-label={t('editor.currentView')} onKeyDown={handleTabsKeyDown} className="flex-1 min-w-0 flex bg-surface-elevated/80 p-1 rounded-lg border border-default/10 shadow-inner">
+          <div role="tablist" aria-label={t('editor.sidebarSections')} onKeyDown={handleTabsKeyDown} className="flex-1 min-w-0 flex bg-surface-elevated/80 p-1 rounded-lg border border-default/10 shadow-inner">
             <button
               id="tab-components"
               role="tab"
@@ -196,13 +209,13 @@ export default function LeftSidebar() {
               aria-controls="tabpanel-components"
               tabIndex={leftTab === 'components' ? 0 : -1}
               onClick={() => setLeftTab('components')}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 pointer-coarse:min-h-11 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 pointer-coarse:min-h-11 rounded-md text-[10px] font-bold uppercase tracking-normal transition-all ${
                 leftTab === 'components'
                   ? 'bg-surface-card text-primary shadow-sm border border-default/30'
                   : 'text-muted hover:text-secondary hover:bg-surface-card/30 border border-transparent'
               }`}
             >
-              <BoxSelect aria-hidden="true" className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{t('editor.components')}</span>
+              <BoxSelect aria-hidden="true" className="w-3.5 h-3.5 shrink-0 max-xl:hidden" /> <span className="truncate">{t('editor.components')}</span>
             </button>
             <button
               id="tab-layers"
@@ -211,13 +224,13 @@ export default function LeftSidebar() {
               aria-controls="tabpanel-layers"
               tabIndex={leftTab === 'layers' ? 0 : -1}
               onClick={() => setLeftTab('layers')}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 pointer-coarse:min-h-11 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 pointer-coarse:min-h-11 rounded-md text-[10px] font-bold uppercase tracking-normal transition-all ${
                 leftTab === 'layers'
                   ? 'bg-surface-card text-primary shadow-sm border border-default/30'
                   : 'text-muted hover:text-secondary hover:bg-surface-card/30 border border-transparent'
               }`}
             >
-              <Layers aria-hidden="true" className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{t('editor.layers')}</span>
+              <Layers aria-hidden="true" className="w-3.5 h-3.5 shrink-0 max-xl:hidden" /> <span className="truncate">{t('editor.layers')}</span>
             </button>
           </div>
           {isOverlay && (
@@ -289,6 +302,9 @@ export default function LeftSidebar() {
               {page.blocks.map((block, index) => {
                 const isLayerDragOver = layerDropIndex === index;
                 const BlockIcon = blockRegistry[block.type]?.icon || Layout;
+                const lock = blockLocks[block.id];
+                // Held by another connection (another person, or this person in another tab), like the canvas shows
+                const lockedBy = lock && lock.connectionId !== myConnectionId ? lock : null;
                 const isBeingDragged =
                   isDragging &&
                   dragSource?.action === 'reorder' &&
@@ -324,6 +340,12 @@ export default function LeftSidebar() {
                     <span className="truncate flex-1 select-none font-medium text-[13px]">
                       {getTranslatedBlockLabel(block.type, t, block.name)}
                     </span>
+                    {lockedBy && (
+                      <span className="flex items-center shrink-0 text-warning" title={t('a11y.blockStateLocked', { user: lockedBy.username })}>
+                        <Lock aria-hidden="true" className="w-3.5 h-3.5" />
+                        <span className="sr-only">{t('a11y.blockStateLocked', { user: lockedBy.username })}</span>
+                      </span>
+                    )}
                   </div>
                 );
               })}

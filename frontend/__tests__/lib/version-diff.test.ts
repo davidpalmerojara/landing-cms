@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { normalizeBlockData } from '@/lib/block-data';
+import { defaultBlockStyles } from '@/types/blocks';
 import { computeVersionDiff } from '@/lib/version-diff';
 
 const block = (id: string, type: string, title = type) => ({ id, type, data: { title }, styles: {} });
@@ -40,3 +42,27 @@ describe('version compare (QA-075)', () => {
     expect(currentDiff.map((d) => d.status)).toEqual(['unchanged', 'added']);
   });
 });
+
+describe('blocks stored without their optional fields (EDITOR2-012)', () => {
+  it('a reorder marks only the moved block, though the editor filled in the missing fields', () => {
+    // As the API stores a page created without every field
+    const saved = [
+      { id: 'h', type: 'hero', data: { title: 'Hola' }, styles: {} },
+      { id: 'c', type: 'cta', data: { title: 'Ya' }, styles: { paddingTop: 'lg' } },
+    ];
+    // As the editor holds it: normalized data, default styles in full
+    const current = [
+      { id: 'c', type: 'cta', data: normalizeBlockData('cta', { title: 'Ya' }), styles: { ...defaultBlockStyles, paddingTop: 'lg' } },
+      { id: 'h', type: 'hero', data: normalizeBlockData('hero', { title: 'Hola' }), styles: { ...defaultBlockStyles } },
+    ];
+    const { currentDiff } = computeVersionDiff(current, saved);
+    expect(currentDiff.map((d) => d.status).sort()).toEqual(['moved', 'unchanged']);
+  });
+
+  it('a real change is still a change', () => {
+    const saved = [{ id: 'h', type: 'hero', data: { title: 'Hola' }, styles: {} }];
+    const current = [{ id: 'h', type: 'hero', data: normalizeBlockData('hero', { title: 'Adiós' }), styles: { ...defaultBlockStyles } }];
+    expect(computeVersionDiff(current, saved).currentDiff[0].status).toBe('modified');
+  });
+});
+

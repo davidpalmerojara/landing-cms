@@ -253,10 +253,9 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         const holder = parsePresenceEntry(msg.holder);
         const shown = holder ? lockHolder(holder) : null;
         const blockId = msg.block_id;
-        let wasProbe = false;
         if (typeof blockId === 'string') {
           heldLocksRef.current.delete(blockId);
-          wasProbe = probesRef.current.delete(blockId);
+          probesRef.current.delete(blockId);
           if (shown) store.setBlockLock(blockId, shown);
           // Lost a near-simultaneous click, or our lapsed lock went to someone
           // else: let the block go so nothing typed here overwrites them (QA-011)
@@ -264,8 +263,8 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
           if (now.selectedBlockId === blockId) useEditorStore.setState({ selectedBlockId: null });
           if (now.pendingDeleteBlockId === blockId) now.cancelDeleteBlock();
         }
-        // A probe follows a refusal that was already announced
-        if (!wasProbe) tellLocked(shown);
+        // A refused probe is when the user hears who has the block (COLLAB2-005)
+        tellLocked(shown);
         break;
       }
 
@@ -338,12 +337,17 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
       (state) => state.lockRefusal,
       (refusal) => {
         if (!refusal) return;
-        tellLocked(refusal.holder);
-        // The server knows whether that lock is still alive: it grants it or names the holder
-        if (wsRef.current?.readyState === WebSocket.OPEN && !probesRef.current.has(refusal.blockId)) {
-          probesRef.current.add(refusal.blockId);
-          acquireLock(refusal.blockId);
+        // The server knows whether that lock is still alive: it grants it (the block opens) or
+        // names the holder, and only then is the user told, so a lapsed lock is not announced
+        // right before the block opens (COLLAB2-005)
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          if (!probesRef.current.has(refusal.blockId)) {
+            probesRef.current.add(refusal.blockId);
+            acquireLock(refusal.blockId);
+          }
+          return;
         }
+        tellLocked(refusal.holder);
       },
     );
     return () => unsub();

@@ -360,7 +360,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
         title={pending?.kind === 'delete' ? t('deleteTitle') : t('restoreTitle', { number: pending?.version.version_number ?? 0 })}
         message={pending?.kind === 'delete'
           ? t('deleteConfirm')
-          : t('restoreConfirm', { number: pending?.version.version_number ?? 0 })}
+          : t('restoreConfirm')}
         confirmLabel={pending?.kind === 'delete' ? tCommon('delete') : t('restore')}
         variant={pending?.kind === 'delete' ? 'danger' : 'default'}
         onConfirm={confirmPending}

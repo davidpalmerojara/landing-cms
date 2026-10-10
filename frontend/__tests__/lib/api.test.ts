@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { api } from '@/lib/api';
+import { ApiError, api, isPlanLimitError } from '@/lib/api';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -127,6 +127,43 @@ describe('api', () => {
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain('/auth/logout/');
       expect(options).toMatchObject({ method: 'POST', credentials: 'include' });
+    });
+  });
+
+  describe('account deletion and features', () => {
+    it('deleteAccount sends DELETE /auth/me/ with the confirmation as JSON', async () => {
+      mockFetch.mockReturnValue(noContentResponse());
+
+      await api.auth.deleteAccount({ password: 'secret' });
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/auth/me/');
+      expect(options).toMatchObject({ method: 'DELETE', credentials: 'include', body: JSON.stringify({ password: 'secret' }) });
+    });
+
+    it('features.get is a public request to /features/', async () => {
+      mockFetch.mockReturnValue(jsonResponse({ custom_domains: false }));
+
+      const features = await api.features.get();
+
+      expect(features).toEqual({ custom_domains: false });
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/features/');
+      expect(options?.credentials).toBeUndefined();
+    });
+  });
+
+  describe('isPlanLimitError', () => {
+    it('recognises the plan_limit body of a 403', () => {
+      expect(isPlanLimitError(new ApiError(403, JSON.stringify({ error: 'plan_limit', message: 'Pro' })))).toBe(true);
+    });
+
+    it('does not take other errors for it', () => {
+      expect(isPlanLimitError(new ApiError(403, JSON.stringify({ error: 'forbidden' })))).toBe(false);
+      expect(isPlanLimitError(new ApiError(400, JSON.stringify({ error: 'plan_limit' })))).toBe(false);
+      expect(isPlanLimitError(new ApiError(403, 'plan_limit'))).toBe(false);
+      expect(isPlanLimitError(new Error('API 403: plan_limit'))).toBe(false);
+      expect(isPlanLimitError(null)).toBe(false);
     });
   });
 

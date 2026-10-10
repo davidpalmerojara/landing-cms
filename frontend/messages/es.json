@@ -246,7 +246,7 @@
       "privacy": {
         "title": "Privacidad",
         "updated": "Última actualización",
-        "updatedDate": "9 de octubre de 2026",
+        "updatedDate": "10 de octubre de 2026",
         "intro": "Paxl es la demo de un proyecto personal. Esta página explica qué datos guarda hoy la aplicación, sin adornos. Te recomiendo no usar datos personales reales: un nombre y un email de prueba sirven.",
         "section1Title": "Tu cuenta",
         "section1Body": "Se guardan tu nombre de usuario, tu email y tu contraseña cifrada con hash. Si entras con Google, también tu identificador de Google, tu nombre y tu foto. Y, por supuesto, las páginas que creas, sus versiones y las imágenes que subes.",
@@ -259,7 +259,7 @@
         "section5Title": "Lo que no se hace",
         "section5Body": "Los datos no se venden ni se usan para publicidad. Solo sirven para que la aplicación funcione.",
         "section6Title": "Borrar tus datos",
-        "section6Body": "Todavía no hay un botón para borrar la cuenta. Si quieres que la borre junto con tus páginas, escríbeme desde davidpalmero.dev."
+        "section6Body": "Puedes borrar tu cuenta tú mismo desde Configuración, en Eliminar cuenta (te pide tu contraseña o que escribas tu nombre de usuario). Se borran de forma permanente tu cuenta, tus páginas y sus versiones, los mensajes recibidos de los formularios, las estadísticas y las imágenes que subiste. Si tienes una suscripción de pago activa, primero hay que cancelarla. Las cuentas de invitado se borran solas pasadas 24 horas. Si algo falla, escríbeme desde davidpalmero.dev."
       },
       "terms": {
         "title": "Términos de uso",
@@ -358,7 +358,25 @@
     "domainsTitle": "Dominios personalizados",
     "domainsDescription": "Conecta tu propio dominio a tus páginas publicadas.",
     "accountTitle": "Cuenta",
-    "accountDescription": "Gestiona tu perfil, email y contraseña."
+    "accountDescription": "Gestiona tu perfil, email y contraseña.",
+    "deleteAccount": {
+      "sectionTitle": "Zona de peligro",
+      "title": "Eliminar cuenta",
+      "description": "Borra tu cuenta y todo lo que contiene: páginas, versiones, mensajes de formularios, estadísticas e imágenes. No se puede deshacer.",
+      "button": "Eliminar cuenta",
+      "dialogTitle": "¿Eliminar tu cuenta?",
+      "dialogBody": "Se borrarán de forma permanente tu cuenta, tus páginas (también las publicadas), sus versiones, los mensajes recibidos, las estadísticas y las imágenes que subiste. Esta acción no se puede deshacer.",
+      "passwordLabel": "Contraseña actual",
+      "usernameLabel": "Para confirmar, escribe tu nombre de usuario ({username})",
+      "confirm": "Eliminar mi cuenta",
+      "deleting": "Eliminando...",
+      "invalidPassword": "La contraseña no es correcta.",
+      "usernameMismatch": "El nombre de usuario no coincide.",
+      "activeSubscription": "Tienes una suscripción de pago activa. Cancélala desde Facturación antes de eliminar tu cuenta.",
+      "goToBilling": "Ir a Facturación",
+      "tooManyAttempts": "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
+      "error": "No se pudo eliminar la cuenta. Inténtalo de nuevo."
+    }
   },
   "editor": {
     "inspector": "Inspector",

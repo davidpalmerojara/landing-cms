@@ -340,7 +340,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
           {/* Header section */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{t('dashboard.title')}</h2>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{t('dashboard.title')}</h1>
               <p className="text-muted font-medium">
                 {t('dashboard.pagesCount', { count: pages.length })} · {t('dashboard.publishedCount', { count: publishedCount })}
               </p>
@@ -443,12 +443,23 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
                   {/* Card info */}
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex justify-between items-start mb-1">
-                      <h3
+                      <h2
                         className="text-lg font-bold text-primary truncate cursor-pointer flex-1"
                         onClick={() => router.push(`/editor/${page.id}`)}
                       >
-                        {page.name}
-                      </h3>
+                        {/* A real link: the thumbnail and heading clicks are mouse-only shortcuts to it */}
+                        <a
+                          href={`/editor/${page.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/editor/${page.id}`);
+                          }}
+                          className="hover:underline"
+                        >
+                          {page.name}
+                        </a>
+                      </h2>
                       {/* Menu */}
                       <div className="relative">
                         <button

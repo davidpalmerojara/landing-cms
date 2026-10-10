@@ -29,7 +29,7 @@ export default function MetricCard({ label, value, prevValue, currentValue, suff
         </span>
         {prevValue !== undefined && currentValue !== undefined && (
           <span className={`flex items-center gap-0.5 text-xs font-medium mb-0.5 ${
-            trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-red-400' : 'text-muted'
+            trend === 'up' ? 'text-success' : trend === 'down' ? 'text-error' : 'text-muted'
           }`}>
             {trend === 'up' && <TrendingUp size={12} />}
             {trend === 'down' && <TrendingDown size={12} />}

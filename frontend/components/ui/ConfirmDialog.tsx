@@ -76,7 +76,7 @@ export default function ConfirmDialog({
             }`}
           >
             <AlertTriangle
-              className={`w-5 h-5 ${variant === 'danger' ? 'text-red-400' : 'text-primary-color'}`}
+              className={`w-5 h-5 ${variant === 'danger' ? 'text-error' : 'text-primary-color'}`}
             />
           </div>
           <div>

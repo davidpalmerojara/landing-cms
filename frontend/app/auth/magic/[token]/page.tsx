@@ -54,7 +54,7 @@ export default function MagicVerifyPage() {
 
         {!verifying && !error && (
           <div className="flex flex-col items-center gap-3">
-            <CheckCircle className="w-8 h-8 text-emerald-400" />
+            <CheckCircle className="w-8 h-8 text-success" />
             <p className="text-primary font-medium">{t('auth.magicVerified')}</p>
             <p className="text-muted text-sm">{t('auth.magicRedirecting')}</p>
           </div>
@@ -62,7 +62,7 @@ export default function MagicVerifyPage() {
 
         {!verifying && error && (
           <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2 text-error text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>

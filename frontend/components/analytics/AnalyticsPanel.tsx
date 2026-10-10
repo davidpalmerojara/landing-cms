@@ -100,7 +100,7 @@ export default function AnalyticsPanel({ pageId, pageStatus }: AnalyticsPanelPro
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 py-16">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <p className="text-sm text-error mb-3">{error}</p>
         <button
           onClick={fetchData}
           className="text-sm text-primary-color hover:text-primary-color/80 flex items-center gap-1"

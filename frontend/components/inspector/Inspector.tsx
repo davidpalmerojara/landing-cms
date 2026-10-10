@@ -291,7 +291,7 @@ export default function Inspector() {
             </button>
             <button
               onClick={() => requestDeleteBlock(selectedBlock.id)}
-              className="flex-1 py-2.5 px-2 bg-transparent border border-red-900/30 text-red-400 rounded-lg text-[11px] font-medium hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-300 transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 px-2 bg-transparent border border-red-900/30 text-error rounded-lg text-[11px] font-medium hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-300 transition-all flex items-center justify-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
             </button>

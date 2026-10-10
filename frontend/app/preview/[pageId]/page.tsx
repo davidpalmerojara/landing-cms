@@ -37,7 +37,7 @@ function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublis
         <span
           className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-widest border shrink-0 ${
             page.status === 'published'
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-success'
               : 'bg-surface-card border-default text-muted'
           }`}
         >
@@ -46,7 +46,7 @@ function PreviewTopBar({ page, onPublish, publishError }: { page: Page; onPublis
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {publishError && (
-          <span className="text-xs text-red-400 hidden sm:block">{publishError}</span>
+          <span className="text-xs text-error hidden sm:block">{publishError}</span>
         )}
         <button
           onClick={handlePublish}

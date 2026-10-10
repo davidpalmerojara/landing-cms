@@ -202,8 +202,8 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
         {/* Feedback of loading, sharing and removing */}
         {(error || success) && (
           <div className="px-5 pt-3">
-            {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
-            {success && <p role="status" className="text-xs text-emerald-400">{success}</p>}
+            {error && <p role="alert" className="text-xs text-error">{error}</p>}
+            {success && <p role="status" className="text-xs text-success">{success}</p>}
           </div>
         )}
 
@@ -229,7 +229,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
                       <p className="text-xs text-muted">{owner.email}</p>
                     </div>
                   </div>
-                  <span className="flex items-center gap-1 text-xs text-amber-400 font-medium">
+                  <span className="flex items-center gap-1 text-xs text-warning font-medium">
                     <Crown className="w-3 h-3" />
                     {t('share.owner')}
                   </span>

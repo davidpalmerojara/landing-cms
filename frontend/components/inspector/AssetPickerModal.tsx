@@ -151,7 +151,9 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={t('common.close')}
             className="p-2 text-muted hover:text-primary hover:bg-surface-card/50 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
@@ -197,7 +199,7 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
           </div>
 
           {error && (
-            <div className="mx-6 mb-4 flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+            <div className="mx-6 mb-4 flex items-center gap-2 text-error text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
@@ -285,8 +287,10 @@ export default function AssetPickerModal({ onSelect, onClose }: AssetPickerModal
 
                     {/* Delete button */}
                     <button
+                      type="button"
                       onClick={(e) => handleDelete(asset.id, e)}
-                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-black/40 border border-white/20 flex items-center justify-center text-white/70 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all z-20"
+                      aria-label={t('common.delete')}
+                      className="absolute top-3 left-3 w-6 h-6 rounded-full bg-black/40 border border-white/20 flex items-center justify-center text-white/70 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all z-20"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

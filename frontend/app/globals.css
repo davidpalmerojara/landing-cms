@@ -9,6 +9,9 @@
   --bp-color-primary-light: #3B82F6;
   --bp-color-primary-dark: #1D4ED8;
   --bp-color-accent: #60A5FA;
+  /* Brand blue used as text or link color: #2563EB is only 2.8:1 on cards in
+     the dark theme, so text uses the lighter blue (5.8:1 on cards) */
+  --bp-color-primary-text: #60A5FA;
 
   --bp-color-surface: #0A0F1A;
   --bp-color-surface-elevated: #111827;
@@ -40,6 +43,7 @@
   --bp-color-primary-light: #3B82F6;
   --bp-color-primary-dark: #1D4ED8;
   --bp-color-accent: #60A5FA;
+  --bp-color-primary-text: #2563EB;
 
   --bp-color-surface: #FFFFFF;
   --bp-color-surface-elevated: #F9FAFB;
@@ -98,7 +102,7 @@
   --text-color-primary: var(--bp-color-text-primary);
   --text-color-secondary: var(--bp-color-text-secondary);
   --text-color-muted: var(--bp-color-text-muted);
-  --text-color-primary-color: var(--bp-color-primary);
+  --text-color-primary-color: var(--bp-color-primary-text);
   --text-color-error: var(--bp-color-error-text);
 
   --border-color-default: var(--bp-color-border);
@@ -119,6 +123,17 @@ body {
   background: var(--bp-color-surface);
   color: var(--bp-color-text-primary);
   font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* Focus ring for fields. Most inputs hide the browser outline (outline-none)
+   and only tint their border on focus, which is 1.7:1 on the dark panels.
+   Unlayered, so it wins over the outline-none utility. Fields inside page
+   content (.@container: blocks, public pages) keep the page's own styles. */
+input:not(.\@container *):not([type="range"]):not([type="color"]):not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:not(.\@container *):focus-visible,
+select:not(.\@container *):focus-visible {
+  outline: 2px solid var(--bp-color-primary-light);
+  outline-offset: 1px;
 }
 
 /* Custom scrollbar */

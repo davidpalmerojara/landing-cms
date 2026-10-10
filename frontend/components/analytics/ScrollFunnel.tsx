@@ -40,7 +40,7 @@ export default function ScrollFunnel({ data, totalPageviews }: ScrollFunnelProps
               </span>
             </div>
             {i > 0 && dropoff > 0 && (
-              <span className="text-xs text-red-400 w-10">-{dropoff}%</span>
+              <span className="text-xs text-error w-10">-{dropoff}%</span>
             )}
           </div>
         );

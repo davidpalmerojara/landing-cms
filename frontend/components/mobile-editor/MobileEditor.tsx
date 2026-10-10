@@ -305,9 +305,9 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
 
   const statusConfig: Record<string, { icon: typeof Check; label: string; color: string }> = {
     saving: { icon: Loader2, label: t('mobile.saving'), color: 'text-muted' },
-    saved: { icon: Check, label: t('mobile.saved'), color: 'text-emerald-400' },
-    error: { icon: AlertTriangle, label: t('mobile.error'), color: 'text-orange-400' },
-    offline: { icon: WifiOff, label: t('mobile.offline'), color: 'text-orange-400' },
+    saved: { icon: Check, label: t('mobile.saved'), color: 'text-success' },
+    error: { icon: AlertTriangle, label: t('mobile.error'), color: 'text-warning' },
+    offline: { icon: WifiOff, label: t('mobile.offline'), color: 'text-warning' },
     reconnecting: { icon: RefreshCw, label: t('mobile.reconnecting'), color: 'text-muted' },
   };
 
@@ -392,7 +392,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
             onClick={() => setShowPublishSheet(true)}
             className={`flex items-center justify-center min-w-11 min-h-11 rounded-lg ${
               page.status === 'published'
-                ? 'text-emerald-400'
+                ? 'text-success'
                 : 'text-secondary active:text-primary'
             }`}
             aria-label={page.status === 'published' ? t('mobile.publishedTitle') : t('mobile.publishTitle')}
@@ -535,7 +535,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
             <>
               <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-sm text-emerald-400 font-medium">
+                <span className="text-sm text-success font-medium">
                   {t('mobile.publishedAt', { slug: page.slug })}
                 </span>
               </div>

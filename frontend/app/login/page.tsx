@@ -91,7 +91,7 @@ export default function LoginPage() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 mb-4">
+          <div className="flex items-center gap-2 text-error text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 mb-4">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
@@ -167,7 +167,7 @@ export default function LoginPage() {
         {/* Magic link sent confirmation */}
         {mode === 'magic' && magicSent && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <CheckCircle className="w-8 h-8 text-emerald-400" />
+            <CheckCircle className="w-8 h-8 text-success" />
             <p className="text-primary font-medium text-center">{t('auth.magicLinkSentTitle')}</p>
             <p className="text-muted text-sm text-center">
               {t('auth.magicLinkSentDescription', { email: magicEmail })}

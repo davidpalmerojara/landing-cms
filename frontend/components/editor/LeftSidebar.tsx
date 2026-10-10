@@ -54,6 +54,15 @@ export default function LeftSidebar() {
     }
   }, [selectBlock]);
 
+  // Tabs pattern: the active tab is the Tab stop, arrows switch between the two
+  const handleTabsKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const next = e.key === 'Home' ? 'components' : e.key === 'End' ? 'layers' : leftTab === 'components' ? 'layers' : 'components';
+    setLeftTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+
   const filteredBlocks = searchText.trim()
     ? availableBlocks.filter((b) => {
         const q = searchText.toLowerCase();
@@ -89,12 +98,13 @@ export default function LeftSidebar() {
   return (
     <aside aria-label={t('editor.components')} className="w-48 lg:w-56 xl:w-64 bg-surface-card/80 backdrop-blur-2xl border-r border-default/15 flex flex-col shrink-0 z-20">
       <div className="p-4 border-b border-default/15 shrink-0">
-        <div role="tablist" aria-label={t('editor.currentView')} className="flex bg-surface-elevated/80 p-1 rounded-lg border border-default/10 shadow-inner">
+        <div role="tablist" aria-label={t('editor.currentView')} onKeyDown={handleTabsKeyDown} className="flex bg-surface-elevated/80 p-1 rounded-lg border border-default/10 shadow-inner">
           <button
             id="tab-components"
             role="tab"
             aria-selected={leftTab === 'components'}
             aria-controls="tabpanel-components"
+            tabIndex={leftTab === 'components' ? 0 : -1}
             onClick={() => setLeftTab('components')}
             className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
               leftTab === 'components'
@@ -109,6 +119,7 @@ export default function LeftSidebar() {
             role="tab"
             aria-selected={leftTab === 'layers'}
             aria-controls="tabpanel-layers"
+            tabIndex={leftTab === 'layers' ? 0 : -1}
             onClick={() => setLeftTab('layers')}
             className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
               leftTab === 'layers'
@@ -186,6 +197,7 @@ export default function LeftSidebar() {
                   data-layer-index={index}
                   data-layer-item
                   data-block-id={block.id}
+                  aria-current={selectedBlockId === block.id ? 'true' : undefined}
                   tabIndex={0}
                   onPointerDown={(e) => handleLayerPointerDown(e, index, block)}
                   onClick={() => {

@@ -18,9 +18,9 @@ interface VersionHistoryPanelProps {
 
 const TRIGGER_CONFIG: Record<string, { icon: typeof Clock; labelKey: string; color: string }> = {
   manual: { icon: Save, labelKey: 'triggerManual', color: 'bg-primary/20 text-primary-color border-primary/30' },
-  auto_publish: { icon: Globe, labelKey: 'triggerAutoPublish', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  auto_publish: { icon: Globe, labelKey: 'triggerAutoPublish', color: 'bg-emerald-500/20 text-success border-emerald-500/30' },
   auto_restore: { icon: RotateCcw, labelKey: 'triggerAutoRestore', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
-  auto_ai_generation: { icon: Sparkles, labelKey: 'triggerAutoAi', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  auto_ai_generation: { icon: Sparkles, labelKey: 'triggerAutoAi', color: 'bg-amber-500/20 text-warning border-amber-500/30' },
 };
 
 function formatRelativeTime(dateStr: string, locale: string, t: ReturnType<typeof useTranslations<'versionHistory'>>): string {
@@ -56,6 +56,7 @@ function formatBytes(bytes: number, locale: string): string {
 
 export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRestore }: VersionHistoryPanelProps) {
   const t = useTranslations('versionHistory');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const [versions, setVersions] = useState<ApiPageVersion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +128,9 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
           <h2 className="text-sm font-medium text-primary">{t('title')}</h2>
         </div>
         <button
+          type="button"
           onClick={onClose}
+          aria-label={tCommon('close')}
           className="text-muted hover:text-secondary p-1 rounded hover:bg-surface-card/50 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -136,7 +139,7 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
 
       {/* Error feedback */}
       {actionError && (
-        <div className="mx-4 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+        <div className="mx-4 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-error">
           {actionError}
         </div>
       )}
@@ -202,10 +205,10 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
                             }}
                             className="flex-1 bg-surface-card text-xs text-primary px-2 py-1 rounded border border-default outline-none focus:border-primary"
                           />
-                          <button onClick={() => handleUpdateLabel(version.id)} className="text-emerald-400 hover:text-emerald-300 p-0.5">
+                          <button type="button" onClick={() => handleUpdateLabel(version.id)} aria-label={tCommon('save')} className="text-success hover:text-emerald-300 p-0.5">
                             <Check className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => setEditingId(null)} className="text-muted hover:text-secondary p-0.5">
+                          <button type="button" onClick={() => setEditingId(null)} aria-label={tCommon('cancel')} className="text-muted hover:text-secondary p-0.5">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -289,8 +292,8 @@ export default function VersionHistoryPanel({ pageId, onClose, onPreview, onRest
             {/* Plan limit notice */}
             {isPlanLimited && (
               <div className="mt-4 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                <p className="text-[11px] text-amber-400">
+                <Crown className="w-4 h-4 text-warning shrink-0" />
+                <p className="text-[11px] text-warning">
                   {t('upgradeNotice')}
                 </p>
               </div>

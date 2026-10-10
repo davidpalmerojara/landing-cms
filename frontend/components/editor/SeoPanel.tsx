@@ -1,12 +1,15 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Search, Share2, Globe, Eye, EyeOff, ChevronDown, Image as ImageIcon, X,
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editor-store';
-import type { SeoFields } from '@/types/page';
+import { defaultSeoFields } from '@/types/page';
+import { SITE_URL, siteHost } from '@/lib/site-url';
+import { PAGE_LANGUAGE_OPTIONS, languageName } from '@/lib/page-language';
+import { OG_TYPES, type OgType } from '@/lib/public-metadata';
 
 function CharCounter({ id, value, max, warn }: { id: string; value: string; max: number; warn: number }) {
   const t = useTranslations('seo');
@@ -88,7 +91,7 @@ function GooglePreview({ title, url, description }: { title: string; url: string
         <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
           <Globe aria-hidden="true" className="w-3 h-3 text-gray-500" />
         </div>
-        <span className="text-[11px] text-gray-600 truncate">{url || t('domainFallback')}</span>
+        <span className="text-[11px] text-gray-600 truncate">{url || siteHost()}</span>
       </div>
       <p className="text-[15px] text-[#1a0dab] font-medium leading-snug line-clamp-2">
         {title || t('titleFallback')}
@@ -117,7 +120,7 @@ function SocialPreview({
         </div>
       )}
       <div className="p-3 space-y-1">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{domain || t('domainFallback')}</p>
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{domain || siteHost()}</p>
         <p className="text-[13px] text-gray-900 font-semibold leading-snug line-clamp-2">
           {title || t('titleFallback')}
         </p>
@@ -133,12 +136,15 @@ type Section = 'seo' | 'og' | 'preview';
 
 export default function SeoPanel() {
   const t = useTranslations('seo');
+  const uiLocale = useLocale();
   const page = useEditorStore((s) => s.page);
   const updateSeo = useEditorStore((s) => s.updateSeo);
-  const seo = page.seo || {
-    seoTitle: '', seoDescription: '', seoCanonicalUrl: '',
-    ogTitle: '', ogDescription: '', ogImage: '', ogType: 'website', noindex: false,
-  };
+  const seo = { ...defaultSeoFields, ...page.seo };
+  // Only the types the server accepts; an old value shows as "website", which is what pages render (QA-009)
+  const ogType = OG_TYPES.includes(seo.ogType as OgType) ? seo.ogType : 'website';
+  const languages: string[] = PAGE_LANGUAGE_OPTIONS.includes(seo.language as (typeof PAGE_LANGUAGE_OPTIONS)[number])
+    ? [...PAGE_LANGUAGE_OPTIONS]
+    : [seo.language, ...PAGE_LANGUAGE_OPTIONS];
 
   const [openSections, setOpenSections] = useState<Record<Section, boolean>>({
     seo: true, og: true, preview: true,
@@ -152,9 +158,17 @@ export default function SeoPanel() {
   const resolvedDescription = seo.seoDescription;
   const resolvedOgTitle = seo.ogTitle || seo.seoTitle || page.name;
   const resolvedOgDescription = seo.ogDescription || seo.seoDescription;
-  const resolvedCanonical = seo.seoCanonicalUrl || `https://paxl.com/p/${page.slug}`;
+  // The address the page really has once published, on this deployment (QA-085)
+  const publicUrl = `${SITE_URL}/p/${page.slug}`;
+  const resolvedCanonical = seo.seoCanonicalUrl || publicUrl;
   const domain = (() => {
-    try { return new URL(resolvedCanonical).hostname; } catch { return 'paxl.com'; }
+    try {
+      return new URL(resolvedCanonical).hostname;
+    } catch (error: unknown) {
+      // A canonical URL still being typed: show this site's host meanwhile
+      if (error instanceof TypeError) return siteHost();
+      throw error;
+    }
   })();
 
   return (
@@ -206,8 +220,25 @@ export default function SeoPanel() {
                   onChange={(v) => updateSeo('seoCanonicalUrl', v)}
                   maxLength={500}
                   warnLength={500}
-                  placeholder={`https://paxl.com/p/${page.slug}`}
+                  placeholder={publicUrl}
                 />
+                <div className="space-y-1.5">
+                  <label htmlFor="seo-language" className="text-[10px] font-bold text-muted uppercase tracking-widest block">
+                    {t('language')}
+                  </label>
+                  <select
+                    id="seo-language"
+                    value={seo.language}
+                    onChange={(e) => updateSeo('language', e.target.value)}
+                    aria-describedby="seo-language-hint"
+                    className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                  >
+                    {languages.map((tag) => (
+                      <option key={tag} value={tag} lang={tag}>{languageName(tag, uiLocale)}</option>
+                    ))}
+                  </select>
+                  <p id="seo-language-hint" className="text-[10px] text-muted">{t('languageHint')}</p>
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <label
@@ -231,9 +262,11 @@ export default function SeoPanel() {
                       seo.noindex ? 'bg-red-500/80' : 'bg-default'
                     }`}
                   >
+                    {/* Knob anchored to the left edge of the track, moved right when on (QA-076) */}
                     <span
-                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                        seo.noindex ? 'translate-x-4' : 'translate-x-0.5'
+                      aria-hidden="true"
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                        seo.noindex ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
                   </button>
@@ -322,13 +355,12 @@ export default function SeoPanel() {
                   </label>
                   <select
                     id="seo-og-type"
-                    value={seo.ogType}
+                    value={ogType}
                     onChange={(e) => updateSeo('ogType', e.target.value)}
                     className="w-full bg-surface-elevated border border-surface-elevated/80 rounded-lg px-3 py-2 text-[12px] text-primary focus:outline-none focus:border-[#2563EB]/50 transition-colors"
                   >
                     <option value="website">{t('ogTypeWebsite')}</option>
                     <option value="article">{t('ogTypeArticle')}</option>
-                    <option value="product">{t('ogTypeProduct')}</option>
                   </select>
                 </div>
               </div>

@@ -10,6 +10,8 @@ export interface SeoFields {
   ogImage: string;
   ogType: string;
   noindex: boolean;
+  /** BCP 47 tag of the language the page is written in: `<html lang>` of the published page (ADR-033) */
+  language: string;
 }
 
 export const defaultSeoFields: SeoFields = {
@@ -21,6 +23,7 @@ export const defaultSeoFields: SeoFields = {
   ogImage: '',
   ogType: 'website',
   noindex: false,
+  language: 'es',
 };
 
 export interface Page {

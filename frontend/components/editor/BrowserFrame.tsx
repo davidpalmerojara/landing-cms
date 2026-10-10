@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react';
 import { useEditorStore } from '@/store/editor-store';
+import { publicPageAddress } from '@/lib/site-url';
 
 function LockIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -43,6 +44,7 @@ interface BrowserFrameProps {
 const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
   function BrowserFrame({ children }, ref) {
     const deviceMode = useEditorStore((s) => s.deviceMode);
+    const slug = useEditorStore((s) => s.page.slug);
 
     return (
       <div
@@ -56,8 +58,10 @@ const BrowserFrame = forwardRef<HTMLDivElement, BrowserFrameProps>(
             <div className="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-500 transition-colors" />
             <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors" />
           </div>
-          <div className="mx-auto bg-surface-card/80 h-6 rounded-md px-24 flex items-center text-[11px] font-medium text-muted border border-default/10 shadow-inner">
-            <LockIcon className="w-3 h-3 mr-2 opacity-50" /> tu-proyecto.dev
+          {/* The page's real public address, on one line at any frame width (QA-085) */}
+          <div className="mx-auto min-w-0 max-w-[70%] bg-surface-card/80 h-6 rounded-md px-3 flex items-center text-[11px] font-medium text-muted border border-default/10 shadow-inner">
+            <LockIcon aria-hidden="true" className="w-3 h-3 mr-2 shrink-0 opacity-50" />
+            <span className="truncate">{publicPageAddress(slug)}</span>
           </div>
           <div className="w-[52px]" />
         </div>

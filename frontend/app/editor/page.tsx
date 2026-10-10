@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import { newPageLanguage } from '@/lib/page-language';
 
 export default function EditorRedirect() {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [error, setError] = useState(false);
 
@@ -17,7 +19,7 @@ export default function EditorRedirect() {
         if (res.results.length > 0) {
           router.replace(`/editor/${res.results[0].id}`);
         } else {
-          const page = await api.pages.create({ name: t('dashboard.createUntitled'), blocks: [] });
+          const page = await api.pages.create({ name: t('dashboard.createUntitled'), blocks: [], language: newPageLanguage(locale) });
           router.replace(`/editor/${page.id}`);
         }
       } catch {
@@ -25,7 +27,7 @@ export default function EditorRedirect() {
       }
     }
     redirect();
-  }, [router, t]);
+  }, [router, t, locale]);
 
   if (error) {
     return (

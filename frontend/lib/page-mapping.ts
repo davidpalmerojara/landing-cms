@@ -9,6 +9,7 @@ import type { ApiBlock, ApiPage } from '@/lib/api';
 import type { Block } from '@/types/blocks';
 import type { Page } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
+import { pageLanguage } from '@/lib/page-language';
 
 /**
  * API blocks in page order; per-device overrides travel inside styles.responsive.
@@ -42,6 +43,7 @@ export function apiPageToLocal(apiPage: ApiPage): Page {
       ogImage: apiPage.og_image || '',
       ogType: apiPage.og_type || 'website',
       noindex: apiPage.noindex ?? false,
+      language: pageLanguage(apiPage.language),
     },
     publishedAt: apiPage.published_at ?? null,
     hasUnpublishedChanges: apiPage.has_unpublished_changes ?? false,
@@ -64,6 +66,7 @@ export function localPageToApi(page: Page) {
     og_image: seo.ogImage,
     og_type: seo.ogType,
     noindex: seo.noindex,
+    language: seo.language,
     blocks: page.blocks.map((b, i) => ({
       id: b.id,
       type: b.type,

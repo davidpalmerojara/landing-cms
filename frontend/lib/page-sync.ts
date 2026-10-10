@@ -117,6 +117,7 @@ const PAGE_FIELD_PATHS: Record<string, DataPath> = {
   og_image: ['seo', 'ogImage'],
   og_type: ['seo', 'ogType'],
   noindex: ['seo', 'noindex'],
+  language: ['seo', 'language'],
 };
 
 /** Read-only publication fields from the server, without an undo step or autosave. */

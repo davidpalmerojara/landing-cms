@@ -5,6 +5,7 @@ import { defaultDesignTokens, presetTokens, tokensToApi } from '@/lib/design-tok
 import type { DesignTokens } from '@/lib/design-tokens';
 import { makeBlock } from '@/lib/block-data';
 import { toContentLocale } from '@/lib/content-locale';
+import { newPageLanguage } from '@/lib/page-language';
 import type { ContentLocale } from '@/lib/content-locale';
 import { saasLanding } from '@/lib/template-content/saas-landing';
 import { portfolio } from '@/lib/template-content/portfolio';
@@ -74,11 +75,13 @@ export function buildPagePayload(
 ): Record<string, unknown> {
   const template = templateId ? getPageTemplates(locale).find((candidate) => candidate.id === templateId) : undefined;
   if (!template) {
-    return { name: blankName, design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
+    return { name: blankName, language: newPageLanguage(locale), design_tokens: tokensToApi(defaultDesignTokens), blocks: [] };
   }
   const { blocks, designTokens, name } = instantiateTemplate(template);
   return {
     name,
+    // The page is written in the language of the template's content (ADR-025, ADR-033)
+    language: newPageLanguage(locale),
     design_tokens: tokensToApi(designTokens),
     blocks: blocks.map((b, i) => ({
       id: b.id,

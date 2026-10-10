@@ -409,6 +409,7 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Cómo se verificó**: Pruebas unitarias de las reglas (zoom, decisión de arrastre) y de los gestos sobre el lienzo; prueba de extremo a extremo con toques reales (Chrome DevTools Protocol) a 1024×768 y 768×1024; y comprobación en WebKit y Chromium con capturas.
 - **Lección**: "Funciona con ratón" no implica "funciona con dedos": un dedo que se mueve suele querer desplazar, no arrastrar. Cada arrastre táctil necesita una intención clara (asa, pulsación larga o dirección).
 
+<<<<<<< HEAD
 ## 47. El menú "⋮" de las tarjetas del panel quedaba cortado y los clics caían en la tarjeta de debajo
 
 - **Fecha**: 2026-10-10
@@ -419,6 +420,9 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Lección**: Un menú desplegable dentro de una tarjeta con `overflow-hidden` siempre acaba cortado. Los menús y modales van en un portal, y una prueba de "se ve" tiene que comprobar qué elemento recibe el clic (`elementFromPoint`), no solo que exista en el DOM.
 
 ## 47. Deshacer una edición con IA no se guardaba
+=======
+## 48. Deshacer una edición con IA no se guardaba
+>>>>>>> 388077f (Renumber the AI sync ADR to 046 and its notable bug to 48 after the other batches)
 
 - **Fecha**: 2026-10-10
 - **Qué pasaba**: "Editar con IA" (lienzo) y "Mejorar con IA" (Quick Edit) guardan el bloque en el servidor y suben la versión de la página, pero el editor ponía la respuesta como una edición local más y seguía con la versión anterior como base. El siguiente guardado recibía siempre `409 VERSION_CONFLICT`, y la fusión de tres vías convertía el paso de deshacer en el texto de la IA: al deshacer, el texto anterior volvía a la pantalla pero no se guardaba (o ni siquiera volvía), y a veces la barra decía "Guardado" mientras el servidor conservaba el texto de la IA.

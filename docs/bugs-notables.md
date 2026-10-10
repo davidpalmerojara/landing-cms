@@ -222,3 +222,63 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo** (ADR-031): El controlador pone el estado en todos los caminos de guardado y reintenta a los 2, 5, 15 y cada 30 s, al volver `online` y al reconectar aunque la versión sea la misma. La copia local guarda su base y si tiene cambios sin confirmar; al cargar, esos cambios se fusionan sobre la página del servidor y se guardan, como un paso que se puede deshacer.
 - **Cómo se verificó**: Tests del controlador (reintento al volver `online`, espera creciente, reconexión con la misma versión, copia local fusionada sobre una página que otra persona cambió). Playwright: sin red, editar, ver "Sin conexión", volver a tener red y comprobar que el servidor tiene el cambio.
 - **Lección**: Un error que nadie vuelve a intentar es una pérdida de datos aplazada.
+
+## 24. Los "&", "<" y ">" de los textos largos se veían como "&amp;", "&lt;" y "&gt;"
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Escribir `Q&A` en el subtítulo de un hero, en la respuesta de una pregunta frecuente, en las características de un plan o en una cita y guardar hacía que el editor, el inspector y la página publicada mostraran `Q&amp;A`. Pasaba en todos los bloques con texto largo.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-001), escribiendo texto con símbolos en cada bloque y comparándolo con lo que salía en la página publicada.
+- **Causa**: Los campos de texto largo pasaban por `sanitize_text`, que devuelve HTML saneado por bleach (conserva `<strong>`, `<a>`... y escribe `&` como `&amp;`). Todos los bloques los pintan como texto de React, que escapa al mostrar, así que el escape se veía dos veces. Ya habíamos arreglado lo mismo en los campos cortos (ADR-029), pero estos quedaron fuera.
+- **Arreglo**: Esos campos son texto plano (ADR-029, seguimiento): se guardan tal como se escriben y guardar dos veces no los cambia. La migración `pages/0018` quita las etiquetas y decodifica las entidades una sola vez en los bloques y en todas las instantáneas de versiones, las publicadas incluidas.
+- **Cómo se verificó**: Tests de que `'Q&A <3 "x" 5>3'` se guarda igual en doce campos de diez tipos de bloque y no cambia en un segundo guardado, y de que la migración convierte `A &amp; B` en `A & B`, deja un `&amp;lt;` literal como `&lt;` y cambia también las versiones publicadas sin tocar `updated_at`. Fallan sin el arreglo.
+- **Lección**: Cuando un dato se escapa al guardar y otra vez al mostrar, el fallo solo aparece con los caracteres que se escapan; los tests con "Hola mundo" nunca lo ven. Hay que probar cada campo con `& < > "`.
+
+## 25. El propietario recibía un error 500 en versiones y analítica cuando la página tenía dos colaboradores
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: En cuanto una página tenía dos o más colaboradores, el historial de versiones del propietario no cargaba (decía "Sin versiones guardadas"), no se podían guardar ni restaurar versiones y la analítica daba un error.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-002), al probar la colaboración con varias cuentas.
+- **Causa**: Las vistas buscaban la página con `Q(owner=user) | Q(collaborators=user)` y `.get()`. La unión con la tabla de colaboradores devuelve una fila por colaborador, así que `.get()` encontraba varias y lanzaba `MultipleObjectsReturned`. Con un colaborador o ninguno funcionaba, y por eso las pruebas con una sola cuenta no lo vieron.
+- **Arreglo**: Una única función, `pages_accessible_to(user)`, con `.distinct()`, usada por todas las vistas que buscan una página por acceso (versiones, analítica, mensajes, IA).
+- **Cómo se verificó**: Un test con dos colaboradores que lista, crea, restaura y borra versiones y pide la analítica como propietario y como cada colaborador. Daba 500 antes. Un segundo test confirma que quien no tiene acceso recibe 404.
+- **Lección**: Un `.get()` sobre una consulta con unión a una relación muchos-a-muchos solo es seguro con `.distinct()`, y el caso que lo rompe (dos filas relacionadas) es justo el que los datos de prueba mínimos no tienen.
+
+## 26. Una URL de imagen podía tapar toda la página, incluido el aviso de página de prueba
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Una persona invitada podía poner en el fondo de un hero una URL como `https://x.test/a.png);position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647`, publicar, y la página pública mostraba un bloque a pantalla completa por encima del aviso "página creada por un invitado" (ADR-022): una suplantación posible en el dominio de la propia app.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-005), probando qué hacía el servidor con los valores de los campos de imagen.
+- **Causa**: `validate_safe_url` solo comprobaba el esquema (`http`, `https` o vacío), y el hero escribía el valor sin comillas dentro de `url(...)`. El `)` cerraba la función y lo que seguía eran declaraciones CSS nuevas.
+- **Arreglo**: El servidor acepta solo `http(s)://host/...` o una ruta del sitio, sin espacios, comillas, paréntesis, `;`, llaves ni barras invertidas, en todos los campos de imagen y en `og_image` (ADR-033). La migración vacía las que ya estaban guardadas. El frontend cita el valor al pintarlo (otro lote).
+- **Cómo se verificó**: Tests con veinte URLs aceptadas o rechazadas, la inyección rechazada en los cuatro campos de imagen y en `og_image` por el endpoint, y la migración sobre bloques, instantáneas y páginas.
+- **Lección**: Validar el esquema no es validar el uso. Un valor que va dentro de otro lenguaje (CSS, HTML, SQL) se valida contra los caracteres de ese lenguaje y se cita al escribirlo; las dos cosas, no una.
+
+## 27. Un robot pidiendo páginas que no existen dejaba todas las páginas publicadas en error 500
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Con unas 60 peticiones por minuto a direcciones inexistentes, todas las páginas publicadas empezaban a dar error 500, también para visitantes normales.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-006), repitiendo peticiones a `/p/<slug>` mientras se miraba qué respondía la API.
+- **Causa**: El endpoint público heredaba el límite de 60 peticiones por minuto para anónimos, y su único cliente es el servidor de Next, que llega siempre desde la misma IP. Next no guarda en caché los 404, así que cada petición inexistente gastaba el mismo cupo que todas las páginas reales, y el 429 resultante se convertía en un 500. La recogida de analítica compartía además el cubo `anon`.
+- **Arreglo**: Sin límite de peticiones en los endpoints públicos de solo lectura (página pública, sitemap, resolución de dominio) y un cubo propio (`analytics`) para la recogida de eventos (ADR-033). El frontend guarda en caché los "no encontrada" (otro lote).
+- **Cómo se verificó**: Un test con el límite de 60/min restaurado hace cien peticiones a slugs inexistentes y a uno publicado y comprueba que ninguna da 429; otro comprueba que 70 envíos de analítica no gastan el cupo del resto. Fallan sin el arreglo.
+- **Lección**: Un límite por IP delante de un proxy limita al proxy. Antes de poner un límite hay que preguntarse quién es "el cliente" en ese endpoint.
+
+## 28. Restaurar una versión duplicaba el bloque que otra persona estaba editando
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Si alguien restauraba una versión mientras otra persona tenía un cambio sin guardar en un bloque, al sincronizar a las dos les aparecía ese bloque dos veces.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-012), con dos navegadores editando la misma página.
+- **Causa**: Restaurar borraba todos los bloques y los recreaba con ids nuevos aunque la instantánea guarda el id original. La fusión del cliente veía "editado aquí, borrado allí" y conservaba el bloque local junto a las copias restauradas.
+- **Arreglo**: Restaurar conserva los ids de la instantánea (uno nuevo solo si otra página lo usa, se repite o está mal formado) y toma el bloqueo de la página, igual que la generación con IA y las instantáneas, para que dos escrituras de página entera se pongan en cola (ADR-033).
+- **Cómo se verificó**: Tests de que los ids restaurados son los de la instantánea (y los casos raros), de que el bloque que existe ahora y en la instantánea conserva el id, y, en el trabajo de PostgreSQL, de que cuatro generaciones simultáneas dejan un solo resultado sin errores 500 (falla sin el bloqueo).
+- **Lección**: Si el modelo de fusión se apoya en ids estables, cualquier operación que "borra y recrea" tiene que respetarlos; si no, la fusión interpreta el cambio como borrado.
+
+## 29. Cualquier colaborador podía publicar la página y borrar la versión publicada
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Una persona invitada a editar podía publicar, despublicar, duplicar la página del propietario, regenerarla entera con IA y borrar versiones, incluida la que veía el público, que dejaba la página pública en 404 mientras seguía "publicada". El propietario veía cómo su barra pasaba a "Publicada" sin saber por qué.
+- **Cómo se detectó**: En la ronda 1 de QA (QA-023 y QA-013), probando qué acciones permitía el servidor a una cuenta que solo era colaboradora.
+- **Causa**: La consulta de páginas incluye a los colaboradores en todas las acciones y solo cuatro de ellas comprobaban al propietario; el resto de reglas vivían solo en la interfaz.
+- **Arreglo**: Decisión del propietario del producto (ADR-031): publicar, despublicar, duplicar, borrar la página o una versión, regenerar con IA, compartir e invitar son solo del propietario (`403 NOT_OWNER`), y la versión publicada no se puede borrar para nadie (`400 PUBLISHED_VERSION`). La página devuelve `is_owner` para que la interfaz oculte esas acciones.
+- **Cómo se verificó**: Un test parametrizado por acción que comprueba el 403 y que no cambió nada, los mismos casos como propietario (200), lo que el colaborador sí puede hacer, y que borrar la versión publicada se rechaza y la página pública sigue en 200.
+- **Lección**: Los permisos que solo existen en la interfaz son sugerencias. Cada acción que cambia lo que ve el público necesita su propia comprobación en el servidor, y la lista de qué puede cada rol tiene que estar escrita en un solo sitio.

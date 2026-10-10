@@ -39,12 +39,23 @@ from .serializers import (
     MagicLinkVerifySerializer,
     RegisterSerializer,
     UserSerializer,
+    username_base_from_email,
 )
 from .cookies import REFRESH_COOKIE, set_auth_cookies, clear_auth_cookies
 from .throttles import AuthRateThrottle, GuestCreationThrottle, SignedInAuthRateThrottle
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def unique_username_for(email):
+    """A free username for an account created from an email (magic link, Google):
+    the ASCII form of its local part, with a random suffix while it is taken."""
+    base_username = username_base_from_email(email)
+    username = base_username
+    while User.objects.filter(username__iexact=username).exists():
+        username = f"{base_username}_{uuid.uuid4().hex[:6]}"
+    return username
 
 
 def _auth_response(user, status_code=200, password_disabled=False):
@@ -304,13 +315,8 @@ class GoogleLoginView(APIView):
                 user.save(update_fields=['google_id', 'avatar', 'updated_at'])
             else:
                 # Create new user
-                base_username = email.split('@')[0][:30]
-                username = base_username
-                while User.objects.filter(username__iexact=username).exists():
-                    username = f"{base_username}_{uuid.uuid4().hex[:6]}"
-
                 user = User(
-                    username=username,
+                    username=unique_username_for(email),
                     email=email,
                     google_id=google_sub,
                     avatar=picture,
@@ -416,12 +422,7 @@ class MagicLinkVerifyView(APIView):
             # The link reached this inbox, so the person signing in owns the email
             password_disabled = confirm_email_owner(user)
         else:
-            base_username = email.split('@')[0][:30]
-            username = base_username
-            while User.objects.filter(username__iexact=username).exists():
-                username = f"{base_username}_{uuid.uuid4().hex[:6]}"
-
-            user = User(username=username, email=email, email_verified=True)
+            user = User(username=unique_username_for(email), email=email, email_verified=True)
             user.set_unusable_password()
             user.save()
 

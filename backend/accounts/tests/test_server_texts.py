@@ -22,6 +22,22 @@ class TestEmptySignIn:
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
         assert resp.data['code'] == 'INVALID_CREDENTIALS'
 
+    def test_a_wrong_password_has_the_same_code_and_the_request_language(self):
+        # SEC3-004: it used to be simplejwt's English text with the code UNAUTHORIZED
+        UserFactory(username='realtwo')
+
+        spanish = login('realtwo', 'not-the-password')
+        english = login('realtwo', 'not-the-password', **EN)
+        unknown = login('nobody-here', 'whatever', **EN)
+
+        for resp in (spanish, english, unknown):
+            assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+            assert resp.data['code'] == 'INVALID_CREDENTIALS'
+        assert spanish.data['error'] == 'El usuario o la contraseña no son correctos.'
+        assert english.data['error'] == 'The username or password is not correct.'
+        assert unknown.data == english.data
+        assert 'access_token' not in english.cookies
+
     def test_a_real_sign_in_still_works(self):
         UserFactory(username='realone')
 

@@ -825,7 +825,14 @@
     "inviteLinkHint": "Open it in an incognito window to try real-time editing.",
     "inviteLinkError": "Could not create the link. Please try again.",
     "guestEmailLocked": "Inviting by email needs an account. You can invite with a link.",
-    "notOwner": "Only the owner can invite or remove collaborators."
+    "notOwner": "Only the owner can invite or remove collaborators.",
+    "guest": "Guest",
+    "shared": "Done. If that address has a Paxl account, they can edit the page now.",
+    "removed": "That person no longer has access to the page.",
+    "invalidEmail": "Enter a valid email address.",
+    "cannotShareSelf": "You cannot share the page with yourself.",
+    "notCollaborator": "That person no longer had access to the page.",
+    "throttled": "Too many attempts in a row. Wait a moment and try again."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -960,10 +967,16 @@
     "saveConflict": "Could not save: someone else is changing the page at the same time. It will try again with your next change.",
     "reconnecting": "Reconnecting…",
     "offline": "No real time",
-    "offlineHint": "The real-time connection was lost. Your changes are still saved; reload the page to see other people's changes live again.",
+    "offlineHint": "The real-time connection was lost. Your changes are still saved, and it tries again on its own every minute.",
     "revokedTitle": "You no longer have access to this page",
-    "revokedBody": "The owner stopped sharing it with you. Changes you make from now on will not be saved.",
-    "restoredByCollaborator": "{name} restored an earlier version"
+    "revokedBody": "The owner stopped sharing it with you. The page is now read-only: anything not saved yet will not be saved.",
+    "restoredByCollaborator": "{name} restored an earlier version",
+    "lockRejectedOwnTab": "You are editing it in another tab",
+    "yourOtherTab": "your other tab",
+    "guestName": "Guest {number}",
+    "reconnect": "Reconnect",
+    "deletedTitle": "This page was deleted",
+    "deletedBody": "The owner deleted it. It can no longer be edited and no changes will be saved."
   },
   "join": {
     "joining": "Opening the shared page…",

@@ -5,6 +5,7 @@ derived value is a truncated hash that changes every UTC day.
 """
 import hashlib
 import hmac
+import math
 from datetime import date, timezone as dt_timezone
 from urllib.parse import urlsplit
 
@@ -15,6 +16,8 @@ from rest_framework.throttling import BaseThrottle
 VISITOR_HASH_LENGTH = 16
 MAX_PATH_LENGTH = 512
 MAX_HREF_LENGTH = 2048
+# A visit longer than a day is not a visit: also keeps sums of stored values finite
+MAX_SECONDS_ON_PAGE = 86_400
 
 
 def daily_salt(day: date) -> bytes:
@@ -100,8 +103,8 @@ def sanitize_event_data(event_type, data):
     if event_type == 'time_on_page':
         seconds = data.get('seconds')
         out = {}
-        if isinstance(seconds, (int, float)) and not isinstance(seconds, bool):
-            out['seconds'] = seconds
+        if isinstance(seconds, (int, float)) and not isinstance(seconds, bool) and math.isfinite(seconds):
+            out['seconds'] = min(max(seconds, 0), MAX_SECONDS_ON_PAGE)
         if data.get('type') in ('heartbeat', 'exit'):
             out['type'] = data['type']
         return out

@@ -82,6 +82,26 @@ class TestPublicContact:
         assert 'error' in resp.data
         assert FormSubmission.objects.count() == 0
 
+    @pytest.mark.parametrize(('payload', 'field'), [
+        ({**VALID, 'email': 'a@b'}, 'email'),
+        ({**VALID, 'email': ''}, 'email'),
+        ({**VALID, 'name': '   '}, 'name'),
+        ({**VALID, 'name': ''}, 'name'),
+        ({**VALID, 'message': '   '}, 'message'),
+        ({**VALID, 'message': 'x' * 2001}, 'message'),
+    ])
+    def test_the_error_names_the_field_that_failed(self, api_client, published, payload, field):
+        # QA-093: the form marks and focuses the field named here
+        page, _ = published
+        resp = api_client.post(url(page.slug), payload, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert list(resp.data['details']) == [field]
+
+    def test_several_failing_fields_are_all_named(self, api_client, published):
+        page, _ = published
+        resp = api_client.post(url(page.slug), {'name': ' ', 'email': 'nope', 'message': ''}, format='json')
+        assert sorted(resp.data['details']) == ['email', 'message', 'name']
+
     def test_rejects_block_id_that_is_not_a_contact_block_of_the_snapshot(self, api_client, user):
         page, _ = publish_with_contact(user)
         hero = BlockFactory(page=page, type='hero', order=1)

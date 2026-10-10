@@ -1,13 +1,12 @@
 import logging
 
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, status, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from pages.models import Page
+from pages.models import Page, pages_accessible_to
 from .models import FormSubmission
 from .serializers import ContactSubmissionSerializer, FormSubmissionSerializer
 from .throttles import ContactRateThrottle
@@ -110,10 +109,7 @@ class PageSubmissionViewSet(
     lookup_field = 'id'
 
     def get_page(self):
-        accessible = Page.objects.filter(
-            Q(owner=self.request.user) | Q(collaborators=self.request.user)
-        ).distinct()
-        return get_object_or_404(accessible, pk=self.kwargs['page_id'])
+        return get_object_or_404(pages_accessible_to(self.request.user), pk=self.kwargs['page_id'])
 
     def get_queryset(self):
         return FormSubmission.objects.filter(page=self.get_page()).order_by('-created_at')

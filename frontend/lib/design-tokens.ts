@@ -158,7 +158,7 @@ export const LARGE_TEXT_CONTRAST = 3;
 
 /**
  * The colors blocks paint with, derived from the palette so that every text
- * reaches WCAG AA on the background it is drawn on (D3, ADR-040). A color that
+ * reaches WCAG AA on the background it is drawn on (D3, ADR-041). A color that
  * already passes is kept as chosen; one that doesn't is moved toward black or
  * white just enough to pass, so the page keeps the palette's look.
  *

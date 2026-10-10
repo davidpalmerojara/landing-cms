@@ -87,6 +87,17 @@ def _safe_href(href):
     return parts.path[:MAX_HREF_LENGTH] or None
 
 
+def is_finite_number(value) -> bool:
+    """A JSON number that is not inf or NaN. Integers are always finite, and
+    math.isfinite raises OverflowError on one too big for a float (10**400 is
+    valid JSON), which used to answer the public collect endpoint with a 500 (SEC2-005)."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
+
+
 def sanitize_event_data(event_type, data):
     """Whitelist event_data per event type so extra fields are never stored."""
     data = data if isinstance(data, dict) else {}
@@ -103,7 +114,7 @@ def sanitize_event_data(event_type, data):
     if event_type == 'time_on_page':
         seconds = data.get('seconds')
         out = {}
-        if isinstance(seconds, (int, float)) and not isinstance(seconds, bool) and math.isfinite(seconds):
+        if is_finite_number(seconds):
             out['seconds'] = min(max(seconds, 0), MAX_SECONDS_ON_PAGE)
         if data.get('type') in ('heartbeat', 'exit'):
             out['type'] = data['type']

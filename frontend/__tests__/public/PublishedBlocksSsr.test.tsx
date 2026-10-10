@@ -45,16 +45,30 @@ describe('published page structure', () => {
     expect(ssr(<PublicPageClient page={publicPage()} />)).toMatch(/<main[^>]*id="main-content"/);
   });
 
+  it('PUBLIC2-005: a footer that closes the page is after <main>, so it is the contentinfo landmark', () => {
+    const order = ['navbar', 'hero', 'footer'] as const;
+    const blocks = order.map((type, index) => {
+      const block = createBlock(type, 'es');
+      return { id: block.id, type, order: index, data: block.data as unknown as Record<string, unknown>, styles: {} };
+    });
+    const html = ssr(<PublicPageClient page={publicPage({ blocks })} />);
+
+    const mainEnd = html.indexOf('</main>');
+    expect(mainEnd).toBeGreaterThan(0);
+    expect(html.indexOf('<footer')).toBeGreaterThan(mainEnd);
+    expect(html.indexOf('<nav')).toBeLessThan(mainEnd);
+  });
+
   it('declares the language the page is written in, whatever the visitor\'s (QA-091)', () => {
     const html = ssr(<PublicPageClient page={publicPage({ language: 'en' })} />, 'es');
-    expect(html).toMatch(/<main[^>]*lang="en"/);
+    expect(html).toMatch(/<div lang="en"[^>]*>[^]*<main/);
     // Paxl's words inside the blocks follow the page: the hero's landmark name is English
     expect(html).toContain(`aria-label="${MESSAGES.en.blocks.heroAria}"`);
   });
 
   it('leaves room for the watermark at the end of the page (QA-124)', () => {
     const html = ssr(<PublicPageClient page={publicPage({ show_watermark: true })} />);
-    expect(html).toMatch(/<main[^>]*class="[^"]*pb-16/);
+    expect(html).toMatch(/<div[^>]*class="[^"]*pb-16/);
     expect(html).toContain(MESSAGES.es.publicPage.madeWith);
   });
 
@@ -64,7 +78,7 @@ describe('published page structure', () => {
     const main = html.indexOf('<main');
     expect(notice).toBeGreaterThan(-1);
     expect(notice).toBeLessThan(main);
-    expect(html).toMatch(/<main[^>]*class="[^"]*isolate/);
+    expect(html).toMatch(/<div[^>]*class="[^"]*isolate/);
     expect(html.indexOf(MESSAGES.es.publicPage.madeWith)).toBeGreaterThan(html.indexOf('</main>'));
   });
 });

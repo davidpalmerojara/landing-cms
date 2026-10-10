@@ -77,6 +77,6 @@ describe('public page rendered on the server', () => {
 
     expect(english).toMatch(new RegExp(`<aside lang="en"[^>]*>[^]*${MESSAGES.en.publicPage.madeWith}`));
     expect(english).toMatch(/<aside lang="en"[^>]*><p role="note"/);
-    expect(english).toMatch(/<main[^>]*lang="es"/);
+    expect(english).toMatch(/<div lang="es"[^>]*>[^]*<main/);
   });
 });

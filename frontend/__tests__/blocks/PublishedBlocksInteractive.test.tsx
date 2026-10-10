@@ -60,6 +60,39 @@ describe('navbar mobile menu (QA-048, QA-094)', () => {
     view.unmount();
   });
 
+  it('PUBLIC2-002: Escape closes it right after opening, with focus still on the button', () => {
+    const { view, toggle } = open();
+    toggle.focus();
+    act(() => {
+      toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+    view.unmount();
+  });
+
+  it('PUBLIC2-002: a click outside the bar closes it, a click inside does not', () => {
+    const { view, toggle } = open();
+    const press = (target: Element) => act(() => {
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    });
+    press(view.container.querySelector('nav')!);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    press(document.body);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    view.unmount();
+  });
+
+  it('PUBLIC2-002: following a link from the menu leaves focus on the button, not on the page body', () => {
+    const { view, toggle } = open();
+    const menu = view.container.querySelector<HTMLElement>(`#${CSS.escape(toggle.getAttribute('aria-controls')!)}`)!;
+    const link = menu.querySelector('a')!;
+    link.focus();
+    click(link);
+    expect(document.activeElement).toBe(toggle);
+    view.unmount();
+  });
+
   it('closes when one of its links is followed', () => {
     const { view, toggle } = open();
     const menu = view.container.querySelector<HTMLElement>(`#${CSS.escape(toggle.getAttribute('aria-controls')!)}`)!;
@@ -138,6 +171,32 @@ describe('broken pictures (QA-117)', () => {
     const badge = Array.from(view.container.querySelectorAll('div')).find((div) => div.textContent?.trim() === 'Nuevo')!;
     expect(badge.className).toContain('w-fit');
     expect(badge.parentElement!.className).toContain('items-center');
+    view.unmount();
+  });
+});
+
+describe('hero badge over a photo (PUBLIC2-003, ADR-041)', () => {
+  // Relative luminance of a grey level 0..255
+  const luminance = (grey: number) => {
+    const c = grey / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+
+  it('keeps white badge text at 4.5:1 or more over an all-white photo under the 60 % overlay', () => {
+    const view = render(
+      <HeroBlock
+        blockId="h1"
+        data={normalizeBlockData('hero', { title: 'T', badgeText: 'Nuevo', backgroundImage: 'https://example.com/white.jpg' })}
+        isPreviewMode
+      />,
+    );
+    const badge = Array.from(view.container.querySelectorAll('div')).find((div) => div.textContent?.trim() === 'Nuevo')!;
+    const [r, g, b, alpha = '1'] = badge.style.backgroundColor.match(/[\d.]+/g) ?? [];
+    expect(Number(r) === Number(g) && Number(g) === Number(b)).toBe(true);
+    // White photo, then the 60 % black overlay, then the badge's own layer
+    const behindBadge = 255 * 0.4 * (1 - Number(alpha)) + Number(r) * Number(alpha);
+    const ratio = 1.05 / (luminance(behindBadge) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
     view.unmount();
   });
 });

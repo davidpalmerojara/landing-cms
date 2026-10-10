@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu, X } from 'lucide-react';
-import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps, NavbarData } from '@/types/blocks';
 import EditableText from './EditableText';
@@ -15,6 +15,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
   const t = useTranslations('blocks');
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const menuId = useId();
   const logoImage = data.logoImage;
   // Links without a label are not shown; `index` points into data.links for editing
@@ -28,15 +29,34 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
   // On the page a CTA without text is not shown (QA-040)
   const showCta = !isPreviewMode || data.ctaText.trim() !== '';
 
-  const closeMenu = () => setMenuOpen(false);
-
-  // Escape closes the menu and gives focus back to the button that opened it (QA-048)
-  const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    closeMenu();
-    toggleRef.current?.focus();
+  // Following a link closes the menu; if focus was inside it, it goes to the button instead of being lost
+  const closeMenu = () => {
+    setMenuOpen(false);
+    if (navRef.current?.querySelector(`[id="${menuId}"]`)?.contains(document.activeElement)) {
+      toggleRef.current?.focus({ preventScroll: true });
+    }
   };
+
+  // While the menu is open, Escape closes it wherever focus is (and returns focus to the button), and so
+  // does a click or tap outside the bar (QA-048, PUBLIC2-002)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      setMenuOpen(false);
+      toggleRef.current?.focus();
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!navRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [menuOpen]);
 
   const renderNavLink = (index: number, label: string, href: string | null, className: string, onNavigate?: () => void) => {
     const style = { color: 'var(--theme-text-muted)' };
@@ -53,6 +73,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
 
   return (
     <nav
+      ref={navRef}
       aria-label={t('navbarAria')}
       className={`relative border-b transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
@@ -99,7 +120,6 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
         {menuOpen && (
         <div
           id={menuId}
-          onKeyDown={handleMenuKeyDown}
           className="absolute top-full left-0 right-0 border-b py-2 px-4 flex flex-col gap-1 z-50 @tablet:hidden"
           style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))', borderColor: 'var(--theme-border)' }}
         >

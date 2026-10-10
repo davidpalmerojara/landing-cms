@@ -40,7 +40,7 @@ describe('preview page', () => {
     expect(document.title).toContain('Mi landing');
     // Paxl's bar is in the interface language (es), only the page area is in the page's (en)
     expect(document.documentElement.lang).not.toBe('en');
-    expect(view.container.querySelector('main')?.getAttribute('lang')).toBe('en');
+    expect(view.container.querySelector('main')?.closest('[lang]')?.getAttribute('lang')).toBe('en');
     view.unmount();
   });
 

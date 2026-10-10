@@ -223,31 +223,7 @@ describe('Quick Edit, QA round 1', () => {
     });
   });
 
-  describe('QA-066 back button', () => {
-    it('closes the open sheet and stays on the page', async () => {
-      // Sheets closed by earlier tests give their history entry back after a moment
-      const onSheetEntry = () => Boolean((window.history.state as { paxlSheet?: boolean } | null)?.paxlSheet);
-      await act(async () => {
-        await vi.waitFor(() => expect(onSheetEntry()).toBe(false), { timeout: 3000 });
-      });
-      const view = renderEditor();
-      const url = window.location.href;
-
-      openCard(view, 'Hero');
-      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-      // A history entry of its own, at the same address
-      expect(window.history.state).toMatchObject({ paxlSheet: true });
-      expect(window.location.href).toBe(url);
-
-      await act(async () => {
-        window.history.back();
-        await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull(), { timeout: 3000 });
-      });
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-      expect(window.location.href).toBe(url);
-      view.unmount();
-    });
-  });
+  // QA-066 (back button) lives in QuickEditBackButton.test.tsx: it needs a history no other test touches
 
   describe('QA-070 swipe actions', () => {
     it('swipe left reveals "Eliminar", not "Listo"', () => {

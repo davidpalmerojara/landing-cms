@@ -29,3 +29,27 @@ export function revealBlock(blockId: string) {
   const el = document.getElementById(`block-focus-${blockId}`);
   if (el) revealInViewport(el);
 }
+
+/**
+ * Below `xl` the inspector opens over the right side of the canvas: pans the
+ * canvas left so the selected block's toolbar (its Delete button included) is
+ * beside the overlay, not under it (EDITOR2-004). It never pushes the
+ * toolbar's left edge out of view.
+ */
+export function revealBesideOverlay(blockId: string, overlay: HTMLElement) {
+  const block = document.getElementById(`block-focus-${blockId}`);
+  const toolbar = block?.querySelector<HTMLElement>('[data-block-toolbar]');
+  const viewport = block?.closest<HTMLElement>('[data-canvas-viewport]');
+  if (!toolbar || !viewport) return;
+  const covered = overlay.getBoundingClientRect();
+  const view = viewport.getBoundingClientRect();
+  // The overlay is not over the canvas (docked, or closed)
+  if (covered.width === 0 || covered.left >= view.right || covered.right <= view.left) return;
+  const bar = toolbar.getBoundingClientRect();
+  const overlap = bar.right + REVEAL_MARGIN - covered.left;
+  if (overlap <= 0) return;
+  const room = Math.max(0, bar.left - (view.left + REVEAL_MARGIN));
+  const dx = Math.min(overlap, room);
+  if (dx > 0) useEditorStore.getState().setViewportState((prev) => ({ ...prev, x: prev.x - dx }));
+}
+

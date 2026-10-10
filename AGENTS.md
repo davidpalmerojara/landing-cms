@@ -223,7 +223,7 @@ Validación de inputs relevante:
 Store:
 - Store principal: `frontend/store/editor-store.ts`
 - Estado clave: `page`, historial `past/future`, bloque seleccionado, preview mode, device mode, viewport, auto-save, colaboración, toasts y drag state
-- Acciones principales: `addBlock`, `updateBlock`, `updateBlockStyle`, `updateBlockResponsiveStyle`, `deleteBlock`, `duplicateBlock`, `undo`, `redo`, `copy`, `paste`, `setTheme`, `updateSeo`, `setDesignTokenColors`, `save`, `setViewportState`, `zoomIn`, `zoomOut`, `applyRemoteBlockUpdate`
+- Acciones principales: `addBlock`, `updateBlock`, `updateBlockStyle`, `updateBlockResponsiveStyle`, `deleteBlock`, `duplicateBlock`, `undo`, `redo`, `copy`, `paste`, `setTheme`, `updateSeo`, `setDesignTokenColors`, `save`, `setViewportState`, `zoomIn`, `zoomOut`, `applyRemoteBlockUpdate`. `selectBlock`/`requestDeleteBlock` devuelven `boolean` y rechazan un bloque bloqueado por otra conexión; quien abra una UI de edición debe comprobarlo (ADR-035)
 
 Bloques:
 - Registro/factory: `frontend/lib/block-registry.ts` y `frontend/lib/block-factory.ts`

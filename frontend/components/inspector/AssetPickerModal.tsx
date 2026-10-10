@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useId } from 'react';
+import { useState, useCallback, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocale, useTranslations } from 'next-intl';
 import {
@@ -64,6 +64,19 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
   const urlHintId = useId();
 
   useDialogFocus(dialogRef, true, onClose);
+
+  // Everything behind the dialog is inert while it is open: Tab (WebKit skips
+  // buttons, so the focus trap alone let it out) and screen readers stay inside (EDITOR2-006)
+  useEffect(() => {
+    let root: HTMLElement | null = dialogRef.current;
+    while (root && root.parentElement !== document.body) root = root.parentElement;
+    if (!root) return;
+    const behind = Array.from(document.body.children).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement && element !== root && !element.inert,
+    );
+    behind.forEach((element) => { element.inert = true; });
+    return () => behind.forEach((element) => { element.inert = false; });
+  }, []);
 
   const formatFileSize = useCallback((bytes: number) => {
     const decimalFormatter = new Intl.NumberFormat(locale, {
@@ -347,7 +360,7 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-surface-elevated text-primary hover:bg-white px-6 py-2.5 pointer-coarse:min-h-11 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
+                        className="bg-surface-elevated text-primary hover:bg-surface-card px-6 py-2.5 pointer-coarse:min-h-11 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
                       >
                         {t('assets.uploadFirst')}
                       </button>

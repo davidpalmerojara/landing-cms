@@ -1,6 +1,7 @@
 import logging
 import secrets
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.cache import cache
@@ -321,6 +322,17 @@ class GoogleLoginView(APIView):
         return _auth_response(user, password_disabled=password_disabled)
 
 
+MAGIC_LINK_EMAIL_WINDOW = timedelta(minutes=15)
+
+
+def _magic_link_quota_left(email: str) -> bool:
+    """Whether this address may get another link now. Counted from the stored
+    tokens, so the cap holds across processes and whoever asks (SEC2-001)."""
+    since = timezone.now() - MAGIC_LINK_EMAIL_WINDOW
+    sent = MagicToken.objects.filter(email__iexact=email, created_at__gte=since).count()
+    return sent < settings.MAGIC_LINK_EMAIL_LIMIT
+
+
 class MagicLinkRequestView(APIView):
     """POST /api/auth/magic/request/ — send magic link email."""
     permission_classes = [permissions.AllowAny]
@@ -330,6 +342,12 @@ class MagicLinkRequestView(APIView):
         serializer = MagicLinkRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
+
+        if not _magic_link_quota_left(email):
+            # Same answer as a sent link: the caller learns nothing, and the inbox is not flooded
+            logger.warning('Magic link not sent: the address reached its limit of %s per %s',
+                           settings.MAGIC_LINK_EMAIL_LIMIT, MAGIC_LINK_EMAIL_WINDOW)
+            return Response({'message': message('magic_sent')})
 
         # Invalidate previous unused tokens for this email
         MagicToken.objects.filter(email__iexact=email, used=False).update(used=True)
@@ -358,7 +376,7 @@ class MagicLinkRequestView(APIView):
         )
 
         # Always return success (don't reveal if email exists)
-        return Response({'message': 'Si el email existe, recibirás un enlace de acceso.'})
+        return Response({'message': message('magic_sent')})
 
 
 class MagicLinkVerifyView(APIView):

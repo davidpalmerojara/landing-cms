@@ -1,5 +1,5 @@
 from rest_framework.settings import api_settings
-from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
+from rest_framework.throttling import SimpleRateThrottle
 
 
 class CurrentRatesMixin:
@@ -11,9 +11,17 @@ class CurrentRatesMixin:
         super().__init__()
 
 
-class AuthRateThrottle(CurrentRatesMixin, AnonRateThrottle):
-    """Stricter per-IP limit for auth endpoints (login, register, magic link)."""
+class AuthRateThrottle(CurrentRatesMixin, SimpleRateThrottle):
+    """Stricter per-IP limit for auth endpoints (login, register, magic link, join).
+
+    It counts every request, signed in or not. It used to extend DRF's
+    AnonRateThrottle, which skips authenticated requests: any session cookie
+    (a guest is one click away) lifted the limit on sign-ups and magic-link
+    emails (SEC2-001). Uses DRF's get_ident, so it honours NUM_PROXIES."""
     scope = 'auth'
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
 
 
 class SignedInAuthRateThrottle(CurrentRatesMixin, SimpleRateThrottle):

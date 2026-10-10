@@ -312,6 +312,9 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 
 # Magic link
+# Emails one address can receive per 15 minutes, whoever asks and from wherever
+# (SEC2-001). Past it the request gets the same answer but nothing is sent.
+MAGIC_LINK_EMAIL_LIMIT = int(os.environ.get('MAGIC_LINK_EMAIL_LIMIT', '3'))
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Shared with the frontend: lets the backend ask it to drop a cached public
 # page after publishing (ADR-019). Empty: no request is sent.

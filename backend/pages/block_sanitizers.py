@@ -2,6 +2,9 @@ import html
 import re
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
+from bleach.sanitizer import Cleaner
+# bleach's own copy of html5lib: the filters a Cleaner takes are built on it
+from bleach._vendor.html5lib.filters.base import Filter
 from rest_framework import serializers
 
 ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
@@ -85,18 +88,45 @@ def _remove_non_text_elements(value):
         value = cleaned
 
 
+# Attributes that load media. The pages' CSP only lets https images and media
+# through (SEC2-002), so an http:// source would be stored and never shown.
+_MEDIA_TAGS = {'img', 'video', 'source'}
+_MEDIA_URL_ATTRIBUTES = {'src', 'poster'}
+_HTTP_SCHEME = re.compile(r'http://', re.IGNORECASE)
+
+
+class _UpgradeMediaToHttps(Filter):
+    """Rewrites `http://` in the src/poster of img, video and source to `https://`
+    (SEC3-002). Links (`a href`) keep http: the page does not load them."""
+
+    def __iter__(self):
+        for token in Filter.__iter__(self):
+            if token.get('type') in ('StartTag', 'EmptyTag') and token.get('name') in _MEDIA_TAGS:
+                for (namespace, name), value in list(token['data'].items()):
+                    if name in _MEDIA_URL_ATTRIBUTES and _HTTP_SCHEME.match(value):
+                        token['data'][(namespace, name)] = 'https://' + value[len('http://'):]
+            yield token
+
+
+_CUSTOM_HTML_CLEANER = Cleaner(
+    tags=CUSTOM_HTML_ALLOWED_TAGS,
+    attributes=CUSTOM_HTML_ALLOWED_ATTRIBUTES,
+    protocols=ALLOWED_PROTOCOLS,
+    css_sanitizer=CUSTOM_HTML_CSS_SANITIZER,
+    strip=True,
+    filters=[_UpgradeMediaToHttps],
+)
+
+
 def sanitize_custom_html(value):
-    """Sanitize the free-form custom HTML block with a wider safe whitelist."""
+    """Sanitize the free-form custom HTML block with a wider safe whitelist.
+
+    Images and media are upgraded to https:// so the CSP never silently blocks
+    what the editor accepted (SEC3-002).
+    """
     if not isinstance(value, str):
         return value
-    return bleach.clean(
-        _remove_non_text_elements(value),
-        tags=CUSTOM_HTML_ALLOWED_TAGS,
-        attributes=CUSTOM_HTML_ALLOWED_ATTRIBUTES,
-        protocols=ALLOWED_PROTOCOLS,
-        css_sanitizer=CUSTOM_HTML_CSS_SANITIZER,
-        strip=True,
-    )
+    return _CUSTOM_HTML_CLEANER.clean(_remove_non_text_elements(value))
 
 
 # An image URL ends up inside CSS (`background-image: url(...)`) as well as in

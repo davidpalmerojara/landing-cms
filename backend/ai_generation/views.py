@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import get_language
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -430,7 +431,9 @@ class EditBlockView(APIView):
 
         if new_data is None:
             _wait_like_a_call()
-            variant = demo.pick_variant(block.type, f'{block.pk}:{instruction}', exclude=[block.data])
+            # The page's language; for one the demo has no pages in, the interface's (Accept-Language)
+            language = demo.demo_language(page.language, get_language())
+            variant = demo.pick_variant(block.type, f'{block.pk}:{instruction}', language, exclude=[block.data])
             if variant is None:
                 return _error(
                     'La demo no tiene una variante guardada para este tipo de bloque.',

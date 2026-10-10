@@ -8,7 +8,6 @@ import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import { isTextEntryTarget } from '@/lib/keyboard';
 import { useRemoveFromTabOrder } from '@/hooks/useRemoveFromTabOrder';
 import type { Block } from '@/types/blocks';
-import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import AIBlockEditPopover from './AIBlockEditPopover';
 
 interface BlockWrapperProps {

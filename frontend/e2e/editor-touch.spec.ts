@@ -205,6 +205,39 @@ test.describe('Full editor on a portrait tablet (768×1024, touch)', () => {
     await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeVisible();
     expect((await viewport.boundingBox())!.width).toBeGreaterThan(700);
   });
+
+  test('EDITOR3-002: the logo link and the Styles and SEO controls are at least 44 px on touch', async ({ page }) => {
+    await startGuestEditor(page);
+    const tooSmall = async (locator: Locator) => (await locator.evaluateAll((elements) => elements
+      .map((element) => element.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.height > 0 && (box.width < 43.5 || box.height < 43.5))
+      .map((box) => `${Math.round(box.width)}x${Math.round(box.height)}`)));
+
+    expect(await tooSmall(page.getByRole('link', { name: 'Ir al dashboard' }))).toEqual([]);
+
+    await page.getByRole('button', { name: 'Estilos', exact: true }).first().tap();
+    const colourSwatches = page.locator('label:has(input[type="color"])');
+    await expect(colourSwatches.first()).toBeVisible();
+    expect(await tooSmall(colourSwatches)).toEqual([]);
+    expect(await tooSmall(page.locator('input[aria-label$="código hexadecimal"]'))).toEqual([]);
+
+    await page.getByRole('button', { name: 'SEO', exact: true }).first().tap();
+    const language = page.getByLabel('Idioma de la página');
+    await expect(language).toBeVisible();
+    expect(await tooSmall(page.getByRole('switch', { name: 'Ocultar de buscadores' }))).toEqual([]);
+    expect(await tooSmall(language)).toEqual([]);
+    expect(await tooSmall(page.getByLabel('Título SEO'))).toEqual([]);
+  });
+
+  test('EDITOR3-001: opening the Bloques panel with the keyboard moves focus into it', async ({ page }) => {
+    await startGuestEditor(page);
+    const toggle = page.getByRole('button', { name: 'Bloques', exact: true });
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('complementary', { name: 'Componentes' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Componentes' })).toBeFocused();
+  });
 });
 
 test.describe('Canvas and media library on a desktop', () => {

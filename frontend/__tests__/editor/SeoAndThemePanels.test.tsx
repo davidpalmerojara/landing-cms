@@ -27,11 +27,22 @@ describe('SeoPanel', () => {
     resetEditorStore(makePage());
     view = render(<SeoPanel />);
     const toggle = view.container.querySelector<HTMLButtonElement>('#seo-noindex')!;
-    const knob = toggle.querySelector('span')!;
+    // button > track > knob (the button itself is the 44 px touch target, EDITOR3-002)
+    const knob = toggle.querySelector('span > span')!;
     expect(knob.className).toMatch(/\bleft-0\.5\b/);
     expect(knob.className).toContain('translate-x-0');
     click(toggle);
     expect(knob.className).toContain('translate-x-4');
+  });
+
+  it('EDITOR3-002: the SEO switch and fields are 44 px on touch screens', () => {
+    resetEditorStore(makePage());
+    view = render(<SeoPanel />);
+    expect(view.container.querySelector('#seo-noindex')?.className).toMatch(/pointer-coarse:h-11/);
+    expect(view.container.querySelector('#seo-language')?.className).toContain('pointer-coarse:min-h-11');
+    for (const input of view.container.querySelectorAll('input[type="text"], textarea')) {
+      expect(input.className).toContain('pointer-coarse:min-h-11');
+    }
   });
 
   it('shows this deployment\'s real address, not a made-up host (QA-085, QA-097)', () => {

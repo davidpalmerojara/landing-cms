@@ -18,10 +18,11 @@ test.describe('Account path', () => {
 
     // Register
     await page.goto('/register');
-    await page.getByPlaceholder('Usuario').fill(username);
-    await page.getByPlaceholder('Email').fill(`${username}@example.com`);
-    await page.getByPlaceholder('••••••••').first().fill(PASSWORD);
-    await page.getByPlaceholder('••••••••').nth(1).fill(PASSWORD);
+    // By label: each field is announced by its <label>
+    await page.getByLabel('Usuario', { exact: true }).fill(username);
+    await page.getByLabel('Email', { exact: true }).fill(`${username}@example.com`);
+    await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
+    await page.getByLabel('Confirmar contraseña', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { name: 'Mis páginas', level: 1 })).toBeVisible();
@@ -52,8 +53,8 @@ test.describe('Account path', () => {
     await expect(page).toHaveURL(/\/login$/);
 
     // ...and log in again
-    await page.getByPlaceholder('Usuario').fill(username);
-    await page.getByPlaceholder('••••••••').fill(PASSWORD);
+    await page.getByLabel('Usuario', { exact: true }).fill(username);
+    await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 

@@ -14,6 +14,10 @@ _MESSAGES = {
         'es': 'Ese nombre de usuario ya está en uso.',
         'en': 'That username is already taken.',
     },
+    'username_chars': {
+        'es': 'Usa solo letras sin acentos, números y los signos _ . -',
+        'en': 'Use only unaccented letters, digits and the characters _ . -',
+    },
     'real_email': {
         'es': 'Usa un email real.',
         'en': 'Use a real email address.',

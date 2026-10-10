@@ -1,12 +1,25 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.validators import UnicodeUsernameValidator
+import re
+
 from rest_framework import serializers
 
 from .guests import GUEST_EMAIL_DOMAIN, guest_expires_at
 from .messages import message
 
 User = get_user_model()
+
+# New usernames (register, guest claim) use only letters and digits of the English
+# alphabet, "_", "." and "-" (SEC2-004): a Cyrillic "а" or a full-width "ｄｅｍｏ"
+# looked like someone else's name in share emails and collaborator lists, and
+# Django's NFKC normalisation turned "ｄｅｍｏ" into "demo" after the uniqueness
+# check, which ended in a 500 (SEC2-003). Existing accounts keep their names.
+ASCII_USERNAME = re.compile(r'[A-Za-z0-9_.-]+')
+
+
+def ascii_username_validator(value):
+    if not isinstance(value, str) or not ASCII_USERNAME.fullmatch(value):
+        raise serializers.ValidationError(message('username_chars'))
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -20,7 +33,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         # and validate_username below ignore case (D8)
         extra_kwargs = {
             'email': {'validators': []},
-            'username': {'validators': [UnicodeUsernameValidator()]},
+            # Stricter than Django's UnicodeUsernameValidator: ASCII only (SEC2-004)
+            'username': {'validators': [ascii_username_validator]},
         }
 
     def _others(self):

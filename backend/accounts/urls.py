@@ -9,6 +9,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .guests import is_expired_guest
+from .messages import message
 from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from .throttles import AuthRateThrottle, LoginUsernameThrottle
 from .views import (
@@ -33,11 +34,27 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        if not self._has_credentials(request.data):
+            # A username or password that is empty (or only spaces) matches no
+            # account: the same answer as a wrong password, not a "validation
+            # error" the sign-in page reads as a server failure (APP2-009)
+            return Response(
+                {'error': message('invalid_credentials'), 'code': 'INVALID_CREDENTIALS'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             set_auth_cookies(response, response.data['access'], response.data['refresh'])
-            response.data = {'message': 'Sesión iniciada.'}
+            response.data = {'message': message('signed_in')}
         return response
+
+
+    @staticmethod
+    def _has_credentials(data) -> bool:
+        if not hasattr(data, 'get'):
+            return False
+        username, password = data.get('username'), data.get('password')
+        return isinstance(username, str) and bool(username.strip()) and isinstance(password, str) and bool(password)
 
 
 class CookieTokenRefreshView(APIView):
@@ -59,11 +76,11 @@ class CookieTokenRefreshView(APIView):
     def post(self, request):
         raw_refresh = request.COOKIES.get(REFRESH_COOKIE)
         if not raw_refresh:
-            return Response({'error': 'No hay sesión.', 'code': 'NO_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': message('no_session'), 'code': 'NO_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
 
         if self._belongs_to_expired_guest(raw_refresh):
             response = Response(
-                {'error': 'La sesión de invitado ha caducado.', 'code': 'GUEST_EXPIRED'},
+                {'error': message('guest_expired'), 'code': 'GUEST_EXPIRED'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
             clear_auth_cookies(response)
@@ -74,12 +91,12 @@ class CookieTokenRefreshView(APIView):
             serializer.is_valid(raise_exception=True)
         except (TokenError, InvalidToken, ValidationError, User.DoesNotExist):
             # User.DoesNotExist: the account was deleted while its refresh token was still valid (QA-101)
-            response = Response({'error': 'La sesión ha caducado.', 'code': 'INVALID_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
+            response = Response({'error': message('session_expired'), 'code': 'INVALID_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
             clear_auth_cookies(response)
             return response
 
         tokens = serializer.validated_data
-        response = Response({'message': 'Sesión renovada.'})
+        response = Response({'message': message('session_refreshed')})
         set_auth_cookies(response, tokens['access'], tokens.get('refresh', raw_refresh))
         return response
 

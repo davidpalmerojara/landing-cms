@@ -43,19 +43,22 @@ export default function MobilePublishSheet({ open, onClose, onPublish, onUnpubli
   useCloseOnBack(confirmUnpublish, cancelUnpublish);
   const {
     isOwner, isPublishing, isUnpublishing, publishedPath, publish, unpublish, dismissPublished,
-  } = usePublishActions({ onPublish, onUnpublish, publicationError });
+  } = usePublishActions({ onPublish, onUnpublish, publicationError, phone: true });
   const state = publicationState(page.status, page.hasUnpublishedChanges);
   const publicPath = `/p/${page.slug}`;
 
-  // Published: say so and close (a failure leaves the sheet open, with the hook's error toast)
+  // Published: close (the hook has said so in one toast; a failure leaves the sheet open, with its error toast)
   useEffect(() => {
     if (!publishedPath) return;
-    useEditorStore.getState().addToast(t('mobile.pagePublished'), 'success');
     dismissPublished();
     onClose();
-  }, [dismissPublished, onClose, publishedPath, t]);
+  }, [dismissPublished, onClose, publishedPath]);
 
-  const title = state === 'draft' ? t('mobile.publishTitle') : t('mobile.publishedTitle');
+  // The title says what the sheet is for this person now (MOBILE2-010)
+  const title = state === 'live' ? t('mobile.publishedTitle')
+    : !isOwner ? t('mobile.publishingTitle')
+    : state === 'changes' ? t('mobile.publishChangesTitle')
+    : t('mobile.publishTitle');
 
   return (
     <>
@@ -68,7 +71,7 @@ export default function MobilePublishSheet({ open, onClose, onPublish, onUnpubli
         closeLabel={t('common.close')}
       >
         <div className="px-5 py-4 space-y-4">
-          {state === 'draft' && (
+          {state === 'draft' && isOwner && (
             <p className="text-sm text-secondary">{t('mobile.publishDescription', { slug: page.slug })}</p>
           )}
 

@@ -25,6 +25,8 @@ export default function MobileImageField({ id, label, value, onChange, error }: 
   const t = useTranslations();
   const [showPicker, setShowPicker] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
+  /** The address that did not load as an image: no empty box is left in its place (MOBILE2-009) */
+  const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
   const labelId = `${id}-label`;
   const urlId = `${id}-url`;
   const errorId = `${id}-error`;
@@ -42,13 +44,13 @@ export default function MobileImageField({ id, label, value, onChange, error }: 
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
       <span id={labelId} className="block text-xs font-semibold text-secondary">{label}</span>
 
-      {value && (
+      {value && brokenSrc !== value && (
         <div className="w-full h-32 rounded-xl bg-surface-card border border-default/15 overflow-hidden">
           <img
             src={value}
             alt=""
             className="w-full h-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            onError={() => setBrokenSrc(value)}
           />
         </div>
       )}

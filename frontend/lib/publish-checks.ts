@@ -44,13 +44,15 @@ function linkablesOf(block: Block): Linkable[] {
 /**
  * The note to show after publishing, or null when there is nothing to say:
  * an empty page, or buttons that will show as plain text (names the first ones).
+ * `phone`: worded for Quick Edit.
  */
-export function publishNotice(blocks: Block[], t: Translate): string | null {
+export function publishNotice(blocks: Block[], t: Translate, options: { phone?: boolean } = {}): string | null {
   if (blocks.length === 0) return t('publishing.emptyPage');
   const items = linklessItems(blocks);
   if (items.length === 0) return null;
   const names = items.slice(0, 3).map((item) => `“${item.label}”`).join(', ');
-  return t('publishing.linkless', { count: items.length, names });
+  // Quick Edit has no inspector: it points to the block's own sheet (MOBILE2-005)
+  return t(options.phone ? 'publishing.linklessPhone' : 'publishing.linkless', { count: items.length, names });
 }
 
 /** Buttons and menu items with text but no link a visitor could follow. */

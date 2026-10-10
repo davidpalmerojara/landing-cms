@@ -660,6 +660,11 @@
     "desktopOnlyNote": "El tema, el SEO y el historial de versiones se cambian desde un ordenador.",
     "publishChangesDescription": "Quien visita /p/{slug} todavía ve la versión anterior.",
     "publishPendingAria": "Publicar cambios (hay cambios sin publicar)",
+    "publishChangesTitle": "Publicar cambios",
+    "publishingTitle": "Publicación",
+    "deleteBlockMessage": "¿Eliminar \"{name}\"? Puedes deshacerlo con el botón Deshacer.",
+    "recoveredChanges": "Hemos recuperado cambios que no se llegaron a guardar y estaban en este navegador. Puedes deshacerlos con el botón Deshacer.",
+    "unsaved": "Sin guardar",
     "presenceLabel": "También editando: {names}",
     "styles": {
       "background": "Fondo",
@@ -1038,6 +1043,7 @@
     "mediaLibrary": "Biblioteca de medios",
     "filesCount": "{count, plural, one {# archivo} other {# archivos}}",
     "uploadPrompt": "Arrastra imágenes aquí o haz clic para subir",
+    "uploadPromptTouch": "Toca para subir una imagen",
     "uploadHint": "JPG, PNG, WebP o GIF - máx. 5 MB",
     "loading": "Cargando recursos...",
     "emptyTitle": "No hay imágenes aún",
@@ -1212,6 +1218,7 @@
     "publishedBy": "{name} ha publicado la página.",
     "unpublishedBy": "{name} ha despublicado la página.",
     "emptyPage": "La página está publicada, pero no tiene bloques: quien la visite la verá vacía.",
-    "linkless": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla en el inspector."
+    "linkless": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla en el inspector.",
+    "linklessPhone": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla al editar cada bloque."
   }
 }

@@ -8,6 +8,7 @@ import type { ApiUser } from '@/lib/api';
 import { validateSignUp } from '@/lib/auth-validation';
 import type { SignUpField, SignUpValues } from '@/lib/auth-validation';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { useCloseOnBack } from '@/hooks/useCloseOnBack';
 
 interface ClaimGuestDialogProps {
   /** Closes the dialog without claiming */
@@ -47,6 +48,8 @@ export default function ClaimGuestDialog({ onCancel, onClaimed }: ClaimGuestDial
     else if (!isSubmitting) onCancel();
   };
   useDialogFocus(dialogRef, true, close);
+  // On a phone the back button closes the dialog instead of leaving the editor and losing the form (MOBILE2-007)
+  useCloseOnBack(true, close);
 
   // The form is replaced by the confirmation: keep the keyboard focus inside the dialog
   useEffect(() => {

@@ -660,10 +660,15 @@
     "desktopOnlyNote": "Theme, SEO and version history are changed on a computer.",
     "publishChangesDescription": "Visitors to /p/{slug} still see the previous version.",
     "publishPendingAria": "Publish changes (there are unpublished changes)",
+    "publishChangesTitle": "Publish changes",
+    "publishingTitle": "Publishing",
+    "deleteBlockMessage": "Delete \"{name}\"? You can take it back with the Undo button.",
+    "recoveredChanges": "We recovered changes from this browser that hadn't been saved. You can take them back with the Undo button.",
+    "unsaved": "Not saved yet",
     "presenceLabel": "Also editing: {names}",
     "styles": {
       "background": "Background",
-      "noBackground": "Theme's",
+      "noBackground": "Theme default",
       "themeColor": "Theme {role} ({value})",
       "roles": {
         "background": "background",
@@ -1038,6 +1043,7 @@
     "mediaLibrary": "Media library",
     "filesCount": "{count, plural, one {# file} other {# files}}",
     "uploadPrompt": "Drag images here or click to upload",
+    "uploadPromptTouch": "Tap to upload an image",
     "uploadHint": "JPG, PNG, WebP or GIF - max. 5 MB",
     "loading": "Loading assets...",
     "emptyTitle": "No images yet",
@@ -1212,6 +1218,7 @@
     "publishedBy": "{name} published the page.",
     "unpublishedBy": "{name} unpublished the page.",
     "emptyPage": "The page is published, but it has no blocks: visitors will see it empty.",
-    "linkless": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one in the inspector."
+    "linkless": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one in the inspector.",
+    "linklessPhone": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one by editing each block."
   }
 }

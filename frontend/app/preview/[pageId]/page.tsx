@@ -11,6 +11,7 @@ import { apiPageToLocal } from '@/lib/page-mapping';
 import { pageThemeVars } from '@/lib/page-theme';
 import PageRenderer from '@/components/renderer/PageRenderer';
 import { publishNotice } from '@/lib/publish-checks';
+import { isBlockEmpty } from '@/lib/block-emptiness';
 
 interface PreviewTopBarProps {
   page: Page;
@@ -167,6 +168,8 @@ export default function PreviewPage() {
   }
 
   const themeVars = pageThemeVars(page.designTokens);
+  // As on the published page, blocks with nothing written in them are left out (PUBLIC2-009)
+  const visibleBlocks = page.blocks.filter((block) => !isBlockEmpty(block));
 
   return (
     <div className="min-h-screen bg-white">
@@ -177,8 +180,8 @@ export default function PreviewPage() {
         </p>
       )}
 
-      {page.blocks.length > 0 ? (
-        <PageRenderer blocks={page.blocks} themeVars={themeVars} language={page.seo.language} liveLinks />
+      {visibleBlocks.length > 0 ? (
+        <PageRenderer blocks={visibleBlocks} themeVars={themeVars} language={page.seo.language} liveLinks />
       ) : (
         <main id="main-content" tabIndex={-1} className="flex items-center justify-center min-h-screen text-[#4B5563] outline-none">
           <div className="text-center space-y-4">

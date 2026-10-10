@@ -27,6 +27,8 @@ export function usePageActions({ onChanged, updatePages, billingEnabled }: UsePa
   const locale = useLocale();
   const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
+  // The last action failed because the session is gone: the dashboard offers the way back to log in (APP2-012)
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -36,8 +38,14 @@ export function usePageActions({ onChanged, updatePages, billingEnabled }: UsePa
     return t(key === 'dashboard.planLimit' && !billingEnabled ? 'dashboard.planLimitDemo' : key);
   }, [t, billingEnabled]);
 
+  const failAction = useCallback((error: unknown, fallbackKey: string) => {
+    setActionError(messageFor(error, fallbackKey));
+    setSessionExpired(accountErrorKey(error) === 'errors.unauthorized');
+  }, [messageFor]);
+
   const clearErrors = useCallback(() => {
     setActionError(null);
+    setSessionExpired(false);
     setCreateError(null);
   }, []);
 
@@ -54,17 +62,17 @@ export function usePageActions({ onChanged, updatePages, billingEnabled }: UsePa
   }, [locale, messageFor, router, t]);
 
   const duplicate = useCallback(async (id: string) => {
-    setActionError(null);
+    clearErrors();
     try {
       await api.pages.duplicate(id);
       onChanged();
     } catch (error) {
-      setActionError(messageFor(error, 'dashboard.duplicateError'));
+      failAction(error, 'dashboard.duplicateError');
     }
-  }, [messageFor, onChanged]);
+  }, [clearErrors, failAction, onChanged]);
 
   const unpublish = useCallback(async (id: string) => {
-    setActionError(null);
+    clearErrors();
     try {
       const updated = await api.pages.unpublish(id);
       updatePages((pages) => pages.map((page) => (
@@ -72,20 +80,20 @@ export function usePageActions({ onChanged, updatePages, billingEnabled }: UsePa
       )));
       onChanged();
     } catch (error) {
-      setActionError(messageFor(error, 'dashboard.unpublishError'));
+      failAction(error, 'dashboard.unpublishError');
     }
-  }, [messageFor, onChanged, updatePages]);
+  }, [clearErrors, failAction, onChanged, updatePages]);
 
   const remove = useCallback(async (id: string) => {
-    setActionError(null);
+    clearErrors();
     try {
       await api.pages.delete(id);
       updatePages((pages) => pages.filter((page) => page.id !== id));
       onChanged();
     } catch (error) {
-      setActionError(messageFor(error, 'dashboard.deleteError'));
+      failAction(error, 'dashboard.deleteError');
     }
-  }, [messageFor, onChanged, updatePages]);
+  }, [clearErrors, failAction, onChanged, updatePages]);
 
-  return { actionError, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove };
+  return { actionError, sessionExpired, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove };
 }

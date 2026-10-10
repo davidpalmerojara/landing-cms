@@ -85,7 +85,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   }, [isGuestNow, refreshAll]);
 
   const {
-    actionError, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove,
+    actionError, sessionExpired, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove,
   } = usePageActions({ onChanged: refreshUsage, updatePages, billingEnabled });
 
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -434,6 +434,11 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
               <div className="flex items-center gap-2 text-error text-sm mb-6 bg-error/10 border border-error/20 rounded-lg px-4 py-3">
                 <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {bannerError}
+                {sessionExpired && (
+                  <Link href={loginRedirectFor('/dashboard')} className="ml-auto shrink-0 inline-flex items-center min-h-11 px-3 font-bold underline">
+                    {t('auth.login')}
+                  </Link>
+                )}
               </div>
             )}
           </div>

@@ -28,6 +28,8 @@ COPYRIGHT_MAX = 200
 CUSTOM_HTML_MAX = 50_000
 # Whole data object of one block, serialized (custom HTML is the largest field)
 MAX_BLOCK_DATA_BYTES = 64_000
+# A block's styles object, serialized (spacing, background, radius and per-device overrides)
+MAX_BLOCK_STYLES_BYTES = 8_000
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +396,29 @@ def clean_block_data(block_type: str, data, *, partial: bool = False) -> dict:
     if len(json.dumps(data, ensure_ascii=False).encode()) > MAX_BLOCK_DATA_BYTES:
         raise serializers.ValidationError('El contenido del bloque es demasiado grande.')
     return validate_block_data(block_type, data, partial=partial)
+
+
+def clean_block_styles(styles) -> dict:
+    """Single validation path for a block's styles (REST and WebSocket, SEC2-007):
+    an object of primitives (numbers, text, booleans, null) with nested objects
+    two levels deep at most (the per-device 'responsive' overrides); anything
+    else inside it is dropped. Not an object, or too big: ValidationError.
+    The frontend still checks each value before it reaches CSS (block-styles-css)."""
+    if not isinstance(styles, dict):
+        raise serializers.ValidationError('Los estilos deben ser un objeto JSON.')
+    if len(json.dumps(styles, ensure_ascii=False).encode()) > MAX_BLOCK_STYLES_BYTES:
+        raise serializers.ValidationError('Los estilos del bloque son demasiado grandes.')
+
+    def primitives(obj: dict, depth: int = 0) -> dict:
+        cleaned = {}
+        for key, value in obj.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                cleaned[str(key)] = value
+            elif isinstance(value, dict) and depth < 2:
+                cleaned[str(key)] = primitives(value, depth + 1)
+        return cleaned
+
+    return primitives(styles)
 
 
 def validate_block_data(block_type: str | None, data: dict, *, partial: bool = False) -> dict:

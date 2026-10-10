@@ -238,3 +238,39 @@ class TestBlockAllowlist:
     def test_rejects_oversized_block_data(self):
         serializer = self._save([{'type': 'customHtml', 'data': {'html': 'x' * 70_000}, 'styles': {}}])
         assert not serializer.is_valid()
+
+
+@pytest.mark.django_db
+class TestBlockStylesOverRest:
+    """SEC2-007: the REST API stored any JSON as a block's styles; the WebSocket cleaned them."""
+
+    def _put(self, client, page, styles):
+        return client.put(f'/api/pages/{page.id}/', {
+            'name': page.name, 'version': page.version,
+            'blocks': [{'type': 'hero', 'order': 0, 'data': {'title': 'T'}, 'styles': styles}],
+        }, format='json')
+
+    @pytest.mark.parametrize('styles', ['x', ['a'], 7, {'bgColor': 'x' * 9_000}])
+    def test_styles_that_are_not_a_small_object_are_refused(self, auth_client, page, styles):
+        response = self._put(auth_client, page, styles)
+
+        assert response.status_code == 400
+        assert 'styles' in str(response.data['details'])
+        assert not page.blocks.exists()
+
+    def test_nested_values_past_the_device_overrides_are_dropped(self, auth_client, page):
+        response = self._put(auth_client, page, {
+            'paddingTop': 16, 'bgColor': '#fff', 'list': [1, 2],
+            'responsive': {'mobile': {'paddingTop': 8, 'deep': {'deeper': {'x': 1}}}},
+        })
+
+        assert response.status_code == 200, response.data
+        assert page.blocks.get().styles == {
+            'paddingTop': 16, 'bgColor': '#fff', 'responsive': {'mobile': {'paddingTop': 8}},
+        }
+
+    def test_the_styles_the_editor_sends_are_kept(self, auth_client, page):
+        styles = {'paddingTop': 32, 'bgColor': '', 'responsive': {'tablet': {'paddingTop': 24}, 'mobile': {}}}
+
+        assert self._put(auth_client, page, styles).status_code == 200
+        assert page.blocks.get().styles == styles

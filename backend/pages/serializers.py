@@ -4,7 +4,7 @@ from rest_framework import serializers
 import re
 from .models import Page, Block, Asset, PageVersion, CustomDomain
 from .block_sanitizers import validate_safe_image_url
-from .block_validators import BLOCK_VALIDATORS, clean_block_data
+from .block_validators import BLOCK_VALIDATORS, clean_block_data, clean_block_styles
 from .permissions import is_page_owner
 from .design_tokens import clean_design_tokens
 
@@ -42,6 +42,10 @@ class BlockSerializer(serializers.ModelSerializer):
         model = Block
         fields = ['id', 'type', 'order', 'data', 'styles', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate_styles(self, value):
+        # Same rule as the WebSocket path (SEC2-007): any JSON used to be stored as is
+        return clean_block_styles(value)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

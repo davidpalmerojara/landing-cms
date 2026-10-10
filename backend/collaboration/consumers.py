@@ -21,7 +21,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.exceptions import ValidationError
 
-from pages.block_validators import clean_block_data
+from pages.block_validators import clean_block_data, clean_block_styles
 
 from .locks import InMemoryLockManager, LockManager, get_lock_manager
 
@@ -35,7 +35,6 @@ CLOSE_SERVER_ERROR = 4500
 # `reason` of an access.revoked group message sent when the page is deleted
 REVOKED_PAGE_DELETED = 'page_deleted'
 
-MAX_STYLES_BYTES = 8_000
 MAX_BLOCK_ID_LENGTH = 64
 # Cursor positions are canvas coordinates (they can be negative once the canvas
 # is panned); anything beyond this is a broken or hostile client
@@ -79,21 +78,12 @@ def get_block_type(page_id: str, block_id: str) -> str | None:
 
 
 def clean_styles(styles):
-    """Styles are inline CSS values: a small object of primitives (plus the
-    nested per-device 'responsive' object). Anything else is dropped."""
-    if not isinstance(styles, dict) or len(json.dumps(styles)) > MAX_STYLES_BYTES:
+    """The styles cleaned like the REST API does (clean_block_styles), or None
+    when they cannot be used: then only the data is relayed."""
+    try:
+        return clean_block_styles(styles)
+    except ValidationError:
         return None
-
-    def primitives(obj, depth=0):
-        cleaned = {}
-        for key, value in obj.items():
-            if isinstance(value, (str, int, float, bool)) or value is None:
-                cleaned[str(key)] = value
-            elif isinstance(value, dict) and depth < 2:
-                cleaned[str(key)] = primitives(value, depth + 1)
-        return cleaned
-
-    return primitives(styles)
 
 
 def clean_cursor_coordinate(value) -> float | None:

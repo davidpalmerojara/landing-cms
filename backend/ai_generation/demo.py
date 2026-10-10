@@ -122,21 +122,35 @@ def match_fixture(prompt: str, language: str = DEFAULT_LANGUAGE) -> FixtureMatch
     return FixtureMatch(candidates[zlib.crc32(text.encode('utf-8')) % len(candidates)], matched=False)
 
 
-def block_variants(block_type: str) -> list[dict]:
-    """The data of every saved block of this type, in fixture order."""
+def demo_language(*candidates: str | None) -> str:
+    """The first of `candidates` (BCP 47 tags such as 'es' or 'pt-BR') the saved
+    pages are written in, by its primary subtag; DEFAULT_LANGUAGE if none is."""
+    for tag in candidates:
+        primary = (tag or '').split('-')[0].lower()
+        if primary in LANGUAGES:
+            return primary
+    return DEFAULT_LANGUAGE
+
+
+def block_variants(block_type: str, language: str | None = None) -> list[dict]:
+    """The data of every saved block of this type, in fixture order; only those
+    of pages written in `language` when it is given."""
     return [
         block['data']
         for fixture in load_fixtures()
+        if language is None or fixture.language == language
         for block in fixture.blocks
         if block['type'] == block_type
     ]
 
 
-def pick_variant(block_type: str, seed: str, exclude: list[dict] | None = None) -> dict | None:
-    """A saved block of this type chosen from `seed`, skipping the ones in `exclude`
-    (the block as it is now). None when the fixtures have none of this type."""
+def pick_variant(block_type: str, seed: str, language: str, exclude: list[dict] | None = None) -> dict | None:
+    """A saved block of this type written in `language`, chosen from `seed`,
+    skipping the ones in `exclude` (the block as it is now). None when there is
+    no other one in that language: text in another language would end up in the
+    page (EDITOR2-002), so the caller says the demo has no variant instead."""
     skipped = exclude or []
-    candidates = [data for data in block_variants(block_type) if data not in skipped]
+    candidates = [data for data in block_variants(block_type, language) if data not in skipped]
     if not candidates:
         return None
     return candidates[zlib.crc32(seed.encode('utf-8')) % len(candidates)]

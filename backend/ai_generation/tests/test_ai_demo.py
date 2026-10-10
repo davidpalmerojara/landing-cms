@@ -80,6 +80,13 @@ class TestFixtures:
         for block_type in BLOCK_SCHEMAS:
             assert len(demo.block_variants(block_type)) >= 2, block_type
 
+    def test_collab2_004_no_fixture_holds_html_entities(self):
+        # Fields are plain text (ADR-029): "&amp;" would be shown literally
+        for path in demo.FIXTURES_DIR.glob('*.json'):
+            text = path.read_text(encoding='utf-8')
+            for entity in ('&amp;', '&lt;', '&gt;', '&quot;', '&#'):
+                assert entity not in text, (path.name, entity)
+
     def test_fixture_prompts_are_the_ones_the_command_generates(self):
         specs = {s['id']: s for s in fixtures_command.FIXTURE_SPECS}
         for fixture in demo.load_fixtures():
@@ -495,6 +502,12 @@ def edit(client, page, block, instruction='Make it better', **extra):
     return client.post(f'/api/pages/{page.id}/blocks/{block.id}/edit-ai/', {'instruction': instruction, **extra}, format='json')
 
 
+def edit_in(client, page, block, instruction, interface_language):
+    """An edit asked from an interface in `interface_language` (Accept-Language)."""
+    return client.post(f'/api/pages/{page.id}/blocks/{block.id}/edit-ai/', {'instruction': instruction},
+                       format='json', HTTP_ACCEPT_LANGUAGE=interface_language)
+
+
 FULL_HERO = {
     'title': 'Old title', 'subtitle': 'Old subtitle', 'buttonText': 'Go', 'buttonLink': '#pricing',
     'badgeText': 'New', 'secondaryButtonText': 'More', 'secondaryButtonLink': '#more',
@@ -678,6 +691,43 @@ class TestDemoEdit:
         assert resp.data['code'] == 'DEMO_FIXTURE_INVALID'
         block.refresh_from_db()
         assert block.data == FULL_HERO
+
+    @pytest.mark.parametrize('language', ['es', 'en'])
+    @pytest.mark.parametrize('block_type, data', [
+        ('hero', FULL_HERO),
+        ('cta', {'title': 'Old', 'buttonText': 'Go'}),
+        ('features', {'title': 'Old', 'features': [{'title': 't', 'description': 'd'}]}),
+    ])
+    def test_editor2_002_the_variant_is_in_the_page_language(self, auth_client, user, language, block_type, data):
+        page = PageFactory(owner=user, language=language)
+        in_language = demo.block_variants(block_type, language)
+
+        for instruction in ('Hazlo más corto', 'Make it shorter', 'Más formal', 'Funnier'):
+            block = BlockFactory(page=page, type=block_type, order=0, data=data)
+            # The interface asks in the other language: the page's language decides
+            resp = edit_in(auth_client, page, block, instruction, 'en' if language == 'es' else 'es')
+
+            assert resp.status_code == status.HTTP_200_OK
+            assert resp.data['block']['data']['title'] in [v['title'] for v in in_language], instruction
+            block.delete()
+
+    def test_editor2_002_a_page_in_another_language_follows_the_interface(self, auth_client, user):
+        page = PageFactory(owner=user, language='pt-BR')
+        block = BlockFactory(page=page, type='hero', order=0, data=FULL_HERO)
+
+        resp = edit_in(auth_client, page, block, 'Make it better', 'en')
+
+        assert resp.data['block']['data']['title'] in [v['title'] for v in demo.block_variants('hero', 'en')]
+
+    def test_editor2_002_no_variant_in_the_language_is_reported_not_answered_in_another(self, auth_client, user):
+        page = PageFactory(owner=user, language='es')
+        (only,) = demo.block_variants('stats', 'es')
+        block = BlockFactory(page=page, type='stats', order=0, data=only)
+
+        resp = edit(auth_client, page, block)
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data['code'] == 'DEMO_NO_VARIANT'
 
     def test_a_type_without_saved_variants_is_reported_not_faked(self, auth_client, user):
         page = PageFactory(owner=user)

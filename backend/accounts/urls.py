@@ -48,7 +48,6 @@ class CookieTokenObtainPairView(TokenObtainPairView):
             response.data = {'message': message('signed_in')}
         return response
 
-
     @staticmethod
     def _has_credentials(data) -> bool:
         if not hasattr(data, 'get'):

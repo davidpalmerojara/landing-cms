@@ -3,8 +3,18 @@ from django.db import transaction
 from rest_framework import serializers
 import re
 from .models import Page, Block, Asset, PageVersion, CustomDomain
+from .block_sanitizers import validate_safe_image_url
 from .block_validators import BLOCK_VALIDATORS, clean_block_data
+from .permissions import is_page_owner
 from .design_tokens import clean_design_tokens
+
+
+# A page is a handful of landing sections: more than this is a mistake or abuse
+# (2,200 blocks made a 7.8 MB public page)
+MAX_BLOCKS_PER_PAGE = 100
+# Blocks the dashboard card previews
+LIST_PREVIEW_BLOCKS = 4
+PREVIEW_BLOCKS_ATTR = 'preview_blocks_cache'
 
 
 class AssetSerializer(serializers.ModelSerializer):
@@ -17,10 +27,10 @@ class AssetSerializer(serializers.ModelSerializer):
         extra_kwargs = {'file': {'write_only': True}}
 
     def get_url(self, obj):
-        request = self.context.get('request')
-        if request and obj.file:
-            return request.build_absolute_uri(obj.file.url)
-        return ''
+        # Relative to the site ("/media/assets/..."), not to the API host: the
+        # URL is stored in pages, which must not depend on where the API runs.
+        # The frontend forwards /media to the backend like it does /api.
+        return obj.file.url if obj.file else ''
 
 
 class BlockSerializer(serializers.ModelSerializer):
@@ -64,7 +74,7 @@ class PreviewBlockSerializer(serializers.ModelSerializer):
 
 
 class PageListSerializer(serializers.ModelSerializer):
-    block_count = serializers.IntegerField(source='blocks.count', read_only=True)
+    block_count = serializers.SerializerMethodField()
     owner_name = serializers.CharField(source='owner.username', read_only=True, default='')
     is_shared = serializers.SerializerMethodField()
     preview_blocks = serializers.SerializerMethodField()
@@ -74,7 +84,7 @@ class PageListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'status', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
-            'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
+            'og_title', 'og_description', 'og_image', 'og_type', 'noindex', 'language',
             'block_count', 'owner_name', 'is_shared', 'preview_blocks',
             'published_at', 'has_unpublished_changes', 'version',
             'created_at', 'updated_at',
@@ -85,6 +95,11 @@ class PageListSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
 
+    def get_block_count(self, obj):
+        # The list view annotates the total because it prefetches only the preview blocks
+        total = getattr(obj, 'block_total', None)
+        return total if total is not None else obj.blocks.count()
+
     def get_is_shared(self, obj):
         request = self.context.get('request')
         if request and request.user:
@@ -92,22 +107,34 @@ class PageListSerializer(serializers.ModelSerializer):
         return False
 
     def get_preview_blocks(self, obj):
-        prefetched_blocks = getattr(obj, '_prefetched_objects_cache', {}).get('blocks')
-        if prefetched_blocks is not None:
-            blocks = sorted(prefetched_blocks, key=lambda block: block.order)[:4]
-        else:
-            blocks = obj.blocks.order_by('order')[:4]
+        # The list view prefetches only the first blocks, into `preview_blocks_cache`
+        blocks = getattr(obj, PREVIEW_BLOCKS_ATTR, None)
+        if blocks is None:
+            blocks = obj.blocks.order_by('order')[:LIST_PREVIEW_BLOCKS]
         return PreviewBlockSerializer(blocks, many=True).data
 
 
 class PageDetailSerializer(serializers.ModelSerializer):
     blocks = BlockSerializer(many=True)
+    # Whether the requesting user owns the page: collaborators cannot publish,
+    # duplicate, delete versions or regenerate it with AI (ADR-031)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return bool(user is not None and user.is_authenticated and is_page_owner(obj, user))
 
     def validate_design_tokens(self, value):
         return clean_design_tokens(value)
 
+    def validate_og_image(self, value):
+        return validate_safe_image_url(value)
+
     def validate_blocks(self, blocks):
-        """Client-generated ids must be unique and must not belong to another page."""
+        """At most MAX_BLOCKS_PER_PAGE; client-generated ids must be unique and must not belong to another page."""
+        if len(blocks) > MAX_BLOCKS_PER_PAGE:
+            raise serializers.ValidationError(f'Máximo {MAX_BLOCKS_PER_PAGE} bloques por página.')
         ids = [str(b['id']) for b in blocks if b.get('id')]
         if len(ids) != len(set(ids)):
             raise serializers.ValidationError('Hay bloques con el mismo id.')
@@ -124,15 +151,16 @@ class PageDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'status', 'design_tokens',
             'seo_title', 'seo_description', 'seo_canonical_url',
-            'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
-            'blocks', 'published_at', 'has_unpublished_changes', 'version', 'created_at', 'updated_at',
+            'og_title', 'og_description', 'og_image', 'og_type', 'noindex', 'language',
+            'blocks', 'published_at', 'has_unpublished_changes', 'version', 'is_owner',
+            'created_at', 'updated_at',
         ]
         # status only changes through the publish/unpublish actions, so an
         # autosave can never publish or unpublish a page. The version is
         # checked and bumped by PageViewSet.update (pages/sync.py), never
         # taken from the payload.
         read_only_fields = [
-            'id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'version',
+            'id', 'slug', 'status', 'published_at', 'has_unpublished_changes', 'version', 'is_owner',
             'created_at', 'updated_at',
         ]
 
@@ -224,7 +252,7 @@ class SharePageSerializer(serializers.Serializer):
 
 
 class UnsharePageSerializer(serializers.Serializer):
-    user_id = serializers.CharField(trim_whitespace=True)
+    user_id = serializers.UUIDField()
 
 
 class VersionLabelSerializer(serializers.Serializer):

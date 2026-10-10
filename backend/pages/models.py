@@ -2,10 +2,27 @@ import uuid
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import models
+from django.core.validators import RegexValidator
+from django.db import IntegrityError, models, transaction
+from django.db.models import Q
 
 INVITE_LIFETIME = timedelta(hours=24)
 INVITE_MAX_USES = 5
+
+OG_TYPE_CHOICES = (('website', 'website'), ('article', 'article'))
+DEFAULT_PAGE_LANGUAGE = 'es'
+# A BCP 47 language tag as `<html lang>` takes it: "es", "en", "pt-BR", "zh-Hant"
+language_tag_validator = RegexValidator(
+    r'^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$',
+    'Usa un código de idioma como es, en o pt-BR.',
+)
+
+
+def pages_accessible_to(user):
+    """Pages the user owns or collaborates on, each one once (the collaborators
+    join returns one row per collaborator, so an owner with two collaborators
+    would otherwise get the same page twice)."""
+    return Page.objects.filter(Q(owner=user) | Q(collaborators=user)).distinct()
 
 
 class Workspace(models.Model):
@@ -71,8 +88,15 @@ class Page(models.Model):
     og_title = models.CharField(max_length=200, blank=True, default='')
     og_description = models.CharField(max_length=300, blank=True, default='')
     og_image = models.URLField(max_length=500, blank=True, default='')
-    og_type = models.CharField(max_length=50, default='website', blank=True)
+    # Only the types the published page's metadata accepts (Next throws on others)
+    og_type = models.CharField(max_length=50, choices=OG_TYPE_CHOICES, default='website', blank=True)
     noindex = models.BooleanField(default=False)
+    # Language of the page's content: the published page's <html lang> (WCAG 3.1.1)
+    language = models.CharField(
+        max_length=12,
+        default=DEFAULT_PAGE_LANGUAGE,
+        validators=[language_tag_validator],
+    )
 
     # What the public sees: a frozen copy taken when the page was published.
     # Edits (and autosaves) change the draft, not this, until the next publish.
@@ -259,33 +283,22 @@ class PageVersion(models.Model):
         return f'{self.page.name} v{self.version_number} ({self.get_trigger_display()})'
 
 
-def create_version_snapshot(page, user, trigger, label=''):
-    """
-    Capture the current state of a page's blocks as a PageVersion.
+VERSION_NUMBER_ATTEMPTS = 3
 
-    Handles auto-incrementing version_number and plan-based version limits.
-    Returns the created PageVersion instance.
-    """
-    import json
-    from billing.permissions import get_user_plan
 
-    # Build snapshot from current blocks
-    blocks = page.blocks.order_by('order').values('id', 'type', 'order', 'data', 'styles')
-    snapshot = []
-    for b in blocks:
-        snapshot.append({
-            'id': str(b['id']),
-            'type': b['type'],
-            'order': b['order'],
-            'data': b['data'],
-            'styles': b['styles'],
-        })
+def lock_page(page_id):
+    """The page row, locked until the surrounding transaction ends, so whole-page
+    writes (restore, AI generation, snapshots) of one page queue up instead of
+    interleaving their blocks. Call inside transaction.atomic()."""
+    return Page.objects.select_for_update().get(pk=page_id)
 
-    # Page metadata
-    page_metadata = {
+
+def _page_metadata(page):
+    return {
         'name': page.name,
         'slug': page.slug,
         'status': page.status,
+        'language': page.language,
         'design_tokens': page.design_tokens,
         'seo_title': page.seo_title,
         'seo_description': page.seo_description,
@@ -297,26 +310,62 @@ def create_version_snapshot(page, user, trigger, label=''):
         'noindex': page.noindex,
     }
 
-    # Next version number
-    last_version = page.versions.order_by('-version_number').values_list(
-        'version_number', flat=True
-    ).first()
-    next_number = (last_version or 0) + 1
 
-    # Calculate size
-    snapshot_json = json.dumps(snapshot, ensure_ascii=False)
-    size_bytes = len(snapshot_json.encode('utf-8'))
+def _create_version_row(page, user, trigger, label):
+    """Read the blocks and insert the next numbered version while holding the
+    page's row lock: two snapshots of one page (a save and an AI edit, a publish
+    and a restore) can neither read the same number nor see half-replaced blocks."""
+    import json
 
-    version = PageVersion.objects.create(
-        page=page,
-        version_number=next_number,
-        snapshot=snapshot,
-        page_metadata=page_metadata,
-        trigger=trigger,
-        label=label,
-        created_by=user,
-        size_bytes=size_bytes,
-    )
+    with transaction.atomic():
+        # Lock only; SQLite has no row locks but serializes writers itself
+        lock_page(page.pk)
+
+        blocks = page.blocks.order_by('order').values('id', 'type', 'order', 'data', 'styles')
+        snapshot = [
+            {
+                'id': str(b['id']),
+                'type': b['type'],
+                'order': b['order'],
+                'data': b['data'],
+                'styles': b['styles'],
+            }
+            for b in blocks
+        ]
+        last_version = page.versions.order_by('-version_number').values_list(
+            'version_number', flat=True
+        ).first()
+        size_bytes = len(json.dumps(snapshot, ensure_ascii=False).encode('utf-8'))
+        return PageVersion.objects.create(
+            page=page,
+            version_number=(last_version or 0) + 1,
+            snapshot=snapshot,
+            page_metadata=_page_metadata(page),
+            trigger=trigger,
+            label=label,
+            created_by=user,
+            size_bytes=size_bytes,
+        )
+
+
+def create_version_snapshot(page, user, trigger, label=''):
+    """
+    Capture the current state of a page's blocks as a PageVersion.
+
+    Handles auto-incrementing version_number and plan-based version limits.
+    Returns the created PageVersion instance.
+    """
+    from billing.permissions import get_user_plan
+
+    for attempt in range(1, VERSION_NUMBER_ATTEMPTS + 1):
+        try:
+            version = _create_version_row(page, user, trigger, label)
+            break
+        except IntegrityError:
+            # Databases without row locks (SQLite) can still hand two writers the
+            # same number; the unique constraint refuses the second, which retries.
+            if attempt == VERSION_NUMBER_ATTEMPTS:
+                raise
 
     # Enforce plan-based version limit
     plan = get_user_plan(page.owner)

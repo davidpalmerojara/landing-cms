@@ -35,3 +35,26 @@ class TestAssetUploads:
         svg = SimpleUploadedFile('logo.svg', b'<svg onload="alert(1)"/>', content_type='image/svg+xml')
         resp = auth_client.post('/api/assets/', {'file': svg}, format='multipart')
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestAssetUrlIsRelativeToTheSite:
+    """QA-079: pages store the URL; it must not tie them to the host the API runs on."""
+
+    def test_the_url_starts_with_media(self, auth_client):
+        upload = SimpleUploadedFile('a.png', PNG, content_type='image/png')
+        created = auth_client.post('/api/assets/', {'file': upload}, format='multipart')
+        assert created.status_code == status.HTTP_201_CREATED
+        assert created.data['url'].startswith('/media/assets/')
+        assert created.data['url'].endswith('.png')
+        assert '://' not in created.data['url']
+
+        listed = auth_client.get('/api/assets/')
+        assert [item['url'] for item in listed.data['results']] == [created.data['url']]
+
+    def test_a_block_accepts_that_url_as_an_image(self, auth_client, page):
+        from pages.block_validators import clean_block_data
+
+        upload = SimpleUploadedFile('a.png', PNG, content_type='image/png')
+        url = auth_client.post('/api/assets/', {'file': upload}, format='multipart').data['url']
+        assert clean_block_data('hero', {'backgroundImage': url})['backgroundImage'] == url

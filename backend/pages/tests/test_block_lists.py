@@ -79,9 +79,10 @@ def test_missing_and_null_item_fields_get_their_defaults(block_type, key, max_it
 @pytest.mark.parametrize(('block_type', 'key', 'max_items', 'item'), CASES)
 def test_item_order_is_kept(block_type, key, max_items, item):
     first_field = next(iter(item))
-    items = [{**item, first_field: f'item-{n}'} for n in range(3)]
+    # A leading slash keeps the value valid where the field is an image URL
+    items = [{**item, first_field: f'/item-{n}'} for n in range(3)]
     result = clean_block_data(block_type, {key: items})[key]
-    assert [entry[first_field] for entry in result] == ['item-0', 'item-1', 'item-2']
+    assert [entry[first_field] for entry in result] == ['/item-0', '/item-1', '/item-2']
 
 
 def test_numbered_keys_are_not_part_of_the_schema_anymore():
@@ -144,7 +145,8 @@ class TestListItemSanitizing:
         assert '<script' not in description
         assert 'onerror' not in description
         assert '<img' not in description
-        assert '<strong>Bold</strong>' in description
+        # Plain text: the tags go, what was between them stays as text
+        assert description == 'alert(1)Bold'
 
     @pytest.mark.parametrize(('block_type', 'key', 'field'), [
         ('testimonials', 'testimonials', 'quote'),
@@ -152,14 +154,14 @@ class TestListItemSanitizing:
         ('pricing', 'plans', 'features'),
         ('timeline', 'events', 'description'),
     ])
-    def test_rich_text_item_fields_keep_basic_formatting_only(self, block_type, key, field):
+    def test_long_text_item_fields_are_plain_text(self, block_type, key, field):
         data = clean_block_data(block_type, {key: [
             {field: '<b onclick="x()">a</b> <em>b</em> <iframe src="//evil"></iframe>'},
         ]})
         value = data[key][0][field]
-        assert '<em>b</em>' in value
-        assert 'onclick' not in value
-        assert '<iframe' not in value
+        # QA-001 / ADR-029: no field takes formatting, so none is stored
+        assert value == 'a b '
+        assert '<' not in value
 
     @pytest.mark.parametrize(('block_type', 'key', 'field'), [
         ('features', 'features', 'title'),

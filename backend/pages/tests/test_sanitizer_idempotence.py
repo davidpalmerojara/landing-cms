@@ -7,7 +7,7 @@ import random
 
 import pytest
 
-from pages.block_sanitizers import sanitize_plain_text, sanitize_text
+from pages.block_sanitizers import sanitize_custom_html, sanitize_plain_text
 from pages.block_validators import clean_block_data
 
 TRICKY = ['&lt;', '&amp;lt;', '&amp;amp;', '<b>', 'a & b', '5 < 6', '<10ms', '&lt;b&gt;bold&lt;/b&gt;',
@@ -19,7 +19,7 @@ def _random_markup(rng):
     return ''.join(rng.choice(pieces) for _ in range(rng.randint(0, 24)))
 
 
-@pytest.mark.parametrize('sanitize', [sanitize_plain_text, sanitize_text])
+@pytest.mark.parametrize('sanitize', [sanitize_plain_text, sanitize_custom_html])
 class TestSanitizersAreIdempotent:
     @pytest.mark.parametrize('text', TRICKY)
     def test_tricky_inputs(self, sanitize, text):

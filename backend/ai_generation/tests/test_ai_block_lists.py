@@ -195,7 +195,7 @@ class TestSanitizeAndFinalize:
         data = result[0]['data']
         assert data['title'] == 'Why'
         assert '<script' not in data['features'][0]['description']
-        assert '<strong>Very</strong>' in data['features'][0]['description']
+        assert data['features'][0]['description'] == 'alert(1)Very fast'
 
     def test_finalize_rejects_what_the_api_would_reject(self):
         evil = block('navbar', brandName='Acme', ctaText='Go', links=[
@@ -233,7 +233,7 @@ class TestViewsUseTheEditorValidation:
         assert resp.status_code == status.HTTP_200_OK
         navbar, features = page.blocks.order_by('order')
         assert navbar.data['links'][0] == {'label': 'Docs', 'url': '#docs'}
-        assert features.data['features'][0] == {'title': 'Fast', 'description': 'alert(1)Fast <em>really</em>'}
+        assert features.data['features'][0] == {'title': 'Fast', 'description': 'alert(1)Fast really'}
         assert features.data == clean_block_data('features', features.data)
         assert resp.data['blocks'][1]['data'] == features.data
 

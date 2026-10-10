@@ -8,11 +8,11 @@ from django.utils.html import escape
 from rest_framework import viewsets, status, generics, mixins, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from accounts.permissions import IsNotGuest
 from config.features import CustomDomainsEnabled
+from config.pagination import SitePageNumberPagination
 from .block_validators import clean_block_data
 from .models import (
     Page, Block, Asset, PageVersion, PageInvite, CustomDomain,
@@ -394,7 +394,7 @@ class PageViewSet(viewsets.ModelViewSet):
         )
 
 
-class VersionPagination(PageNumberPagination):
+class VersionPagination(SitePageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 50

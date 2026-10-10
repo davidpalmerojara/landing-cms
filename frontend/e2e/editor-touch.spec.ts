@@ -167,6 +167,21 @@ test.describe('Full editor on a landscape tablet (1024×768, touch)', () => {
     await up.tap();
     await expect(canvasBlock(page, 'Estadísticas', 2, SAAS_TEMPLATE_BLOCK_COUNT)).toBeVisible();
   });
+
+  test('EDITOR2-004: the inspector opening over the canvas does not cover the selected block\'s toolbar', async ({ page }) => {
+    await startGuestEditor(page);
+    const hero = canvasBlock(page, 'Hero', 2, SAAS_TEMPLATE_BLOCK_COUNT);
+    const heroBox = (await hero.boundingBox())!;
+    await page.touchscreen.tap(heroBox.x + heroBox.width / 2, heroBox.y + heroBox.height / 2);
+    await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeVisible();
+
+    const remove = hero.locator('[data-block-toolbar]').getByRole('button', { name: /^Eliminar/ });
+    await expect.poll(() => remove.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit !== null && (hit === element || element.contains(hit));
+    }), { message: 'Eliminar is not under the inspector' }).toBe(true);
+  });
 });
 
 test.describe('Full editor on a portrait tablet (768×1024, touch)', () => {

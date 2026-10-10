@@ -4,8 +4,11 @@ import {
   Settings, Type, Palette, ChevronDown, Copy, Trash2, Layout,
   Monitor, Tablet, Smartphone, X,
 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { revealBesideOverlay } from '@/lib/canvas-reveal';
 import { useBlockBackground } from '@/hooks/useBlockBackground';
 import { blockRegistry, getBlockFields } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
@@ -24,6 +27,9 @@ import { CANVAS_SHORTCUT_KEYS } from '@/lib/keyboard';
  * while a block is selected and goes away with the selection, so a tablet
  * keeps the canvas wide (QA-022).
  */
+/** Below `xl` the inspector is an overlay (ASIDE_CLASS's max-xl variants). */
+const OVERLAY_QUERY = '(max-width: 1279.98px)';
+
 const ASIDE_CLASS =
   'w-64 lg:w-72 xl:w-80 bg-surface-card/80 backdrop-blur-2xl border-l border-default/15 flex flex-col shrink-0 z-20 max-xl:absolute max-xl:inset-y-0 max-xl:right-0 max-xl:z-30 max-xl:max-w-[85%] max-xl:bg-surface-card max-xl:shadow-2xl';
 
@@ -40,6 +46,17 @@ export default function Inspector() {
   const requestDeleteBlock = useEditorStore((s) => s.requestDeleteBlock);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
   const selectBlock = useEditorStore((s) => s.selectBlock);
+  const asideRef = useRef<HTMLElement>(null);
+  const isOverlay = useMediaQuery(OVERLAY_QUERY);
+
+  // Over the canvas, the inspector must not hide the block it edits: its toolbar moves into view (EDITOR2-004)
+  useEffect(() => {
+    if (!isOverlay || !selectedBlockId) return;
+    const frame = requestAnimationFrame(() => {
+      if (asideRef.current) revealBesideOverlay(selectedBlockId, asideRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isOverlay, selectedBlockId]);
 
   const selectedIndex = page.blocks.findIndex((b) => b.id === selectedBlockId);
   const selectedBlock = selectedIndex >= 0 ? page.blocks[selectedIndex] : undefined;
@@ -84,7 +101,7 @@ export default function Inspector() {
   const BlockIcon = blockConfig?.icon || Layout;
 
   return (
-    <aside aria-label={t('editor.inspector')} className={ASIDE_CLASS}>
+    <aside ref={asideRef} aria-label={t('editor.inspector')} className={ASIDE_CLASS}>
       <div className="h-14 flex items-center justify-between gap-2 px-5 max-xl:pr-2 border-b border-default/15 shrink-0">
         <h2 className="text-[13px] font-semibold text-primary flex items-center gap-2 tracking-wide">
           <Settings className="w-4 h-4 text-muted" /> {t('editor.inspector')}

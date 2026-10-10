@@ -571,3 +571,14 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - **Menú de acciones (APP2-001)**: `ActionMenu` se pinta en un portal con coordenadas fijas (bug notable 47).
 - **Alternativas**: `role="contentinfo"` en el pie dentro de `main` (no es un rol permitido para `footer`); dos `main` o quitar `main` (rompe el destino del enlace de salto); persistir los 404 con una tarea de limpieza (más piezas que mantener); subir las fotos como assets del usuario al crear la página (cuotas, borrados y permisos para algo que es contenido de ejemplo).
 - **Consecuencias**: La tabla de 404 es por proceso: con varios procesos cada uno tiene la suya (el límite de 60 s sigue acotando la espera tras publicar). Las fotos de Unsplash se usan bajo su licencia, que permite alojarlas.
+
+## ADR-045: Lo que el servidor escribe fuera de un guardado entra en la base de sincronización del editor
+
+- **Fecha**: 2026-10-10
+- **Contexto**: La edición de un bloque con IA (`POST /api/pages/{id}/blocks/{bid}/edit-ai/`) guarda el bloque en el servidor y sube la versión de la página. El editor ponía la respuesta como una edición local más: su base seguía con la versión anterior, el siguiente guardado recibía `409 VERSION_CONFLICT` y la fusión de tres vías rebasaba el historial de deshacer sobre el texto de la IA, así que deshacer la edición no se guardaba (MOBILE2-002).
+- **Decisión**:
+  - La respuesta de la IA es estado del servidor. `adoptServerBlock` (`lib/page-sync.ts`) pone el bloque en pantalla como un paso de deshacer y, a la vez, en la base de sincronización con la versión que devuelve el servidor (`page_version`; `version` en servidores anteriores).
+  - Solo se adopta la versión si es la siguiente a la de la base (entonces el servidor tiene exactamente base + bloque). Si no lo es (alguien guardó entre medias) o la respuesta no la trae, la base recibe el bloque sin cambiar de versión y se pide la página para fusionarla; así la fusión ve el bloque como ya guardado y el paso de deshacer se conserva.
+  - El lienzo y Quick Edit usan el mismo `useAiBlockEdit`; el controlador del editor abierto se registra al arrancar, como el guardado pendiente (`lib/save-flush.ts`).
+- **Alternativas**: Volver a pedir la página siempre tras la IA (una petición más y la misma necesidad de meter el bloque en la base para no perder el deshacer); que la IA no guarde y devuelva solo la propuesta (cambia el contrato y la protección de QA-030 frente a ediciones concurrentes).
+- **Consecuencias**: Cualquier endpoint futuro que escriba parte de la página (y devuelva la versión) debe pasar su resultado por el mismo camino. Queda una carrera muy improbable: un guardado ya en cola antes de la respuesta que termine entre la respuesta y la recarga puede fusionar como antes; `flushPendingSave()` antes de la IA la hace casi imposible.

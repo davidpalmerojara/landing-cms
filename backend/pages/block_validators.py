@@ -8,7 +8,6 @@ from typing import Callable
 from rest_framework import serializers
 
 from .block_sanitizers import (
-    sanitize_block_data,
     sanitize_custom_html,
     sanitize_plain_text,
     sanitize_text,
@@ -385,14 +384,15 @@ BLOCK_VALIDATORS: dict[str, Callable[[dict], dict]] = {
 
 def clean_block_data(block_type: str, data, *, partial: bool = False) -> dict:
     """Single validation path for block content, used by the REST API and the
-    collaboration WebSocket: known type, size limit, sanitizing, allowlist."""
+    collaboration WebSocket: known type, size limit, allowlist, and one pass of
+    validation and sanitizing per field (the field's own rule sanitizes it)."""
     if block_type not in BLOCK_VALIDATORS:
         raise serializers.ValidationError(f'Tipo de bloque desconocido: {block_type}.')
     if not isinstance(data, dict):
         raise serializers.ValidationError('El campo data debe ser un objeto JSON.')
     if len(json.dumps(data, ensure_ascii=False).encode()) > MAX_BLOCK_DATA_BYTES:
         raise serializers.ValidationError('El contenido del bloque es demasiado grande.')
-    return validate_block_data(block_type, sanitize_block_data(block_type, data), partial=partial)
+    return validate_block_data(block_type, data, partial=partial)
 
 
 def validate_block_data(block_type: str | None, data: dict, *, partial: bool = False) -> dict:

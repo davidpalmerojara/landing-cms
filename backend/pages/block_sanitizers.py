@@ -34,31 +34,6 @@ CUSTOM_HTML_CSS_SANITIZER = CSSSanitizer(
     ]
 )
 
-# Top-level fields only. The items of list fields (features, plans, links...) are
-# sanitized by the list rules in block_validators, in a single pass.
-URL_FIELDS_BY_TYPE = {
-    'hero': {'backgroundImage'},
-    'navbar': {'logoImage'},
-}
-
-# Fields holding a link a visitor can follow (href). They accept more than the
-# image URLs above: mailto:, tel:, site paths and in-page anchors.
-LINK_FIELDS_BY_TYPE = {
-    'hero': {'buttonLink', 'secondaryButtonLink'},
-    'cta': {'buttonLink'},
-    'navbar': {'ctaLink'},
-}
-
-RICH_TEXT_FIELDS_BY_TYPE = {
-    'cta': {'subtitle'},
-    'footer': {'description'},
-    'pricing': {'subtitle'},
-    'gallery': {'subtitle'},
-    'contact': {'subtitle'},
-    'team': {'subtitle'},
-    'stats': {'subtitle'},
-}
-
 
 def sanitize_text(value):
     """Allow a small safe subset of formatting tags."""
@@ -73,17 +48,37 @@ def sanitize_text(value):
     )
 
 
+def _strip_tags_once(value):
+    # bleach escapes <, > and &, and keeps entities it finds as they are. Escaping
+    # every & first makes the entities the user typed plain text, so the single
+    # unescape below only undoes what this function itself escaped.
+    escaped = bleach.clean(value.replace('&', '&amp;'), tags=[], attributes={}, strip=True)
+    return html.unescape(escaped)
+
+
 def sanitize_plain_text(value):
-    """Strip all HTML from plain text fields and store the result as text.
+    """Strip all HTML from a plain text field and store the result as text.
 
     bleach returns HTML-escaped output ("<10ms" -> "&lt;10ms"). These fields
     are rendered by React as text, which escapes on output, so storing
     entities made them show up literally. Unescaping is safe as long as plain
     text fields are never injected as HTML.
+
+    Idempotent: sanitizing a stored value gives the same value, so saving a
+    page again never changes it. Text the user typed stays as typed, including
+    a literal "&lt;", which is not decoded.
     """
     if not isinstance(value, str):
         return value
-    return html.unescape(bleach.clean(value, tags=[], attributes={}, strip=True))
+    cleaned = _strip_tags_once(value)
+    # Removing a tag can join the text around it into a new tag ("<<b>script>"):
+    # repeat until nothing changes. Each pass only removes characters, so it ends.
+    while '<' in cleaned:
+        again = _strip_tags_once(cleaned)
+        if again == cleaned:
+            break
+        cleaned = again
+    return cleaned
 
 
 def sanitize_custom_html(value):
@@ -144,42 +139,3 @@ def validate_safe_link(value):
         'Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.'
     )
 
-
-def sanitize_block_data(block_type, data):
-    if not isinstance(data, dict):
-        return data
-
-    sanitized = {}
-    rich_fields = RICH_TEXT_FIELDS_BY_TYPE.get(block_type, set())
-    url_fields = URL_FIELDS_BY_TYPE.get(block_type, set())
-    link_fields = LINK_FIELDS_BY_TYPE.get(block_type, set())
-
-    for key, value in data.items():
-        if key in link_fields:
-            try:
-                sanitized[key] = validate_safe_link(value)
-            except serializers.ValidationError as exc:
-                raise serializers.ValidationError({key: exc.detail}) from exc
-            continue
-
-        if key in url_fields:
-            try:
-                sanitized[key] = validate_safe_url(value)
-            except serializers.ValidationError as exc:
-                raise serializers.ValidationError({key: exc.detail}) from exc
-            continue
-
-        if block_type == 'customHtml' and key == 'html':
-            sanitized[key] = sanitize_custom_html(value)
-            continue
-
-        if isinstance(value, str):
-            if key in rich_fields:
-                sanitized[key] = sanitize_text(value)
-            else:
-                sanitized[key] = sanitize_plain_text(value)
-            continue
-
-        sanitized[key] = value
-
-    return sanitized

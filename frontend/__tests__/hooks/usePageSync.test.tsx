@@ -649,6 +649,49 @@ describe('usePageSync', () => {
       view.unmount();
     });
 
+    it('SEC3-001: a field whose value the server already stores and refuses goes out empty, so the rest of the page saves', async () => {
+      const legacy = 'http://localhost:3000/old.png';
+      const message = 'URL de imagen no permitida. Usa una dirección https:// o una ruta que empiece por /.';
+      getPage.mockResolvedValue(apiPage({
+        og_image: legacy,
+        blocks: [
+          { id: BLOCK_A, type: 'hero', order: 0, data: { title: 'A', backgroundImage: legacy }, styles: {} },
+          { id: BLOCK_B, type: 'cta', order: 1, data: { title: 'B' }, styles: {} },
+        ] as unknown as ApiBlocks,
+      }));
+      const view = await mount();
+      act(() => { state().updateBlock(BLOCK_B, 'title', 'Edited'); });
+      // The server keeps its old copies but refuses to be sent them again
+      updatePage.mockImplementation(async (_id, body) => {
+        const hero = (body as { blocks: Array<{ data: Record<string, unknown> }> }).blocks[0].data;
+        const details: Record<string, unknown> = {};
+        if (hero.backgroundImage === legacy) details.blocks = { 0: { data: { backgroundImage: [message] } } };
+        if ((body as { og_image?: string }).og_image === legacy) details.og_image = [message];
+        if (Object.keys(details).length > 0) {
+          throw new ApiError(400, JSON.stringify({ error: 'Error de validación.', code: 'BAD_REQUEST', details }));
+        }
+        return echo(body, 2);
+      });
+
+      expect(await save()).toBe(false);
+
+      // The edit reached the server; the refused fields were sent empty, not as stored
+      const last = updatePage.mock.calls.length - 1;
+      expect(sentData(last, 1).title).toBe('Edited');
+      expect(sentData(last, 0).backgroundImage).toBe('');
+      expect((updatePage.mock.calls[last][1] as { og_image?: string }).og_image).toBe('');
+      expect(state().syncBase?.version).toBe(2);
+      // Both fields are named for the user
+      expect(state().saveIssue).toEqual({
+        kind: 'rejected',
+        fields: expect.arrayContaining([
+          expect.objectContaining({ blockId: BLOCK_A, path: ['backgroundImage'], value: legacy }),
+          expect.objectContaining({ blockId: null, path: ['seo', 'ogImage'], value: legacy }),
+        ]),
+      });
+      view.unmount();
+    });
+
     it('QA-004: no answer is "offline"; an HTTP error is not', async () => {
       getPage.mockResolvedValue(apiPage());
       const view = await mount();

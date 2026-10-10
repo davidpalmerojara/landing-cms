@@ -59,6 +59,7 @@ class TestCleanDesignTokens:
     @pytest.mark.parametrize('value', [
         'red', 'rgb(0,0,0)', '#12', '#12345', '#1234567', '#gggggg', '000000',
         'url(javascript:alert(1))', '#fff;background:red', '#fff}', '', None, 12, ['#fff'],
+        '#fff\n',  # SEC2-010: `$` matched before a trailing newline
     ])
     def test_invalid_colors_are_rejected(self, value):
         with pytest.raises(serializers.ValidationError) as exc:
@@ -96,6 +97,7 @@ class TestCleanDesignTokens:
         ('borders', 'radius_sm', 'url(x)'),
         ('borders', 'radius_md', '-4px'),
         ('borders', 'radius_full', 8),
+        ('borders', 'radius_sm', '8px\n'),  # SEC2-010
     ])
     def test_unsafe_lengths_are_rejected(self, group, key, value):
         with pytest.raises(serializers.ValidationError):

@@ -550,7 +550,7 @@ class PageVersionViewSet(viewsets.GenericViewSet):
         type that was removed): fall back to the default instead of writing them back."""
         if field == 'og_type' and value not in dict(OG_TYPE_CHOICES):
             return 'website'
-        if field == 'language' and not (isinstance(value, str) and language_tag_validator.regex.match(value)):
+        if field == 'language' and not (isinstance(value, str) and language_tag_validator.regex.fullmatch(value)):
             return DEFAULT_PAGE_LANGUAGE
         return value
 

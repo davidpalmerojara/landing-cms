@@ -321,7 +321,7 @@ class CustomDomainSerializer(serializers.ModelSerializer):
 
     def validate_domain(self, value):
         value = value.strip().lower()
-        if not DOMAIN_RE.match(value):
+        if not DOMAIN_RE.fullmatch(value):
             raise serializers.ValidationError('Formato de dominio inválido.')
         if is_reserved_domain(value):
             raise serializers.ValidationError('No puedes usar un dominio del sistema.')

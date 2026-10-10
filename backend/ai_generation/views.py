@@ -484,6 +484,9 @@ class EditBlockView(APIView):
 
         return Response({
             'version': page.version,
+            # The page version after this write: the editor adopts it, with the block,
+            # as its sync base so the next save does not conflict with the AI's own write
+            'page_version': page.version,
             'block': {
                 'id': str(block.pk),
                 'type': block.type,

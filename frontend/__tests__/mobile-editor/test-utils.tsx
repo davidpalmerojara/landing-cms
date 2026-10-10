@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { NextIntlClientProvider } from 'next-intl';
 import { vi } from 'vitest';
 import { useEditorStore } from '@/store/editor-store';
-import { MESSAGES } from '@/lib/i18n';
+import { MESSAGES, type AppLocale } from '@/lib/i18n';
 import { defaultBlockStyles, type Block, type BlockType } from '@/types/blocks';
 import { makeBlock as buildBlock } from '@/lib/block-data';
 import { defaultSeoFields, type Page } from '@/types/page';
@@ -15,28 +15,28 @@ export type RenderResult = {
   unmount: () => void;
 };
 
-function IntlWrapper({ children }: { children: React.ReactNode }) {
+function IntlWrapper({ children, locale }: { children: React.ReactNode; locale: AppLocale }) {
   return (
-    <NextIntlClientProvider locale="es" messages={MESSAGES.es}>
+    <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
       {children}
     </NextIntlClientProvider>
   );
 }
 
-export function render(ui: ReactElement): RenderResult {
+export function render(ui: ReactElement, locale: AppLocale = 'es'): RenderResult {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
 
   act(() => {
-    root.render(<IntlWrapper>{ui}</IntlWrapper>);
+    root.render(<IntlWrapper locale={locale}>{ui}</IntlWrapper>);
   });
 
   return {
     container,
     rerender(nextUi: ReactElement) {
       act(() => {
-        root.render(<IntlWrapper>{nextUi}</IntlWrapper>);
+        root.render(<IntlWrapper locale={locale}>{nextUi}</IntlWrapper>);
       });
     },
     unmount() {

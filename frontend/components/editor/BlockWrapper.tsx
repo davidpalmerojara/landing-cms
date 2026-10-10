@@ -5,6 +5,7 @@ import { GripVertical, Copy, Trash2, Lock, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore, getUserColor } from '@/store/editor-store';
 import type { Block } from '@/types/blocks';
+import { getTranslatedBlockLabel } from '@/lib/block-i18n';
 import AIBlockEditPopover from './AIBlockEditPopover';
 
 interface BlockWrapperProps {
@@ -34,6 +35,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
   const lockedByOther = lockHolder && lockHolder.connectionId !== myConnectionId ? lockHolder : null;
   const isLockedByOther = !!lockedByOther;
   const [showAIEdit, setShowAIEdit] = useState(false);
+  const blockLabel = getTranslatedBlockLabel(block.type, t, block.name);
 
   // Color for the user who has this block selected/locked
   const myColor = myUserId ? getUserColor(myUserId) : null;
@@ -57,7 +59,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
     if (interactionState.isSpacePressed) return;
     if (e.button !== 0) return; // left click only
     initDrag(
-      { action: 'reorder', type: block.type, label: block.name, sourceIndex: index },
+      { action: 'reorder', type: block.type, label: blockLabel, sourceIndex: index },
       { x: e.clientX, y: e.clientY }
     );
   };
@@ -67,7 +69,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
       id={`block-wrapper-${block.id}`}
       data-block-index={index}
       role="region"
-      aria-label={block.name || block.type}
+      aria-label={blockLabel}
       className="relative w-full animate-block-enter"
     >
       {/* Drop indicator top */}
@@ -111,7 +113,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
           >
             <div className="px-3 h-full flex items-center gap-1.5 rounded-full">
               <Lock className="w-3 h-3 opacity-70" />
-              <span className="tracking-wide">{block.name}</span>
+              <span className="tracking-wide">{blockLabel}</span>
               <span className="text-white/60">— {lockedByOther.username}</span>
             </div>
           </div>
@@ -131,7 +133,7 @@ export default function BlockWrapper({ block, index, children }: BlockWrapperPro
           >
             <div className="px-3 h-full flex items-center gap-1.5 rounded-l-full transition-colors cursor-grab active:cursor-grabbing hover:brightness-110">
               <GripVertical className="w-3.5 h-3.5 opacity-60" />
-              <span className="tracking-wide">{block.name}</span>
+              <span className="tracking-wide">{blockLabel}</span>
             </div>
             {isSelected && (
               <div className="h-full py-1.5 flex items-center">

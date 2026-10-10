@@ -41,17 +41,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'hero',
     label: 'Hero Section',
     icon: Layout,
-    initialData: {
-      title: 'Tu Nueva Sección',
-      subtitle: 'Añade una descripción cautivadora aquí.',
-      buttonText: 'Acción Principal',
-      buttonLink: '',
-      badgeText: 'Nuevo Editor UI',
-      secondaryButtonText: 'Saber más',
-      secondaryButtonLink: '',
-      backgroundImage: '',
-      alignment: 'center',
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -77,13 +66,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'features',
     label: 'Features Grid',
     icon: BoxSelect,
-    initialData: {
-      title: 'Descubre las ventajas',
-      features: [
-        { title: 'Característica 1', description: 'Descripción breve de esta característica increíble.' },
-        { title: 'Característica 2', description: 'Descripción breve de esta característica increíble.' },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título de Sección', type: 'textarea' },
       {
@@ -92,7 +74,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Característica',
         maxItems: blockSchemas.features.features.max,
-        newItem: { title: 'Nueva característica', description: 'Descripción breve de esta característica.' },
         itemFields: [
           { key: 'title', label: 'Título', type: 'text' },
           { key: 'description', label: 'Descripción', type: 'textarea' },
@@ -105,21 +86,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'testimonials',
     label: 'Testimonials',
     icon: MessageSquare,
-    initialData: {
-      title: 'Lo que dicen de nosotros',
-      testimonials: [
-        {
-          quote: 'Este producto ha cambiado por completo la forma en que trabajamos. Simplemente brillante.',
-          author: 'María García',
-          role: 'Product Manager en TechCorp',
-        },
-        {
-          quote: 'La mejor decisión que tomamos este año. El soporte es increíble y los resultados inmediatos.',
-          author: 'Carlos Ruiz',
-          role: 'CTO en Startup.io',
-        },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título de Sección', type: 'textarea' },
       {
@@ -128,7 +94,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Testimonio',
         maxItems: blockSchemas.testimonials.testimonials.max,
-        newItem: { quote: 'Escribe aquí lo que dice tu cliente.', author: 'Nombre', role: 'Cargo en Empresa' },
         itemFields: [
           { key: 'quote', label: 'Testimonio', type: 'textarea' },
           { key: 'author', label: 'Autor', type: 'text' },
@@ -142,12 +107,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'cta',
     label: 'Call to Action',
     icon: MousePointer2,
-    initialData: {
-      title: 'Comienza tu viaje',
-      subtitle: '',
-      buttonText: 'Suscribirse',
-      buttonLink: '',
-    },
     fields: [
       { key: 'title', label: 'Título Principal', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -160,16 +119,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'footer',
     label: 'Footer Simple',
     icon: PanelBottom,
-    initialData: {
-      brandName: 'Acme Corp',
-      description: 'Construyendo el futuro de la web, un bloque a la vez. Únete a nuestra revolución digital.',
-      copyright: '© 2026 Acme Corporation. Todos los derechos reservados.',
-      links: [
-        { label: 'Producto', url: '' },
-        { label: 'Precios', url: '' },
-        { label: 'Contacto', url: '' },
-      ],
-    },
     fields: [
       { key: 'brandName', label: 'Nombre de Marca', type: 'text' },
       { key: 'description', label: 'Descripción', type: 'textarea' },
@@ -179,7 +128,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Enlace',
         maxItems: blockSchemas.footer.links.max,
-        newItem: { label: 'Nuevo enlace', url: '' },
         itemFields: [
           { key: 'label', label: 'Texto', type: 'text' },
           { key: 'url', label: 'Destino', type: 'text' },
@@ -193,30 +141,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'pricing',
     label: 'Pricing',
     icon: CreditCard,
-    initialData: {
-      title: 'Planes y precios',
-      subtitle: 'Elige el plan que mejor se adapte a tu equipo.',
-      billingPeriod: '/mes',
-      popularBadgeText: 'Popular',
-      plans: [
-        {
-          name: 'Starter',
-          price: '€19',
-          features: 'Hasta 5 páginas\n1 dominio custom\nSoporte por email',
-          buttonText: 'Empezar gratis',
-          buttonLink: '',
-          highlighted: false,
-        },
-        {
-          name: 'Pro',
-          price: '€49',
-          features: 'Páginas ilimitadas\nDominios ilimitados\nSoporte prioritario\nAnalytics avanzado',
-          buttonText: 'Elegir Pro',
-          buttonLink: '',
-          highlighted: true,
-        },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -228,14 +152,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Plan',
         maxItems: blockSchemas.pricing.plans.max,
-        newItem: {
-          name: 'Nuevo plan',
-          price: '€99',
-          features: 'Característica 1\nCaracterística 2',
-          buttonText: 'Elegir plan',
-          buttonLink: '',
-          highlighted: false,
-        },
         itemFields: [
           { key: 'name', label: 'Nombre', type: 'text' },
           { key: 'price', label: 'Precio', type: 'text' },
@@ -252,23 +168,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'faq',
     label: 'FAQ',
     icon: HelpCircle,
-    initialData: {
-      title: 'Preguntas frecuentes',
-      questions: [
-        {
-          question: '¿Cómo empiezo a usar el producto?',
-          answer: 'Regístrate gratis, elige una plantilla y empieza a personalizar tu landing page. No necesitas conocimientos técnicos.',
-        },
-        {
-          question: '¿Puedo usar mi propio dominio?',
-          answer: 'Sí, puedes conectar cualquier dominio que poseas. Te guiamos paso a paso en la configuración DNS.',
-        },
-        {
-          question: '¿Ofrecen soporte técnico?',
-          answer: 'Todos los planes incluyen soporte por email. Los planes Pro y superiores tienen soporte prioritario con respuesta en menos de 24 horas.',
-        },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       {
@@ -277,7 +176,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Pregunta',
         maxItems: blockSchemas.faq.questions.max,
-        newItem: { question: 'Nueva pregunta', answer: 'Escribe aquí la respuesta.' },
         itemFields: [
           { key: 'question', label: 'Pregunta', type: 'text' },
           { key: 'answer', label: 'Respuesta', type: 'textarea' },
@@ -290,16 +188,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'logoCloud',
     label: 'Logo Cloud',
     icon: Building2,
-    initialData: {
-      title: 'Empresas que confían en nosotros',
-      logos: [
-        { name: 'Acme Corp' },
-        { name: 'TechFlow' },
-        { name: 'DataPrime' },
-        { name: 'CloudBase' },
-        { name: 'NextWave' },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'text' },
       {
@@ -308,7 +196,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Empresa',
         maxItems: blockSchemas.logoCloud.logos.max,
-        newItem: { name: 'Nueva empresa' },
         itemFields: [{ key: 'name', label: 'Nombre', type: 'text' }],
       },
     ],
@@ -318,19 +205,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'gallery',
     label: 'Gallery',
     icon: GalleryHorizontalEnd,
-    initialData: {
-      title: 'Galería',
-      subtitle: 'Una muestra de nuestros mejores trabajos.',
-      columns: '3',
-      images: [
-        { src: '', alt: '' },
-        { src: '', alt: '' },
-        { src: '', alt: '' },
-        { src: '', alt: '' },
-        { src: '', alt: '' },
-        { src: '', alt: '' },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -350,7 +224,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Imagen',
         maxItems: blockSchemas.gallery.images.max,
-        newItem: { src: '', alt: '' },
         itemFields: [
           { key: 'src', label: 'Imagen', type: 'image' },
           { key: 'alt', label: 'Texto alternativo', type: 'text' },
@@ -363,14 +236,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'contact',
     label: 'Contact Form',
     icon: Mail,
-    initialData: {
-      title: 'Contacto',
-      subtitle: '¿Tienes alguna pregunta? Escríbenos y te responderemos lo antes posible.',
-      buttonText: 'Enviar mensaje',
-      namePlaceholder: 'Nombre',
-      emailPlaceholder: 'Email',
-      messagePlaceholder: 'Tu mensaje...',
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -385,9 +250,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'customHtml',
     label: 'Custom HTML',
     icon: Code2,
-    initialData: {
-      html: '',
-    },
     fields: [
       { key: 'html', label: 'Código HTML', type: 'textarea' },
     ],
@@ -397,17 +259,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'navbar',
     label: 'Navbar',
     icon: Navigation,
-    initialData: {
-      brandName: 'MiMarca',
-      logoImage: '',
-      links: [
-        { label: 'Producto', url: '' },
-        { label: 'Precios', url: '' },
-        { label: 'Blog', url: '' },
-      ],
-      ctaText: 'Empezar',
-      ctaLink: '',
-    },
     fields: [
       { key: 'brandName', label: 'Nombre de Marca', type: 'text' },
       { key: 'logoImage', label: 'Logo', type: 'image' },
@@ -417,7 +268,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Enlace',
         maxItems: blockSchemas.navbar.links.max,
-        newItem: { label: 'Nuevo enlace', url: '' },
         itemFields: [
           { key: 'label', label: 'Texto', type: 'text' },
           { key: 'url', label: 'Destino', type: 'text' },
@@ -432,15 +282,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'team',
     label: 'Team',
     icon: Users,
-    initialData: {
-      title: 'Nuestro equipo',
-      subtitle: 'Las personas detrás del producto que estás construyendo.',
-      members: [
-        { name: 'Ana López', role: 'CEO & Co-fundadora', image: '' },
-        { name: 'Carlos Martín', role: 'CTO', image: '' },
-        { name: 'Laura García', role: 'Head of Design', image: '' },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -450,7 +291,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Miembro',
         maxItems: blockSchemas.team.members.max,
-        newItem: { name: 'Nuevo miembro', role: 'Rol', image: '' },
         itemFields: [
           { key: 'name', label: 'Nombre', type: 'text' },
           { key: 'role', label: 'Rol', type: 'text' },
@@ -464,16 +304,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'stats',
     label: 'Stats',
     icon: BarChart3,
-    initialData: {
-      title: 'Números que hablan',
-      subtitle: 'Nuestro impacto en cifras reales.',
-      stats: [
-        { value: '10K+', label: 'Usuarios activos' },
-        { value: '99.9%', label: 'Uptime' },
-        { value: '150+', label: 'Países' },
-        { value: '4.9/5', label: 'Valoración' },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
@@ -483,7 +313,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Cifra',
         maxItems: blockSchemas.stats.stats.max,
-        newItem: { value: '100+', label: 'Nueva cifra' },
         itemFields: [
           { key: 'value', label: 'Valor', type: 'text' },
           { key: 'label', label: 'Etiqueta', type: 'text' },
@@ -496,26 +325,6 @@ export const blockRegistry: BlockRegistry = {
     type: 'timeline',
     label: 'Timeline',
     icon: Clock,
-    initialData: {
-      title: 'Nuestra historia',
-      events: [
-        {
-          date: 'Enero 2024',
-          title: 'Fundación',
-          description: 'Nace la idea y se forma el equipo fundador con la visión de transformar la industria.',
-        },
-        {
-          date: 'Junio 2024',
-          title: 'Lanzamiento beta',
-          description: 'Primeros 1.000 usuarios prueban la plataforma y nos ayudan a iterar rápidamente.',
-        },
-        {
-          date: 'Enero 2025',
-          title: 'Lanzamiento público',
-          description: 'Disponible para todos. Más de 10.000 usuarios en el primer mes.',
-        },
-      ],
-    },
     fields: [
       { key: 'title', label: 'Título', type: 'textarea' },
       {
@@ -524,7 +333,6 @@ export const blockRegistry: BlockRegistry = {
         type: 'list',
         itemLabel: 'Evento',
         maxItems: blockSchemas.timeline.events.max,
-        newItem: { date: 'Fecha', title: 'Nuevo evento', description: 'Describe lo que pasó.' },
         itemFields: [
           { key: 'date', label: 'Fecha', type: 'text' },
           { key: 'title', label: 'Título', type: 'text' },
@@ -541,7 +349,6 @@ export function getAvailableBlocks() {
     type: b.type,
     label: b.label,
     icon: b.icon,
-    initialData: b.initialData,
   }));
 }
 

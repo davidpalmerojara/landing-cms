@@ -13,10 +13,11 @@ import {
   WifiOff,
   RefreshCw,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { blockRegistry, getAvailableBlocks } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { getBlockDefaults } from '@/lib/block-defaults';
 import { resolveStyles } from '@/types/blocks';
 import type { BlockType } from '@/types/blocks';
 import BlockContent from '@/components/blocks/BlockContent';
@@ -35,6 +36,7 @@ interface MobileEditorProps {
 
 export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditorProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const page = useEditorStore((s) => s.page);
   const autoSaveStatus = useEditorStore((s) => s.autoSaveStatus);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
@@ -220,7 +222,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
   const handleAddBlock = useCallback((type: BlockType) => {
     const def = blockRegistry[type];
     const translatedLabel = getTranslatedBlockLabel(type, t, def.label);
-    addBlock(type, translatedLabel, null, def.initialData);
+    addBlock(type, translatedLabel, null, getBlockDefaults(type, locale));
     setShowAddSheet(false);
 
     setTimeout(() => {
@@ -245,7 +247,7 @@ export default function MobileEditor({ pageId, onSave, onPublish }: MobileEditor
         selectBlock(newBlock.id);
       }
     }, 50);
-  }, [addBlock, selectBlock, t]);
+  }, [addBlock, selectBlock, t, locale]);
 
   // --- Name editing ---
   const handleNameTap = useCallback(() => {

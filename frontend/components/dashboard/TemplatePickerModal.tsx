@@ -2,8 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { X, FileText, Loader2, LayoutTemplate, Sparkles } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { pageTemplates } from '@/lib/templates';
+import { useLocale, useTranslations } from 'next-intl';
+import { getPageTemplates } from '@/lib/templates';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface TemplatePickerModalProps {
@@ -23,6 +23,7 @@ export default function TemplatePickerModal({
   isCreating,
 }: TemplatePickerModalProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useDialogFocus(dialogRef, open, onClose);
@@ -112,7 +113,7 @@ export default function TemplatePickerModal({
             </button>
 
             {/* Template options */}
-            {pageTemplates.map((template) => (
+            {getPageTemplates(locale).map((template) => (
               <button
                 key={template.id}
                 onClick={() => setSelectedId(template.id)}

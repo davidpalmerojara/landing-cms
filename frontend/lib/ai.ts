@@ -27,14 +27,48 @@ export function parseApiError(error: unknown, fallback: string): ParsedApiError 
   return { message: raw || fallback, code: null };
 }
 
-/** Error codes the backend sends in Spanish, with a translated message in the "ai" namespace. */
+/**
+ * Every error code the AI endpoints can answer with, and the message to show.
+ * The backend's `error` text is in Spanish, so the interface never shows it:
+ * `__tests__/lib/ai.test.ts` checks this table against the codes in
+ * `backend/ai_generation/views.py`. The rest are the errors the same requests
+ * can meet before reaching the AI: the page the modal creates first, and the
+ * generic envelope of `backend/config/exception_handler.py`.
+ */
 const ERROR_MESSAGE_KEYS: Record<string, string> = {
-  DEMO_NO_VARIANT: 'ai.errorNoVariant',
-  AI_KEY_QUOTA: 'ai.errorKeyQuota',
+  AI_NOT_CONFIGURED: 'ai.errors.notConfigured',
+  AI_PLAN_LIMIT: 'ai.errors.planLimit',
+  AI_KEY_QUOTA: 'ai.errors.keyQuota',
+  AI_INVALID_KEY: 'ai.errors.invalidKey',
+  AI_PROVIDER_ERROR: 'ai.errors.providerError',
+  AI_INVALID_OUTPUT: 'ai.errors.invalidOutput',
+  DEMO_NO_VARIANT: 'ai.errors.noVariant',
+  DEMO_FIXTURE_INVALID: 'ai.errors.fixtureInvalid',
+  GUEST_PAGE_LIMIT: 'guest.pageLimit',
+  NOT_FOUND: 'ai.errors.notFound',
+  BAD_REQUEST: 'ai.errors.badRequest',
+  UNAUTHORIZED: 'ai.errors.unauthorized',
+  FORBIDDEN: 'ai.errors.forbidden',
+  THROTTLED: 'ai.errors.throttled',
+  INTERNAL_ERROR: 'ai.errors.internal',
 };
+
+export const AI_ERROR_CODES: readonly string[] = Object.keys(ERROR_MESSAGE_KEYS);
 
 export function aiErrorMessageKey(code: string | null): string | null {
   return code ? ERROR_MESSAGE_KEYS[code] ?? null : null;
+}
+
+/**
+ * The text to show for a failed AI request, in the interface language.
+ * A known code gets its translated message; an unknown code gets `fallback`
+ * (the backend's own text would be Spanish); an error without a code (network
+ * failure) keeps what it says.
+ */
+export function aiErrorText(error: ParsedApiError, t: (key: string) => string, fallback: string): string {
+  const key = aiErrorMessageKey(error.code);
+  if (key) return t(key);
+  return error.code ? fallback : error.message;
 }
 
 /**

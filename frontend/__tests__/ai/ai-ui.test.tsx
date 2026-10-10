@@ -262,7 +262,7 @@ describe('AIGenerateModal', () => {
     click(buttonByText(view.container, 'Generar página'));
     await flush();
 
-    expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('No hay una clave de IA disponible.');
+    expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('La IA del servidor no está disponible ahora mismo. Puedes usar tu propia clave.');
     expect(view.container.querySelector('input[type="password"]')).not.toBeNull();
   });
 });
@@ -355,6 +355,66 @@ describe('AIBlockEditPopover', () => {
     await flush();
 
     expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('no tiene una variante guardada para este tipo de bloque');
+  });
+
+  describe('quick suggestions', () => {
+    const chips = () => Array.from(view.container.querySelectorAll('button')).filter((b) =>
+      b.textContent === MESSAGES.es.ai.blockSuggestion3);
+
+    it('are hidden in demo mode, where an instruction cannot be followed', async () => {
+      await openPopover();
+      expect(chips()).toHaveLength(0);
+    });
+
+    it('are offered when the server answers for real', async () => {
+      await openPopover({ ...DEMO_OPTIONS, mode: 'live' });
+      expect(chips()).toHaveLength(1);
+    });
+
+    it('come back in demo mode once the user types an own key', async () => {
+      await openPopover();
+      click(buttonByText(view.container, 'Usar mi propia clave'));
+      typeInto(view.container.querySelector<HTMLInputElement>('input[type="password"]')!, 'AIza-mine');
+      expect(chips()).toHaveLength(1);
+    });
+
+    it('are offered when the mode could not be fetched', async () => {
+      vi.spyOn(api.ai, 'options').mockRejectedValue(new Error('network'));
+      resetEditorStore(makePage([makeBlock('hero', { title: 'Antes' }, { id: 'b1' })]));
+      view = render(<AIBlockEditPopover blockId="b1" pageId="page-123" onClose={onClose} />);
+      await flush();
+      expect(chips()).toHaveLength(1);
+    });
+  });
+
+  it('shows English text for every backend error when the interface is in English', async () => {
+    vi.spyOn(api.ai, 'options').mockResolvedValue({ ...DEMO_OPTIONS, mode: 'live' });
+    resetEditorStore(makePage([makeBlock('hero', { title: 'Before' }, { id: 'b1' })]));
+    view = renderIn('en', <AIBlockEditPopover blockId="b1" pageId="page-123" onClose={onClose} />);
+    await flush();
+    vi.spyOn(api.ai, 'editBlock').mockRejectedValue(
+      new Error('API 502: {"error":"Error al comunicarse con el servicio de IA.","code":"AI_PROVIDER_ERROR"}'),
+    );
+    typeInto(input(), 'Make it shorter');
+
+    click(view.container.querySelector<HTMLButtonElement>('button[aria-label="Send instruction"]')!);
+    await flush();
+
+    expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('Could not reach the AI service. Try again or use a template.');
+  });
+
+  it('does not show the backend Spanish text for a code it does not know', async () => {
+    vi.spyOn(api.ai, 'options').mockResolvedValue({ ...DEMO_OPTIONS, mode: 'live' });
+    resetEditorStore(makePage([makeBlock('hero', { title: 'Before' }, { id: 'b1' })]));
+    view = renderIn('en', <AIBlockEditPopover blockId="b1" pageId="page-123" onClose={onClose} />);
+    await flush();
+    vi.spyOn(api.ai, 'editBlock').mockRejectedValue(new Error('API 500: {"error":"Algo raro","code":"SOMETHING_NEW"}'));
+    typeInto(input(), 'Make it shorter');
+
+    click(view.container.querySelector<HTMLButtonElement>('button[aria-label="Send instruction"]')!);
+    await flush();
+
+    expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('Could not edit');
   });
 
   it('sends the own key and drops the demo warning once one is typed', async () => {

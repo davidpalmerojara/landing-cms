@@ -707,8 +707,22 @@
     "suggestionsLabel": "Examples to try",
     "openEditor": "Open in the editor",
     "blockEditSend": "Send instruction",
-    "errorNoVariant": "The demo has no saved variant for this type of block. With your own key, AI edits it for real.",
-    "errorKeyQuota": "Your key has run out of quota. Try again later or use another key.",
+    "errors": {
+      "notConfigured": "The server's AI is not available right now. You can use your own key.",
+      "planLimit": "Your plan does not include AI generation, or you have reached its hourly limit. Try again later or use your own key.",
+      "keyQuota": "Your key has run out of quota. Try again later or use another key.",
+      "invalidKey": "The AI key is not valid. Check that the provider and the key are correct.",
+      "providerError": "Could not reach the AI service. Try again or use a template.",
+      "invalidOutput": "The AI returned a response that could not be used. Try a different description.",
+      "noVariant": "The demo has no saved variant for this type of block. With your own key, AI edits it for real.",
+      "fixtureInvalid": "Could not load the demo's saved example. Please try again.",
+      "notFound": "That page or block no longer exists.",
+      "badRequest": "Check what you wrote and try again.",
+      "unauthorized": "Your session has expired. Sign in again.",
+      "forbidden": "Your account or plan does not allow this.",
+      "throttled": "Too many requests in a row. Wait a moment and try again.",
+      "internal": "Something went wrong on the server. Please try again."
+    },
     "saved": {
       "page": {
         "demo_mode": "Cached demo response: generated once with AI and saved.",
@@ -754,6 +768,7 @@
     "owner": "Owner",
     "removeCollaborator": "Remove collaborator",
     "empty": "No collaborators yet. Invite someone by email.",
+    "emptyGuest": "Nobody else has access yet. Create an invite link to edit together.",
     "inviteLinkTitle": "Invite with a link",
     "inviteLinkDescription": "Whoever opens the link can edit the page with you. It expires in 24 hours and works for a few people.",
     "inviteLinkCreate": "Create invite link",

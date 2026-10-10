@@ -1,8 +1,10 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
+import { useLocale } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { getAtPath } from '@/lib/block-data';
+import { getNewListItem } from '@/lib/block-defaults';
 import type { Block } from '@/types/blocks';
 import type { FieldDefinition, ScalarFieldDefinition } from '@/types/inspector';
 import ListField from './ListField';
@@ -31,6 +33,7 @@ function listItems(block: Block, key: string): unknown[] {
 
 /** Content fields of a block, wired to the store. List fields get the list editor. */
 export default function BlockFields({ block, fields, idPrefix, variant = 'desktop', renderScalar }: BlockFieldsProps) {
+  const locale = useLocale();
   const updateBlockField = useEditorStore((s) => s.updateBlockField);
   const addListItem = useEditorStore((s) => s.addListItem);
   const removeListItem = useEditorStore((s) => s.removeListItem);
@@ -58,7 +61,10 @@ export default function BlockFields({ block, fields, idPrefix, variant = 'deskto
             items={listItems(block, field.key)}
             idPrefix={idPrefix}
             variant={variant}
-            onAdd={() => addListItem(block.id, field.key, field.newItem)}
+            onAdd={() => {
+              const item = getNewListItem(block.type, field.key, locale);
+              if (item) addListItem(block.id, field.key, item);
+            }}
             onRemove={(index) => removeListItem(block.id, field.key, index)}
             onMove={(from, to) => moveListItem(block.id, field.key, from, to)}
             renderField={(itemField, index, inputId) => {

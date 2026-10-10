@@ -1,5 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { aiErrorMessageKey, modeNoticeKey, parseApiError, savedAnswerLabelKeys } from '@/lib/ai';
+import {
+  AI_ERROR_CODES,
+  aiErrorMessageKey,
+  aiErrorText,
+  modeNoticeKey,
+  parseApiError,
+  savedAnswerLabelKeys,
+} from '@/lib/ai';
 import { MESSAGES, LOCALES } from '@/lib/i18n';
 
 function lookup(messages: unknown, path: string): unknown {
@@ -67,8 +76,7 @@ describe('AI messages exist in both languages', () => {
     ...(['demo', 'live', 'unavailable'] as const).map((mode) => modeNoticeKey(mode, null)),
     modeNoticeKey('demo', 'gemini'),
     modeNoticeKey('demo', 'anthropic'),
-    aiErrorMessageKey('DEMO_NO_VARIANT'),
-    aiErrorMessageKey('AI_KEY_QUOTA'),
+    ...AI_ERROR_CODES.map((code) => aiErrorMessageKey(code)),
     'ai.suggestionsLabel',
     'ai.openEditor',
     'ai.blockEditSend',
@@ -87,5 +95,45 @@ describe('AI messages exist in both languages', () => {
     for (const key of keys) {
       expect(lookup(MESSAGES.en, key as string), key as string).not.toBe(lookup(MESSAGES.es, key as string));
     }
+  });
+});
+
+describe('AI error codes', () => {
+  /** Every 'UPPER_SNAKE' literal in the backend views is an error code (the other constants are lowercase). */
+  const backendCodes = Array.from(
+    new Set(
+      readFileSync(resolve(__dirname, '../../../backend/ai_generation/views.py'), 'utf8').match(/'[A-Z][A-Z_]+'/g) ?? [],
+    ),
+    (literal) => literal.slice(1, -1),
+  );
+
+  it('finds the codes in the backend file', () => {
+    expect(backendCodes).toEqual(expect.arrayContaining(['AI_PLAN_LIMIT', 'AI_INVALID_OUTPUT', 'DEMO_NO_VARIANT']));
+  });
+
+  it('translates every code the AI views can return', () => {
+    for (const code of backendCodes) {
+      expect(aiErrorMessageKey(code), code).not.toBeNull();
+    }
+  });
+
+  it('translates the generic codes of the error envelope', () => {
+    const handler = readFileSync(resolve(__dirname, '../../../backend/config/exception_handler.py'), 'utf8');
+    const envelopeCodes = Array.from(handler.matchAll(/'([A-Z][A-Z_]+)'/g), (match) => match[1])
+      .filter((code) => code !== 'ERROR' && code !== 'VALIDATION_ERROR' && code !== 'METHOD_NOT_ALLOWED' && code !== 'CONFLICT');
+    expect(envelopeCodes).toEqual(expect.arrayContaining(['BAD_REQUEST', 'THROTTLED', 'INTERNAL_ERROR']));
+    for (const code of envelopeCodes) {
+      expect(aiErrorMessageKey(code), code).not.toBeNull();
+    }
+  });
+
+  it('never shows the backend text of a code it knows or does not know', () => {
+    const t = (key: string) => `[${key}]`;
+    expect(aiErrorText({ message: 'Texto en español', code: 'AI_PLAN_LIMIT' }, t, 'fallback')).toBe('[ai.errors.planLimit]');
+    expect(aiErrorText({ message: 'Texto en español', code: 'SOMETHING_NEW' }, t, 'fallback')).toBe('fallback');
+  });
+
+  it('keeps the message of an error without a code (the network, not the backend)', () => {
+    expect(aiErrorText({ message: 'Failed to fetch', code: null }, (key) => key, 'fallback')).toBe('Failed to fetch');
   });
 });

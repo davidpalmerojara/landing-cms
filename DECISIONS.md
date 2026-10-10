@@ -279,6 +279,22 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-025: El contenido que crea la app sigue el idioma de la interfaz
+
+- **Fecha**: 2026-10-10
+- **Contexto**: La interfaz estaba traducida (next-intl) pero el contenido que la app escribe por el usuario no: un bloque nuevo, la página de inicio del editor y las cuatro plantillas salían siempre en español, la barra de cada bloque mostraba el nombre en inglés del registro, y los errores de la IA llegaban en el español del servidor.
+- **Decisión**:
+  - El registro de bloques (`block-registry.ts`) solo guarda la estructura (campos, componente, icono). Las palabras viven en `lib/block-defaults.ts`: contenido de ejemplo de cada bloque y del elemento nuevo de cada lista, en `es` y `en`, con el mismo tipo que el esquema. No depende de next-intl: quien crea el bloque pasa el idioma (`getBlockDefaults(type, locale)`). El store tampoco lo necesita; `addBlock` recibe los datos ya localizados.
+  - Las plantillas (`lib/template-content/`) llevan nombre, descripción, categoría y bloques en los dos idiomas; el selector las muestra en el idioma de la interfaz y `buildPagePayload(id, nombre, locale)` crea la página en ese idioma. Los enlaces e imágenes son los mismos.
+  - Solo se elige idioma al crear. El contenido que ya existe no se traduce nunca, ni al cambiar de idioma la interfaz.
+  - Los nombres de bloque que ve el usuario salen de `blocks.<tipo>` en los mensajes, por tipo; `block.name` queda como valor interno.
+  - Los errores de la IA se traducen por su `code` (`lib/ai.ts`). Un código desconocido muestra el mensaje genérico, nunca el texto del servidor. Una prueba lee los códigos de `ai_generation/views.py` y falla si falta alguno.
+  - En modo demo, sin clave propia, el popover de edición con IA no ofrece las sugerencias rápidas ("tradúcelo al inglés"): la demo devuelve una variante guardada y no puede seguirlas.
+- **Alternativas**: Traducir en el servidor según `Accept-Language` (el texto de los bloques es del cliente y las plantillas también); un diccionario de mensajes por clave para el contenido de ejemplo (más indirección y perdería el tipado de ADR-021); mantener `initialData` en el registro con una función por idioma (mezcla estructura y palabras).
+- **Consecuencias**: Un bloque o una plantilla nuevos exigen texto en los dos idiomas (las pruebas comprueban que ambos tienen la misma forma y que el inglés no contiene español). Añadir un tercer idioma es añadir una clave en `ContentLocale` y rellenar las mismas tablas. `AI_PLAN_LIMIT` cubre dos casos (plan sin IA y límite por hora) y se muestra con un solo mensaje.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

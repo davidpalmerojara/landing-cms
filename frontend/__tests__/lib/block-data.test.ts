@@ -10,7 +10,9 @@ import {
   setAtPath,
 } from '@/lib/block-data';
 import { blockRegistry } from '@/lib/block-registry';
-import { pageTemplates } from '@/lib/templates';
+import { getBlockDefaults, getNewListItem } from '@/lib/block-defaults';
+import { CONTENT_LOCALES } from '@/lib/content-locale';
+import { getPageTemplates } from '@/lib/templates';
 import type { BlockType } from '@/types/blocks';
 
 const allTypes = Object.keys(blockRegistry).filter(isBlockType);
@@ -98,30 +100,37 @@ describe('normalizeBlockData', () => {
   });
 
   it('keeps valid data unchanged (registry and templates are already normalized)', () => {
-    for (const type of allTypes) {
-      const { initialData } = blockRegistry[type];
-      expect(normalizeBlockData(type, initialData), type).toEqual(initialData);
-    }
-    for (const template of pageTemplates) {
-      for (const block of template.blocks) {
-        const normalized = normalizeBlockData(block.type, block.data);
-        expect(normalized, `${template.id}/${block.type}`).toMatchObject(block.data);
+    for (const locale of CONTENT_LOCALES) {
+      for (const type of allTypes) {
+        const defaults = getBlockDefaults(type, locale);
+        expect(normalizeBlockData(type, defaults), `${locale}/${type}`).toEqual(defaults);
+      }
+      for (const template of getPageTemplates(locale)) {
+        for (const block of template.blocks) {
+          const normalized = normalizeBlockData(block.type, block.data);
+          expect(normalized, `${locale}/${template.id}/${block.type}`).toMatchObject(block.data);
+        }
       }
     }
   });
 });
 
 describe('block registry fields', () => {
-  it('list fields hold arrays in initialData and match the schema limits', () => {
-    for (const type of allTypes) {
-      const { fields, initialData } = blockRegistry[type];
-      for (const field of fields) {
-        const value = getAtPath(initialData, [field.key]);
-        expect(value, `${type}.${field.key}`).not.toBeUndefined();
-        if (field.type === 'list') {
-          expect(Array.isArray(value)).toBe(true);
-          expect(field.maxItems).toBe(listMaxItems(type as BlockType, field.key));
-          expect(normalizeBlockData(type, { [field.key]: [field.newItem] })).toMatchObject({ [field.key]: [field.newItem] });
+  it('list fields hold arrays in the defaults, match the schema limits and have a new item', () => {
+    for (const locale of CONTENT_LOCALES) {
+      for (const type of allTypes) {
+        const { fields } = blockRegistry[type];
+        const defaults = getBlockDefaults(type, locale);
+        for (const field of fields) {
+          const value = getAtPath(defaults, [field.key]);
+          expect(value, `${locale}/${type}.${field.key}`).not.toBeUndefined();
+          if (field.type === 'list') {
+            expect(Array.isArray(value)).toBe(true);
+            expect(field.maxItems).toBe(listMaxItems(type as BlockType, field.key));
+            const newItem = getNewListItem(type, field.key, locale);
+            expect(newItem, `${locale}/${type}.${field.key} new item`).not.toBeNull();
+            expect(normalizeBlockData(type, { [field.key]: [newItem] })).toMatchObject({ [field.key]: [newItem] });
+          }
         }
       }
     }

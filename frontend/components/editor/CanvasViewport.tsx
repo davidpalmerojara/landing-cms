@@ -2,12 +2,13 @@
 
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { Layout } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import type { CursorPosition } from '@/store/editor-store';
 import { getAvailableBlocks } from '@/lib/block-registry';
 import BlockContent from '@/components/blocks/BlockContent';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { getBlockDefaults } from '@/lib/block-defaults';
 import { defaultBlockStyles, resolveStyles } from '@/types/blocks';
 import { pageThemeVars } from '@/lib/page-theme';
 import BrowserFrame from './BrowserFrame';
@@ -92,6 +93,7 @@ function RemoteCursors({ containerRef }: { containerRef: React.RefObject<HTMLDiv
 
 export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: number, y: number) => void }) {
   const t = useTranslations();
+  const locale = useLocale();
   const page = useEditorStore((s) => s.page);
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const isPreviewMode = useEditorStore((s) => s.isPreviewMode);
@@ -311,7 +313,7 @@ export default function CanvasViewport({ onCursorMove }: { onCursorMove?: (x: nu
                         key={type}
                         onClick={(e) => {
                           e.stopPropagation();
-                          addBlock(entry.type, translatedLabel, null, entry.initialData);
+                          addBlock(entry.type, translatedLabel, null, getBlockDefaults(entry.type, locale));
                         }}
                         className="bg-surface-card hover:bg-[#333] text-secondary text-xs px-3 py-1.5 rounded-full transition-colors"
                       >

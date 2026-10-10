@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import { GUEST_TEMPLATE_ID, guestStartErrorKey } from '@/lib/guest';
 import { buildPagePayload } from '@/lib/templates';
@@ -17,6 +17,7 @@ import { buildPagePayload } from '@/lib/templates';
  */
 export function useStartGuest() {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,14 +47,14 @@ export function useStartGuest() {
     }
 
     try {
-      const page = await api.pages.create(buildPagePayload(GUEST_TEMPLATE_ID, t('dashboard.createUntitled')));
+      const page = await api.pages.create(buildPagePayload(GUEST_TEMPLATE_ID, t('dashboard.createUntitled'), locale));
       router.push(`/editor/${page.id}`);
     } catch (e) {
       // The guest session exists; the dashboard lets them create a page by hand
       if (process.env.NODE_ENV === 'development') console.error('Could not create the guest starter page:', e);
       router.push('/dashboard');
     }
-  }, [router, t]);
+  }, [router, t, locale]);
 
   return { start, isStarting, error };
 }

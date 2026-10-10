@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Globe, ChevronRight, User, ArrowLeft, CreditCard, LogOut } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
+import { loginRedirectFor } from '@/lib/login-redirect';
 import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 import { useFeatures } from '@/hooks/useFeatures';
 import DeleteAccountSection from '@/components/settings/DeleteAccountSection';
@@ -14,7 +15,7 @@ import Link from 'next/link';
 export default function SettingsPage() {
   const t = useTranslations();
   const router = useRouter();
-  const { user, isLoading: isAuthLoading, logout } = useAuth({ redirectTo: '/login' });
+  const { user, isLoading: isAuthLoading, logout } = useAuth({ redirectTo: loginRedirectFor('/settings') });
   const { features } = useFeatures();
   const { billingEnabled } = useBillingEnabled();
   // Hidden unless this deployment has custom domains (ADR-027)

@@ -29,6 +29,7 @@ function useAvailableWidth() {
     if (!container) return;
     const measure = () => setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.floor(container.clientWidth))));
     measure();
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();

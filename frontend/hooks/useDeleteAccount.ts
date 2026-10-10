@@ -20,7 +20,7 @@ function toDeleteAccountError(error: unknown): DeleteAccountError {
 /**
  * Deletes the signed-in person's account. Accounts with a password confirm
  * with it; the rest (magic link, Google) by typing their username. When the
- * server has deleted the account the person is taken to the landing page.
+ * server has deleted the account the person is taken to the landing page, which tells them it is done (QA-120).
  */
 export function useDeleteAccount(user: ApiUser) {
   const router = useRouter();
@@ -44,7 +44,7 @@ export function useDeleteAccount(user: ApiUser) {
       return;
     }
     // The session cookies are gone: leave without asking for the profile again
-    router.replace('/');
+    router.replace('/?deleted=1');
   }, [confirmationKind, router]);
 
   return { confirmationKind, isDeleting, error, clearError, deleteAccount };

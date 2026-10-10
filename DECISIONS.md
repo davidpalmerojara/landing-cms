@@ -355,6 +355,50 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - CI: un trabajo `e2e` aparte, con navegadores en caché; sube el informe y las trazas solo si falla.
 - **Consecuencias**: El trabajo tarda más que los demás (compila el frontend). Las pruebas dependen de los textos en español (cookie `paxl-locale=es` explícita). Se ejecutan en serie y con una sola IP, así que cuentan contra los límites de peticiones.
 
+## ADR-031: La facturación es una función que existe solo con una clave de prueba de Stripe
+
+- **Fecha**: 2026-10-10
+- **Contexto**: "Mejorar a Pro" y "Gestionar suscripción" terminaban en `API 500: {"error":"STRIPE_SECRET_KEY not configured"}`: la demo se despliega sin cuenta de Stripe y el código trataba la falta de clave como un fallo del servidor. Además, una demo pública no debe poder cobrar nunca dinero real.
+- **Decisión**:
+  - `GET /api/features/` devuelve también `billing`. Es `true` solo si `STRIPE_SECRET_KEY` empieza por `sk_test_` o `rk_test_`. Sin clave está apagada; con una clave real (`sk_live_`, `rk_live_`) también: se registra un error y el system check `paxl.E002` impide `manage.py check`, `migrate` y el arranque de Daphne.
+  - Apagada, checkout, portal y webhook responden `503 {"error", "code": "FEATURE_DISABLED"}` (la clase `BillingEnabled` va primera en `permission_classes`, como `CustomDomainsEnabled`). Planes, suscripción e historial siguen funcionando para que los límites se vean. Un precio sin configurar es `503 BILLING_NOT_CONFIGURED`; un fallo de Stripe, `502 BILLING_PROVIDER_ERROR` sin el texto de Stripe.
+  - El frontend lee `billing` con `useBillingEnabled`. Apagada: la página de facturación dice "Los pagos no están activos en esta demo" y no ofrece mejorar, el panel y los avisos de plan no llevan a un callejón sin salida (`UpgradePrompt` lo explica), precios y términos no prometen pagos de prueba. Encendida: la página avisa de que es modo de prueba y da la tarjeta 4242 4242 4242 4242. Los mensajes se traducen por `code` o por estado (`lib/account-errors.ts`), nunca se muestra el texto del servidor.
+  - Webhooks idempotentes: el registro del evento se bloquea con `select_for_update` mientras corre su manejador, así que un duplicado simultáneo espera y lo encuentra procesado. Si el manejador falla se deshacen sus cambios, el evento queda sin procesar con el error guardado y la respuesta es 500 para que Stripe reintente (antes respondía 200 y el evento se perdía). Un pago es una fila por factura (`update_or_create`): una factura fallida que luego se paga actualiza su fila.
+  - `GET /api/billing/subscription/` añade `usage` (páginas propias, visibles, publicadas y bloques) para el panel.
+- **Alternativas**: Dejar el 500 y esconder el botón (el endpoint seguiría roto); borrar la facturación (se perdería lo hecho); aceptar claves reales con un aviso (una demo pública cobrando por error es el peor caso).
+- **Consecuencias**: Para encender los pagos de prueba basta una clave `sk_test_`, `STRIPE_WEBHOOK_SECRET` y los ids de precio. Pasar a pagos reales exigiría quitar la guarda a propósito y revisar términos y privacidad.
+
+## ADR-032: Email y nombre de usuario son únicos sin distinguir mayúsculas
+
+- **Fecha**: 2026-10-10
+- **Contexto**: `Demo@x.com` y `demo@x.com` eran dos cuentas distintas, y un enlace mágico pedido con otra capitalización creaba una cuenta vacía en vez de entrar en la existente. Lo mismo con `DEMO` y `demo`.
+- **Decisión**:
+  - El email se guarda en minúsculas (`User.save`, los serializadores de registro y enlace mágico, Google). Restricciones únicas sobre `Lower(email)` y `Lower(username)`. Las búsquedas por email usan `iexact`. El inicio de sesión ignora las mayúsculas del usuario (`accounts.backends.CaseInsensitiveModelBackend`).
+  - La migración `accounts/0009` se detiene con un `RuntimeError` que lista las cuentas que solo se diferencian por mayúsculas (email y usuario) antes de crear las restricciones; fusionar dos cuentas es decisión de una persona. Con los datos limpios pone en minúsculas los emails de usuarios y de enlaces mágicos pendientes.
+  - Los mensajes de validación y el email del enlace mágico siguen `Accept-Language` (`LocaleMiddleware`, `es` por defecto y `en`); el cliente envía el idioma de la interfaz (`<html lang>`). Los mensajes propios están en `accounts/messages.py`.
+- **Consecuencias**: Antes del primer despliegue hay que borrar o renombrar los duplicados que ya existan en bases de pruebas (la migración dice cuáles). El nombre de usuario conserva las mayúsculas con las que se escribió; solo se compara sin ellas.
+
+## ADR-033: Ajustes de producción que se comprueban al arrancar, y política de contenido del frontend
+
+- **Fecha**: 2026-10-10
+- **Contexto**: Detrás de un proxy la dirección de conexión es la del proxy: con `NUM_PROXIES=0` todos los visitantes compartían el mismo cupo de límites (cinco invitados por hora, cinco mensajes de contacto por minuto, el hash de visitante de la analítica). Subirlo a ciegas deja falsear la IP con `X-Forwarded-For`. Tampoco había política de contenido, y el panel de Django estaba en `/admin/` sin límite de intentos.
+- **Decisión**:
+  - `config/checks.py` registra system checks: `paxl.E001` (con `DEBUG` apagado, `NUM_PROXIES` no puede ser 0), `paxl.E002` (clave real de Stripe) y, con `check --deploy`, avisos para `ALLOWED_HOSTS='*'`, orígenes de confianza solo locales, `REVALIDATE_SECRET` vacío y el panel en la ruta por defecto. `config/asgi.py` ejecuta `check` al arrancar con `DEBUG` apagado, porque Daphne no lo hace. El valor correcto se mide en el despliegue (registro temporal de `REMOTE_ADDR` y `X-Forwarded-For`); la variable está documentada en los dos `.env.example`.
+  - El panel de Django está apagado salvo `ADMIN_ENABLED=True` (activo con `DJANGO_DEBUG`), se sirve en `ADMIN_URL_PATH` y limita los intentos de acceso por IP (`ADMIN_LOGIN_RATE`, 10/minuto).
+  - Frontend: `poweredByHeader: false`, `Strict-Transport-Security` y una `Content-Security-Policy` construida en `lib/content-security-policy.ts`. Las páginas publicadas (`/p/…`) llevan la política estricta, sin ningún tercero (tampoco Google); el resto, la misma más el script, el marco y los estilos de Google solo si hay `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Se aplica solo en builds de producción: el servidor de desarrollo necesita `eval` y un socket de recarga. Los scripts incluyen `'unsafe-inline'` porque Next escribe en línea los datos de hidratación y un `nonce` obligaría a renderizar cada página publicada en cada petición. Sigue bloqueando scripts de otros orígenes, `eval`, plugins, marcos de otros sitios y un `<base>` cambiado.
+- **Alternativas**: `nonce` por petición desde el proxy de Next (CSP más estricta, pero deja de cachearse la página publicada); documentar `NUM_PROXIES` sin comprobarlo (es lo que ya había y falló).
+- **Consecuencias**: Un despliegue sin `NUM_PROXIES` no arranca y el mensaje dice qué hacer. En dominios propios (ADR-027) la página de inicio de un dominio llega reescrita a `/p/…` pero la política se elige por la ruta pedida, así que recibe la de la aplicación.
+
+## ADR-034: Visitar una página no guarda nada ni contacta con Google; la cookie de idioma solo nace al cambiar de idioma
+
+- **Fecha**: 2026-10-10
+- **Contexto**: Cada visita a cualquier ruta, también a una página publicada, cargaba el script de Google y escribía durante un año la cookie `paxl-locale`, mientras la política de privacidad decía lo contrario.
+- **Decisión**:
+  - El proveedor de Google (`GoogleOAuthWrapper`) se monta solo dentro de `GoogleSignIn`, que usan `/login` y `/register`, y solo si hay `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. El botón sale en el idioma de la interfaz, con el tema de la página y del ancho del formulario.
+  - `paxl-locale` se escribe solo en `setLocale`, es decir, cuando la persona usa el selector (y entonces se refresca la parte servida por el servidor: título y `<html lang>`). Sin cookie el servidor usa `Accept-Language`.
+  - Las páginas publicadas no ponen cookies ni usan el almacenamiento del dispositivo: una prueba de extremo a extremo con un contexto limpio lo comprueba. La página de privacidad se reescribió en español e inglés (cookies, almacenamiento local sin la "copia de la sesión" que ya no existe, Google, pagos desactivados).
+- **Consecuencias**: Quien ya tenía la cookie la conserva hasta que caduque. Cambiar de idioma sigue recordándose; quedarse con el idioma del navegador no.
+
 ---
 
 ## ADR-031: Guardar sin perder nada: un campo rechazado no bloquea el resto, reintentos y copia local con su base

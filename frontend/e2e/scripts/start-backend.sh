@@ -26,6 +26,9 @@ export FRONTEND_URL="http://127.0.0.1:${FRONTEND_PORT}"
 export CORS_ALLOWED_ORIGINS="http://127.0.0.1:${FRONTEND_PORT},http://localhost:${FRONTEND_PORT}"
 export CSRF_TRUSTED_ORIGINS="$CORS_ALLOWED_ORIGINS"
 export REVALIDATE_SECRET="${E2E_REVALIDATE_SECRET:-e2e-revalidate-secret}"
+# Payments are off in the suite (no Stripe test key), whatever a developer's own backend/.env says
+export STRIPE_SECRET_KEY=
+export STRIPE_WEBHOOK_SECRET=
 export AI_DEMO_MODE=True
 export AI_DEMO_DELAY_SECONDS=0
 export EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend

@@ -7,9 +7,11 @@ import {
   Globe, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle,
   Loader2, Copy, ExternalLink, ArrowLeft, Crown, Clock, Shield,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
+import { accountErrorMessage } from '@/lib/account-errors';
 import type { ApiCustomDomain, ApiPageListItem } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { loginRedirectFor } from '@/lib/login-redirect';
 import { useDomainSettings } from '@/hooks/useDomainSettings';
 import { useFeatures } from '@/hooks/useFeatures';
 import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
@@ -133,7 +135,9 @@ function AddDomainModal({
       await onAdd(domain.trim().toLowerCase(), pageId || undefined);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('domains.addDomainError'));
+      // A rejected domain name comes with its reason; anything else is explained by code, never as raw API text
+      const reason = e instanceof ApiError ? e.details?.domain?.[0] : undefined;
+      setError(reason ?? accountErrorMessage(e, t, 'domains.addDomainError'));
     } finally {
       setIsAdding(false);
     }
@@ -204,7 +208,7 @@ function AddDomainModal({
 export default function DomainsSettingsPage() {
   const t = useTranslations();
   const router = useRouter();
-  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: '/login' });
+  const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: loginRedirectFor('/settings/domains') });
   const { features, isLoading: isFeaturesLoading } = useFeatures();
   const billingEnabled = features?.billing === true;
   // Guest sessions cannot have domains: the API refuses them, so do not ask
@@ -215,7 +219,7 @@ export default function DomainsSettingsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const loadError = hasLoadError ? (loadFailure instanceof Error ? loadFailure.message : t('domains.loadError')) : null;
+  const loadError = hasLoadError ? accountErrorMessage(loadFailure, t, 'domains.loadError') : null;
   const error = actionError ?? loadError;
 
   const handleAdd = async (domain: string, pageId: string | undefined) => {
@@ -233,7 +237,7 @@ export default function DomainsSettingsPage() {
         prev.map((d) => (d.id === id ? { ...d, ...result } : d))
       );
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('domains.verifyError'));
+      setActionError(accountErrorMessage(e, t, 'domains.verifyError'));
     } finally {
       setVerifyingId(null);
     }
@@ -245,7 +249,7 @@ export default function DomainsSettingsPage() {
       await api.domains.delete(id);
       updateDomains((prev) => prev.filter((d) => d.id !== id));
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('domains.deleteError'));
+      setActionError(accountErrorMessage(e, t, 'domains.deleteError'));
     }
   };
 

@@ -43,7 +43,8 @@
   --bp-color-primary-light: #3B82F6;
   --bp-color-primary-dark: #1D4ED8;
   --bp-color-accent: #60A5FA;
-  --bp-color-primary-text: #2563EB;
+  /* A little darker than the primary: ≥4.5:1 also on the tinted chips (bg-primary/10, APP3-003) */
+  --bp-color-primary-text: #1F56E0;
 
   --bp-color-surface: #FFFFFF;
   --bp-color-surface-elevated: #F9FAFB;
@@ -54,13 +55,15 @@
 
   --bp-color-text-primary: #111827;
   --bp-color-text-secondary: #4B5563;
-  --bp-color-text-muted: #6B7280;
+  /* ≥4.5:1 on white and on the tinted panels (bg-error/10) too (APP3-003) */
+  --bp-color-text-muted: #626A77;
 
   /* Darker status colors: ≥4.5:1 as text on white and with white text on top */
   --bp-color-success: #047857;
   --bp-color-warning: #B45309;
   --bp-color-error: #DC2626;
-  --bp-color-error-text: #DC2626;
+  /* Text on the tinted error backgrounds (bg-red-500/10) needs a bit more than the fill colour */
+  --bp-color-error-text: #C42020;
 
   --bp-scrollbar-track: var(--bp-color-surface-elevated);
   --bp-scrollbar-thumb: var(--bp-color-border);

@@ -533,7 +533,7 @@ Las pruebas E2E viven en `frontend/e2e/` (ADR-030); CI las ejecuta en el trabajo
 | Warning | `#F59E0B` | Advertencias |
 | Error | `#EF4444` (texto: `#F87171`) | Errores, acciones destructivas |
 
-Modo claro (`[data-theme="light"]` en `app/globals.css`): superficies `#FFFFFF`/`#F9FAFB`, texto `#111827`/`#4B5563`/`#6B7280`, success `#047857`, warning `#B45309`, error `#DC2626`. Todos los pares texto/fondo cumplen WCAG AA (4.5:1). Los tokens se usan como clases de Tailwind (ADR-012); `npm run check:classes` falla si una clase de color no genera CSS.
+Modo claro (`[data-theme="light"]` en `app/globals.css`): superficies `#FFFFFF`/`#F9FAFB`, texto `#111827`/`#4B5563`/`#626A77` (los tonos de texto muted, error `#C42020` y primary `#1F56E0` se oscurecen un poco para llegar a 4.5:1 tambien sobre los paneles teñidos, APP3-003), success `#047857`, warning `#B45309`, error `#DC2626`. Todos los pares texto/fondo cumplen WCAG AA (4.5:1). Los tokens se usan como clases de Tailwind (ADR-012); `npm run check:classes` falla si una clase de color no genera CSS.
 
 ### Tipografia
 

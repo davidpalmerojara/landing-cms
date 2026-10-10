@@ -47,6 +47,10 @@ describe('login page', () => {
     expect(view.container.querySelector('a[href="/"]')?.textContent).toBe('Paxl');
   });
 
+  it('APP3-004: the link to register is underlined, not told apart from the sentence by colour alone', () => {
+    expect(view.container.querySelector('a[href="/register"]')?.className).toContain('underline');
+  });
+
   it('QA-069: the fields carry autocomplete hints for password managers and no auto-capitalisation', () => {
     const username = field(view.container, 'Usuario');
     const password = field(view.container, 'Contraseña');
@@ -151,6 +155,10 @@ describe('register page', () => {
       submit(view.container.querySelector('form') as HTMLFormElement);
     });
   }
+
+  it('APP3-004: the link to log in is underlined, not told apart from the sentence by colour alone', () => {
+    expect(view.container.querySelector('a[href="/login"]')?.className).toContain('underline');
+  });
 
   it('QA-069: heading, autocomplete hints', () => {
     expect(view.container.querySelector('h1')?.textContent).toBe('Crear cuenta');

@@ -187,7 +187,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-muted mt-6">
         {t('auth.haveAccount')}{' '}
-        <Link href="/login" className="text-primary-color hover:text-primary-color/80 transition-colors">
+        <Link href="/login" className="text-primary-color underline underline-offset-2 hover:text-primary-color/80 transition-colors">
           {t('auth.loginLink')}
         </Link>
       </p>

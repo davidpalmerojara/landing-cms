@@ -205,7 +205,7 @@ describe('dashboard, plan usage', () => {
 describe('dashboard, collaborators (D1, ADR-032)', () => {
   function openMenu(name: string) {
     click(byLabel(`Opciones para ${name}`) as HTMLElement);
-    return view.container.querySelector('[role="menu"]') as HTMLElement;
+    return document.querySelector('[role="menu"]') as HTMLElement;
   }
   const items = (menu: HTMLElement) => [...menu.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent);
 
@@ -251,7 +251,7 @@ describe('dashboard, page menu keyboard (QA-060)', () => {
 
     click(trigger);
 
-    const menu = view.container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = document.querySelector('[role="menu"]') as HTMLElement;
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(items[0]);
@@ -264,8 +264,62 @@ describe('dashboard, page menu keyboard (QA-060)', () => {
     expect(document.activeElement).toBe(items[0]);
 
     keyDown(menu, 'Escape');
-    expect(view.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('APP2-001: the menu is drawn outside the card, fixed over the page, so the card cannot clip it', async () => {
+    await mount({ pages: answer([pageItem('1', { status: 'published' })]) });
+    click(byLabel('Opciones para Landing 1') as HTMLElement);
+
+    const menu = document.querySelector('[role="menu"]') as HTMLElement;
+
+    expect(view.container.contains(menu)).toBe(false);
+    expect(menu.parentElement).toBe(document.body);
+    expect(menu.className).toContain('fixed');
+    expect(menu.style.top).not.toBe('');
+    expect(menu.style.left).not.toBe('');
+  });
+
+  it('APP2-001: a click on an item reaches the item (and only it), then the menu closes', async () => {
+    await mount({ pages: answer([pageItem('1', { status: 'published' })]) });
+    click(byLabel('Opciones para Landing 1') as HTMLElement);
+    const menu = document.querySelector('[role="menu"]') as HTMLElement;
+
+    click(menu.querySelector('[role="menuitem"]') as HTMLElement);
+
+    expect(push).toHaveBeenCalledWith('/editor/1');
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('APP2-003: cancelling the delete dialog returns focus to the card menu button', async () => {
+    await mount();
+    const trigger = byLabel('Opciones para Landing 1') as HTMLButtonElement;
+    click(trigger);
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    click(items[items.length - 1]);
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    click(buttonByText(dialog, 'Cancelar'));
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('APP2-003: after deleting the page, focus goes to the dashboard heading, not to the top of the page', async () => {
+    await mount();
+    vi.spyOn(api.pages, 'delete').mockResolvedValue(undefined);
+    click(byLabel('Opciones para Landing 1') as HTMLElement);
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    click(items[items.length - 1]);
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+
+    await act(async () => buttonByText(dialog, 'Eliminar').click());
+    await act(async () => {});
+
+    expect(view.container.querySelector('h2 a')).toBeNull();
+    expect(document.activeElement).toBe(view.container.querySelector('h1'));
   });
 
   it('a click anywhere else closes the menu', async () => {
@@ -276,7 +330,20 @@ describe('dashboard, page menu keyboard (QA-060)', () => {
       document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     });
 
-    expect(view.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+});
+
+describe('dashboard, dialogs over the sidebar (APP2-002)', () => {
+  it('the template picker sits on the same layer as the other dialogs, above the sidebar', async () => {
+    await mount();
+    click(buttonByText(view.container, 'Nueva página'));
+
+    const overlay = (document.querySelector('[role="dialog"]') as HTMLElement).parentElement as HTMLElement;
+    const aside = view.container.querySelector('aside') as HTMLElement;
+
+    expect(overlay.className).toContain('z-[100]');
+    expect(aside.className).toContain('z-60');
   });
 });
 

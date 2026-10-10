@@ -185,3 +185,13 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo** (ADR-024): Cada página tiene `version`. Un guardado hecho sobre una versión antigua recibe 409 con la página actual, y el cliente fusiona en tres vías (`lib/page-merge.ts`: lo que tenía el servidor, sus cambios y lo nuevo) sin perder nunca una edición. Tras cada escritura el servidor emite `page_updated`, y los demás traen la página y la fusionan igual. Presencia y bloqueos van por conexión.
 - **Cómo se verificó**: Tests de la fusión, incluidas propiedades con ediciones aleatorias (no se pierde ninguna edición ni se duplica ningún bloque). Tests del consumer con `WebsocketCommunicator`, incluida una carrera real entre dos guardados. Y una prueba con dos navegadores reales (propietario e invitado colaborador): 13 comprobaciones, tres pasadas seguidas sin un fallo.
 - **Lección**: Sin versión, "guardar la página entera" es "borrar lo que no sabías que había cambiado". La concurrencia optimista es barata de añadir y lo que la hace usable es la fusión en el cliente.
+
+## 23. El editor mostraba tu propio cursor como si fuera de otra persona
+
+- **Fecha**: 2026-10-10
+- **Qué pasaba**: Con el editor abierto en una sola pestaña, aparecía un cursor con tu nombre siguiendo al ratón, como si hubiera otra persona en la página. La pestaña había abierto dos conexiones WebSocket y cada una recibía los movimientos de la otra.
+- **Cómo se detectó**: Al rehacer las capturas de la landing salía un cursor "demo" en una página recién creada en la que no había nadie más. Escuchando los mensajes del WebSocket se veían dos `connected` con dos `connection_id` distintos desde la misma pestaña.
+- **Causa**: Para conectar, el hook primero pide un ticket (ADR-010), lo que es asíncrono. Si el efecto se limpiaba mientras esperaba (React monta los efectos dos veces en desarrollo, y también pasa al cambiar de página), al llegar el ticket comprobaba `mountedRef`, que la ejecución nueva ya había vuelto a poner a `true`, y abría un segundo socket que nadie cerraba.
+- **Arreglo**: Cada ejecución del efecto tiene su propio indicador `disposed`. Una ejecución limpiada no abre socket, y si su socket se cierra más tarde, no toca los temporizadores ni los bloqueos de la ejecución nueva.
+- **Cómo se verificó**: Un test cambia de página mientras el primer ticket está pendiente y comprueba que solo se abre un socket, el de la página nueva. Falla sin el arreglo. En el navegador: una sola conexión y ningún cursor propio. La prueba con dos navegadores de la S10 sigue en 13/13.
+- **Lección**: Un ref compartido entre ejecuciones de un efecto no sirve para saber si *esta* ejecución sigue viva. Lo asíncrono dentro de un efecto necesita su propia bandera de cancelación.

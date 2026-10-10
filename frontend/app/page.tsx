@@ -2,15 +2,18 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowDown, Globe, LayoutGrid, Palette, Smartphone } from 'lucide-react';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { tokenPresets } from '@/lib/design-tokens';
 import GuestStartButton from '@/components/guest/GuestStartButton';
+import { toContentLocale } from '@/lib/content-locale';
 
 export default function LandingPage() {
   const t = useTranslations();
+  // Product screenshots in the visitor's language
+  const shotLocale = toContentLocale(useLocale());
 
   return (
     <div id="main-content" className="min-h-screen bg-surface font-sans text-secondary selection:bg-primary/30">
@@ -82,7 +85,7 @@ export default function LandingPage() {
 
           <div className="max-w-6xl mx-auto rounded-2xl border border-default/30 overflow-hidden shadow-2xl shadow-primary/10">
             <Image
-              src="/landing/editor.webp"
+              src={`/landing/editor-${shotLocale}.webp`}
               alt={t('marketing.home.heroImageAlt')}
               width={1440}
               height={900}
@@ -136,7 +139,7 @@ export default function LandingPage() {
               <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.responsiveTitle')}</h3>
               <p className="text-secondary leading-relaxed mb-8">{t('marketing.home.responsiveDescription')}</p>
               <Image
-                src="/landing/mobile.webp"
+                src={`/landing/mobile-${shotLocale}.webp`}
                 alt={t('marketing.home.mobileImageAlt')}
                 width={600}
                 height={1298}
@@ -150,7 +153,7 @@ export default function LandingPage() {
               <h3 className="text-2xl font-bold text-primary mb-2">{t('marketing.home.publishTitle')}</h3>
               <p className="text-secondary leading-relaxed mb-8">{t('marketing.home.publishDescription')}</p>
               <Image
-                src="/landing/published.webp"
+                src={`/landing/published-${shotLocale}.webp`}
                 alt={t('marketing.home.publishedImageAlt')}
                 width={1440}
                 height={900}

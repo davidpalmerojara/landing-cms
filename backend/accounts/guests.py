@@ -154,9 +154,7 @@ def cleanup_expired_guests(limit=None) -> int:
     are not covered by the cascade, so they are deleted from storage here.
     Returns how many guests were deleted.
     """
-    from pages.models import Asset, Page
-    from pages.revalidation import revalidate_public_pages
-    from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+    from .deletion import delete_users_with_data
 
     User = get_user_model()
     expired = User.objects.filter(is_guest=True, created_at__lte=timezone.now() - guest_lifetime())
@@ -164,28 +162,12 @@ def cleanup_expired_guests(limit=None) -> int:
     if not ids:
         return 0
 
-    published_slugs = list(
-        Page.objects.filter(owner_id__in=ids, status=Page.Status.PUBLISHED).values_list('slug', flat=True)
+    deletion = delete_users_with_data(ids)
+    logger.info(
+        'Deleted %s expired guests (%s database rows, %s files)',
+        deletion.users, deletion.rows, deletion.files,
     )
-    files = [name for name in Asset.objects.filter(owner_id__in=ids).values_list('file', flat=True) if name]
-
-    with transaction.atomic():
-        # Their refresh tokens are no use any more (and the blacklist rows cascade from them)
-        OutstandingToken.objects.filter(user_id__in=ids).delete()
-        deleted, _ = User.objects.filter(pk__in=ids).delete()
-        revalidate_public_pages(*published_slugs)
-
-    storage = Asset._meta.get_field('file').storage
-    for name in files:
-        try:
-            storage.delete(name)
-        except OSError:
-            logger.warning('Could not delete the file of an expired guest', extra={'file': name}, exc_info=True)
-    if published_slugs:
-        cache.delete('sitemap_xml')
-
-    logger.info('Deleted %s expired guests (%s database rows, %s files)', len(ids), deleted, len(files))
-    return len(ids)
+    return deletion.users
 
 
 def sweep_before_creating() -> None:

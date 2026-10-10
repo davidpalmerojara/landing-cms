@@ -16,6 +16,17 @@ class AuthRateThrottle(CurrentRatesMixin, AnonRateThrottle):
     scope = 'auth'
 
 
+class SignedInAuthRateThrottle(CurrentRatesMixin, SimpleRateThrottle):
+    """The auth limit for requests that re-check the password of a signed-in
+    account (AuthRateThrottle only counts anonymous requests)."""
+    scope = 'auth'
+
+    def get_cache_key(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return None
+        return self.cache_format % {'scope': self.scope, 'ident': request.user.pk}
+
+
 class LoginUsernameThrottle(CurrentRatesMixin, SimpleRateThrottle):
     """Per-account limit on login attempts, whatever IP they come from, so
     spreading a password-guessing attack over many addresses doesn't help."""

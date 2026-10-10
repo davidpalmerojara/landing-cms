@@ -30,7 +30,7 @@ import { apiErrorKind, isRetryableError, validationErrors } from '@/lib/api-erro
 import type { ApiErrorKind } from '@/lib/api-errors';
 import { getAtPath, makeBlock, setAtPath, withBlockData } from '@/lib/block-data';
 import { apiPageToLocal, localPageToApi } from '@/lib/page-mapping';
-import { deepEqual, mergePages, sameBlockContent, samePageContent } from '@/lib/page-merge';
+import { deepEqual, mergePages, rebaseSnapshot, sameBlockContent, samePageContent, withoutRelayedEdits } from '@/lib/page-merge';
 import { logSyncError, readBackup, writeBackup } from '@/lib/page-backup';
 import { useEditorStore } from '@/store/editor-store';
 import type { BlockType, DataPath } from '@/types/block-data';
@@ -257,7 +257,10 @@ export class PageSyncController {
   /** The editor has changes the server does not have (including refused fields). */
   hasUnsavedChanges(): boolean {
     const base = store().syncBase;
-    return !base || !samePageContent(store().page, base.page);
+    if (!base) return true;
+    // Someone else's live text is not ours to save (QA-033)
+    const own = withoutRelayedEdits(store().page, base.page, store().relayedEdits);
+    return !samePageContent(own, base.page);
   }
 
   // --- Retries ---
@@ -412,7 +415,9 @@ export class PageSyncController {
           conflicts++;
           continue;
         }
-        sent = this.outgoing(page, base.page);
+        // Text relayed live by a lock holder is theirs to save, not ours (QA-033)
+        const own = withoutRelayedEdits(page, base.page, store().relayedEdits);
+        sent = this.outgoing(own, base.page);
         let unchanged = true;
         if (!samePageContent(sent, base.page)) {
           const payload = { ...localPageToApi(sent), version: base.version };
@@ -479,11 +484,14 @@ export class PageSyncController {
    */
   private mergeRemote(remoteApi: ApiPage): boolean {
     const remote = apiPageToLocal(remoteApi);
-    const { page: local, syncBase } = store();
+    const { page, syncBase, relayedEdits } = store();
     const base = syncBase?.page ?? remote;
-    const merged = mergePages(base, local, remote);
+    // Only our own changes are merged; relayed live text is the holder's (QA-033)
+    const own = (p: Page) => withoutRelayedEdits(p, base, relayedEdits);
+    const merged = mergePages(base, own(page), remote);
     store().setSyncBase({ page: remote, version: remoteApi.version });
-    store().applyRemotePage(merged, (snapshot) => mergePages(base, snapshot, remote));
+    // Undo snapshots lose blocks deleted elsewhere: undo never resurrects them (QA-034)
+    store().applyRemotePage(merged, (snapshot) => rebaseSnapshot(base, own(snapshot), remote));
     return !samePageContent(merged, remote);
   }
 

@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import time
@@ -6,14 +7,16 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
-from django.db.models import Q
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from collaboration.locks import get_lock_manager
 from pages import sync
-from pages.models import Page, Block, create_version_snapshot
+from pages.models import Page, Block, create_version_snapshot, lock_page, pages_accessible_to
+from pages.permissions import require_page_owner
 from . import demo, providers
 from .merge import merge_block_data
 from .models import AIGenerationLog
@@ -214,13 +217,21 @@ class AIOptionsView(APIView):
 
 
 def _get_page(user, page_id) -> Page | None:
-    return Page.objects.filter(
-        Q(owner=user) | Q(collaborators=user)
-    ).distinct().filter(pk=page_id).first()
+    return pages_accessible_to(user).filter(pk=page_id).first()
 
 
 def _replace_page_blocks(page: Page, user, sanitized: list[dict]) -> list[dict]:
-    """Snapshot the page, then replace its blocks with the validated ones."""
+    """Snapshot the page, then replace its blocks with the validated ones, all or
+    nothing and one request at a time per page: two generations at once used to
+    interleave their blocks and collide on the version number."""
+    with transaction.atomic():
+        lock_page(page.pk)
+        created = _replace_page_blocks_locked(page, user, sanitized)
+        sync.bump_version(page)
+    return created
+
+
+def _replace_page_blocks_locked(page: Page, user, sanitized: list[dict]) -> list[dict]:
     # Auto-snapshot before AI replaces all blocks
     if page.blocks.exists():
         create_version_snapshot(
@@ -252,12 +263,14 @@ def _replace_page_blocks(page: Page, user, sanitized: list[dict]) -> list[dict]:
 
 
 class GeneratePageView(APIView):
-    """POST /api/pages/{page_id}/generate/ — generate blocks with AI."""
+    """POST /api/pages/{page_id}/generate/ — generate blocks with AI. Owner only:
+    it replaces every block of the page (ADR-031)."""
 
     def post(self, request, page_id):
         page = _get_page(request.user, page_id)
         if page is None:
             return _error('Página no encontrada.', 'NOT_FOUND', status.HTTP_404_NOT_FOUND)
+        require_page_owner(page, request.user, 'Solo el propietario puede regenerar la página entera con IA.')
 
         input_serializer = GeneratePageSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -295,7 +308,6 @@ class GeneratePageView(APIView):
             demo_extra = {'fixture_id': match.fixture.id, 'matched': match.matched}
 
         created_blocks = _replace_page_blocks(page, request.user, sanitized)
-        sync.bump_version(page)
         sync.notify_page_updated(page, sync.REASON_AI, request.user, sync.connection_id_from(request))
         cost = _log(request.user, page, route, AIGenerationLog.Mode.FULL_PAGE, prompt, tokens_in, tokens_out)
 
@@ -360,8 +372,24 @@ def _clean_edit_result(result: dict) -> dict:
     return finalize_blocks([result])[0]
 
 
+def _locked_by_another_connection(page_id, block_id, connection_id: str | None) -> bool:
+    """Someone else is editing the block right now (the lock holder is a WebSocket
+    connection id; the request names its own in X-Connection-Id)."""
+    try:
+        holder = get_lock_manager().get_lock_holder(str(page_id), str(block_id))
+    except Exception:  # noqa: BLE001 - a lock backend outage must not block the edit
+        logger.warning('Could not read the lock of block %s on page %s', block_id, page_id, exc_info=True)
+        return False
+    return holder is not None and holder != connection_id
+
+
 class EditBlockView(APIView):
-    """POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/ — edit a single block with AI."""
+    """POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/ — edit a single block with AI.
+
+    The provider call takes seconds, during which someone may save the same
+    block: the result is applied only if the block is still as it was when the
+    call started, otherwise 409 BLOCK_CHANGED and nothing is written (QA-030).
+    """
 
     def post(self, request, page_id, block_id):
         page = _get_page(request.user, page_id)
@@ -376,6 +404,11 @@ class EditBlockView(APIView):
         input_serializer = EditBlockSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         instruction = input_serializer.validated_data['instruction']
+
+        connection_id = sync.connection_id_from(request)
+        if _locked_by_another_connection(page.pk, block.pk, connection_id):
+            return _error('Otra persona está editando este bloque.', 'BLOCK_LOCKED', status.HTTP_409_CONFLICT)
+        original = (block.type, copy.deepcopy(block.data))
 
         route = choose_route(request.user, input_serializer.validated_data)
         if isinstance(route, Response):
@@ -412,19 +445,35 @@ class EditBlockView(APIView):
                               status.HTTP_500_INTERNAL_SERVER_ERROR)
             new_data = merge_block_data(block.data, variant, cleaned['data'])
 
-        # Auto-snapshot before AI edits block
-        create_version_snapshot(
-            page=page,
-            user=request.user,
-            trigger='auto_ai_generation',
-            label=f'Antes de editar bloque {block.type} con IA',
-        )
+        with transaction.atomic():
+            lock_page(page.pk)
+            current = Block.objects.select_for_update().filter(pk=block.pk, page=page).first()
+            if current is None:
+                return _error('Bloque no encontrado.', 'NOT_FOUND', status.HTTP_404_NOT_FOUND)
+            if (current.type, current.data) != original or _locked_by_another_connection(
+                page.pk, block.pk, connection_id,
+            ):
+                logger.info('AI edit of block %s dropped: it changed while the model answered', block.pk)
+                return _error(
+                    'El bloque ha cambiado mientras la IA trabajaba. No se ha aplicado nada; inténtalo de nuevo.',
+                    'BLOCK_CHANGED',
+                    status.HTTP_409_CONFLICT,
+                )
+            block = current
 
-        block.type = new_type
-        block.data = new_data
-        block.save()
-        sync.bump_version(page)
-        sync.notify_page_updated(page, sync.REASON_AI, request.user, sync.connection_id_from(request))
+            # Auto-snapshot before AI edits block
+            create_version_snapshot(
+                page=page,
+                user=request.user,
+                trigger='auto_ai_generation',
+                label=f'Antes de editar bloque {block.type} con IA',
+            )
+
+            block.type = new_type
+            block.data = new_data
+            block.save()
+            sync.bump_version(page)
+        sync.notify_page_updated(page, sync.REASON_AI, request.user, connection_id)
 
         cost = _log(request.user, page, route, AIGenerationLog.Mode.EDIT_BLOCK, instruction, tokens_in, tokens_out)
 

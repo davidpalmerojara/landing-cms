@@ -62,7 +62,7 @@ class TestRestoreValidatesBlocks:
         resp = auth_client.post(restore_url(page, version))
 
         assert resp.status_code == status.HTTP_200_OK
-        assert page.blocks.get().data == {'features': [{'title': 'Fast', 'description': 'alert(1)<strong>ok</strong>'}]}
+        assert page.blocks.get().data == {'features': [{'title': 'Fast', 'description': 'alert(1)ok'}]}
 
     def test_old_numbered_keys_in_a_snapshot_are_not_brought_back(self, auth_client, user):
         # The migration converts snapshots; whatever slips through is dropped like any unknown key

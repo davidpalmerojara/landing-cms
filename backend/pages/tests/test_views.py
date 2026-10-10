@@ -513,7 +513,7 @@ class TestBlockSecurity:
             {
                 'name': 'Unsafe URL',
                 'blocks': [
-                    {'type': 'hero', 'data': {'backgroundImage': 'javascript:alert(1)'}, 'styles': {}},
+                    {'type': 'hero', 'data': {'backgroundImage': 'javascript:alert'}, 'styles': {}},
                 ],
             },
             format='json',
@@ -524,6 +524,8 @@ class TestBlockSecurity:
             'code': 'BAD_REQUEST',
             'details': {
                 # DRF >= 3.17 keys list errors by item index
-                'blocks': {0: {'data': {'backgroundImage': ['URL no permitida: javascript:alert(1)']}}},
+                'blocks': {0: {'data': {'backgroundImage': [
+                    'URL de imagen no permitida. Usa https://, http:// o una ruta que empiece por /.',
+                ]}}},
             },
         }

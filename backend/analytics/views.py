@@ -1,7 +1,8 @@
 import logging
+import math
 from datetime import timedelta
 
-from django.db.models import Count, Q, F, Value, CharField
+from django.db.models import Count, F, Value, CharField
 from django.db.models.functions import TruncDate, TruncHour, TruncWeek
 from django.utils import timezone
 from rest_framework import status
@@ -10,9 +11,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from pages.models import Page
+from pages.models import Page, pages_accessible_to
 from .models import AnalyticsEvent
-from .privacy import daily_visitor_hash, referrer_origin, sanitize_event_data
+from .privacy import MAX_SECONDS_ON_PAGE, daily_visitor_hash, referrer_origin, sanitize_event_data
 from .serializers import EventBatchSerializer
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsCollectThrottle(AnonRateThrottle):
     rate = '100/min'
+    # Its own bucket: with the default scope ('anon') it shared a history with every
+    # other anonymous endpoint behind the same IP
+    scope = 'analytics'
 
 
 class CollectView(APIView):
@@ -125,6 +129,16 @@ def _classify_device(screen_size):
     return 'desktop'
 
 
+def _stored_seconds(event_data) -> float:
+    """Seconds in a stored time_on_page event, 0 for anything that is not a sane
+    number: rows written before the collect endpoint clamped values may hold
+    1e308 or worse, and one of them must not break the whole dashboard."""
+    raw = event_data.get('seconds', 0) if isinstance(event_data, dict) else event_data
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw):
+        return 0.0
+    return float(min(max(raw, 0), MAX_SECONDS_ON_PAGE))
+
+
 class PageAnalyticsView(APIView):
     """
     GET /api/pages/{page_id}/analytics/
@@ -146,12 +160,9 @@ class PageAnalyticsView(APIView):
         from billing.permissions import check_feature
         check_feature(request.user, 'has_analytics', 'Analíticas')
 
-        # Verify ownership or collaboration
-        try:
-            page = Page.objects.get(
-                Q(pk=page_id) & (Q(owner=request.user) | Q(collaborators=request.user))
-            )
-        except Page.DoesNotExist:
+        # Verify ownership or collaboration (distinct: the collaborators join repeats the page)
+        page = pages_accessible_to(request.user).filter(pk=page_id).first()
+        if page is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         # Parse query params
@@ -195,11 +206,7 @@ class PageAnalyticsView(APIView):
         )
         visitor_max_time: dict[str, float] = {}
         for vid, edata in time_events:
-            seconds = 0.0
-            if isinstance(edata, dict):
-                seconds = float(edata.get('seconds', 0) or 0)
-            elif isinstance(edata, (int, float)):
-                seconds = float(edata)
+            seconds = _stored_seconds(edata)
             if seconds > visitor_max_time.get(vid, 0):
                 visitor_max_time[vid] = seconds
         if visitor_max_time:

@@ -78,24 +78,23 @@ class TestPageWorkspaceAssignment:
         assert page.workspace == workspace
 
     @patch(CHECK_LIMIT)
-    def test_duplicate_shared_page_assigns_duplicators_workspace(self, mock_limit, api_client):
+    def test_duplicate_of_a_shared_page_is_owner_only(self, mock_limit, api_client):
+        # D1 / ADR-031: a collaborator cannot take a copy of the owner's page
         owner = UserFactory()
         owner_workspace = WorkspaceFactory(owner=owner)
         page = PageFactory(owner=owner, workspace=owner_workspace)
         BlockFactory(page=page, type='hero', order=0)
 
         collaborator = UserFactory()
-        collaborator_workspace = WorkspaceFactory(owner=collaborator)
+        WorkspaceFactory(owner=collaborator)
         page.collaborators.add(collaborator)
 
         api_client.force_authenticate(user=collaborator)
         resp = api_client.post(page_duplicate_url(page.id))
 
-        assert resp.status_code == status.HTTP_201_CREATED
-        duplicated = Page.objects.get(pk=resp.data['id'])
-        assert duplicated.owner == collaborator
-        assert duplicated.workspace == collaborator_workspace
-        assert duplicated.workspace != owner_workspace
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert resp.data['code'] == 'NOT_OWNER'
+        assert Page.objects.filter(owner=collaborator).count() == 0
 
 
 @pytest.mark.django_db

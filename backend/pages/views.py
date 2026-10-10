@@ -2,8 +2,9 @@ import logging
 import uuid
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
+from django.utils.html import escape
 from rest_framework import viewsets, status, generics, mixins, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -13,12 +14,17 @@ from rest_framework.response import Response
 from accounts.permissions import IsNotGuest
 from config.features import CustomDomainsEnabled
 from .block_validators import clean_block_data
-from .models import Page, Block, Asset, PageVersion, PageInvite, CustomDomain, create_version_snapshot
+from .models import (
+    Page, Block, Asset, PageVersion, PageInvite, CustomDomain,
+    DEFAULT_PAGE_LANGUAGE, OG_TYPE_CHOICES, create_version_snapshot, language_tag_validator, lock_page,
+    pages_accessible_to,
+)
+from .permissions import require_page_owner
 from .revalidation import revalidate_public_pages
 from . import sync
 from .serializers import (
     PageListSerializer, PageDetailSerializer, AssetSerializer, PreviewBlockSerializer,
-    PageVersionListSerializer, PageVersionDetailSerializer,
+    PageVersionListSerializer, PageVersionDetailSerializer, LIST_PREVIEW_BLOCKS, PREVIEW_BLOCKS_ATTR,
     CustomDomainSerializer, SharePageSerializer, UnsharePageSerializer, VersionLabelSerializer,
 )
 
@@ -43,13 +49,13 @@ def get_or_create_user_workspace(user):
 
 
 RESTORABLE_METADATA_FIELDS = (
-    'name', 'design_tokens',
+    'name', 'design_tokens', 'language',
     'seo_title', 'seo_description', 'seo_canonical_url',
     'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
 )
 
 PUBLISHED_METADATA_FIELDS = (
-    'name', 'design_tokens',
+    'name', 'design_tokens', 'language',
     'seo_title', 'seo_description', 'seo_canonical_url',
     'og_title', 'og_description', 'og_image', 'og_type', 'noindex',
 )
@@ -65,6 +71,10 @@ class PublicPageView(generics.RetrieveAPIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    # Read-only and cached by Next, and its only client is the Next server (one
+    # IP): the default anonymous throttle would let any bot exhaust it and turn
+    # every published page into a 500 (QA-006)
+    throttle_classes = []
     lookup_field = 'slug'
 
     def get_queryset(self):
@@ -113,20 +123,22 @@ class PageViewSet(viewsets.ModelViewSet):
     lookup_field = 'id'
 
     def get_queryset(self):
-        user = self.request.user
-        base_queryset = (
-            Page.objects.filter(
-                Q(owner=user) | Q(collaborators=user)
+        queryset = pages_accessible_to(self.request.user).select_related('owner')
+        if self.action == 'list':
+            # The dashboard card previews the first blocks: loading every block of
+            # every page made the list cost seconds for big pages (QA-103)
+            return queryset.annotate(block_total=Count('blocks', distinct=True)).prefetch_related(
+                Prefetch(
+                    'blocks',
+                    queryset=Block.objects.order_by('order')[:LIST_PREVIEW_BLOCKS],
+                    to_attr=PREVIEW_BLOCKS_ATTR,
+                )
             )
-            .distinct()
-            .select_related('owner')
-            .prefetch_related(Prefetch('blocks', queryset=Block.objects.order_by('order')))
-        )
-        return base_queryset
+        return queryset.prefetch_related(Prefetch('blocks', queryset=Block.objects.order_by('order')))
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return OptimizedPageListSerializer
+            return PageListSerializer
         return PageDetailSerializer
 
     def perform_create(self, serializer):
@@ -190,17 +202,22 @@ class PageViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
-        if instance.owner != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Solo el propietario puede eliminar esta página.')
+        require_page_owner(instance, self.request.user, 'Solo el propietario puede eliminar esta página.')
         slug = instance.slug
+        page_id = instance.pk
+        # Everyone with the editor open, owner's other tabs included, must stop
+        # now: their sockets would otherwise sit on a page that no longer exists
+        people_editing = {instance.owner_id, *instance.collaborators.values_list('pk', flat=True)}
         instance.delete()
+        for user_id in people_editing:
+            sync.notify_access_revoked(page_id, user_id)
         revalidate_public_pages(slug)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, id=None):
-        """POST /api/pages/{id}/publish/ — freeze the current draft as the public page."""
+        """POST /api/pages/{id}/publish/ — freeze the current draft as the public page. Owner only."""
         page = self.get_object()
+        require_page_owner(page, request.user, 'Solo el propietario puede publicar esta página.')
         page.publish(request.user)
         sync.bump_version(page)
         revalidate_public_pages(page.slug)
@@ -209,8 +226,9 @@ class PageViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def unpublish(self, request, id=None):
-        """POST /api/pages/{id}/unpublish/ — take the public page offline."""
+        """POST /api/pages/{id}/unpublish/ — take the public page offline. Owner only."""
         page = self.get_object()
+        require_page_owner(page, request.user, 'Solo el propietario puede despublicar esta página.')
         page.unpublish()
         sync.bump_version(page)
         revalidate_public_pages(page.slug)
@@ -219,10 +237,11 @@ class PageViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def duplicate(self, request, id=None):
-        """POST /api/pages/{id}/duplicate/ — clone a page with all its blocks."""
+        """POST /api/pages/{id}/duplicate/ — clone a page with all its blocks. Owner only."""
         from billing.permissions import check_page_limit
-        check_page_limit(request.user)
         original = self.get_object()
+        require_page_owner(original, request.user, 'Solo el propietario puede duplicar esta página.')
+        check_page_limit(request.user)
         blocks = list(original.blocks.all())
 
         original.pk = None
@@ -252,17 +271,13 @@ class PageViewSet(viewsets.ModelViewSet):
         User = get_user_model()
 
         page = self.get_object()
-        if page.owner != request.user:
-            return Response(
-                {'error': 'Solo el propietario puede compartir esta página.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        require_page_owner(page, request.user, 'Solo el propietario puede compartir esta página.')
 
         input_serializer = SharePageSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         email = input_serializer.validated_data['email']
 
-        target_user = User.objects.filter(email=email).first()
+        target_user = User.objects.filter(email__iexact=email).first()
         if not target_user:
             # Return generic success to prevent user enumeration
             return Response({'message': 'Si el usuario existe, se le ha compartido la página.'})
@@ -275,23 +290,27 @@ class PageViewSet(viewsets.ModelViewSet):
 
         page.collaborators.add(target_user)
 
-        # Send notification email
+        # Send notification email. The page name and the username are typed by
+        # the sender: text in the plain body, escaped in the HTML one, and
+        # without line breaks in the subject (header injection).
         from django.core.mail import send_mail
         from django.conf import settings as django_settings
         frontend_url = django_settings.FRONTEND_URL.rstrip('/')
         editor_url = f"{frontend_url}/editor/{page.pk}"
+        inviter = ' '.join(request.user.username.split())
+        page_name = ' '.join(page.name.split())
         try:
             send_mail(
-                subject=f'{request.user.username} te ha invitado a colaborar en "{page.name}"',
+                subject=f'{inviter} te ha invitado a colaborar en "{page_name}"',
                 message=(
-                    f'{request.user.username} te ha invitado a editar la página "{page.name}" en Paxl.\n\n'
+                    f'{inviter} te ha invitado a editar la página "{page_name}" en Paxl.\n\n'
                     f'Abre el editor: {editor_url}\n'
                 ),
                 from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[target_user.email],
                 html_message=(
-                    f'<p><strong>{request.user.username}</strong> te ha invitado a colaborar '
-                    f'en la página <strong>"{page.name}"</strong>.</p>'
+                    f'<p><strong>{escape(inviter)}</strong> te ha invitado a colaborar '
+                    f'en la página <strong>"{escape(page_name)}"</strong>.</p>'
                     f'<p><a href="{editor_url}" style="display:inline-block;background:#2563EB;color:#fff;'
                     f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
                     f'Abrir editor</a></p>'
@@ -332,11 +351,7 @@ class PageViewSet(viewsets.ModelViewSet):
     def unshare(self, request, id=None):
         """POST /api/pages/{id}/unshare/ — remove a collaborator by user id."""
         page = self.get_object()
-        if page.owner != request.user:
-            return Response(
-                {'error': 'Solo el propietario puede gestionar colaboradores.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        require_page_owner(page, request.user, 'Solo el propietario puede gestionar colaboradores.')
 
         input_serializer = UnsharePageSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -362,11 +377,7 @@ class PageViewSet(viewsets.ModelViewSet):
         visitor can open their page in another browser to try collaboration.
         """
         page = self.get_object()
-        if page.owner != request.user:
-            return Response(
-                {'error': 'Solo el propietario puede invitar a esta página.', 'code': 'NOT_OWNER'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        require_page_owner(page, request.user, 'Solo el propietario puede invitar a esta página.')
         # Old links stay valid until they expire; only the dead ones are swept
         PageInvite.objects.filter(page=page, expires_at__lte=timezone.now()).delete()
         invite = PageInvite.objects.create(page=page, created_by=request.user)
@@ -378,16 +389,6 @@ class PageViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
-
-
-class OptimizedPageListSerializer(PageListSerializer):
-    """List serializer that reuses prefetched blocks when the view provides them."""
-
-    def get_preview_blocks(self, obj):
-        prefetched_blocks = getattr(obj, '_prefetched_objects_cache', {}).get('blocks')
-        if prefetched_blocks is not None:
-            return PreviewBlockSerializer(prefetched_blocks[:4], many=True).data
-        return super().get_preview_blocks(obj)
 
 
 class VersionPagination(PageNumberPagination):
@@ -412,16 +413,11 @@ class PageVersionViewSet(viewsets.GenericViewSet):
 
     def _get_page(self):
         """Get the page and verify the user has access."""
-        page_id = self.kwargs['page_id']
-        user = self.request.user
-        try:
-            return Page.objects.select_related('owner').get(
-                Q(owner=user) | Q(collaborators=user),
-                id=page_id,
-            )
-        except Page.DoesNotExist:
+        page = pages_accessible_to(self.request.user).select_related('owner').filter(pk=self.kwargs['page_id']).first()
+        if page is None:
             from rest_framework.exceptions import NotFound
             raise NotFound('Página no encontrada.')
+        return page
 
     def get_queryset(self):
         page = self._get_page()
@@ -481,12 +477,21 @@ class PageVersionViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     def destroy(self, request, page_id=None, id=None):
-        """DELETE /{version_id}/ — delete a version (cannot delete the last one)."""
+        """DELETE /{version_id}/ — delete a version. Owner only; not the last one and not the published one."""
         page = self._get_page()
+        require_page_owner(page, request.user, 'Solo el propietario puede eliminar versiones.')
         version = self.get_queryset().filter(id=id).first()
         if not version:
             from rest_framework.exceptions import NotFound
             raise NotFound('Versión no encontrada.')
+        if version.pk == page.published_version_id:
+            return Response(
+                {
+                    'error': 'Esta es la versión publicada: despublica la página o publica de nuevo antes de eliminarla.',
+                    'code': 'PUBLISHED_VERSION',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if page.versions.count() <= 1:
             return Response(
                 {'error': 'No se puede eliminar la última versión.'},
@@ -511,6 +516,37 @@ class PageVersionViewSet(viewsets.GenericViewSet):
                 raise InvalidVersionData(index) from exc
             cleaned.append({**block_data, 'data': data})
         return cleaned
+
+    @staticmethod
+    def _parse_block_id(value):
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+    @classmethod
+    def _snapshot_block_ids(cls, blocks):
+        return [block_id for block_id in (cls._parse_block_id(b.get('id')) for b in blocks) if block_id]
+
+    @classmethod
+    def _restored_block_id(cls, snapshot_id, taken_ids):
+        """The id the block had, unless another page holds it now (or the snapshot
+        repeats it or has none): then a new one. Records the id as taken."""
+        block_id = cls._parse_block_id(snapshot_id)
+        if block_id is None or block_id in taken_ids:
+            block_id = uuid.uuid4()
+        taken_ids.add(block_id)
+        return block_id
+
+    @staticmethod
+    def _restorable_metadata_value(field, value):
+        """Old versions may hold values the page no longer accepts (an Open Graph
+        type that was removed): fall back to the default instead of writing them back."""
+        if field == 'og_type' and value not in dict(OG_TYPE_CHOICES):
+            return 'website'
+        if field == 'language' and not (isinstance(value, str) and language_tag_validator.regex.match(value)):
+            return DEFAULT_PAGE_LANGUAGE
+        return value
 
     @action(detail=True, methods=['post'])
     def restore(self, request, page_id=None, id=None):
@@ -538,6 +574,8 @@ class PageVersionViewSet(viewsets.GenericViewSet):
             )
 
         with transaction.atomic():
+            # Queue behind any other whole-page write (AI generation, another restore)
+            lock_page(page.pk)
             # Snapshot current state before restoring
             create_version_snapshot(
                 page=page,
@@ -549,9 +587,15 @@ class PageVersionViewSet(viewsets.GenericViewSet):
             # Delete all current blocks
             page.blocks.all().delete()
 
-            # Recreate blocks from the snapshot (new UUIDs)
+            # Recreate blocks from the snapshot with the ids they had, so an
+            # editor that changed one of them meanwhile merges with it instead of
+            # keeping its copy next to a new one (QA-012)
+            taken_ids = set(
+                Block.objects.filter(id__in=self._snapshot_block_ids(restored_blocks)).values_list('id', flat=True)
+            )
             for i, block_data in enumerate(restored_blocks):
                 Block.objects.create(
+                    id=self._restored_block_id(block_data.get('id'), taken_ids),
                     page=page,
                     type=block_data['type'],
                     order=block_data.get('order', i),
@@ -565,7 +609,7 @@ class PageVersionViewSet(viewsets.GenericViewSet):
                 meta = version.page_metadata
                 for field in RESTORABLE_METADATA_FIELDS:
                     if field in meta:
-                        setattr(page, field, meta[field])
+                        setattr(page, field, self._restorable_metadata_value(field, meta[field]))
                         restored_fields.append(field)
             # Only the fields we changed: a full save would write back the version
             # this request loaded and could undo a bump made in the meantime.
@@ -587,6 +631,7 @@ class SitemapView(generics.GenericAPIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = []  # fetched by crawlers and the Next server; cached (see PublicPageView)
 
     def get(self, request):
         from django.core.cache import cache
@@ -637,6 +682,7 @@ class ResolveDomainView(generics.GenericAPIView):
     """
     permission_classes = [CustomDomainsEnabled, AllowAny]
     authentication_classes = []
+    throttle_classes = []  # called by the Next server for every custom-domain request; cached
 
     def get(self, request):
         from django.core.cache import cache
@@ -679,6 +725,7 @@ class SitemapDataView(generics.GenericAPIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = []  # build-time dataset fetched by the Next server (see PublicPageView)
 
     def get(self, request):
         pages = Page.objects.filter(

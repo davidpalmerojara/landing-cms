@@ -541,7 +541,6 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Quick Edit para todas las tabletas (recomendación del triaje; descartada por el dueño); una biblioteca de gestos (dependencia nueva para pocas reglas); arrastrar bloques con un dedo sin pulsación larga (impide desplazar el lienzo, que los bloques llenan).
 - **Consecuencias**: En el escritorio nada cambia salvo los botones Subir/Bajar en la barra del bloque, los controles de zoom en la esquina del lienzo y el zoom mínimo más bajo. La apertura del teclado al editar texto tras un doble toque en iOS real no se puede comprobar en Playwright; WebKit y Chromium con pantalla táctil emulada se probaron a 1024×768 y 768×1024.
 
-<<<<<<< HEAD
 ## ADR-044: Quick Edit, ronda 2: avisos fuera de lo que se está usando, un solo mensaje al publicar
 
 - **Fecha**: 2026-10-10
@@ -573,10 +572,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: `role="contentinfo"` en el pie dentro de `main` (no es un rol permitido para `footer`); dos `main` o quitar `main` (rompe el destino del enlace de salto); persistir los 404 con una tarea de limpieza (más piezas que mantener); subir las fotos como assets del usuario al crear la página (cuotas, borrados y permisos para algo que es contenido de ejemplo).
 - **Consecuencias**: La tabla de 404 es por proceso: con varios procesos cada uno tiene la suya (el límite de 60 s sigue acotando la espera tras publicar). Las fotos de Unsplash se usan bajo su licencia, que permite alojarlas.
 
-## ADR-045: Lo que el servidor escribe fuera de un guardado entra en la base de sincronización del editor
-=======
 ## ADR-046: Lo que el servidor escribe fuera de un guardado entra en la base de sincronización del editor
->>>>>>> 388077f (Renumber the AI sync ADR to 046 and its notable bug to 48 after the other batches)
 
 - **Fecha**: 2026-10-10
 - **Contexto**: La edición de un bloque con IA (`POST /api/pages/{id}/blocks/{bid}/edit-ai/`) guarda el bloque en el servidor y sube la versión de la página. El editor ponía la respuesta como una edición local más: su base seguía con la versión anterior, el siguiente guardado recibía `409 VERSION_CONFLICT` y la fusión de tres vías rebasaba el historial de deshacer sobre el texto de la IA, así que deshacer la edición no se guardaba (MOBILE2-002).

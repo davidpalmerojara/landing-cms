@@ -98,6 +98,19 @@ describe('validationErrors: the fields a 400 refused', () => {
     ]);
   });
 
+  it('reads the shape the server sends today: only the failed blocks, keyed by index', () => {
+    // Body of a real PUT with a javascript: link in the first block (DRF 3.15)
+    const error = apiError(400, {
+      error: 'Error de validación.',
+      code: 'BAD_REQUEST',
+      details: { blocks: { 0: { data: { buttonLink: ['Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.'] } } } },
+    });
+
+    expect(validationErrors(error)).toEqual([
+      { blockIndex: 0, path: ['buttonLink'], messages: [expect.stringContaining('Enlace no permitido')] },
+    ]);
+  });
+
   it('names nothing for refusals that point at no field, or for other errors', () => {
     expect(validationErrors(apiError(400, { error: 'x', details: { blocks: ['Hay bloques con el mismo id.'] } }))).toEqual([]);
     expect(validationErrors(apiError(400, { error: 'Falta la versión.', code: 'VERSION_REQUIRED' }))).toEqual([]);

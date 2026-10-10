@@ -71,6 +71,55 @@ class TestRegistration:
         assert any('too short' in message for message in short.data['details']['password'])
 
 
+class TestLookalikeUsernames:
+    """SEC2-003 / SEC2-004: new usernames are ASCII letters, digits and _ . -"""
+
+    def test_sec2_003_a_full_width_copy_of_an_existing_name_is_a_400_not_a_500(self):
+        UserFactory(username='r2fw')
+
+        resp = register(APIClient(), username='ｒ２ｆｗ')
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'username' in resp.data['details']
+
+    @pytest.mark.parametrize('username', [
+        'dеmo',  # Cyrillic "е"
+        'ｄｅｍｏ',  # full width
+        'josé',
+        'demo@x',
+        'demo+1',
+        'de mo',
+    ])
+    def test_sec2_004_non_ascii_and_other_characters_are_refused(self, username):
+        resp = register(APIClient(), language='en', username=username)
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert resp.data['details']['username'] == ['Use only unaccented letters, digits and the characters _ . -']
+        assert not User.objects.filter(email='new@example.com').exists()
+
+    @pytest.mark.parametrize('username', ['Ana_Lopez', 'ana.lopez-2', 'A1'])
+    def test_sec2_004_ascii_names_are_accepted(self, username):
+        assert register(APIClient(), username=username).status_code == status.HTTP_201_CREATED
+
+    def test_sec2_004_a_guest_cannot_claim_a_lookalike_name(self):
+        client = APIClient()
+        client.post('/api/auth/guest/', format='json')
+
+        resp = client.post('/api/auth/guest/claim/', {
+            'username': 'ｄｅｍｏ', 'email': 'claim@example.com', 'password': PASSWORD, 'password2': PASSWORD,
+        }, format='json')
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'username' in resp.data['details']
+
+    def test_sec2_004_existing_accounts_keep_their_names_and_sign_in(self):
+        UserFactory(username='josé', password='testpass123')
+
+        resp = APIClient().post('/api/auth/login/', {'username': 'josé', 'password': 'testpass123'}, format='json')
+
+        assert resp.status_code == status.HTTP_200_OK
+
+
 class TestSignIn:
     def test_qa017_login_ignores_the_case_of_the_username(self):
         UserFactory(username='Demo')

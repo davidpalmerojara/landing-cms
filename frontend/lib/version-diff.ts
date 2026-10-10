@@ -5,6 +5,8 @@
  * here and added there (QA-075). Snapshots without ids fall back to matching
  * by type and position.
  */
+import { isBlockType, normalizeBlockData, splitApiStyles } from '@/lib/block-data';
+import { deepEqual } from '@/lib/page-merge';
 
 export interface DiffableBlock {
   id?: string;
@@ -24,8 +26,21 @@ function blockKey(block: DiffableBlock, index: number, useIds: boolean): string 
   return useIds && block.id ? `id:${block.id}` : `${block.type}:${index}`;
 }
 
+/**
+ * A block's content as the editor reads it: stored data may lack optional
+ * fields (pages made through the API, seed data) that the editor fills in, so
+ * both sides are normalized before comparing (EDITOR2-012). Styles are in the
+ * API shape (per-device overrides inside `responsive`).
+ */
+function comparable(block: DiffableBlock): { data: unknown; styles: unknown } {
+  if (!isBlockType(block.type)) return { data: block.data, styles: block.styles };
+  return { data: normalizeBlockData(block.type, block.data), styles: splitApiStyles(block.styles) };
+}
+
 function contentChanged(a: DiffableBlock, b: DiffableBlock): boolean {
-  return JSON.stringify(a.data) !== JSON.stringify(b.data) || JSON.stringify(a.styles) !== JSON.stringify(b.styles);
+  const left = comparable(a);
+  const right = comparable(b);
+  return !deepEqual(left.data, right.data) || !deepEqual(left.styles, right.styles);
 }
 
 /**

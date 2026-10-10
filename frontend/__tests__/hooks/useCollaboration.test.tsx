@@ -407,21 +407,22 @@ describe('useCollaboration', () => {
       expect(ws.sentOfType('lock_release')).toEqual([]);
     });
 
-    it('a refusal from the store (layers panel, keyboard, Quick Edit) is announced once and checked with the server', async () => {
+    it('a refusal from the store (layers panel, keyboard, Quick Edit) is checked with the server and announced once', async () => {
       let ws: FakeWebSocket;
       ({ view, ws } = await connect({ locks: { [BLOCK_B]: ana1 } }));
 
       act(() => { expect(state().selectBlock(BLOCK_B)).toBe(false); });
+      // A second click while the server answers sends nothing more
+      act(() => { state().selectBlock(BLOCK_B); });
 
-      expect(toasts()).toEqual(['Ana está editando este bloque']);
       expect(ws.sentOfType('lock_acquire')).toEqual([{ type: 'lock_acquire', block_id: BLOCK_B }]);
-      // The server confirms Ana has it: no second message, nothing selected
+      // The server confirms Ana has it: one message, nothing selected
       receive(ws, { type: 'lock_rejected', block_id: BLOCK_B, holder: ana1 });
-      expect(toasts()).toHaveLength(1);
+      expect(toasts()).toEqual(['Ana está editando este bloque']);
       expect(state().selectedBlockId).toBeNull();
     });
 
-    it('a lock that had expired without anyone hearing is taken when the user asks for the block', async () => {
+    it('COLLAB2-005: a lock that had expired without anyone hearing is taken when the user asks for the block, without saying someone has it', async () => {
       let ws: FakeWebSocket;
       ({ view, ws } = await connect({ locks: { [BLOCK_B]: ana1 } }));
       act(() => { state().selectBlock(BLOCK_B); });
@@ -430,6 +431,7 @@ describe('useCollaboration', () => {
 
       expect(state().selectedBlockId).toBe(BLOCK_B);
       expect(state().blockLocks[BLOCK_B]?.connectionId).toBe('conn-me');
+      expect(toasts()).toEqual([]);
     });
   });
 
@@ -537,6 +539,7 @@ describe('useCollaboration', () => {
 
       expect(state().blockLocks[BLOCK_B]?.username).toBe('tu otra pestaña');
       act(() => { state().selectBlock(BLOCK_B); });
+      receive(ws, { type: 'lock_rejected', block_id: BLOCK_B, holder: otherTab });
       expect(state().toasts.map((t) => t.message)).toEqual(['Lo estás editando en otra pestaña']);
     });
   });

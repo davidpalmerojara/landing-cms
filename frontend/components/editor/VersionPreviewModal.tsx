@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, RotateCcw, Columns2, Maximize2, Loader2, AlertCircle } from 'lucide-react';
 import { UntypedBlockContent } from '@/components/blocks/BlockContent';
-import { isBlockType } from '@/lib/block-data';
+import { blockStylesToApi, isBlockType } from '@/lib/block-data';
 import { defaultBlockStyles } from '@/types/blocks';
 import { api } from '@/lib/api';
 import type { ApiPageVersionDetail } from '@/lib/api';
@@ -163,7 +163,8 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
       type: b.type,
       order: i,
       data: b.data,
-      styles: b.styles as unknown as Record<string, unknown>,
+      // API shape, like the snapshot: per-device overrides count too
+      styles: blockStylesToApi(b),
     })),
     [currentBlocks],
   );
@@ -329,7 +330,7 @@ export default function VersionPreviewModal({ pageId, versionId, onClose, onRest
     <ConfirmDialog
       open={confirmRestore}
       title={historyT('restoreTitle', { number: version?.version_number ?? 0 })}
-      message={historyT('restoreConfirm', { number: version?.version_number ?? 0 })}
+      message={historyT('restoreConfirm')}
       confirmLabel={historyT('restore')}
       variant="default"
       onConfirm={() => {

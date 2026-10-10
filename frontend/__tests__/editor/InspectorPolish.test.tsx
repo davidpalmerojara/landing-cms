@@ -94,3 +94,17 @@ describe('one hex format (QA-114)', () => {
     expect(onChange).toHaveBeenCalledWith('#FFFFFF');
   });
 });
+
+describe('colour palette grid (EDITOR2-011)', () => {
+  it('has one hue per row: ArrowDown keeps the shade and moves to the next hue', () => {
+    view = render(<ColorField id="c" value="#2563eb" onChange={vi.fn()} />);
+    click(view.container.querySelector('#c')!);
+    const swatches = view.container.querySelectorAll<HTMLButtonElement>('[data-swatch]');
+    expect(swatches.length % 8).toBe(0);
+
+    const firstRed = view.container.querySelector<HTMLButtonElement>('[aria-label="Color #FEF2F2"]')!;
+    act(() => { firstRed.focus(); });
+    act(() => { firstRed.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); });
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Color #FFF7ED');
+  });
+});

@@ -25,11 +25,12 @@ export function formatHex(color: string): string {
   return color.trim().toUpperCase();
 }
 
-const SWATCH_COLUMNS = 9;
+// One hue per row and one shade per column: arrows never jump between hues mid-row (EDITOR2-011)
+const SWATCH_COLUMNS = 8;
 
 const PRESET_COLORS = [
   // Grays
-  '#ffffff', '#f4f4f5', '#d4d4d8', '#a1a1aa', '#71717a', '#3f3f46', '#27272a', '#18181b', '#000000',
+  '#ffffff', '#f4f4f5', '#d4d4d8', '#a1a1aa', '#71717a', '#3f3f46', '#18181b', '#000000',
   // Red
   '#fef2f2', '#fecaca', '#f87171', '#ef4444', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d',
   // Orange
@@ -173,7 +174,7 @@ export default function ColorField({ id, labelId, value, onChange, inheritedColo
           className="absolute z-50 top-full left-0 mt-2 w-66 max-w-[calc(100vw-32px)] bg-surface-card border border-default/20 rounded-xl shadow-2xl shadow-black/50 p-3 space-y-3"
         >
           {/* Swatches grid */}
-          <div className="grid grid-cols-9 gap-1">
+          <div className="grid grid-cols-8 gap-1">
             {PRESET_COLORS.map((color, index) => (
               <button
                 key={color}

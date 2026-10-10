@@ -12,8 +12,14 @@ const nextConfig: NextConfig = {
   // the frontend and the API are hosted on different domains (ADR-008).
   async rewrites() {
     const backend = process.env.BACKEND_URL?.replace(/\/$/, '');
-    // ':path*' drops the trailing slash, which every Django API route needs
-    return backend ? [{ source: '/api/:path*', destination: `${backend}/api/:path*/` }] : [];
+    if (!backend) return [];
+    return [
+      // ':path*' drops the trailing slash, which every Django API route needs
+      { source: '/api/:path*', destination: `${backend}/api/:path*/` },
+      // Uploaded images are stored in pages as '/media/...' (site-relative, QA-079),
+      // not as a URL of the API host; file URLs have no trailing slash
+      { source: '/media/:path*', destination: `${backend}/media/:path*` },
+    ];
   },
   async headers() {
     return [

@@ -180,7 +180,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **User** (AbstractUser): UUID pk, email unico, google_id, is_guest (cuenta temporal, ADR-022). Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
 - **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
 - **Workspace**: owner FK, nombre
-- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), SEO fields (seo_title, seo_description, og_*, noindex)
+- **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), language (etiqueta BCP 47, por defecto `es`, ADR-032), SEO fields (seo_title, seo_description, og_* con `og_type` website/article, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
@@ -274,15 +274,18 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/` | Si | Crear pagina + bloques |
 | GET | `/{id}/` | Si | Detalle con bloques + SEO |
 | PUT | `/{id}/` | Si | Update completo (sync bloques). Exige `version`; `409 VERSION_CONFLICT` si cambió (ADR-024) |
-| DELETE | `/{id}/` | Si | Eliminar |
-| POST | `/{id}/duplicate/` | Si | Duplicar con bloques |
-| POST | `/{id}/publish/` | Si | Congelar el borrador como version publica (ADR-017) |
-| POST | `/{id}/unpublish/` | Si | Despublicar |
+| DELETE | `/{id}/` | Si (propietario) | Eliminar (avisa por WebSocket a quien la tiene abierta) |
+| POST | `/{id}/duplicate/` | Si (propietario) | Duplicar con bloques |
+| POST | `/{id}/publish/` | Si (propietario) | Congelar el borrador como version publica (ADR-017) |
+| POST | `/{id}/unpublish/` | Si (propietario) | Despublicar |
 | GET | `/{id}/submissions/` | Si | Mensajes del formulario de contacto (paginado) |
 | DELETE | `/{id}/submissions/{sid}/` | Si | Borrar un mensaje |
 | GET/POST | `/{id}/versions/` | Si | Listar/crear versiones |
-| POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version |
+| DELETE | `/{id}/versions/{vid}/` | Si (propietario) | Borrar version (`400 PUBLISHED_VERSION` si es la publicada) |
+| POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
 | POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
+
+Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-031); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `http(s)://host/...` o una ruta `/...`, sin comillas, paréntesis ni `;` (ADR-033).
 
 ### Public
 
@@ -303,8 +306,8 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | GET/POST/DELETE | `/api/domains/` | Si (Pro) | CRUD dominios custom; solo con `CUSTOM_DOMAINS_ENABLED` (ADR-027) |
 | POST | `/api/domains/{id}/verify/` | Si | Verificar DNS |
 | GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |
-| POST | `/api/pages/{id}/generate/` | Si | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |
-| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque) |
+| POST | `/api/pages/{id}/generate/` | Si (propietario) | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |
+| POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque). `409 BLOCK_CHANGED` si el bloque cambió mientras tanto, `409 BLOCK_LOCKED` si otra conexión lo tiene bloqueado |
 | POST | `/api/analytics/collect/` | No | Trackear evento |
 | GET | `/api/pages/{id}/analytics/` | Si | Analitica de pagina |
 | GET | `/api/billing/plans/` | No | Planes disponibles |

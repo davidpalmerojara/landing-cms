@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverApiUrl } from '@/lib/server-api';
+import { PUBLIC_SLUG_HEADER, publicSlugFromPath, withPublicSlug } from '@/lib/public-page-request';
 
 /**
  * Custom domain routing proxy.
@@ -66,9 +67,12 @@ async function resolveCustomDomain(hostname: string): Promise<string | null> {
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get('host')?.split(':')[0] || '';
 
-  // Skip for app domains — let Next.js handle normally
+  // Skip for app domains — let Next.js handle normally. A published page's
+  // slug goes to the root layout in a header, for its <html lang> (QA-091).
   if (isAppDomain(hostname)) {
-    return NextResponse.next();
+    const slug = publicSlugFromPath(request.nextUrl.pathname);
+    if (!slug && !request.headers.has(PUBLIC_SLUG_HEADER)) return NextResponse.next();
+    return NextResponse.next({ request: { headers: withPublicSlug(request.headers, slug) } });
   }
 
   // Custom domain detected — resolve to page slug
@@ -82,7 +86,7 @@ export async function proxy(request: NextRequest) {
   // Rewrite to the public page route
   const url = request.nextUrl.clone();
   url.pathname = `/p/${slug}`;
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers: withPublicSlug(request.headers, publicSlugFromPath(url.pathname)) } });
 }
 
 export const config = {

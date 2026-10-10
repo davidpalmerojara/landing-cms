@@ -21,6 +21,7 @@ const es: TemplateBlock[] = [
       title: 'Sincroniza tus datos en tiempo real',
       subtitle: 'La plataforma definitiva para conectar tus bases de datos sin escribir código de integración complejo.',
       buttonText: 'Comenzar prueba de 14 días',
+      buttonLink: '#pricing',
       backgroundImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80',
     },
   },
@@ -95,7 +96,7 @@ const es: TemplateBlock[] = [
           price: '$29',
           features: '100k eventos/mes\nSoporte por email\n3 integraciones',
           buttonText: 'Elegir Starter',
-          buttonLink: '',
+          buttonLink: '#cta',
           highlighted: false,
         },
         {
@@ -103,7 +104,7 @@ const es: TemplateBlock[] = [
           price: '$99',
           features: 'Eventos ilimitados\nSoporte prioritario 24/7\nIntegraciones ilimitadas',
           buttonText: 'Empezar prueba Pro',
-          buttonLink: '',
+          buttonLink: '#cta',
           highlighted: true,
         },
       ],
@@ -134,6 +135,7 @@ const es: TemplateBlock[] = [
     data: {
       title: '¿Listo para transformar tu infraestructura?',
       buttonText: 'Crear cuenta gratuita hoy',
+      buttonLink: '#pricing',
     },
   },
   {
@@ -142,9 +144,9 @@ const es: TemplateBlock[] = [
       brandName: 'DataSync',
       description: 'Infraestructura de datos robusta para equipos ágiles e innovadores.',
       links: [
-        { label: 'Documentación', url: '' },
-        { label: 'Términos', url: '' },
-        { label: 'Privacidad', url: '' },
+        { label: 'Características', url: '#features' },
+        { label: 'Precios', url: '#pricing' },
+        { label: 'Preguntas frecuentes', url: '#faq' },
       ],
       copyright: '© 2026 DataSync Inc. Todos los derechos reservados.',
     },
@@ -172,6 +174,7 @@ const en: TemplateBlock[] = [
       title: 'Sync your data in real time',
       subtitle: 'The platform for connecting your databases without writing complex integration code.',
       buttonText: 'Start your 14-day trial',
+      buttonLink: '#pricing',
       backgroundImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80',
     },
   },
@@ -246,7 +249,7 @@ const en: TemplateBlock[] = [
           price: '$29',
           features: '100k events/month\nEmail support\n3 integrations',
           buttonText: 'Choose Starter',
-          buttonLink: '',
+          buttonLink: '#cta',
           highlighted: false,
         },
         {
@@ -254,7 +257,7 @@ const en: TemplateBlock[] = [
           price: '$99',
           features: 'Unlimited events\n24/7 priority support\nUnlimited integrations',
           buttonText: 'Start Pro trial',
-          buttonLink: '',
+          buttonLink: '#cta',
           highlighted: true,
         },
       ],
@@ -285,6 +288,7 @@ const en: TemplateBlock[] = [
     data: {
       title: 'Ready to transform your infrastructure?',
       buttonText: 'Create a free account today',
+      buttonLink: '#pricing',
     },
   },
   {
@@ -293,9 +297,9 @@ const en: TemplateBlock[] = [
       brandName: 'DataSync',
       description: 'Robust data infrastructure for agile, innovative teams.',
       links: [
-        { label: 'Documentation', url: '' },
-        { label: 'Terms', url: '' },
-        { label: 'Privacy', url: '' },
+        { label: 'Features', url: '#features' },
+        { label: 'Pricing', url: '#pricing' },
+        { label: 'FAQ', url: '#faq' },
       ],
       copyright: '© 2026 DataSync Inc. All rights reserved.',
     },

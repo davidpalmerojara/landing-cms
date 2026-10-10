@@ -3,6 +3,7 @@
 import { blockRegistry } from '@/lib/block-registry';
 import { isBlockType, normalizeBlockData } from '@/lib/block-data';
 import type { BlockOf, BlockType } from '@/types/blocks';
+import { BlockRenderProvider } from './block-render-context';
 
 interface BlockContentProps<K extends BlockType> {
   block: Pick<BlockOf<K>, 'id' | 'type' | 'data'>;
@@ -15,7 +16,14 @@ interface BlockContentProps<K extends BlockType> {
  */
 export default function BlockContent<K extends BlockType>({ block, isPreviewMode }: BlockContentProps<K>) {
   const { component: Component } = blockRegistry[block.type];
-  return <Component blockId={block.id} data={block.data} isPreviewMode={isPreviewMode} />;
+  return (
+    <BlockRenderProvider value={{ editable: !isPreviewMode, blockType: block.type }}>
+      {/* Long unbroken words (URLs, brand names) wrap instead of overflowing (QA-095); inherited by every text */}
+      <div className="contents [overflow-wrap:anywhere]">
+        <Component blockId={block.id} data={block.data} isPreviewMode={isPreviewMode} />
+      </div>
+    </BlockRenderProvider>
+  );
 }
 
 interface UntypedBlockContentProps {

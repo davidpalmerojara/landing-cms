@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { apiErrorMessage } from '@/lib/api-errors';
+import { publishNotice } from '@/lib/publish-checks';
 
 interface PublishHandlers {
   onPublish: () => Promise<boolean>;
@@ -45,9 +46,16 @@ export function usePublishActions({ onPublish, onUnpublish, publicationError }: 
     setPublishedPath(null);
     const ok = await onPublish();
     setIsPublishing(false);
-    if (ok) setPublishedPath(`/p/${useEditorStore.getState().page.slug}`);
-    else useEditorStore.getState().addToast(failureMessage('editor.publishError'), 'error');
-  }, [explainOwnerOnly, failureMessage, isOwner, onPublish]);
+    const { page, addToast } = useEditorStore.getState();
+    if (ok) {
+      setPublishedPath(`/p/${page.slug}`);
+      // Published anyway; only a heads-up about what visitors won't be able to use (D9)
+      const notice = publishNotice(page.blocks, t);
+      if (notice) addToast(notice, 'info');
+    } else {
+      addToast(failureMessage('editor.publishError'), 'error');
+    }
+  }, [explainOwnerOnly, failureMessage, isOwner, onPublish, t]);
 
   const unpublish = useCallback(async () => {
     if (!onUnpublish) return;

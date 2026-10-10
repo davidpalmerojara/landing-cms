@@ -52,9 +52,10 @@ export type Block = { [K in BlockType]: BlockOf<K> }[BlockType];
 export function resolveStyles(block: Block, deviceMode: 'desktop' | 'tablet' | 'mobile'): BlockStyles {
   const base = block.styles || defaultBlockStyles;
   if (deviceMode === 'desktop') return base;
-  const overrides = block.responsiveStyles?.[deviceMode];
-  if (!overrides) return base;
-  return { ...base, ...overrides };
+  const tablet = { ...base, ...block.responsiveStyles?.tablet };
+  if (deviceMode === 'tablet') return tablet;
+  // Overrides cascade desktop -> tablet -> mobile: what isn't set for mobile comes from tablet (D10, QA-078)
+  return { ...tablet, ...block.responsiveStyles?.mobile };
 }
 
 export interface BlockDefinition<K extends BlockType> {

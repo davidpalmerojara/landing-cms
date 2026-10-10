@@ -564,7 +564,24 @@
     "contrastSecondaryOnSurface": "Secondary text on surface",
     "contrastOnPrimary": "Text on primary color",
     "contrastTextOnSurface": "Primary text on surface",
-    "colorHex": "{label}, hex code"
+    "colorHex": "{label}, hex code",
+    "contrastAutoFixed": "On the page, that text is made just dark or light enough to read well.",
+    "presets": {
+      "professional-blue": "Professional blue",
+      "startup-green": "Startup green",
+      "elegant-dark": "Night violet",
+      "warm-orange": "Warm orange",
+      "minimal-slate": "Minimal",
+      "ocean-teal": "Teal",
+      "default": "Indigo (default)",
+      "ocean": "Ocean",
+      "sunset": "Sunset",
+      "forest": "Forest",
+      "dark": "Graphite",
+      "slate": "Slate",
+      "ember": "Ember",
+      "rose": "Rose"
+    }
   },
   "mobile": {
     "quickEditMode": "Quick edit",
@@ -677,7 +694,6 @@
     "heroAria": "Hero section",
     "ctaAria": "Call to action",
     "navbarAria": "Main navigation",
-    "toggleMenu": "Toggle menu",
     "pricingAria": "Pricing",
     "pricingMonthly": "/month",
     "pricingPopular": "Popular",
@@ -707,9 +723,19 @@
       "invalid": "Check your name, email and message, and try again.",
       "rateLimited": "You have sent several messages in a row. Wait a minute and try again.",
       "unavailable": "This form is no longer available.",
-      "generic": "We couldn't send your message. Please try again in a moment."
+      "generic": "We couldn't send your message. Please try again in a moment.",
+      "fields": "Check the marked fields and send it again."
     },
-    "contactGuestNote": "Test pages in the demo don't send messages."
+    "contactGuestNote": "Test pages in the demo don't send messages.",
+    "customHtmlPreview": "Custom HTML content",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "emptyText": "Empty · double-click to type",
+    "contactFieldError": {
+      "name": "Enter your name.",
+      "email": "Enter a valid email, like name@example.com.",
+      "message": "Enter your message."
+    }
   },
   "preview": {
     "backToEditor": "Back to editor",
@@ -718,7 +744,10 @@
     "publish": "Publish",
     "notFound": "Page \"{id}\" not found.",
     "loading": "Loading...",
-    "empty": "This page has no blocks."
+    "empty": "This page has no blocks.",
+    "documentTitle": "Preview: {name} — Paxl",
+    "published": "Published at",
+    "republish": "Publish changes"
   },
   "billing": {
     "title": "Billing",
@@ -884,7 +913,8 @@
   "publicPage": {
     "empty": "This page has no content.",
     "madeWith": "Made with Paxl",
-    "guestNotice": "Test page created by a guest in the Paxl demo. It is deleted within 24 hours. Don't enter personal data."
+    "guestNotice": "Test page created by a guest in the Paxl demo. It is deleted within 24 hours. Don't enter personal data.",
+    "noticeLabel": "Notice from Paxl"
   },
   "share": {
     "title": "Share page",
@@ -934,21 +964,21 @@
     "ogDescriptionPlaceholder": "Inherit from meta description",
     "ogImage": "OG image",
     "ogImagePlaceholder": "https://... image URL",
-    "ogType": "OG type",
+    "ogType": "Content type",
     "ogTypeWebsite": "Website",
     "ogTypeArticle": "Article",
-    "ogTypeProduct": "Product",
     "previews": "Previews",
     "google": "Google",
     "socialMedia": "Social media",
-    "domainFallback": "paxl.com",
     "titleFallback": "Page title",
     "descriptionFallback": "Add a meta description to improve your SEO.",
     "socialDescriptionFallback": "Add a description for social media.",
     "charCount": "{count} of {max} characters",
     "charCountWarn": "close to the limit",
     "charCountOver": "over the recommended limit",
-    "removeOgImage": "Remove OG image"
+    "removeOgImage": "Remove OG image",
+    "language": "Page language",
+    "languageHint": "The language it is written in. Screen readers use it to pronounce the page; it applies when you publish again."
   },
   "inspector": {
     "selectImage": "Select image",
@@ -1141,6 +1171,8 @@
     "publishedAt": "Page published at:",
     "opensInNewTab": "(opens in a new tab)",
     "publishedBy": "{name} published the page.",
-    "unpublishedBy": "{name} unpublished the page."
+    "unpublishedBy": "{name} unpublished the page.",
+    "emptyPage": "The page is published, but it has no blocks: visitors will see it empty.",
+    "linkless": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one in the inspector."
   }
 }

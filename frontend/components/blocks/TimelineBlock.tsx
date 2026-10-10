@@ -13,7 +13,7 @@ export default function TimelineBlock({ blockId, data, isPreviewMode }: BlockPro
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-bg)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))' }}
     >
       <div className="max-w-3xl mx-auto">
         <EditableText
@@ -47,7 +47,7 @@ export default function TimelineBlock({ blockId, data, isPreviewMode }: BlockPro
                     value={event.date}
                     as="span"
                     className="text-sm font-medium mb-1 block"
-                    style={{ color: 'var(--theme-primary)' }}
+                    style={{ color: 'var(--theme-primary-text)' }}
                   />
                   <EditableText
                     blockId={blockId}

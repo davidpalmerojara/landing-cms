@@ -17,7 +17,7 @@ export default function FeaturesBlock({ blockId, data, isPreviewMode }: BlockPro
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-surface)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-surface))' }}
     >
       <EditableText
         blockId={blockId}
@@ -48,7 +48,7 @@ export default function FeaturesBlock({ blockId, data, isPreviewMode }: BlockPro
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 @tablet:mb-8"
                   style={{ backgroundColor: `color-mix(in srgb, ${accent} 10%, transparent)`, color: accent }}
                 >
-                  <Icon className="w-6 h-6 @tablet:w-7 @tablet:h-7" />
+                  <Icon aria-hidden="true" className="w-6 h-6 @tablet:w-7 @tablet:h-7" />
                 </div>
                 <EditableText
                   blockId={blockId}

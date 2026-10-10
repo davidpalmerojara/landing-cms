@@ -4,6 +4,7 @@ import { Image as ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps, GalleryData } from '@/types/blocks';
 import EditableText from './EditableText';
+import BlockImage from './BlockImage';
 
 const COLUMN_CLASSES: Record<GalleryData['columns'], string> = {
   '2': 'grid-cols-2',
@@ -20,7 +21,7 @@ export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProp
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-bg)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))' }}
     >
       <EditableText
         blockId={blockId}
@@ -48,14 +49,15 @@ export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProp
               style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
             >
               {image.src ? (
-                <img
+                <BlockImage
                   src={image.src}
                   alt={image.alt || t('galleryImageAlt', { index: i + 1 })}
                   className="w-full h-full object-cover"
+                  fallback={<ImageIcon aria-hidden="true" className="w-8 h-8" style={{ color: 'var(--theme-text-muted)', opacity: 0.4 }} />}
                 />
               ) : (
                 // Slot without an image yet: placeholder
-                <ImageIcon className="w-8 h-8" style={{ color: 'var(--theme-text-muted)', opacity: 0.4 }} />
+                <ImageIcon aria-hidden="true" className="w-8 h-8" style={{ color: 'var(--theme-text-muted)', opacity: 0.4 }} />
               )}
             </div>
           ))}

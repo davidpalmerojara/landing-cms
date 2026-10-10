@@ -75,6 +75,10 @@
   var flushTimer = null;
 
   function flush() {
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
     if (buffer.length === 0) return;
 
     var payload = JSON.stringify({
@@ -102,8 +106,10 @@
     }
   }
 
+  // One timer per batch, started by its first event: later events don't push it back,
+  // so a busy visitor's events still go out within BATCH_INTERVAL (QA-119)
   function scheduleFlush() {
-    if (flushTimer) clearTimeout(flushTimer);
+    if (flushTimer) return;
     flushTimer = setTimeout(flush, BATCH_INTERVAL);
   }
 

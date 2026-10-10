@@ -4,41 +4,40 @@ import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Paxl's 404 for a published-page address. It is seen by anyone, logged in or
+ * not, so it only offers the home page. Fixed light colors, not the app's
+ * theme tokens: those follow the visitor's system theme and turned this white
+ * screen into grey-on-white with a dark OS (QA-092).
+ */
 export default function PublicPageNotFound() {
   const t = useTranslations();
 
   return (
-    <div className="flex items-center justify-center h-screen bg-white text-[#111827]">
+    <main id="main-content" tabIndex={-1} className="flex items-center justify-center min-h-screen px-4 bg-white text-[#111827] outline-none">
       <div className="text-center space-y-6">
-        <div className="flex items-center justify-center gap-2 text-[#2563EB]">
-          <Sparkles className="w-6 h-6" />
+        <div className="flex items-center justify-center gap-2 text-[#1D4ED8]">
+          <Sparkles className="w-6 h-6" aria-hidden="true" />
           <span className="text-lg font-semibold">{t('common.brand')}</span>
         </div>
 
         <div className="space-y-2">
-          <p className="text-6xl font-bold text-secondary">404</p>
-          <p className="text-xl font-semibold">{t('errors.publicNotFoundTitle')}</p>
-          <p className="text-sm text-muted">
+          <p className="text-6xl font-bold text-[#4B5563]">404</p>
+          <h1 className="text-xl font-semibold">{t('errors.publicNotFoundTitle')}</h1>
+          <p className="text-sm text-[#4B5563]">
             {t('errors.publicNotFoundDescription')}
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-4 pt-2">
+        <div className="pt-2">
           <Link
             href="/"
-            className="text-sm text-muted hover:text-[#111827] transition-colors"
+            className="inline-flex items-center min-h-11 px-2 text-sm font-medium text-[#1D4ED8] hover:underline"
           >
             {t('errors.goHome')}
           </Link>
-          <span className="text-secondary">|</span>
-          <Link
-            href="/dashboard"
-            className="text-sm text-primary-color hover:text-[#2563EB]/80 transition-colors"
-          >
-            {t('errors.goDashboard')}
-          </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

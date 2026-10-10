@@ -1,23 +1,41 @@
 'use client';
 
-import { useRef, type FormEvent } from 'react';
+import { useEffect, useRef, type FormEvent } from 'react';
 import { AlertCircle, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps, ContactData } from '@/types/blocks';
-import { useContactForm } from '@/hooks/useContactForm';
+import { useContactForm, type ContactField } from '@/hooks/useContactForm';
+import { useHydrated } from '@/hooks/useHydrated';
 import EditableText from './EditableText';
 import { useContactFormContext } from './contact-form-context';
 
-const FIELD_CLASS = 'w-full px-4 py-3 rounded-lg text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--theme-primary)]';
-const FIELD_STYLE = { backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' };
+const FIELD_CLASS = 'w-full px-4 py-3 rounded-lg text-sm placeholder:text-[color:var(--theme-text-muted)] placeholder:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--theme-primary)]';
+const FIELD_STYLE = { backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-field-border)', color: 'var(--theme-text)' };
+const INVALID_FIELD_STYLE = { ...FIELD_STYLE, border: '2px solid var(--theme-error)' };
+const SUBMIT_CLASS = 'w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2';
+const SUBMIT_STYLE = { backgroundColor: 'var(--theme-primary)', color: 'var(--theme-text-on-primary)' };
 
 /** The working form, shown on the page (preview mode). It only sends from a published page. */
 function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'blockId' | 'data'>) {
   const t = useTranslations('blocks');
   const { slug, guestPage } = useContactFormContext();
-  const { status, errorKind, isSending, submit } = useContactForm(slug, blockId);
+  const { status, errorKind, invalidFields, isSending, submit } = useContactForm(slug, blockId);
+  // Until React runs, the browser would send the form itself (a GET with the message in the URL, QA-050)
+  const hydrated = useHydrated();
   const formRef = useRef<HTMLFormElement>(null);
   const canSend = slug !== null;
+  const fieldId = (field: ContactField) => `${blockId}-${field}`;
+  const errorId = (field: ContactField) => `${blockId}-${field}-error`;
+  const isInvalid = (field: ContactField) => invalidFields.includes(field);
+
+  // The server named the fields it refused: take the visitor to the first one (QA-093)
+  useEffect(() => {
+    if (invalidFields.length === 0) return;
+    const first = formRef.current?.querySelector<HTMLElement>(`#${CSS.escape(fieldId(invalidFields[0]))}`);
+    first?.focus();
+    // fieldId only depends on blockId, which never changes for a mounted block
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invalidFields]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,49 +51,60 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
     if (sent) formRef.current?.reset();
   };
 
+  const fieldProps = (field: ContactField) => ({
+    id: fieldId(field),
+    name: field,
+    'aria-invalid': isInvalid(field) || undefined,
+    'aria-describedby': isInvalid(field) ? errorId(field) : undefined,
+    style: isInvalid(field) ? INVALID_FIELD_STYLE : FIELD_STYLE,
+  });
+
+  const fieldError = (field: ContactField) => isInvalid(field) && (
+    <p id={errorId(field)} className="mt-1.5 text-sm" style={{ color: 'var(--theme-error)' }}>
+      {t(`contactFieldError.${field}`)}
+    </p>
+  );
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" aria-busy={isSending}>
+    <form ref={formRef} method="post" onSubmit={handleSubmit} className="space-y-4" aria-busy={isSending}>
       <div className="grid grid-cols-1 @tablet:grid-cols-2 gap-4">
         <div>
-          <label htmlFor={`${blockId}-name`} className="sr-only">{t('contactName')}</label>
+          <label htmlFor={fieldId('name')} className="sr-only">{t('contactName')}</label>
           <input
-            id={`${blockId}-name`}
-            name="name"
+            {...fieldProps('name')}
             type="text"
             required
             maxLength={100}
             autoComplete="name"
             placeholder={data.namePlaceholder || t('contactName')}
             className={FIELD_CLASS}
-            style={FIELD_STYLE}
           />
+          {fieldError('name')}
         </div>
         <div>
-          <label htmlFor={`${blockId}-email`} className="sr-only">{t('contactEmail')}</label>
+          <label htmlFor={fieldId('email')} className="sr-only">{t('contactEmail')}</label>
           <input
-            id={`${blockId}-email`}
-            name="email"
+            {...fieldProps('email')}
             type="email"
             required
             maxLength={254}
             autoComplete="email"
             placeholder={data.emailPlaceholder || t('contactEmail')}
             className={FIELD_CLASS}
-            style={FIELD_STYLE}
           />
+          {fieldError('email')}
         </div>
       </div>
       <div>
-        <label htmlFor={`${blockId}-message`} className="sr-only">{t('contactMessage')}</label>
+        <label htmlFor={fieldId('message')} className="sr-only">{t('contactMessage')}</label>
         <textarea
-          id={`${blockId}-message`}
-          name="message"
+          {...fieldProps('message')}
           required
           maxLength={2000}
           placeholder={data.messagePlaceholder || t('contactMessagePlaceholder')}
           className={`${FIELD_CLASS} h-32 resize-none`}
-          style={FIELD_STYLE}
         />
+        {fieldError('message')}
       </div>
 
       {/* Honeypot: invisible to people and assistive tech, tempting to bots */}
@@ -85,9 +114,9 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
 
       <button
         type="submit"
-        disabled={!canSend || isSending}
-        className="w-full py-3 text-white rounded-lg font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--theme-primary)]"
-        style={{ backgroundColor: 'var(--theme-primary)' }}
+        disabled={!hydrated || !canSend || isSending}
+        className={`${SUBMIT_CLASS} hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--theme-primary)]`}
+        style={SUBMIT_STYLE}
       >
         {isSending ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" aria-hidden="true" />}
         <span>{isSending ? t('contactSending') : data.buttonText || t('contactSend')}</span>
@@ -107,9 +136,9 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
         )}
       </div>
       {status === 'error' && errorKind && (
-        <p role="alert" className="flex items-center justify-center gap-2 text-center text-sm text-error">
+        <p role="alert" className="flex items-center justify-center gap-2 text-center text-sm" style={{ color: 'var(--theme-error)' }}>
           <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          {t(`contactError.${errorKind}`)}
+          {invalidFields.length > 0 ? t('contactError.fields') : t(`contactError.${errorKind}`)}
         </p>
       )}
     </form>
@@ -124,7 +153,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-24 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-surface)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-surface))' }}
     >
       <div className="max-w-xl mx-auto">
         <EditableText
@@ -157,7 +186,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
                 placeholder={data.namePlaceholder || t('contactName')}
                 readOnly
                 className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+                style={FIELD_STYLE}
               />
             </div>
             <div>
@@ -168,7 +197,7 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
                 placeholder={data.emailPlaceholder || t('contactEmail')}
                 readOnly
                 className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+                style={FIELD_STYLE}
               />
             </div>
           </div>
@@ -179,14 +208,11 @@ export default function ContactBlock({ blockId, data, isPreviewMode }: BlockProp
               placeholder={data.messagePlaceholder || t('contactMessagePlaceholder')}
               readOnly
               className="w-full px-4 py-3 rounded-lg text-sm h-32 resize-none"
-              style={{ backgroundColor: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+              style={FIELD_STYLE}
             />
           </div>
-          <button
-            className="w-full py-3 text-white rounded-lg font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2"
-            style={{ backgroundColor: 'var(--theme-primary)' }}
-          >
-            <Send className="w-4 h-4" />
+          <button type="button" className={SUBMIT_CLASS} style={SUBMIT_STYLE}>
+            <Send className="w-4 h-4" aria-hidden="true" />
             <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
           </button>
         </div>

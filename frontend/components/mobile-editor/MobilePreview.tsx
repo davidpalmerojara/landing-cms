@@ -44,7 +44,7 @@ export default function MobilePreview({ page, onBack }: { page: Page; onBack: ()
           if (s.marginBottom) blockStyle.marginBottom = s.marginBottom;
           if (s.bgColor) {
             blockStyle.backgroundColor = s.bgColor;
-            (blockStyle as Record<string, unknown>)['--theme-bg'] = s.bgColor;
+            (blockStyle as Record<string, unknown>)['--block-bg'] = s.bgColor;
           }
           if (s.borderRadius) blockStyle.borderRadius = s.borderRadius;
 

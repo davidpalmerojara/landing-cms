@@ -564,7 +564,24 @@
     "contrastSecondaryOnSurface": "Texto secundario sobre superficie",
     "contrastOnPrimary": "Texto sobre color primario",
     "contrastTextOnSurface": "Texto principal sobre superficie",
-    "colorHex": "{label}, código hexadecimal"
+    "colorHex": "{label}, código hexadecimal",
+    "contrastAutoFixed": "En la página, ese texto se oscurece o aclara lo justo para que se lea bien.",
+    "presets": {
+      "professional-blue": "Azul profesional",
+      "startup-green": "Verde startup",
+      "elegant-dark": "Violeta nocturno",
+      "warm-orange": "Naranja cálido",
+      "minimal-slate": "Minimalista",
+      "ocean-teal": "Turquesa",
+      "default": "Índigo (predeterminada)",
+      "ocean": "Océano",
+      "sunset": "Atardecer",
+      "forest": "Bosque",
+      "dark": "Grafito",
+      "slate": "Pizarra",
+      "ember": "Brasa",
+      "rose": "Rosa"
+    }
   },
   "mobile": {
     "quickEditMode": "Edición rápida",
@@ -677,7 +694,6 @@
     "heroAria": "Sección hero",
     "ctaAria": "Llamada a la acción",
     "navbarAria": "Navegación principal",
-    "toggleMenu": "Abrir menú",
     "pricingAria": "Precios",
     "pricingMonthly": "/mes",
     "pricingPopular": "Popular",
@@ -707,9 +723,19 @@
       "invalid": "Revisa el nombre, el email y el mensaje, y vuelve a intentarlo.",
       "rateLimited": "Has enviado varios mensajes seguidos. Espera un minuto e inténtalo de nuevo.",
       "unavailable": "Este formulario ya no está disponible.",
-      "generic": "No hemos podido enviar el mensaje. Inténtalo de nuevo en un momento."
+      "generic": "No hemos podido enviar el mensaje. Inténtalo de nuevo en un momento.",
+      "fields": "Revisa los campos marcados y vuelve a enviarlo."
     },
-    "contactGuestNote": "Las páginas de prueba de la demo no envían mensajes."
+    "contactGuestNote": "Las páginas de prueba de la demo no envían mensajes.",
+    "customHtmlPreview": "Contenido HTML personalizado",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "emptyText": "Vacío · doble clic para escribir",
+    "contactFieldError": {
+      "name": "Escribe tu nombre.",
+      "email": "Escribe un email válido, como nombre@ejemplo.com.",
+      "message": "Escribe tu mensaje."
+    }
   },
   "preview": {
     "backToEditor": "Volver al editor",
@@ -718,7 +744,10 @@
     "publish": "Publicar",
     "notFound": "Página \"{id}\" no encontrada.",
     "loading": "Cargando...",
-    "empty": "Esta página no tiene bloques."
+    "empty": "Esta página no tiene bloques.",
+    "documentTitle": "Vista previa: {name} — Paxl",
+    "published": "Publicada en",
+    "republish": "Publicar cambios"
   },
   "billing": {
     "title": "Facturación",
@@ -884,7 +913,8 @@
   "publicPage": {
     "empty": "Esta página no tiene contenido.",
     "madeWith": "Hecho con Paxl",
-    "guestNotice": "Página de prueba creada por un invitado en la demo de Paxl. Se borra en 24 horas. No introduzcas datos personales."
+    "guestNotice": "Página de prueba creada por un invitado en la demo de Paxl. Se borra en 24 horas. No introduzcas datos personales.",
+    "noticeLabel": "Aviso de Paxl"
   },
   "share": {
     "title": "Compartir página",
@@ -934,21 +964,21 @@
     "ogDescriptionPlaceholder": "Hereda de meta description",
     "ogImage": "OG imagen",
     "ogImagePlaceholder": "https://... URL de la imagen",
-    "ogType": "OG type",
+    "ogType": "Tipo de contenido",
     "ogTypeWebsite": "Sitio web",
     "ogTypeArticle": "Artículo",
-    "ogTypeProduct": "Producto",
     "previews": "Previews",
     "google": "Google",
     "socialMedia": "Redes sociales",
-    "domainFallback": "paxl.com",
     "titleFallback": "Título de la página",
     "descriptionFallback": "Agrega una meta description para mejorar tu SEO.",
     "socialDescriptionFallback": "Agrega una descripción para redes sociales.",
     "charCount": "{count} de {max} caracteres",
     "charCountWarn": "cerca del límite",
     "charCountOver": "supera el límite recomendado",
-    "removeOgImage": "Quitar imagen OG"
+    "removeOgImage": "Quitar imagen OG",
+    "language": "Idioma de la página",
+    "languageHint": "El idioma en que está escrita. Los lectores de pantalla lo usan para pronunciarla; se aplica al volver a publicar."
   },
   "inspector": {
     "selectImage": "Seleccionar imagen",
@@ -1141,6 +1171,8 @@
     "publishedAt": "Página publicada en:",
     "opensInNewTab": "(se abre en otra pestaña)",
     "publishedBy": "{name} ha publicado la página.",
-    "unpublishedBy": "{name} ha despublicado la página."
+    "unpublishedBy": "{name} ha despublicado la página.",
+    "emptyPage": "La página está publicada, pero no tiene bloques: quien la visite la verá vacía.",
+    "linkless": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla en el inspector."
   }
 }

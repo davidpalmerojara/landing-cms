@@ -9,7 +9,8 @@ import { safeHref } from '@/lib/safe-link';
 
 export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps<FooterData>) {
   const t = useTranslations('blocks');
-  const footerLinkClass = 'hover:text-white active:text-white cursor-pointer transition-colors text-sm font-medium';
+  const footerLinkClass = 'inline-flex items-center min-h-11 transition-colors text-sm font-medium';
+  const footerLinkHover = 'hover:text-[color:var(--theme-inverse-text)] hover:underline';
   // Links without a label are not shown; `index` points into data.links for editing
   const footerLinks = data.links
     .map((link, index) => ({
@@ -25,7 +26,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
       className={`transition-all ${
         isPreviewMode ? '' : 'pointer-events-none'
       } py-12 px-6 @tablet:py-16 @tablet:px-8`}
-      style={{ backgroundColor: 'var(--theme-text)', color: 'var(--theme-text-muted)' }}
+      style={{ backgroundColor: 'var(--block-bg, var(--theme-inverse-bg))', color: 'var(--theme-inverse-muted)' }}
     >
       <div
         className="max-w-5xl mx-auto flex transition-all flex-col gap-8 text-center @tablet:flex-row @tablet:justify-between @tablet:items-center @tablet:gap-0 @tablet:text-left mb-12"
@@ -33,8 +34,8 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
         <div className="w-full @tablet:w-auto @tablet:max-w-sm">
           <div className="flex items-center justify-center @tablet:justify-start gap-2 mb-4">
             <div
-              className="w-6 h-6 rounded flex items-center justify-center text-white"
-              style={{ backgroundColor: 'var(--theme-primary)' }}
+              className="w-6 h-6 rounded flex items-center justify-center"
+              style={{ backgroundColor: 'var(--theme-primary)', color: 'var(--theme-text-on-primary)' }}
             >
               <Sparkles className="w-3 h-3" />
             </div>
@@ -44,7 +45,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
               value={data.brandName}
               as="h3"
               className="text-xl font-bold tracking-wide"
-              style={{ color: 'var(--theme-bg)' }}
+              style={{ color: 'var(--theme-inverse-text)' }}
             />
           </div>
           <EditableText
@@ -54,7 +55,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
             as="p"
             multiline
             className="leading-relaxed text-sm"
-            style={{ color: 'var(--theme-text-muted)' }}
+            style={{ color: 'var(--theme-inverse-muted)' }}
           />
         </div>
         <div
@@ -62,7 +63,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
         >
           {footerLinks.map(({ index, label, href }) =>
             href ? (
-              <BlockLink key={index} href={href} className={footerLinkClass}>
+              <BlockLink key={index} href={href} className={`${footerLinkClass} ${footerLinkHover}`}>
                 {label}
               </BlockLink>
             ) : (
@@ -79,7 +80,7 @@ export default function FooterBlock({ blockId, data, isPreviewMode }: BlockProps
       </div>
       <div
         className="max-w-5xl mx-auto pt-8 border-t text-sm text-center"
-        style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}
+        style={{ borderColor: 'var(--theme-inverse-border)', color: 'var(--theme-inverse-muted)' }}
       >
         <EditableText blockId={blockId} fieldKey="copyright" value={data.copyright} />
       </div>

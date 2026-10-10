@@ -4,8 +4,15 @@ import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlockProps, HeroData } from '@/types/blocks';
 import EditableText from './EditableText';
-import BlockLink from './BlockLink';
-import { safeHref } from '@/lib/safe-link';
+import BlockButton from './BlockButton';
+
+/**
+ * CSS `url()` for an image address. Quoted, so nothing in the value can close
+ * the function and add declarations (QA-005; the server also refuses such URLs).
+ */
+export function cssUrl(src: string): string {
+  return `url(${JSON.stringify(src)})`;
+}
 
 export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<HeroData>) {
   const t = useTranslations('blocks');
@@ -14,12 +21,12 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<H
   // Optional: an empty field hides the element (no placeholder text on real pages)
   const badgeText = data.badgeText.trim();
   const secondaryButtonText = data.secondaryButtonText.trim();
+  // On the page a button without text is not shown (QA-040); the editor keeps it to type into
+  const showPrimaryButton = !isPreviewMode || data.buttonText.trim() !== '';
   const isLeft = alignment === 'left';
-  const buttonHref = isPreviewMode ? safeHref(data.buttonLink) : null;
-  const secondaryButtonHref = isPreviewMode ? safeHref(data.secondaryButtonLink) : null;
-  const primaryButtonClass = `rounded-full font-medium shadow-xl transition-all hover:opacity-90 w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
-  const primaryButtonStyle = { backgroundColor: 'var(--theme-primary)', color: '#fff' };
-  const secondaryButtonClass = `rounded-full font-medium border transition-all hover:opacity-80 w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
+  const primaryButtonClass = `rounded-full font-medium shadow-xl transition-all w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
+  const primaryButtonStyle = { backgroundColor: 'var(--theme-primary)', color: 'var(--theme-text-on-primary)' };
+  const secondaryButtonClass = `rounded-full font-medium border transition-all w-full py-4 text-lg @tablet:w-auto @tablet:px-8 @tablet:text-base`;
   const secondaryButtonStyle = {
     backgroundColor: bgImage ? 'transparent' : 'var(--theme-bg)',
     color: bgImage ? '#fff' : 'var(--theme-text)',
@@ -35,27 +42,28 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<H
         isPreviewMode ? '' : 'pointer-events-none'
       } py-16 px-6 @tablet:py-32 @tablet:px-8`}
       style={{
-        backgroundColor: bgImage ? undefined : 'var(--theme-bg)',
+        backgroundColor: bgImage ? undefined : 'var(--block-bg, var(--theme-bg))',
         ...(bgImage ? {
-          backgroundImage: `url(${bgImage})`,
+          backgroundImage: cssUrl(bgImage),
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         } : {}),
       }}
     >
+      {/* Dark enough that white text reads at 4.5:1 even over a white photo */}
       {bgImage && (
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-black/60" />
       )}
-      <div className={`${isLeft ? 'max-w-5xl mx-auto w-full' : ''}`}>
+      <div className={`${isLeft ? 'max-w-5xl mx-auto w-full' : 'w-full flex flex-col items-center'}`}>
         {badgeText && (
           <div
-            className="relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm"
+            className="relative z-10 inline-flex w-fit items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm"
             style={{
               backgroundColor: bgImage ? 'rgba(255,255,255,0.15)' : 'var(--theme-surface)',
               color: bgImage ? '#fff' : 'var(--theme-text-muted)',
             }}
           >
-            <Sparkles className="w-4 h-4" /> {badgeText}
+            <Sparkles className="w-4 h-4" aria-hidden="true" /> {badgeText}
           </div>
         )}
         <EditableText
@@ -83,35 +91,41 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<H
             isLeft ? 'text-left' : 'text-center mx-auto'
           } text-lg @tablet:text-xl`}
           style={{
-            color: bgImage ? 'rgba(255,255,255,0.85)' : 'var(--theme-text-muted)',
+            color: bgImage ? 'rgba(255,255,255,0.9)' : 'var(--theme-text-muted)',
             fontFamily: 'var(--bp-font-body)',
             lineHeight: 'var(--bp-line-height-body)',
           }}
         />
-        <div
-          className={`relative z-10 flex gap-4 transition-all ${
-            isLeft ? 'justify-start' : 'w-full justify-center'
-          } flex-col px-4 @tablet:flex-row @tablet:items-center @tablet:px-0`}
-        >
-          {buttonHref ? (
-            <BlockLink href={buttonHref} className={`${primaryButtonClass} inline-block text-center`} style={primaryButtonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
-            </BlockLink>
-          ) : (
-            <button className={primaryButtonClass} style={primaryButtonStyle}>
-              <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
-            </button>
-          )}
-          {secondaryButtonText && (secondaryButtonHref ? (
-            <BlockLink href={secondaryButtonHref} className={`${secondaryButtonClass} inline-block text-center`} style={secondaryButtonStyle}>
-              {secondaryButtonText}
-            </BlockLink>
-          ) : (
-            <button className={secondaryButtonClass} style={secondaryButtonStyle}>
-              {secondaryButtonText}
-            </button>
-          ))}
-        </div>
+        {(showPrimaryButton || secondaryButtonText) && (
+          <div
+            className={`relative z-10 flex gap-4 transition-all ${
+              isLeft ? 'justify-start' : 'w-full justify-center'
+            } flex-col px-4 @tablet:flex-row @tablet:items-center @tablet:px-0`}
+          >
+            {showPrimaryButton && (
+              <BlockButton
+                link={data.buttonLink}
+                isPreviewMode={isPreviewMode}
+                className={primaryButtonClass}
+                interactiveClassName="hover:opacity-90"
+                style={primaryButtonStyle}
+              >
+                <EditableText blockId={blockId} fieldKey="buttonText" value={data.buttonText} />
+              </BlockButton>
+            )}
+            {secondaryButtonText && (
+              <BlockButton
+                link={data.secondaryButtonLink}
+                isPreviewMode={isPreviewMode}
+                className={secondaryButtonClass}
+                interactiveClassName="hover:opacity-80"
+                style={secondaryButtonStyle}
+              >
+                {secondaryButtonText}
+              </BlockButton>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

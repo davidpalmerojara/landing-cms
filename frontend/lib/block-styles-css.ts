@@ -13,6 +13,14 @@
 import { resolveStyles } from '@/types/blocks';
 import type { Block, BlockStyles } from '@/types/blocks';
 
+/**
+ * A block's background override (styles.bgColor). Every block paints its
+ * section with `var(--block-bg, <its theme color>)`, so the override shows on
+ * all of them, including those on the surface, primary or inverse colors (QA-096).
+ * The editor canvas and previews set the same variable inline.
+ */
+export const BLOCK_BG_VAR = '--block-bg';
+
 /** Class that carries a block's rules; set on its wrapper. */
 export function blockStyleClass(blockId: string): string | null {
   return /^[A-Za-z0-9_-]{1,64}$/.test(blockId) ? `paxl-b-${blockId}` : null;
@@ -39,8 +47,8 @@ const lengthProperties: [keyof BlockStyles, string, string][] = [
 const resetValues: Record<string, string> = {
   ...Object.fromEntries(lengthProperties.map(([, property, reset]) => [property, reset])),
   'background-color': 'transparent',
-  // Blocks read --theme-bg; without an override it comes from the page
-  '--theme-bg': 'inherit',
+  // Without an override each block paints its own section color
+  [BLOCK_BG_VAR]: 'initial',
 };
 
 function cssLength(value: unknown): string | null {
@@ -64,7 +72,7 @@ function declarationsFor(styles: BlockStyles): Map<string, string> {
   const background = cssColor(styles.bgColor);
   if (background) {
     declarations.set('background-color', background);
-    declarations.set('--theme-bg', background);
+    declarations.set(BLOCK_BG_VAR, background);
   }
   return declarations;
 }

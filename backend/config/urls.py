@@ -4,6 +4,8 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from config.features import features_view
+
 
 def healthz(request):
     """Liveness check for the hosting platform. Must not touch the database,
@@ -13,6 +15,7 @@ def healthz(request):
 
 urlpatterns = [
     path('healthz', healthz),
+    path('api/features/', features_view),
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('pages.urls')),

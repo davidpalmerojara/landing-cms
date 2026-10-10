@@ -678,7 +678,7 @@
     "addDomain": "Add domain",
     "addDomainError": "Could not add domain",
     "domain": "Domain",
-    "domainPlaceholder": "landing.mycompany.com",
+    "domainPlaceholder": "landing.your-domain.com",
     "pageOptional": "Page (optional)",
     "unassignedPage": "No page assigned",
     "proFeatureTitle": "Pro feature",

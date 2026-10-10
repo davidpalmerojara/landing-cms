@@ -3,7 +3,7 @@ import uuid
 import pytest
 from rest_framework import serializers
 from pages.models import Page, Block, CustomDomain
-from pages.serializers import PageDetailSerializer, CustomDomainSerializer, SYSTEM_DOMAINS
+from pages.serializers import PageDetailSerializer, CustomDomainSerializer
 from tests.factories import UserFactory, PageFactory, BlockFactory, CustomDomainFactory
 
 
@@ -147,12 +147,12 @@ class TestCustomDomainSerializerValidation:
         assert 'domain' not in serializer.errors
 
     def test_system_domain_fails(self):
-        serializer = CustomDomainSerializer(data={'domain': 'builderpro.com'})
+        serializer = CustomDomainSerializer(data={'domain': 'tu-dominio.com'})
         serializer.is_valid()
         assert 'domain' in serializer.errors
 
     def test_subdomain_of_system_fails(self):
-        serializer = CustomDomainSerializer(data={'domain': 'test.builderpro.com'})
+        serializer = CustomDomainSerializer(data={'domain': 'test.tu-dominio.com'})
         serializer.is_valid()
         assert 'domain' in serializer.errors
 

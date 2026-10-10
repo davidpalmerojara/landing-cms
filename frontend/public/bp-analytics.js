@@ -1,5 +1,5 @@
 /**
- * BuilderPro Analytics Pixel — lightweight tracking script (< 3KB gzip).
+ * Paxl analytics pixel — lightweight tracking script (< 3KB gzip).
  *
  * Injected into published pages at /p/[slug].
  * Cookieless: stores nothing on the visitor's device and sends no visitor

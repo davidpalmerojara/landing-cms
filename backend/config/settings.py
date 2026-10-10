@@ -296,6 +296,20 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 REVALIDATE_SECRET = os.environ.get('REVALIDATE_SECRET', '')
 
 
+# --- Custom domains (ADR-025) ---
+# Off by default: they need DNS verification and SSL on the host, which the free
+# demo hosting does not provide. Off: the endpoints answer 404 FEATURE_DISABLED
+# and the frontend hides every trace of the feature.
+CUSTOM_DOMAINS_ENABLED = os.environ.get('CUSTOM_DOMAINS_ENABLED', 'False').lower() in ('true', '1', 'yes')
+# What a customer points their domain at (CNAME, or the A record as an alternative)
+CUSTOM_DOMAINS_CNAME_TARGET = os.environ.get('CUSTOM_DOMAINS_CNAME_TARGET', 'domains.tu-dominio.com')
+CUSTOM_DOMAINS_A_RECORD = os.environ.get('CUSTOM_DOMAINS_A_RECORD', '203.0.113.10')
+# The app's own domains: nobody can register them (or their subdomains) as a custom domain
+CUSTOM_DOMAINS_RESERVED = [
+    d.strip().lower() for d in os.environ.get('CUSTOM_DOMAINS_RESERVED', 'tu-dominio.com').split(',') if d.strip()
+]
+
+
 # --- AI generation (ADR-023) ---
 # Server-level keys (users can send their own with each request; those are never stored)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')

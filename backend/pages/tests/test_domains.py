@@ -59,6 +59,12 @@ def make_paid_user():
     return user, workspace, subscription, free_plan, pro_plan
 
 
+@pytest.fixture(autouse=True)
+def custom_domains_on(settings):
+    """The feature is off by default (ADR-025); these tests exercise it."""
+    settings.CUSTOM_DOMAINS_ENABLED = True
+
+
 @pytest.mark.django_db
 class TestCustomDomainViews:
     def test_list_returns_only_domains_from_users_workspace(self, auth_client, user):

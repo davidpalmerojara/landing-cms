@@ -13,6 +13,7 @@ import type { ApiBillingPlan } from '@/lib/api';
 import { useAppLocale } from '@/components/providers/AppIntlProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { useBillingOverview } from '@/hooks/useBillingOverview';
+import { useFeatures } from '@/hooks/useFeatures';
 import GuestSettingsScreen from '@/components/guest/GuestSettingsScreen';
 
 type BillingCycle = 'monthly' | 'yearly';
@@ -27,6 +28,8 @@ export default function BillingPage() {
   const { plans, subscription, payments, isLoading, hasError, error: loadFailure } = useBillingOverview({
     enabled: Boolean(user && !user.is_guest),
   });
+  const { features } = useFeatures();
+  const showCustomDomains = features?.custom_domains ?? false;
   const [actionError, setActionError] = useState<string | null>(null);
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -194,6 +197,7 @@ export default function BillingPage() {
                       isCurrent={!isPro}
                       onSelect={() => {}}
                       disabled
+                      showCustomDomains={showCustomDomains}
                     />
                   )}
                   {/* Pro */}
@@ -205,6 +209,7 @@ export default function BillingPage() {
                       onSelect={handleCheckout}
                       isLoading={isCheckingOut}
                       highlighted
+                      showCustomDomains={showCustomDomains}
                     />
                   )}
                 </div>
@@ -284,11 +289,13 @@ interface PlanCardProps {
   isLoading?: boolean;
   disabled?: boolean;
   highlighted?: boolean;
+  /** Custom domains exist on this deployment: list them among the plan's features */
+  showCustomDomains: boolean;
 }
 
-function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highlighted }: PlanCardProps) {
+function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highlighted, showCustomDomains }: PlanCardProps) {
   const t = useTranslations();
-  const features = planFeatures(plan, t);
+  const features = planFeatures(plan, t, { customDomains: showCustomDomains });
   const price = cycle === 'yearly' && plan.price_yearly
     ? (parseFloat(plan.price_yearly) / 12).toFixed(0)
     : parseFloat(plan.price_monthly).toFixed(0);

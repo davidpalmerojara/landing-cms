@@ -126,6 +126,12 @@ else:
             'ENGINE': 'django.db.backends.sqlite3',
             # SQLITE_PATH lets the e2e suite use a throwaway database
             'NAME': os.environ.get('SQLITE_PATH') or BASE_DIR / 'db.sqlite3',
+            # Concurrent writers queue instead of failing (COLLAB2-003). A deferred
+            # transaction that reads and then writes cannot wait for another
+            # writer: SQLite answers "database is locked" at once. BEGIN IMMEDIATE
+            # takes the write lock up front, and a busy writer is waited for up to
+            # `timeout` seconds. PostgreSQL (DATABASE_URL) is unaffected.
+            'OPTIONS': {'transaction_mode': 'IMMEDIATE', 'timeout': 20},
         }
     }
 

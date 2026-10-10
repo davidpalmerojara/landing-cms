@@ -3,6 +3,8 @@ import MobileEditor from '@/components/mobile-editor/MobileEditor';
 import { useEditorStore } from '@/store/editor-store';
 import { makeBlock, makePage, render, resetEditorStore, click, setNavigatorOnline } from './test-utils';
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 describe('MobileEditor', () => {
   beforeEach(() => {
     resetEditorStore();
@@ -92,7 +94,7 @@ describe('MobileEditor', () => {
         onPublish={vi.fn().mockResolvedValue(true)}
       />,
     );
-    expect(view.container.querySelector('[aria-label="Guardando..."]')).toBeInTheDocument();
+    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Guardando...');
     view.unmount();
 
     resetEditorStore(page);
@@ -104,7 +106,7 @@ describe('MobileEditor', () => {
         onPublish={vi.fn().mockResolvedValue(true)}
       />,
     );
-    expect(view.container.querySelector('[aria-label="Guardado"]')).toBeInTheDocument();
+    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Guardado');
     view.unmount();
 
     resetEditorStore(page);
@@ -116,7 +118,7 @@ describe('MobileEditor', () => {
         onPublish={vi.fn().mockResolvedValue(true)}
       />,
     );
-    expect(view.container.querySelector('[aria-label="Sin conexión"]')).toBeInTheDocument();
+    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Sin conexión');
     view.unmount();
   });
 

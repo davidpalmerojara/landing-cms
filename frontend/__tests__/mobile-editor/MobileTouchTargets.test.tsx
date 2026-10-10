@@ -4,8 +4,10 @@ import MobileEditor from '@/components/mobile-editor/MobileEditor';
 import { useEditorStore } from '@/store/editor-store';
 import { click, makeBlock, makePage, render, resetEditorStore, setNavigatorOnline, type RenderResult } from './test-utils';
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 /** Tailwind classes that give an element a 44px (11 x 4px) tall or wide hit area. */
-const TOUCH_SIZE = /(?:^|\s)(?:min-h-11|min-w-11|h-11|h-12|h-14|py-3\.5|py-4)(?:\s|$)/;
+const TOUCH_SIZE = /(?:^|\s)(?:min-h-11|min-w-11|min-h-12|min-w-12|h-11|h-12|h-14|py-3\.5|py-4)(?:\s|$)/;
 
 function hasTouchTarget(el: Element): boolean {
   const own = el.getAttribute('class') ?? '';
@@ -61,15 +63,15 @@ describe('mobile editor touch targets', () => {
       expect(toggle.checked).toBe(true);
     });
 
-    it('gives the style sliders a 44px hit area and a name', () => {
+    it('gives the style choices a 44px hit area and a name', () => {
       click(Array.from(view.container.querySelectorAll('button')).find((b) => b.textContent === 'Estilos') as Element);
-      const sliders = Array.from(view.container.querySelectorAll<HTMLInputElement>('input[type="range"]'));
+      const selects = Array.from(view.container.querySelectorAll<HTMLSelectElement>('select'))
+        .filter((select) => select.id !== 'mobile-field-billingPeriod');
 
-      expect(sliders.length).toBeGreaterThan(0);
-      for (const slider of sliders) {
-        expect(slider.className).toContain('h-11');
-        const labelledBy = slider.getAttribute('aria-labelledby') ?? '';
-        expect(document.getElementById(labelledBy)?.textContent, 'slider has no name').toBeTruthy();
+      expect(selects.length).toBeGreaterThan(0);
+      for (const select of selects) {
+        expect(select.className).toContain('min-h-11');
+        expect(view.container.querySelector(`label[for="${select.id}"]`)?.textContent, 'select has no name').toBeTruthy();
       }
     });
 

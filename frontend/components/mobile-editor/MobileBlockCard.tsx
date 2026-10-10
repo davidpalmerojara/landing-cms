@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { GripVertical, MoreVertical, ChevronUp, ChevronDown, Copy, Trash2 } from 'lucide-react';
+import { memo, useState, useRef, useCallback, useEffect } from 'react';
+import { GripVertical, MoreVertical, ChevronUp, ChevronDown, Copy, Trash2, Lock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { blockRegistry } from '@/lib/block-registry';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
@@ -17,6 +17,8 @@ interface MobileBlockCardProps {
   isFirst: boolean;
   isLast: boolean;
   isPreviewExpanded: boolean;
+  /** Who is editing this block in another connection (QA-073), or null */
+  lockedBy?: string | null;
   onTap: (blockId: string) => void;
   onLongPress: (blockId: string) => void;
   onDuplicate: (blockId: string) => void;
@@ -65,12 +67,17 @@ function getBlockPreview(block: Block, t: ReturnType<typeof useTranslations>): s
   }
 }
 
-export default function MobileBlockCard({
+/**
+ * One block of the Quick Edit list. Memoised (QA-106): typing in one block
+ * re-renders that card only, as long as the parent passes stable callbacks.
+ */
+function MobileBlockCard({
   block,
   index,
   isFirst,
   isLast,
   isPreviewExpanded,
+  lockedBy = null,
   onTap,
   onLongPress,
   onDuplicate,
@@ -81,6 +88,8 @@ export default function MobileBlockCard({
 }: MobileBlockCardProps) {
   const t = useTranslations();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // --- Swipe state ---
   const [swipeX, setSwipeX] = useState(0);
@@ -102,6 +111,27 @@ export default function MobileBlockCard({
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     };
   }, []);
+
+  // The menu closes on a tap anywhere else, and that tap still does what it was for (QA-123)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
 
   const definition = blockRegistry[block.type];
   const Icon = definition?.icon;
@@ -232,8 +262,10 @@ export default function MobileBlockCard({
 
   // Lazy render block preview
 
+  const lockNote = lockedBy ? t('mobile.lockedBy', { name: lockedBy }) : null;
+
   return (
-    <div className="relative" role="listitem" aria-label={`${label}: ${preview}`}>
+    <div className="relative" role="listitem" aria-label={`${label}: ${lockNote ?? preview}`}>
       {/* Swipe backgrounds */}
       <div className="relative overflow-hidden rounded-xl">
         {swipeDirection === 'left' && (
@@ -245,7 +277,7 @@ export default function MobileBlockCard({
                   onClick={handleConfirmDelete}
                   className="text-sm font-semibold text-error bg-error/20 px-3 py-1.5 min-h-11 flex items-center rounded-lg active:bg-error/30"
                 >
-                  {t('common.done')}
+                  {t('common.delete')}
                 </button>
               ) : (
                 <span className="text-sm font-medium">{t('common.delete')}</span>
@@ -295,13 +327,22 @@ export default function MobileBlockCard({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-primary truncate">{label}</p>
-                <p className="text-xs text-secondary truncate">{preview}</p>
+                {lockNote ? (
+                  <p className="text-xs text-warning truncate flex items-center gap-1">
+                    <Lock size={12} className="shrink-0" aria-hidden="true" />
+                    {lockNote}
+                  </p>
+                ) : (
+                  <p className="text-xs text-secondary truncate">{preview}</p>
+                )}
               </div>
             </div>
 
             <button
+              ref={menuButtonRef}
               className="shrink-0 flex items-center justify-center min-w-11 min-h-11 -mr-1 text-muted active:text-primary rounded-lg"
               aria-label={t('dashboard.pageOptions', { name: label })}
+              aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={handleMenuToggle}
             >
@@ -331,8 +372,10 @@ export default function MobileBlockCard({
       {/* Context menu dropdown */}
       {menuOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+          {/* A light scrim says the menu is on top; taps go through it to what is underneath */}
+          <div className="fixed inset-0 z-40 bg-black/20 pointer-events-none" aria-hidden="true" />
           <div
+            ref={menuRef}
             className="absolute right-2 top-full mt-1 z-50 bg-surface-card border border-default/30 rounded-xl shadow-xl py-1.5 min-w-[180px]"
             role="menu"
             aria-label={t('dashboard.pageOptions', { name: label })}
@@ -375,3 +418,5 @@ export default function MobileBlockCard({
     </div>
   );
 }
+
+export default memo(MobileBlockCard);

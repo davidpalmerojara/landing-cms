@@ -145,7 +145,9 @@
     },
     "logoutTitle": "Log out of the guest session?",
     "logoutBody": "You will lose your pages: they are deleted along with the session. Create an account to keep them.",
-    "logoutAnyway": "Log out and lose my pages"
+    "logoutAnyway": "Log out and lose my pages",
+    "bannerShort": "Temporary session",
+    "claimShort": "Create account"
   },
   "errors": {
     "globalTitle": "Something went wrong",
@@ -566,17 +568,14 @@
   },
   "mobile": {
     "quickEditMode": "Quick edit",
-    "tapToEdit": "Tap to edit",
     "dragToReorder": "Hold to reorder",
     "previewPage": "Preview",
     "backToEditor": "Back to editor",
     "blockDuplicated": "Block duplicated",
-    "changesSynced": "Changes synced",
     "pagePublished": "Page published",
     "publishError": "Publishing error",
     "pageName": "Page name",
     "editPageName": "Edit page name",
-    "retrySave": "Retry",
     "emptyTitle": "Your page is empty",
     "emptyDescription": "Tap the + button to add your first block",
     "pageBlocks": "Page blocks",
@@ -593,8 +592,6 @@
     "offline": "Offline",
     "saving": "Saving...",
     "saved": "Saved",
-    "error": "Error",
-    "reconnecting": "Reconnecting...",
     "heroPreview": "Hero",
     "featuresPreview": "Features",
     "pricingPreview": "{count, plural, one {# plan} other {# plans}}",
@@ -609,7 +606,57 @@
     "timelinePreview": "Timeline",
     "galleryPreview": "Gallery",
     "logoCloudPreview": "Logos",
-    "customHtmlPreview": "Custom HTML"
+    "customHtmlPreview": "Custom HTML",
+    "lockedBy": "{name} is editing it",
+    "improveWithAi": "Improve with AI",
+    "chooseImage": "Choose image",
+    "changeImage": "Change image",
+    "removeImage": "Remove the image from “{field}”",
+    "pasteImageUrl": "Paste an address",
+    "imageUrlLabel": "Image address for “{field}”",
+    "undo": "Undo",
+    "redo": "Redo",
+    "history": "Undo and redo",
+    "desktopOnlyNote": "Theme, SEO and version history are changed on a computer.",
+    "publishChangesDescription": "Visitors to /p/{slug} still see the previous version.",
+    "publishPendingAria": "Publish changes (there are unpublished changes)",
+    "presenceLabel": "Also editing: {names}",
+    "styles": {
+      "background": "Background",
+      "noBackground": "Theme's",
+      "themeColor": "Theme {role} ({value})",
+      "roles": {
+        "background": "background",
+        "surface": "surface",
+        "primary": "main color",
+        "secondary": "secondary color",
+        "accent": "accent",
+        "textPrimary": "text"
+      },
+      "padding": "Inner spacing",
+      "margin": "Outer spacing",
+      "paddingTop": "Top",
+      "paddingBottom": "Bottom",
+      "paddingLeft": "Left",
+      "paddingRight": "Right",
+      "marginTop": "Top",
+      "marginBottom": "Bottom",
+      "step": {
+        "none": "None",
+        "s": "Small ({px} px)",
+        "m": "Medium ({px} px)",
+        "l": "Large ({px} px)",
+        "xl": "Extra large ({px} px)"
+      },
+      "borderRadius": "Corners",
+      "radius": {
+        "none": "Square",
+        "sm": "Slightly rounded ({px} px)",
+        "md": "Rounded ({px} px)",
+        "lg": "Very rounded ({px} px)"
+      },
+      "custom": "Custom ({px} px)"
+    }
   },
   "blocks": {
     "hero": "Hero",

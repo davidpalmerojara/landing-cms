@@ -81,6 +81,7 @@
     "magicLinkSentDescription": "Enviamos un enlace de acceso a {email}",
     "magicLinkExpiry": "El enlace expira en 15 minutos. Revisa también spam.",
     "magicLinkInvalid": "Enlace inválido o expirado. Solicita uno nuevo.",
+    "magicTitle": "Iniciando sesión",
     "magicVerifying": "Verificando enlace...",
     "magicVerified": "Acceso verificado",
     "magicRedirecting": "Redirigiendo al dashboard...",
@@ -815,6 +816,7 @@
     "paymentsOff": "Los pagos no están activos en esta demo. Aquí ves tu plan y sus límites, pero el plan Pro no se puede contratar.",
     "testMode": "Modo de prueba: usa la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC. No se cobra nada.",
     "perMonth": "/mes",
+    "perYear": "/año",
     "unavailableInDemo": "No disponible en esta demo"
   },
   "domains": {
@@ -1139,6 +1141,7 @@
     "deletedBody": "El propietario la ha borrado. Ya no se puede editar ni se guardará ningún cambio."
   },
   "join": {
+    "title": "Unirse a una página",
     "joining": "Abriendo la página compartida…",
     "invalidTitle": "Este enlace no es válido",
     "invalidBody": "Puede que haya caducado o que ya lo haya usado demasiada gente. Pide un enlace nuevo a quien te lo envió.",

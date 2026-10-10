@@ -99,4 +99,15 @@ describe('preview page', () => {
     expect(button?.disabled).toBe(false);
     view.unmount();
   });
+
+  it('APP2-006: a page that does not exist gets a "not found" title and a heading, with side margins', async () => {
+    vi.spyOn(api.pages, 'get').mockRejectedValue(new Error('404'));
+    const view = render(<PreviewPage />);
+    await flush();
+
+    expect(document.title).toBe('Página no encontrada — Paxl');
+    expect(view.container.querySelector('h1')?.textContent).toContain('no encontrada');
+    expect(view.container.querySelector('main')?.className).toContain('px-6');
+    view.unmount();
+  });
 });

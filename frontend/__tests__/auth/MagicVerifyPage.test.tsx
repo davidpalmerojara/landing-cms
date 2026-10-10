@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import MagicVerifyPage from '@/app/auth/magic/[token]/page';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import type { ApiUser, AuthResponse } from '@/lib/api';
 import { render, click, type RenderResult } from '../mobile-editor/test-utils';
 
@@ -60,5 +60,36 @@ describe('MagicVerifyPage', () => {
     if (!button) throw new Error('no continue button');
     click(button);
     expect(replace).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('APP2-007: the page title is a heading about signing in, the brand is not the h1', async () => {
+    view = await renderWith({ user });
+
+    expect(view.container.querySelector('h1')?.textContent).toBe('Iniciando sesión');
+    expect(view.container.querySelectorAll('h1')).toHaveLength(1);
+  });
+
+  it('APP2-007: a link that does not work says so, in an alert', async () => {
+    vi.spyOn(api.auth, 'magicVerify').mockRejectedValue(new ApiError(400, JSON.stringify({ error: 'x', code: 'INVALID_TOKEN' })));
+    await act(async () => {
+      view = render(<MagicVerifyPage />);
+    });
+
+    expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('Enlace inválido o expirado');
+  });
+
+  it.each([
+    ['the network is down', new TypeError('Failed to fetch'), 'No se pudo conectar'],
+    ['the server throttles', new ApiError(429, '{"error":"x","code":"THROTTLED"}'), 'Demasiados intentos'],
+    ['the server fails', new ApiError(500, '{"error":"x"}'), 'Algo ha fallado en el servidor'],
+  ])('APP2-007: when %s it does not claim the link is invalid', async (_name, failure, expected) => {
+    vi.spyOn(api.auth, 'magicVerify').mockRejectedValue(failure);
+    await act(async () => {
+      view = render(<MagicVerifyPage />);
+    });
+
+    const alert = view.container.querySelector('[role="alert"]')?.textContent ?? '';
+    expect(alert).toContain(expected);
+    expect(alert).not.toContain('inválido');
   });
 });

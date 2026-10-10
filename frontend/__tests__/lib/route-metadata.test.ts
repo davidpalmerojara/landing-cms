@@ -49,4 +49,22 @@ describe('routeMetadata (QA-057)', () => {
     expect((await routeMetadata('dashboard')).robots).toEqual({ index: false, follow: false });
     expect((await routeMetadata('pricing')).robots).toBeUndefined();
   });
+
+  it('APP2-006: the 404, the magic-link and the join screens each have their own title, in both languages', async () => {
+    expect((await routeMetadata('notFound')).title).toBe('Página no encontrada — Paxl');
+    expect((await routeMetadata('magic')).title).toBe('Iniciando sesión — Paxl');
+    expect((await routeMetadata('join')).title).toBe('Unirse a una página — Paxl');
+    state.cookie = 'en';
+    expect((await routeMetadata('notFound')).title).toBe('Page not found — Paxl');
+    expect((await routeMetadata('magic')).title).toBe('Signing in — Paxl');
+    expect((await routeMetadata('join')).title).toBe('Join a page — Paxl');
+  });
+
+  it('APP2-006: those screens are not indexed and have no canonical address', async () => {
+    for (const route of ['notFound', 'magic', 'join'] as const) {
+      const metadata = await routeMetadata(route);
+      expect(metadata.robots, route).toEqual({ index: false, follow: false });
+      expect(metadata.alternates, route).toBeUndefined();
+    }
+  });
 });

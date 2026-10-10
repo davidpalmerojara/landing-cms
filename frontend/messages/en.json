@@ -81,6 +81,7 @@
     "magicLinkSentDescription": "We sent a sign-in link to {email}",
     "magicLinkExpiry": "The link expires in 15 minutes. Check spam too.",
     "magicLinkInvalid": "Invalid or expired link. Request a new one.",
+    "magicTitle": "Signing in",
     "magicVerifying": "Verifying link...",
     "magicVerified": "Access verified",
     "magicRedirecting": "Redirecting to dashboard...",
@@ -815,6 +816,7 @@
     "paymentsOff": "Payments are not active in this demo. You can see your plan and its limits here, but the Pro plan cannot be purchased.",
     "testMode": "Test mode: use the card 4242 4242 4242 4242, any future date and any CVC. Nothing is charged.",
     "perMonth": "/month",
+    "perYear": "/year",
     "unavailableInDemo": "Not available in this demo"
   },
   "domains": {
@@ -1139,6 +1141,7 @@
     "deletedBody": "The owner deleted it. It can no longer be edited and no changes will be saved."
   },
   "join": {
+    "title": "Join a page",
     "joining": "Opening the shared page…",
     "invalidTitle": "This link is not valid",
     "invalidBody": "It may have expired or been used by too many people. Ask whoever sent it for a new one.",

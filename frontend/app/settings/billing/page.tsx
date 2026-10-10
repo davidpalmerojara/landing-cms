@@ -169,6 +169,16 @@ export default function BillingPage() {
                   </button>
                 )}
               </div>
+              {/* The plans are not offered to someone who has Pro, so this is where its limits are seen (APP2-004) */}
+              {isPro && subscription?.plan && (
+                <div className="mt-6 border-t border-subtle/80 pt-5">
+                  <PlanFeatureList
+                    features={planFeatures(subscription.plan, t, { customDomains: showCustomDomains })}
+                    includedLabel={t('billing.included')}
+                    notIncludedLabel={t('billing.notIncluded')}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Plan comparison */}
@@ -199,7 +209,7 @@ export default function BillingPage() {
                     {t('billing.yearly')}
                     {proPlan?.price_yearly && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                        className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                           cycle === 'yearly' ? 'bg-white/20 text-white' : 'bg-emerald-500/20 text-success'
                         }`}
                       >
@@ -345,7 +355,7 @@ function PlanCard({ plan, cycle, isCurrent, onSelect, isLoading, disabled, highl
           <span className="text-sm text-muted">{t('billing.perMonth')}</span>
         </div>
         {cycle === 'yearly' && totalYearly && (
-          <p className="text-xs text-muted mt-1">${totalYearly}/{t('billing.yearly').toLowerCase()}</p>
+          <p className="text-xs text-muted mt-1">${totalYearly}{t('billing.perYear')}</p>
         )}
       </div>
 

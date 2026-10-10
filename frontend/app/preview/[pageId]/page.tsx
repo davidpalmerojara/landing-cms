@@ -109,7 +109,8 @@ export default function PreviewPage() {
   // The tab says which page this is, not just "Paxl" (QA-085)
   useEffect(() => {
     if (page) document.title = t('preview.documentTitle', { name: page.name });
-  }, [page, t]);
+    else if (error) document.title = `${t('errors.notFoundTitle')} — ${t('common.brand')}`;
+  }, [page, error, t]);
 
   // <html lang> stays the interface language (the bar is Paxl's); the page's own area declares the page's
   // language through PageRenderer (PUBLIC2-006)
@@ -143,14 +144,14 @@ export default function PreviewPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-surface text-primary">
+      <main id="main-content" tabIndex={-1} className="flex items-center justify-center min-h-screen px-6 bg-surface text-primary outline-none">
         <div className="text-center space-y-4">
-          <p className="text-xl font-semibold">{error}</p>
+          <h1 className="text-xl font-semibold">{error}</h1>
           <a href="/dashboard" className="text-primary-color hover:underline text-sm">
             {t('common.backToDashboard')}
           </a>
         </div>
-      </div>
+      </main>
     );
   }
 

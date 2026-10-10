@@ -5,10 +5,12 @@ import type { AppLocale, AppMessages } from '@/lib/i18n';
 
 type RouteKey =
   | 'home' | 'pricing' | 'about' | 'contact' | 'privacy' | 'terms' | 'changelog'
-  | 'login' | 'register' | 'dashboard' | 'settings' | 'billing' | 'domains';
+  | 'login' | 'register' | 'dashboard' | 'settings' | 'billing' | 'domains'
+  | 'notFound' | 'magic' | 'join';
 
 interface RouteMeta {
-  path: string;
+  /** Canonical path; absent for screens that are no page to index */
+  path?: string;
   title: (messages: AppMessages) => string;
   /** Pages behind a login are never indexed */
   private?: boolean;
@@ -28,6 +30,10 @@ const ROUTES: Record<RouteKey, RouteMeta> = {
   settings: { path: '/settings', title: (m) => m.settingsPage.title, private: true },
   billing: { path: '/settings/billing', title: (m) => m.billing.title, private: true },
   domains: { path: '/settings/domains', title: (m) => m.domains.title, private: true },
+  // Screens with no page of their own to index (APP2-006)
+  notFound: { title: (m) => m.errors.notFoundTitle, private: true },
+  magic: { title: (m) => m.auth.magicTitle, private: true },
+  join: { title: (m) => m.join.title, private: true },
 };
 
 export async function requestLocale(): Promise<AppLocale> {
@@ -44,12 +50,12 @@ export async function requestLocale(): Promise<AppLocale> {
 export async function routeMetadata(route: RouteKey): Promise<Metadata> {
   const meta = ROUTES[route];
   const locale = await requestLocale();
-  const metadata: Metadata = { alternates: { canonical: meta.path } };
+  const metadata: Metadata = meta.path ? { alternates: { canonical: meta.path } } : {};
 
   if (route !== 'home') {
     const title = `${meta.title(MESSAGES[locale])} — ${MESSAGES[locale].common.brand}`;
     metadata.title = title;
-    metadata.openGraph = { title, url: meta.path };
+    metadata.openGraph = meta.path ? { title, url: meta.path } : { title };
   }
   if (meta.private) metadata.robots = { index: false, follow: false };
   return metadata;

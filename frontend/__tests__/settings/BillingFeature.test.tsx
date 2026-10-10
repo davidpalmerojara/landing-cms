@@ -81,6 +81,32 @@ describe('billing page, payments off (D2, QA-018)', () => {
   });
 });
 
+describe('billing page, plan details (APP2-004, APP2-010)', () => {
+  beforeEach(() => serverFeatures(false));
+
+  it('APP2-004: a Pro account sees what its plan includes', async () => {
+    vi.spyOn(api.billing, 'subscription').mockResolvedValue({
+      subscription: {
+        id: 's1', plan: pro, status: 'active', billing_cycle: 'monthly', current_period_start: null,
+        current_period_end: null, cancel_at_period_end: false, trial_end: null, created_at: '2026-10-01T00:00:00Z',
+      },
+    });
+
+    await mount(<BillingPage />);
+
+    expect(view.container.querySelectorAll('main ul li').length).toBeGreaterThan(3);
+    expect(text()).toContain('Ilimitado');
+  });
+
+  it('APP2-010: the yearly price is followed by "/año", not "/anual"', async () => {
+    await mount(<BillingPage />);
+    click(buttonByText(view.container, 'Anual-17%'));
+
+    expect(text()).toContain('$190/año');
+    expect(text()).not.toContain('/anual');
+  });
+});
+
 describe('billing page, Stripe test key (D2)', () => {
   beforeEach(() => serverFeatures(true));
 

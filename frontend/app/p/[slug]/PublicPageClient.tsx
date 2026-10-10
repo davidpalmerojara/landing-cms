@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ApiPublicPage } from '@/lib/api';
 import { apiToTokens } from '@/lib/design-tokens';
+import { isBlockEmpty } from '@/lib/block-emptiness';
 import { apiBlocksToLocal } from '@/lib/page-mapping';
 import { pageLanguage } from '@/lib/page-language';
 import { pageThemeVars } from '@/lib/page-theme';
@@ -22,7 +23,8 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   const t = useTranslations();
   // <html lang> is the page's language; Paxl's own words are the visitor's, so they say so (PUBLIC2-006)
   const locale = useLocale();
-  const blocks = apiBlocksToLocal(page.blocks);
+  // Blocks with nothing written in them would only be bands of padding (PUBLIC2-009)
+  const blocks = apiBlocksToLocal(page.blocks).filter((block) => !isBlockEmpty(block));
   const themeVars = pageThemeVars(apiToTokens(page.design_tokens));
 
   if (blocks.length === 0) {

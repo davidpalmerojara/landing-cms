@@ -334,6 +334,32 @@ describe('dashboard, page menu keyboard (QA-060)', () => {
   });
 });
 
+describe('dashboard, expired session during an action (APP2-012)', () => {
+  it('the error banner offers the way back to log in, returning to the dashboard', async () => {
+    await mount();
+    vi.spyOn(api.pages, 'duplicate').mockRejectedValue(new ApiError(401, '{"error":"x","code":"UNAUTHORIZED"}'));
+    click(byLabel('Opciones para Landing 1') as HTMLElement);
+    const duplicate = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Duplicar');
+    await act(async () => duplicate?.click());
+    await act(async () => {});
+
+    const alert = view.container.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert.textContent).toContain('Tu sesión ha caducado');
+    expect(alert.querySelector('a')?.getAttribute('href')).toBe('/login?next=%2Fdashboard');
+  });
+
+  it('other failures have no login link', async () => {
+    await mount();
+    vi.spyOn(api.pages, 'duplicate').mockRejectedValue(new ApiError(500, '{"error":"x"}'));
+    click(byLabel('Opciones para Landing 1') as HTMLElement);
+    const duplicate = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Duplicar');
+    await act(async () => duplicate?.click());
+    await act(async () => {});
+
+    expect(view.container.querySelector('[role="alert"] a')).toBeNull();
+  });
+});
+
 describe('dashboard, claiming a guest account (QA-051)', () => {
   it('asks for the plan and the counts again once the guest has an account, so "Plan Pro" does not linger', async () => {
     await mount({ user: guestUser });

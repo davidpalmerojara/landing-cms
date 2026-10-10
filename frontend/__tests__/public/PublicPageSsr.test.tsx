@@ -50,7 +50,10 @@ describe('public page rendered on the server', () => {
     expect(html).toContain('Preguntas frecuentes');
     expect(html).toContain('¿Cómo empiezo a usar el producto?');
     expect(html).toContain('Planes y precios');
-    for (const id of blockIds) expect(html).toContain(`data-block-id="${id}"`);
+    // The Custom HTML block has no default content, and a block with nothing in it is left out (PUBLIC2-009)
+    const customHtmlId = blockIds[Object.keys(blockRegistry).indexOf('customHtml')];
+    for (const id of blockIds.filter((blockId) => blockId !== customHtmlId)) expect(html).toContain(`data-block-id="${id}"`);
+    expect(html).not.toContain(`data-block-id="${customHtmlId}"`);
   });
 
   it('has real links and a contact form that work without JavaScript', () => {

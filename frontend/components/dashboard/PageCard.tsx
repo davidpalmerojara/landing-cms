@@ -34,7 +34,7 @@ export default function PageCard({ page, onDuplicate, onUnpublish, onDelete }: P
     {
       key: 'edit',
       label: t('dashboard.editPage'),
-      icon: <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />,
+      icon: <Pencil className="h-3.5 w-3.5" aria-hidden="true" />,
       onSelect: () => router.push(editHref),
     },
   ];
@@ -92,7 +92,7 @@ export default function PageCard({ page, onDuplicate, onUnpublish, onDelete }: P
         <div className="absolute left-4 top-4 z-10">
           <span
             className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest ${
-              isPublished ? 'bg-primary text-white' : 'bg-surface-card text-primary'
+              isPublished ? 'bg-primary text-white' : 'border border-default/40 bg-surface-card text-primary shadow-sm'
             }`}
           >
             {!isPublished

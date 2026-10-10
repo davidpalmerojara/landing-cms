@@ -45,6 +45,22 @@ describe('published page structure', () => {
     expect(ssr(<PublicPageClient page={publicPage()} />)).toMatch(/<main[^>]*id="main-content"/);
   });
 
+  it('PUBLIC2-009: blocks with nothing written in them leave no band of padding', () => {
+    const blocks = (['navbar', 'hero', 'features', 'footer'] as const).map((type, order) => {
+      const block = createBlock(type, 'es');
+      const emptied = type === 'hero'
+        ? { ...(block.data as unknown as Record<string, unknown>) }
+        : Object.fromEntries(Object.entries(block.data).map(([key, value]) => [key, Array.isArray(value) ? [] : typeof value === 'string' ? '' : value]));
+      return { id: block.id, type, order, data: emptied, styles: {} };
+    });
+    const html = ssr(<PublicPageClient page={publicPage({ blocks })} />);
+
+    expect(html).toContain('data-block-type="hero"');
+    expect(html).not.toContain('data-block-type="navbar"');
+    expect(html).not.toContain('data-block-type="features"');
+    expect(html).not.toContain('data-block-type="footer"');
+  });
+
   it('PUBLIC2-005: a footer that closes the page is after <main>, so it is the contentinfo landmark', () => {
     const order = ['navbar', 'hero', 'footer'] as const;
     const blocks = order.map((type, index) => {

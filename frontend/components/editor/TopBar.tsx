@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Monitor, Smartphone, Tablet,
-  Eye, Save, CheckCircle2,
+  Eye, Save, CheckCircle2, BookmarkPlus,
   Loader2, Globe, Share2, BarChart3, Search, MessageSquare,
   Pencil, History, X, Check, Palette, ChevronDown, ExternalLink,
 } from 'lucide-react';
@@ -38,6 +38,9 @@ interface TopBarProps {
   onViewChange?: (view: EditorView) => void;
   onOpenHistory?: () => void;
 }
+
+/** 44 px controls on touch screens (ADR-043, EDITOR2-003). */
+const TOUCH_TARGET = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11 justify-center';
 
 const VIEW_BUTTONS: { view: EditorView; labelKey: string; Icon: typeof Pencil }[] = [
   { view: 'design', labelKey: 'editor.viewDesign', Icon: Pencil },
@@ -138,7 +141,7 @@ export default function TopBar({
   const ownerOnlyId = 'topbar-owner-only-note';
 
   return (
-    <header className="h-14 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 in-data-[theme=light]:shadow-sm in-data-[theme=light]:shadow-black/5 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
+    <header className="min-h-14 lg:h-14 flex-wrap lg:flex-nowrap gap-y-1 max-lg:py-1 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 in-data-[theme=light]:shadow-sm in-data-[theme=light]:shadow-black/5 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
       <div className="flex items-center gap-2 xl:gap-4 flex-1 min-w-0 overflow-hidden">
         <a
           href="/dashboard"
@@ -151,7 +154,7 @@ export default function TopBar({
           {t('common.brand')}
         </a>
         <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
-          <span className="font-medium text-sm text-primary tracking-wide truncate min-w-20 max-w-[16rem]" title={page.name}>{page.name}</span>
+          <span className="font-medium text-sm text-primary tracking-wide truncate min-w-12 max-w-[16rem]" title={page.name}>{page.name}</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 border ${
               !isPublished
@@ -175,7 +178,8 @@ export default function TopBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Below lg the view and device switchers get their own row, so nothing overlaps (QA-083) */}
+      <div className="flex items-center gap-3 max-lg:order-last max-lg:w-full max-lg:justify-center">
         {/* Editor view: plain toggle buttons, one pressed (QA-088) */}
         {onViewChange && (
           <div role="group" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
@@ -187,14 +191,15 @@ export default function TopBar({
                 aria-label={t(labelKey)}
                 onClick={() => onViewChange(view)}
                 title={t(labelKey)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${TOUCH_TARGET} ${
                   activeView === view
                     ? 'bg-surface-card text-primary shadow-sm'
                     : 'text-muted hover:text-secondary hover:bg-surface-card/50'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-                <span className="hidden xl:inline" aria-hidden="true">{t(labelKey)}</span>
+                {/* Labels only on very wide screens: the page name and the connection status need the room (COLLAB2-002) */}
+                <span className="hidden 2xl:inline" aria-hidden="true">{t(labelKey)}</span>
               </button>
             ))}
           </div>
@@ -207,7 +212,7 @@ export default function TopBar({
               aria-label={t('editor.desktopView')}
               aria-pressed={deviceMode === 'desktop'}
               onClick={() => setDeviceMode('desktop')}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
+              className={`p-1.5 rounded-full transition-all duration-200 flex items-center ${TOUCH_TARGET} ${
                 deviceMode === 'desktop'
                   ? 'bg-surface-card text-primary shadow-sm'
                   : 'text-muted hover:text-secondary hover:bg-surface-card/50'
@@ -219,7 +224,7 @@ export default function TopBar({
               aria-label={t('editor.tabletView')}
               aria-pressed={deviceMode === 'tablet'}
               onClick={() => setDeviceMode('tablet')}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
+              className={`p-1.5 rounded-full transition-all duration-200 flex items-center ${TOUCH_TARGET} ${
                 deviceMode === 'tablet'
                   ? 'bg-surface-card text-primary shadow-sm'
                   : 'text-muted hover:text-secondary hover:bg-surface-card/50'
@@ -231,7 +236,7 @@ export default function TopBar({
               aria-label={t('editor.mobileView')}
               aria-pressed={deviceMode === 'mobile'}
               onClick={() => setDeviceMode('mobile')}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
+              className={`p-1.5 rounded-full transition-all duration-200 flex items-center ${TOUCH_TARGET} ${
                 deviceMode === 'mobile'
                   ? 'bg-surface-card text-primary shadow-sm'
                   : 'text-muted hover:text-secondary hover:bg-surface-card/50'
@@ -269,7 +274,7 @@ export default function TopBar({
                   onClick={handleSaveVersion}
                   disabled={isSavingVersion}
                   aria-label={t('editor.confirmVersion')}
-                  className="text-primary-color hover:text-primary-color/80 p-0.5"
+                  className={`text-primary-color hover:text-primary-color/80 p-0.5 flex items-center ${TOUCH_TARGET}`}
                   title={t('editor.confirmVersion')}
                 >
                   {isSavingVersion ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
@@ -277,7 +282,7 @@ export default function TopBar({
                 <button
                   onClick={() => { setShowVersionInput(false); setVersionLabel(''); }}
                   aria-label={t('common.cancel')}
-                  className="text-muted hover:text-secondary p-0.5"
+                  className={`text-muted hover:text-secondary p-0.5 flex items-center ${TOUCH_TARGET}`}
                   title={t('common.cancel')}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -287,10 +292,11 @@ export default function TopBar({
               <button
                 onClick={() => setShowVersionInput(true)}
                 aria-label={t('editor.saveVersion')}
-                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
+                className={`text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50 ${TOUCH_TARGET}`}
                 title={t('editor.saveVersion')}
               >
-                <Save className="w-4 h-4" />
+                {/* Not the save icon: a version is a named copy, not a save (EDITOR2-009) */}
+                <BookmarkPlus className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
             {/* History button */}
@@ -298,7 +304,7 @@ export default function TopBar({
               <button
                 onClick={onOpenHistory}
                 aria-label={t('editor.versionHistory')}
-                className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
+                className={`text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50 ${TOUCH_TARGET}`}
                 title={t('editor.versionHistory')}
               >
                 <History className="w-4 h-4" />
@@ -307,7 +313,7 @@ export default function TopBar({
             <button
               onClick={() => setShowShareModal(true)}
               aria-label={t('editor.share')}
-              className="text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors hover:bg-surface-card/50 text-secondary hover:text-primary"
+              className={`text-sm font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors hover:bg-surface-card/50 text-secondary hover:text-primary ${TOUCH_TARGET}`}
               title={t('editor.share')}
             >
               <Share2 className="w-4 h-4" />
@@ -323,7 +329,7 @@ export default function TopBar({
         {isPublished && page.slug && (
           <button
             onClick={() => window.open(`/p/${page.slug}`, '_blank')}
-            className="text-sm font-medium flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10"
+            className={`text-sm font-medium flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-primary-color hover:text-primary-color/80 hover:bg-primary/10 ${TOUCH_TARGET}`}
             title={t('editor.viewPublished')}
             aria-label={t('editor.viewPublished')}
           >
@@ -336,7 +342,7 @@ export default function TopBar({
             await handleSave();
             window.open(`/preview/${page.id}`, '_blank');
           }}
-          className="text-sm font-medium flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50"
+          className={`text-sm font-medium flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-secondary hover:text-primary hover:bg-surface-card/50 ${TOUCH_TARGET}`}
           title={t('editor.previewTitle')}
           aria-label={t('editor.previewTitle')}
         >
@@ -346,7 +352,7 @@ export default function TopBar({
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card/50 transition-colors disabled:opacity-50"
+          className={`text-sm font-medium text-secondary hover:text-primary flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-surface-card/50 transition-colors disabled:opacity-50 ${TOUCH_TARGET}`}
           title={isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}
           aria-label={isSaving ? t('editor.saveTooltipSaving') : isSaved ? t('editor.saveTooltipSaved') : t('editor.saveTooltipDefault')}
         >
@@ -373,7 +379,7 @@ export default function TopBar({
             aria-disabled={!isOwner || undefined}
             aria-describedby={!isOwner ? ownerOnlyId : undefined}
             title={!isOwner ? t('publishing.ownerOnly') : undefined}
-            className={`text-white text-sm font-bold px-3 xl:px-4 py-1.5 shadow-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap ${
+            className={`text-white text-sm font-bold px-3 xl:px-4 py-1.5 pointer-coarse:min-h-11 shadow-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap ${
               isOwner && isPublished && onUnpublish ? 'rounded-l-md' : 'rounded-md'
             } ${!isOwner ? 'opacity-50 cursor-not-allowed active:scale-100' : ''}`}
             style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
@@ -390,7 +396,7 @@ export default function TopBar({
               aria-controls="publish-menu"
               aria-label={t('publishing.moreOptions')}
               title={t('publishing.moreOptions')}
-              className="text-white py-1.5 px-1.5 rounded-r-md border-l border-white/30 shadow-lg"
+              className={`text-white py-1.5 px-1.5 rounded-r-md border-l border-white/30 shadow-lg flex items-center ${TOUCH_TARGET}`}
               style={{ background: '#2563EB' }}
             >
               <ChevronDown className="w-4 h-4" aria-hidden="true" />

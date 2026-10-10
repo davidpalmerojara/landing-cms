@@ -1,8 +1,9 @@
 'use client';
 
-import { Crown, ArrowRight } from 'lucide-react';
+import { Crown, ArrowRight, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useBillingEnabled } from '@/hooks/useBillingEnabled';
 
 interface UpgradePromptProps {
   feature: string;
@@ -14,6 +15,28 @@ interface UpgradePromptProps {
 export default function UpgradePrompt({ feature, description, className = '', compact = false }: UpgradePromptProps) {
   const router = useRouter();
   const t = useTranslations();
+  const { billingEnabled, isKnown } = useBillingEnabled();
+
+  // Without payments (ADR-031) there is nothing to upgrade to: say so instead of leading to a dead end
+  if (isKnown && !billingEnabled) {
+    if (compact) {
+      return (
+        <p className={`flex items-center gap-2 text-xs text-muted bg-surface-card border border-subtle rounded-lg px-3 py-2 ${className}`}>
+          <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>{t('upgrade.compactDemo', { feature })}</span>
+        </p>
+      );
+    }
+    return (
+      <div className={`flex flex-col items-center justify-center py-12 px-6 text-center ${className}`}>
+        <div className="w-14 h-14 bg-surface-card rounded-2xl flex items-center justify-center mb-4">
+          <Info className="w-7 h-7 text-muted" aria-hidden="true" />
+        </div>
+        <h3 className="text-lg font-semibold text-primary mb-2">{feature}</h3>
+        <p className="text-sm text-muted max-w-sm">{t('upgrade.descriptionDemo')}</p>
+      </div>
+    );
+  }
 
   if (compact) {
     return (

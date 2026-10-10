@@ -1,25 +1,29 @@
 'use client';
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import {
-  Plus, FileText, Copy, Trash2, ExternalLink, Globe,
-  Loader2, AlertCircle, MoreVertical, LogOut, Users,
-  FolderOpen, Settings, Search, Layers, Pencil, Menu, X, EyeOff,
+  Plus, FileText, Loader2, AlertCircle, LogOut, FolderOpen, Settings, Search, Menu, X,
 } from 'lucide-react';
-import { api, apiErrorCode, isPlanLimitError } from '@/lib/api';
 import type { ApiUser } from '@/lib/api';
+import { accountErrorMessage } from '@/lib/account-errors';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useBillingEnabled } from '@/hooks/useBillingEnabled';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { usePageActions } from '@/hooks/usePageActions';
 import { usePageList } from '@/hooks/usePageList';
-import { buildPagePayload } from '@/lib/templates';
-import { apiToTokens } from '@/lib/design-tokens';
-import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
+import { useSubscription } from '@/hooks/useSubscription';
 import AIGenerateModal from '@/components/dashboard/AIGenerateModal';
-import PagePreviewThumbnail from '@/components/dashboard/PagePreviewThumbnail';
-import ThemeToggle from '@/components/ui/ThemeToggle';
+import GuestLogoutDialog from '@/components/dashboard/GuestLogoutDialog';
+import PageCard from '@/components/dashboard/PageCard';
+import TemplatePickerModal from '@/components/dashboard/TemplatePickerModal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LocaleSwitcher from '@/components/ui/LocaleSwitcher';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import GuestSessionProvider, { useGuestSession } from '@/components/guest/GuestSessionProvider';
 import GuestBanner from '@/components/guest/GuestBanner';
 
@@ -39,39 +43,73 @@ interface DashboardProps {
   logout: () => Promise<void>;
 }
 
+interface PendingConfirmation {
+  kind: 'delete' | 'unpublish';
+  id: string;
+  name: string;
+}
+
+const SEARCH_DEBOUNCE_MS = 300;
+const DRAWER_ID = 'dashboard-sidebar';
+
 function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const t = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
+  const searchId = useId();
   const { isGuest, openClaim } = useGuestSession();
-  const { subscription } = useSubscription({ enabled: Boolean(user) });
+  const { billingEnabled } = useBillingEnabled();
+  const { subscription, usage, refresh: refreshUsage } = useSubscription({ enabled: Boolean(user) });
   const plan = subscription?.plan ?? null;
-  const { pages, isLoading, hasError: hasLoadError, error: loadFailure, reload, updatePages } = usePageList();
-  // The last failed action; a failed load has its own message until the list loads again
-  const [actionError, setActionError] = useState<string | null>(null);
-  const loadError = hasLoadError ? (loadFailure instanceof Error ? loadFailure.message : t('dashboard.loadError')) : null;
-  const error = actionError ?? loadError;
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+
+  const [searchText, setSearchText] = useState('');
+  const search = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
+  const {
+    pages, count, hasMore, isLoading, isLoadingMore, hasError: hasLoadError, error: loadFailure,
+    loadMoreError, loadMore, reload, updatePages,
+  } = usePageList(search);
+
+  const refreshAll = useCallback(() => {
+    reload();
+    refreshUsage();
+  }, [reload, refreshUsage]);
+
+  const {
+    actionError, createError, isCreating, clearErrors, createFromTemplate, duplicate, unpublish, remove,
+  } = usePageActions({ onChanged: refreshUsage, updatePages, billingEnabled });
+
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showAIGenerate, setShowAIGenerate] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [showGuestLogout, setShowGuestLogout] = useState(false);
+
+  // Below lg the sidebar is a drawer; at lg and up it is always on screen
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const isDrawerModal = drawerOpen && !isDesktop;
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  useDialogFocus(drawerRef, isDrawerModal, closeDrawer);
+
+  // Keep the page behind the open drawer from scrolling
+  useEffect(() => {
+    if (!isDrawerModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isDrawerModal]);
 
   const sidebarNav = [
     { label: t('dashboard.sidebar.projects'), icon: FolderOpen, href: '/dashboard', active: true },
     { label: t('dashboard.sidebar.settings'), icon: Settings, href: '/settings', active: false },
   ];
 
-  const refreshPages = useCallback(() => {
-    setActionError(null);
-    reload();
-  }, [reload]);
-
-  // Re-fetch when tab becomes visible (e.g. returning from editor)
+  // Re-fetch when the tab becomes visible (e.g. returning from the editor)
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') refreshPages();
+      if (document.visibilityState === 'visible') refreshAll();
     };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleVisibility);
@@ -79,88 +117,48 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleVisibility);
     };
-  }, [refreshPages]);
+  }, [refreshAll]);
 
   const handleOpenCreate = () => {
+    clearErrors();
     setShowTemplatePicker(true);
   };
 
-  const handleCreateFromTemplate = async (templateId: string | null) => {
-    setIsCreating(true);
-    try {
-      const page = await api.pages.create(buildPagePayload(templateId, t('dashboard.createUntitled'), locale));
-      router.push(`/editor/${page.id}`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t('dashboard.createError');
-      if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
-        setActionError(t('guest.pageLimit'));
-      } else if (isPlanLimitError(e)) {
-        setActionError(t('dashboard.planLimit'));
-      } else {
-        setActionError(msg);
-      }
-      setIsCreating(false);
-    }
+  const handleLogout = () => {
+    // A guest's pages are deleted with the session: ask first and offer to keep them (QA-061)
+    if (isGuest) setShowGuestLogout(true);
+    else void logout();
   };
 
-  const handleDuplicate = async (id: string) => {
-    setOpenMenuId(null);
-    try {
-      await api.pages.duplicate(id);
-      refreshPages();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t('dashboard.duplicateError');
-      if (apiErrorCode(e) === 'GUEST_PAGE_LIMIT') {
-        setActionError(t('guest.pageLimit'));
-      } else if (isPlanLimitError(e)) {
-        setActionError(t('dashboard.planLimit'));
-      } else {
-        setActionError(msg);
-      }
-    }
+  const confirmPending = () => {
+    if (!pendingConfirmation) return;
+    const { kind, id } = pendingConfirmation;
+    setPendingConfirmation(null);
+    if (kind === 'delete') void remove(id);
+    else void unpublish(id);
   };
 
-  const handleUnpublish = async (id: string, name: string) => {
-    setOpenMenuId(null);
-    if (!window.confirm(t('dashboard.unpublishConfirm', { name }))) return;
-    try {
-      const updated = await api.pages.unpublish(id);
-      updatePages((prev) => prev.map((p) => (p.id === id ? { ...p, status: updated.status, has_unpublished_changes: false } : p)));
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('dashboard.unpublishError'));
-    }
-  };
+  // Totals come from the server (the list is paginated); until they arrive, from the pages on screen when those are all of them
+  const allLoaded = !hasMore && search.trim() === '';
+  const localPublished = pages.filter((page) => page.status === 'published').length;
+  const localBlocks = pages.reduce((sum, page) => sum + (page.block_count || 0), 0);
+  const totalPages = usage?.visible_pages ?? (search.trim() === '' ? count : null);
+  const publishedPages = usage?.published_pages ?? (allLoaded ? localPublished : null);
+  const totalBlocks = usage?.blocks ?? (allLoaded ? localBlocks : null);
+  const show = (value: number | null) => (value === null ? '–' : value);
 
-  const handleDelete = async (id: string, name: string) => {
-    setOpenMenuId(null);
-    if (!window.confirm(t('dashboard.deleteConfirm', { name }))) return;
-    try {
-      await api.pages.delete(id);
-      updatePages((prev) => prev.filter((p) => p.id !== id));
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : t('dashboard.deleteError'));
-    }
-  };
+  const ownedPages = usage?.pages ?? null;
+  const isUnlimited = plan !== null && plan.max_pages === -1;
+  const atPageLimit = !isGuest && plan !== null && !isUnlimited && ownedPages !== null && ownedPages >= plan.max_pages;
+  const usageLabel = plan === null
+    ? ''
+    : isUnlimited
+      ? t('dashboard.usageUnlimited', { current: ownedPages ?? 0 })
+      : t('dashboard.usage', { current: ownedPages ?? 0, max: plan.max_pages });
 
-  const totalBlocks = useMemo(
-    () => pages.reduce((sum, p) => sum + (p.block_count || 0), 0),
-    [pages],
-  );
-
-  const publishedCount = useMemo(
-    () => pages.filter((p) => p.status === 'published').length,
-    [pages],
-  );
-
-  const filteredPages = useMemo(() => {
-    if (!searchText.trim()) return pages;
-    const q = searchText.toLowerCase();
-    return pages.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q),
-    );
-  }, [pages, searchText]);
+  const loadError = hasLoadError ? accountErrorMessage(loadFailure, t, 'dashboard.loadError') : null;
+  const bannerError = actionError ?? (loadMoreError ? accountErrorMessage(loadMoreError, t, 'dashboard.loadError') : null);
+  const isSearching = search.trim() !== '';
 
   if (isAuthLoading || !user) {
     return (
@@ -170,46 +168,70 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     );
   }
 
+  const newPageButtonClasses = 'flex items-center gap-2 px-6 py-3 min-h-11 rounded-full bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed';
+
   return (
     <div id="main-content" className="min-h-screen bg-surface text-primary">
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
+      {isDrawerModal && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeDrawer}
+          aria-hidden="true"
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full flex flex-col py-8 px-4 w-64 z-40 bg-surface border-r border-default/15 text-sm font-medium tracking-wide transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Sidebar: a drawer below lg. Closed, it is inert so Tab and screen readers skip it */}
+      <aside
+        id={DRAWER_ID}
+        ref={drawerRef}
+        inert={!isDesktop && !drawerOpen}
+        aria-label={t('navigation.menu')}
+        className={`fixed left-0 top-0 h-full flex flex-col py-8 px-4 w-64 z-60 bg-surface border-r border-default/15 text-sm font-medium tracking-wide transform transition-transform duration-300 lg:translate-x-0 ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         {/* Logo */}
-        <div className="mb-10 px-4">
-          <a href="/dashboard" className="text-xl font-black tracking-tighter text-primary-color">
+        <div className="mb-10 px-4 flex items-center justify-between">
+          <Link href="/dashboard" className="text-xl font-black tracking-tighter text-primary-color">
             {t('common.brand')}
-          </a>
+          </Link>
+          <button
+            type="button"
+            onClick={closeDrawer}
+            aria-label={t('common.close')}
+            className="lg:hidden w-11 h-11 -mr-3 flex items-center justify-center rounded-lg text-muted hover:text-primary hover:bg-surface-card"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-2" aria-label={t('navigation.main')}>
           {sidebarNav.map((item) => (
-            <a
+            <Link
               key={item.label}
               href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+              onClick={closeDrawer}
+              aria-current={item.active ? 'page' : undefined}
+              className={`flex items-center gap-3 px-4 py-3 min-h-11 rounded-lg transition-all duration-200 ${
                 item.active
                   ? 'bg-surface-card text-primary-color shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
                   : 'text-muted hover:text-primary hover:bg-surface-card hover:translate-x-1'
               }`}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-5 h-5" aria-hidden="true" />
               <span>{item.label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
 
         {/* Bottom section */}
         <div className="mt-auto space-y-6">
+          {/* Theme and language: the header hides them below md, so a phone finds them here */}
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </div>
+
           {/* Guest sessions have no plan to show: say what they are and how to keep the work */}
           {isGuest && (
             <div className="p-4 rounded-xl bg-surface-card border border-default/10">
@@ -225,30 +247,31 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
             </div>
           )}
 
-          {/* Usage card — only rendered once the real plan is known */}
-          {plan && !isGuest && (
+          {/* Usage card: only rendered once the real plan and the real count are known */}
+          {plan && ownedPages !== null && !isGuest && (
             <div className="p-4 rounded-xl bg-surface-card border border-default/10">
               <p className="text-xs font-bold text-primary mb-1">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
-              <p className="text-xs text-muted mb-3">
-                {t('dashboard.usage', { current: pages.length, max: plan.max_pages })}
-              </p>
-              <div
-                className="h-1.5 w-full bg-surface-elevated rounded-full overflow-hidden"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={plan.max_pages}
-                aria-valuenow={pages.length}
-                aria-label={t('dashboard.usage', { current: pages.length, max: plan.max_pages })}
-              >
+              <p className="text-xs text-muted mb-3">{usageLabel}</p>
+              {!isUnlimited && (
                 <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${Math.min((pages.length / plan.max_pages) * 100, 100)}%` }}
-                />
-              </div>
-              {plan.name === 'free' && (
+                  className="h-1.5 w-full bg-surface-elevated rounded-full overflow-hidden"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={plan.max_pages}
+                  aria-valuenow={Math.min(ownedPages, plan.max_pages)}
+                  aria-label={usageLabel}
+                >
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${Math.min((ownedPages / plan.max_pages) * 100, 100)}%` }}
+                  />
+                </div>
+              )}
+              {plan.name === 'free' && billingEnabled && (
                 <button
+                  type="button"
                   onClick={() => router.push('/settings/billing')}
-                  className="mt-4 w-full py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-full transition-all active:scale-95"
+                  className="mt-4 w-full min-h-11 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-full transition-all active:scale-95"
                 >
                   {t('dashboard.upgradePlan')}
                 </button>
@@ -258,10 +281,11 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
 
           <div className="space-y-1">
             <button
-              onClick={logout}
-              className="flex items-center gap-3 px-4 py-2 text-muted hover:text-primary transition-colors w-full text-left"
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-2 min-h-11 text-muted hover:text-primary transition-colors w-full text-left"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" aria-hidden="true" />
               <span className="text-xs">{t('dashboard.logout')}</span>
             </button>
           </div>
@@ -273,24 +297,29 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
         <div className="flex items-center gap-4 flex-1">
           {/* Hamburger menu (mobile/tablet) */}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
+            ref={hamburgerRef}
+            type="button"
+            onClick={() => setDrawerOpen((open) => !open)}
+            className="lg:hidden w-11 h-11 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
             aria-label={t('navigation.main')}
+            aria-expanded={drawerOpen}
+            aria-controls={DRAWER_ID}
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {drawerOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
           </button>
-          {/* Search */}
+          {/* Search: the server filters, so it reaches pages that are not loaded yet */}
           <div className="relative w-full max-w-xs lg:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <label htmlFor={searchId} className="sr-only">{t('dashboard.searchPages')}</label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
             <input
-              type="text"
+              id={searchId}
+              type="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder={t('dashboard.searchPages')}
-              className="w-full bg-surface-elevated border-none rounded-lg pl-10 py-2 text-sm text-primary placeholder-muted focus:ring-1 focus:ring-primary outline-none"
+              className="w-full min-h-11 bg-surface-elevated border-none rounded-lg pl-10 py-2 text-base sm:text-sm text-primary placeholder-muted focus:ring-1 focus:ring-primary outline-none"
             />
           </div>
-
         </div>
 
         <div className="flex items-center gap-4">
@@ -299,11 +328,12 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
             <LocaleSwitcher />
           </div>
           <button
+            type="button"
             onClick={() => router.push('/settings')}
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
+            className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-surface-card transition-all text-muted"
             aria-label={t('common.settings')}
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-5 h-5" aria-hidden="true" />
           </button>
 
           <div className="h-8 w-px bg-default/30 mx-2" />
@@ -317,7 +347,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
                 <p className="text-[10px] text-muted uppercase tracking-wider">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
               )}
             </div>
-            <div className="w-10 h-10 rounded-full border-2 border-primary/20 bg-surface-card flex items-center justify-center text-sm font-bold text-primary-color">
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 bg-surface-card flex items-center justify-center text-sm font-bold text-primary-color" aria-hidden="true">
               {user.username?.charAt(0).toUpperCase() || 'U'}
             </div>
           </div>
@@ -325,7 +355,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
       </header>
 
       {/* Main content */}
-      <main className="lg:ml-64 pt-24 pb-12 px-4 lg:px-8 min-h-screen">
+      <main className="lg:ml-64 pt-24 pb-28 md:pb-12 px-4 lg:px-8 min-h-screen">
         <div className="max-w-7xl mx-auto">
           <GuestBanner className="mb-8 rounded-xl border" />
 
@@ -334,25 +364,36 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
             <div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{t('dashboard.title')}</h1>
               <p className="text-muted font-medium">
-                {t('dashboard.pagesCount', { count: pages.length })} · {t('dashboard.publishedCount', { count: publishedCount })}
+                {totalPages === null ? '…' : t('dashboard.pagesCount', { count: totalPages })}
+                {' · '}
+                {publishedPages === null ? '…' : t('dashboard.publishedCount', { count: publishedPages })}
               </p>
             </div>
-            <button
-              onClick={handleOpenCreate}
-              disabled={isCreating}
-              className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-              <span>{t('dashboard.newPage')}</span>
-            </button>
+            <div className="flex flex-col items-start sm:items-end gap-2">
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                disabled={isCreating || atPageLimit}
+                aria-describedby={atPageLimit ? 'page-limit-note' : undefined}
+                className={newPageButtonClasses}
+              >
+                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <Plus className="w-5 h-5" aria-hidden="true" />}
+                <span>{t('dashboard.newPage')}</span>
+              </button>
+              {atPageLimit && (
+                <p id="page-limit-note" className="text-xs text-muted max-w-xs sm:text-right">
+                  {t(billingEnabled ? 'dashboard.planLimit' : 'dashboard.planLimitDemo')}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Stats row */}
           <dl className="grid grid-cols-3 gap-3 sm:gap-6 mb-12">
             {[
-              { label: t('dashboard.statsTotalPages'), value: pages.length },
-              { label: t('dashboard.statsPublished'), value: publishedCount },
-              { label: t('dashboard.statsBlocks'), value: totalBlocks },
+              { label: t('dashboard.statsTotalPages'), value: show(totalPages) },
+              { label: t('dashboard.statsPublished'), value: show(publishedPages) },
+              { label: t('dashboard.statsBlocks'), value: show(totalBlocks) },
             ].map((stat) => (
               <div key={stat.label} className="bg-surface-elevated p-4 sm:p-6 rounded-2xl border border-default/10">
                 <dt className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider sm:tracking-widest mb-1">{stat.label}</dt>
@@ -361,237 +402,106 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
             ))}
           </dl>
 
-          {/* Error */}
-          {error && (
-            <div className="flex items-center gap-2 text-error text-sm mb-6 bg-error/10 border border-error/20 rounded-lg px-4 py-3">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
+          {/* Errors of the last action or of loading more pages */}
+          <div role="alert">
+            {bannerError && (
+              <div className="flex items-center gap-2 text-error text-sm mb-6 bg-error/10 border border-error/20 rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                {bannerError}
+              </div>
+            )}
+          </div>
 
           {/* Content */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20" role="status">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm text-muted">{t('dashboard.loadingPages')}</span>
               </div>
             </div>
-          ) : filteredPages.length === 0 && pages.length === 0 ? (
+          ) : loadError ? (
+            // A failed load is not "no pages yet": say what happened and offer a retry
+            <div role="alert" className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 bg-error/10 border border-error/20 rounded-2xl flex items-center justify-center mb-4">
+                <AlertCircle className="w-8 h-8 text-error" aria-hidden="true" />
+              </div>
+              <h2 className="text-lg font-bold text-primary mb-2">{loadError}</h2>
+              <button
+                type="button"
+                onClick={reload}
+                className="mt-4 min-h-11 px-6 rounded-full border border-default/30 text-sm font-bold text-primary hover:bg-surface-card transition-colors"
+              >
+                {t('common.retry')}
+              </button>
+            </div>
+          ) : pages.length === 0 && !isSearching ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 bg-surface-card border border-default/10 rounded-2xl flex items-center justify-center mb-4">
-                <FileText className="w-8 h-8 text-muted" />
+                <FileText className="w-8 h-8 text-muted" aria-hidden="true" />
               </div>
               <h2 className="text-lg font-bold text-primary mb-2">{t('dashboard.emptyTitle')}</h2>
               <p className="text-sm text-muted mb-6">{t('dashboard.emptyDescription')}</p>
-              <button
-                onClick={handleOpenCreate}
-                disabled={isCreating}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+              <button type="button" onClick={handleOpenCreate} disabled={isCreating} className={newPageButtonClasses}>
+                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <Plus className="w-5 h-5" aria-hidden="true" />}
                 {t('dashboard.createPage')}
               </button>
             </div>
-          ) : filteredPages.length === 0 ? (
+          ) : pages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="text-sm text-muted">{t('dashboard.searchResult', { query: searchText })}</p>
+              <p role="status" className="text-sm text-muted">{t('dashboard.searchResult', { query: search.trim() })}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {filteredPages.map((page) => (
-                <div
-                  key={page.id}
-                  className="group flex flex-col bg-surface-card rounded-2xl overflow-hidden hover:bg-surface-elevated transition-all duration-300 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]"
-                >
-                  {/* Thumbnail area */}
-                  <div
-                    className="relative h-48 overflow-hidden cursor-pointer"
-                    onClick={() => router.push(`/editor/${page.id}`)}
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {pages.map((page) => (
+                  <PageCard
+                    key={page.id}
+                    page={page}
+                    onDuplicate={(id) => void duplicate(id)}
+                    onUnpublish={(id, name) => setPendingConfirmation({ kind: 'unpublish', id, name })}
+                    onDelete={(id, name) => setPendingConfirmation({ kind: 'delete', id, name })}
+                  />
+                ))}
+              </div>
+              {hasMore && (
+                <div className="mt-10 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => void loadMore()}
+                    disabled={isLoadingMore}
+                    className="flex items-center gap-2 min-h-11 px-6 rounded-full border border-default/30 text-sm font-bold text-primary hover:bg-surface-card transition-colors disabled:opacity-50"
                   >
-                    <div className="w-full h-full">
-                      <PagePreviewThumbnail blocks={page.preview_blocks || []} designTokens={apiToTokens(page.design_tokens)} />
-                    </div>
-                    {/* Status badge */}
-                    <div className="absolute top-4 left-4 z-10">
-                      <span
-                        className={`px-2 py-1 text-[10px] font-black tracking-widest rounded uppercase ${
-                          page.status === 'published'
-                            ? 'bg-primary text-white'
-                            : 'bg-surface-card text-primary'
-                        }`}
-                      >
-                        {page.status !== 'published'
-                          ? t('common.draft').toUpperCase()
-                          : page.has_unpublished_changes
-                            ? t('editor.unpublishedChanges').toUpperCase()
-                            : t('common.published').toUpperCase()}
-                      </span>
-                    </div>
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-card to-transparent opacity-60 pointer-events-none" />
-                  </div>
-
-                  {/* Card info */}
-                  <div className="p-5 flex flex-col flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h2
-                        className="text-lg font-bold text-primary truncate cursor-pointer flex-1"
-                        onClick={() => router.push(`/editor/${page.id}`)}
-                      >
-                        {/* A real link: the thumbnail and heading clicks are mouse-only shortcuts to it */}
-                        <a
-                          href={`/editor/${page.id}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            router.push(`/editor/${page.id}`);
-                          }}
-                          className="hover:underline"
-                        >
-                          {page.name}
-                        </a>
-                      </h2>
-                      {/* Menu */}
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === page.id ? null : page.id);
-                          }}
-                          className="text-muted hover:text-primary transition-colors p-1"
-                          aria-label={t('dashboard.pageOptions', { name: page.name })}
-                        >
-                          <MoreVertical className="w-5 h-5" />
-                        </button>
-
-                        {openMenuId === page.id && (
-                          <div className="absolute right-0 top-8 w-44 bg-surface-elevated border border-default/30 rounded-xl shadow-2xl shadow-black/40 py-1 z-30">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/editor/${page.id}`);
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              {t('dashboard.editPage')}
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDuplicate(page.id);
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                              {t('common.duplicate')}
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`/preview/${page.id}`, '_blank');
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              {t('dashboard.previewPage')}
-                            </button>
-                            {page.status === 'published' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(`/p/${page.slug}`, '_blank');
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
-                              >
-                                <Globe className="w-3.5 h-3.5" />
-                                {t('dashboard.viewPublished')}
-                              </button>
-                            )}
-                            {page.status === 'published' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUnpublish(page.id, page.name);
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-surface-card flex items-center gap-2"
-                              >
-                                <EyeOff className="w-3.5 h-3.5" />
-                                {t('dashboard.unpublish')}
-                              </button>
-                            )}
-                            <div className="border-t border-default/30 my-1" />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(page.id, page.name);
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-error hover:bg-error/10 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {t('common.delete')}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-6">
-                      <p className="text-xs text-muted">/{page.slug}</p>
-                      {page.is_shared && (
-                        <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-color font-medium">
-                          <Users className="w-2.5 h-2.5" />
-                          {page.owner_name}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-auto flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-muted">
-                        <Layers className="w-4 h-4" />
-                        <span className="text-xs font-medium">
-                          {t('dashboard.blocksCount', { count: page.block_count || 0 })}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => router.push(`/editor/${page.id}`)}
-                        className="w-8 h-8 rounded-full bg-surface-card flex items-center justify-center text-primary-color hover:bg-primary hover:text-white transition-all"
-                        aria-label={t('dashboard.editPage')}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                    {isLoadingMore && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                    {t('dashboard.loadMore')}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </main>
 
       {/* Mobile FAB */}
       <button
+        type="button"
         onClick={handleOpenCreate}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center md:hidden active:scale-90 transition-transform"
+        disabled={atPageLimit}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center md:hidden active:scale-90 transition-transform disabled:opacity-50"
         aria-label={t('dashboard.newPage')}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6" aria-hidden="true" />
       </button>
-
-      {/* Click outside to close menu */}
-      {openMenuId && (
-        <div className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} />
-      )}
 
       <TemplatePickerModal
         open={showTemplatePicker}
         onClose={() => {
           if (!isCreating) setShowTemplatePicker(false);
         }}
-        onSelect={handleCreateFromTemplate}
+        onSelect={(templateId) => void createFromTemplate(templateId)}
         onAIGenerate={() => setShowAIGenerate(true)}
         isCreating={isCreating}
+        error={createError}
       />
 
       <AIGenerateModal
@@ -599,6 +509,37 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
         onClose={() => setShowAIGenerate(false)}
         onGenerated={(pageId) => router.push(`/editor/${pageId}`)}
       />
+
+      <ConfirmDialog
+        open={pendingConfirmation !== null}
+        title={pendingConfirmation?.kind === 'delete' ? t('dashboard.deleteTitle') : t('dashboard.unpublishTitle')}
+        message={
+          pendingConfirmation
+            ? t(pendingConfirmation.kind === 'delete' ? 'dashboard.deleteConfirm' : 'dashboard.unpublishConfirm', {
+              name: pendingConfirmation.name,
+            })
+            : ''
+        }
+        confirmLabel={pendingConfirmation?.kind === 'delete' ? t('common.delete') : t('dashboard.unpublish')}
+        cancelLabel={t('common.cancel')}
+        variant={pendingConfirmation?.kind === 'delete' ? 'danger' : 'default'}
+        onConfirm={confirmPending}
+        onCancel={() => setPendingConfirmation(null)}
+      />
+
+      {showGuestLogout && (
+        <GuestLogoutDialog
+          onCreateAccount={() => {
+            setShowGuestLogout(false);
+            openClaim();
+          }}
+          onLogout={() => {
+            setShowGuestLogout(false);
+            void logout();
+          }}
+          onCancel={() => setShowGuestLogout(false)}
+        />
+      )}
     </div>
   );
 }

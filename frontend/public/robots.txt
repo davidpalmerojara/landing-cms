@@ -1,8 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /dashboard
-Disallow: /editor
-Disallow: /settings
-Disallow: /preview
-
-Sitemap: https://paxl.app/sitemap.xml

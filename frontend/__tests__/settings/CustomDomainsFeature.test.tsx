@@ -15,6 +15,9 @@ vi.mock('next/navigation', () => ({
   notFound,
 }));
 
+// The language switcher needs the app's locale provider, which these tests don't mount
+vi.mock('@/components/ui/LocaleSwitcher', () => ({ default: () => null }));
+
 let view: RenderResult;
 
 async function mount(ui: React.ReactElement) {
@@ -28,7 +31,7 @@ const text = () => view.container.textContent ?? '';
 
 function serverOffers(customDomains: boolean | 'unreachable') {
   vi.spyOn(api.features, 'get').mockImplementation(() => (
-    customDomains === 'unreachable' ? Promise.reject(new Error('offline')) : Promise.resolve({ custom_domains: customDomains })
+    customDomains === 'unreachable' ? Promise.reject(new Error('offline')) : Promise.resolve({ custom_domains: customDomains, billing: false })
   ));
 }
 

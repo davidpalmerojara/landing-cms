@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { serverApiUrl } from '@/lib/server-api';
+import { SITE_URL } from '@/lib/site-url';
 
 const API_BASE = serverApiUrl();
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 interface SitemapPage {
   slug: string;
@@ -11,24 +11,32 @@ interface SitemapPage {
   noindex?: boolean;
 }
 
+// The public pages of the product itself (the published pages of its users come from the backend)
+const STATIC_ROUTES: ReadonlyArray<{ path: string; priority: number }> = [
+  { path: '', priority: 1 },
+  { path: '/pricing', priority: 0.7 },
+  { path: '/about', priority: 0.5 },
+  { path: '/contact', priority: 0.4 },
+  { path: '/privacy', priority: 0.3 },
+  { path: '/terms', priority: 0.3 },
+  { path: '/changelog', priority: 0.3 },
+];
+
+function staticEntries(): MetadataRoute.Sitemap {
+  return STATIC_ROUTES.map(({ path, priority }) => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority,
+  }));
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Fetch published pages from backend
-  try {
-    const res = await fetch(`${API_BASE}/sitemap/`, { cache: 'no-store' });
-    if (!res.ok) return fallbackSitemap();
-
-    // The backend returns XML, but we can also just query the pages API
-    // For simplicity, use the public endpoint approach
-  } catch {
-    // ignore
-  }
-
-  // Use pages list approach — fetch published pages
   try {
     const res = await fetch(`${API_BASE}/public/sitemap-data/`, { cache: 'no-store' });
     if (res.ok) {
       const pages: SitemapPage[] = await res.json();
-      return pages
+      const published = pages
         .filter((p) => !p.noindex)
         .map((p) => ({
           url: p.seo_canonical_url || `${SITE_URL}/p/${p.slug}`,
@@ -36,21 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           changeFrequency: 'weekly' as const,
           priority: 0.8,
         }));
+      return [...staticEntries(), ...published];
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    // The backend may be starting up: the product's own pages are still worth listing
+    if (process.env.NODE_ENV === 'development') console.error('Sitemap data unavailable:', error);
   }
 
-  return fallbackSitemap();
-}
-
-function fallbackSitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 1,
-    },
-  ];
+  return staticEntries();
 }

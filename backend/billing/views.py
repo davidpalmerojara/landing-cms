@@ -16,6 +16,7 @@ from decimal import Decimal
 import stripe
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
@@ -26,6 +27,7 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsNotGuest
 from config.features import BillingEnabled
+from pages.models import Block, Page
 from .models import Plan, Subscription, PaymentHistory, WebhookLog
 from .permissions import get_user_subscription, invalidate_plan_cache
 from .serializers import (
@@ -80,6 +82,20 @@ class PlansView(APIView):
         return Response(PlanSerializer(plans, many=True).data)
 
 
+def _dashboard_usage(user):
+    """Totals for the dashboard, over every page the list shows (the list itself is paginated).
+
+    `pages` counts only the pages the user owns: it is what the plan limit counts.
+    """
+    visible = Page.objects.filter(Q(owner=user) | Q(collaborators=user)).distinct()
+    return {
+        'pages': Page.objects.filter(owner=user).count(),
+        'visible_pages': visible.count(),
+        'published_pages': visible.filter(status=Page.Status.PUBLISHED).count(),
+        'blocks': Block.objects.filter(page__in=visible).count(),
+    }
+
+
 class SubscriptionView(APIView):
     """GET /api/billing/subscription/ — current user's subscription."""
     permission_classes = [IsAuthenticated]
@@ -90,6 +106,7 @@ class SubscriptionView(APIView):
             return Response({'subscription': None})
         return Response({
             'subscription': SubscriptionSerializer(sub).data,
+            'usage': _dashboard_usage(request.user),
         })
 
 

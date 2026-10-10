@@ -126,6 +126,10 @@ class PageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = pages_accessible_to(self.request.user).select_related('owner')
         if self.action == 'list':
+            search = self.request.query_params.get('search', '').strip()
+            if search:
+                # The dashboard search runs here so it covers every page, not just the loaded ones (QA-016)
+                queryset = queryset.filter(Q(name__icontains=search) | Q(slug__icontains=search))
             # The dashboard card previews the first blocks: loading every block of
             # every page made the list cost seconds for big pages (QA-103)
             return queryset.annotate(block_total=Count('blocks', distinct=True)).prefetch_related(

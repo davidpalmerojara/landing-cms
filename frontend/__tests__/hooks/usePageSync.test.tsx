@@ -575,8 +575,8 @@ describe('usePageSync', () => {
   describe('nothing typed is lost (QA-003, QA-004, QA-008)', () => {
     /** A 400 like the server's for one field of the block at `index`. */
     function refused(index: number, field: string, message = 'Enlace no permitido. Usa https://, http://, mailto:, tel:, una ruta que empiece por / o un ancla #.') {
-      const blocks: Record<string, unknown>[] = [{}, {}];
-      blocks[index] = { data: { [field]: [message] } };
+      // As DRF sends it: only the failed blocks, keyed by their index
+      const blocks = { [index]: { data: { [field]: [message] } } };
       return new ApiError(400, JSON.stringify({ error: 'Error de validación.', code: 'BAD_REQUEST', details: { blocks } }));
     }
     const sentData = (call: number, index: number) => sentBody(call).blocks[index].data as Record<string, unknown>;

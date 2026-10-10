@@ -153,9 +153,14 @@ export function validationErrors(error: unknown): ServerFieldError[] {
   const errors: ServerFieldError[] = [];
   for (const [field, value] of Object.entries(details)) {
     if (field === 'blocks') {
-      // One entry per block sent, `{}` for the valid ones; a plain list of strings names no block
+      // DRF sends the failed blocks by index (`{"2": {...}}`), or older versions one entry
+      // per block with `{}` for valid ones; a plain list of strings names no block
       if (Array.isArray(value) && value.some(isRecord)) {
         value.forEach((entry, index) => errors.push(...blockErrors(index, entry)));
+      } else if (isRecord(value)) {
+        for (const [index, entry] of Object.entries(value)) {
+          if (/^\d+$/.test(index)) errors.push(...blockErrors(Number(index), entry));
+        }
       }
       continue;
     }

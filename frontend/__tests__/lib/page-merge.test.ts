@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { deepEqual, mergeBlock, mergePages, samePageContent } from '@/lib/page-merge';
+import {
+  applyRelayedEdits,
+  combineRelayedEdits,
+  deepEqual,
+  mergeBlock,
+  mergePages,
+  rebaseSnapshot,
+  relayedChanges,
+  samePageContent,
+  withoutRelayedEdits,
+} from '@/lib/page-merge';
+import type { RelayedEdit } from '@/lib/page-merge';
 import { makeBlock } from '@/lib/block-data';
 import { cloneDesignTokens, defaultDesignTokens } from '@/lib/design-tokens';
 import { defaultBlockStyles } from '@/types/blocks';
@@ -446,5 +457,87 @@ describe('mergePages: properties', () => {
       // After the merge the base is remote: merging again is stable
       expect(samePageContent(mergePages(remote, merged, remote), merged)).toBe(true);
     }
+  });
+});
+
+// --- Undo snapshots (QA-034) ---
+
+describe('rebaseSnapshot', () => {
+  it('a block deleted remotely is gone from an older snapshot, even when the snapshot differs from base', () => {
+    // My history: the snapshot before I retitled `a` and `b`; base is the saved result
+    const snapshot = base;
+    const saved = edit(edit(base, 'a', { title: 'Mine A' }), 'b', { title: 'Mine B' });
+    // Someone else deletes `a`
+    const remote = without(saved, 'a');
+
+    const rebased = rebaseSnapshot(saved, snapshot, remote);
+
+    expect(ids(rebased)).toEqual(['b', 'c']);
+    // Undoing still reverts my own edit of the block that is left
+    expect(dataOf(rebased, 'b')?.title).toBe('B');
+    // mergePages, for the page on screen, keeps the "edited here" block (edit beats delete)
+    expect(ids(mergePages(saved, snapshot, remote))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keeps blocks added remotely and my own deleted blocks in the snapshot', () => {
+    const added = block('n');
+    const saved = without(base, 'c'); // I deleted c
+    const remote = insert(saved, 1, added);
+
+    expect(ids(rebaseSnapshot(saved, base, remote))).toEqual(['a', 'n', 'b', 'c']);
+  });
+});
+
+// --- Live relays (QA-032, QA-033) ---
+
+describe('relayed edits', () => {
+  /** What a relay of `data` into block `id` changes, compared with `p`. */
+  function relayed(p: Page, id: string, data: Record<string, unknown>): RelayedEdit | null {
+    const current = p.blocks.find((b) => b.id === id);
+    const next = edit(p, id, data).blocks.find((b) => b.id === id);
+    if (!current || !next) throw new Error(`no block ${id}`);
+    return relayedChanges(current, next, 'conn-ana');
+  }
+  function change(p: Page, id: string, data: Record<string, unknown>): RelayedEdit {
+    const result = relayed(p, id, data);
+    if (!result) throw new Error('nothing changed');
+    return result;
+  }
+
+  it('relayedChanges keeps only the fields that differ', () => {
+    expect(relayed(base, 'b', { title: 'B' })).toBeNull();
+    expect(relayed(base, 'b', { title: 'Ana', subtitle: '' })).toEqual({ connectionId: 'conn-ana', data: { title: 'Ana' } });
+  });
+
+  it('applyRelayedEdits writes the relayed fields and leaves the rest', () => {
+    const mine = edit(base, 'b', { subtitle: 'Mine' });
+    const theirs = change(base, 'b', { title: 'Ana' });
+    const shown = applyRelayedEdits(mine, { b: theirs });
+
+    expect(dataOf(shown, 'b')).toMatchObject({ title: 'Ana', subtitle: 'Mine' });
+    expect(applyRelayedEdits(shown, { b: theirs })).toBe(shown);
+  });
+
+  it('withoutRelayedEdits puts back the base value of relayed fields only', () => {
+    const theirs = change(base, 'b', { title: 'Ana' });
+    const shown = applyRelayedEdits(edit(base, 'b', { subtitle: 'Mine' }), { b: theirs });
+
+    const own = withoutRelayedEdits(shown, base, { b: theirs });
+
+    expect(dataOf(own, 'b')).toMatchObject({ title: 'B', subtitle: 'Mine' });
+    expect(withoutRelayedEdits(base, base, {})).toBe(base);
+  });
+
+  it('a field changed here after the relay is mine', () => {
+    const theirs = change(base, 'b', { title: 'Ana' });
+    const typedOver = edit(applyRelayedEdits(base, { b: theirs }), 'b', { title: 'Mine' });
+
+    expect(dataOf(withoutRelayedEdits(typedOver, base, { b: theirs }), 'b')?.title).toBe('Mine');
+  });
+
+  it('combineRelayedEdits accumulates the fields of one connection', () => {
+    const first = change(base, 'b', { title: 'One' });
+    const second = change(base, 'b', { subtitle: 'Two' });
+    expect(combineRelayedEdits(first, second).data).toEqual({ title: 'One', subtitle: 'Two' });
   });
 });

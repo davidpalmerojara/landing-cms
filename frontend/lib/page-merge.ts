@@ -11,7 +11,7 @@
  */
 import { isPlainObject, makeBlock } from '@/lib/block-data';
 import type { DesignTokens } from '@/lib/design-tokens';
-import type { Block, BlockStyles } from '@/types/blocks';
+import type { Block, BlockStyles, ResponsiveStyles } from '@/types/blocks';
 import type { Page, SeoFields } from '@/types/page';
 import { defaultSeoFields } from '@/types/page';
 
@@ -136,8 +136,13 @@ function byId(blocks: Block[]): Map<string, Block> {
   return new Map(blocks.map((b) => [b.id, b]));
 }
 
-/** The merged version of each block id, or nothing when it is deleted. */
-function mergeBlockSet(base: Block[], local: Block[], remote: Block[]): Map<string, Block> {
+/**
+ * The merged version of each block id, or nothing when it is deleted.
+ * `remoteDeletesWin`: a block deleted remotely goes even if local differs
+ * from base (used to rebase undo snapshots, whose differences are history,
+ * not pending edits).
+ */
+function mergeBlockSet(base: Block[], local: Block[], remote: Block[], remoteDeletesWin = false): Map<string, Block> {
   const baseMap = byId(base);
   const localMap = byId(local);
   const remoteMap = byId(remote);
@@ -154,7 +159,7 @@ function mergeBlockSet(base: Block[], local: Block[], remote: Block[]): Map<stri
       result.set(id, b ? mergeBlock(b, l, r) : l);
     } else if (l) {
       // Added locally, or deleted remotely: kept if new or edited here
-      if (!b || !sameBlockContent(l, b)) result.set(id, l);
+      if (!b || (!remoteDeletesWin && !sameBlockContent(l, b))) result.set(id, l);
     } else if (r) {
       // Added remotely, or deleted locally: kept if new or edited there
       if (!b || !sameBlockContent(r, b)) result.set(id, r);
@@ -216,7 +221,21 @@ function mergeOrder(base: Block[], local: Block[], remote: Block[], kept: Map<st
  * come from `remote`.
  */
 export function mergePages(base: Page, local: Page, remote: Page): Page {
-  const kept = mergeBlockSet(base.blocks, local.blocks, remote.blocks);
+  return merge(base, local, remote, false);
+}
+
+/**
+ * An undo/redo snapshot brought up to date with the server (QA-034). Same as
+ * mergePages, except that a block someone else deleted is gone from the
+ * snapshot too: the snapshot differs from base because it is an older state
+ * of our own history, and undoing must never bring back someone else's delete.
+ */
+export function rebaseSnapshot(base: Page, snapshot: Page, remote: Page): Page {
+  return merge(base, snapshot, remote, true);
+}
+
+function merge(base: Page, local: Page, remote: Page, remoteDeletesWin: boolean): Page {
+  const kept = mergeBlockSet(base.blocks, local.blocks, remote.blocks, remoteDeletesWin);
   const order = mergeOrder(base.blocks, local.blocks, remote.blocks, kept);
   const blocks = order.flatMap((id) => {
     const block = kept.get(id);
@@ -234,4 +253,123 @@ export function mergePages(base: Page, local: Page, remote: Page): Page {
     ),
     blocks,
   };
+}
+
+// --- Live relays ---
+
+/**
+ * What another connection's live relay (`block_updated`) put on screen in one
+ * block and no save has confirmed yet (QA-032, QA-033). Only the fields the
+ * relay changed: the rest of the block is still ours.
+ */
+export interface RelayedEdit {
+  /** The relaying connection: the block's lock holder */
+  connectionId: string;
+  /** Changed data keys and their relayed values */
+  data: Record<string, unknown>;
+  /** Present when the relay changed the base styles */
+  styles?: BlockStyles;
+  /** Present when the relay changed the per-device styles (null: none) */
+  responsiveStyles?: ResponsiveStyles | null;
+}
+
+/** Relayed edits by block id. */
+export type RelayedEdits = Record<string, RelayedEdit>;
+
+/** The fields that differ from `current` to `next` (the same block), or null when none do. */
+export function relayedChanges(current: Block, next: Block, connectionId: string): RelayedEdit | null {
+  const data: Record<string, unknown> = {};
+  const currentData = current.data as unknown as Record<string, unknown>;
+  const nextData = next.data as unknown as Record<string, unknown>;
+  for (const key of new Set([...Object.keys(currentData), ...Object.keys(nextData)])) {
+    if (!deepEqual(currentData[key], nextData[key])) data[key] = nextData[key];
+  }
+  const edit: RelayedEdit = { connectionId, data };
+  if (!deepEqual(current.styles, next.styles)) edit.styles = next.styles;
+  if (!deepEqual(current.responsiveStyles ?? null, next.responsiveStyles ?? null)) {
+    edit.responsiveStyles = next.responsiveStyles ?? null;
+  }
+  const changed = Object.keys(data).length > 0 || edit.styles !== undefined || edit.responsiveStyles !== undefined;
+  return changed ? edit : null;
+}
+
+/** A later relay of the same connection on top of an earlier one. */
+export function combineRelayedEdits(earlier: RelayedEdit, later: RelayedEdit): RelayedEdit {
+  const combined: RelayedEdit = { connectionId: later.connectionId, data: { ...earlier.data, ...later.data } };
+  const styles = later.styles ?? earlier.styles;
+  if (styles !== undefined) combined.styles = styles;
+  const responsiveStyles = later.responsiveStyles !== undefined ? later.responsiveStyles : earlier.responsiveStyles;
+  if (responsiveStyles !== undefined) combined.responsiveStyles = responsiveStyles;
+  return combined;
+}
+
+/** `block` with the fields of `edit` written in; the same object when nothing differs. */
+export function applyRelayedEdit(block: Block, edit: RelayedEdit): Block {
+  const data: Record<string, unknown> = { ...(block.data as unknown as Record<string, unknown>) };
+  let changed = false;
+  for (const [key, value] of Object.entries(edit.data)) {
+    if (deepEqual(data[key], value)) continue;
+    if (value === undefined) delete data[key];
+    else data[key] = value;
+    changed = true;
+  }
+  let styles = block.styles;
+  if (edit.styles !== undefined && !deepEqual(styles, edit.styles)) {
+    styles = edit.styles;
+    changed = true;
+  }
+  let responsiveStyles = block.responsiveStyles;
+  if (edit.responsiveStyles !== undefined && !deepEqual(responsiveStyles ?? null, edit.responsiveStyles)) {
+    responsiveStyles = edit.responsiveStyles ?? undefined;
+    changed = true;
+  }
+  if (!changed) return block;
+  return makeBlock(
+    { id: block.id, name: block.name, styles, ...(responsiveStyles ? { responsiveStyles } : {}) },
+    block.type,
+    data,
+  );
+}
+
+/** `page` with each relayed edit written into its block (blocks without an edit untouched). */
+export function applyRelayedEdits(page: Page, relayed: RelayedEdits): Page {
+  if (Object.keys(relayed).length === 0) return page;
+  let changed = false;
+  const blocks = page.blocks.map((block) => {
+    const edit = relayed[block.id];
+    const next = edit ? applyRelayedEdit(block, edit) : block;
+    if (next !== block) changed = true;
+    return next;
+  });
+  return changed ? { ...page, blocks } : page;
+}
+
+/**
+ * `page` as this editor would save it: every field that still shows a value
+ * relayed live by someone else takes `base`'s value instead. Relayed text is
+ * the holder's to save; sending it as ours would store text its author may
+ * never have saved (QA-033). A field changed here after the relay is ours.
+ */
+export function withoutRelayedEdits(page: Page, base: Page, relayed: RelayedEdits): Page {
+  if (Object.keys(relayed).length === 0) return page;
+  const baseBlocks = byId(base.blocks);
+  const reverts: RelayedEdits = {};
+  for (const block of page.blocks) {
+    const edit = relayed[block.id];
+    const original = baseBlocks.get(block.id);
+    if (!edit || !original || original.type !== block.type) continue;
+
+    const data = block.data as unknown as Record<string, unknown>;
+    const originalData = original.data as unknown as Record<string, unknown>;
+    const revert: RelayedEdit = { connectionId: edit.connectionId, data: {} };
+    for (const [key, value] of Object.entries(edit.data)) {
+      if (deepEqual(data[key], value)) revert.data[key] = originalData[key];
+    }
+    if (edit.styles !== undefined && deepEqual(block.styles, edit.styles)) revert.styles = original.styles;
+    if (edit.responsiveStyles !== undefined && deepEqual(block.responsiveStyles ?? null, edit.responsiveStyles)) {
+      revert.responsiveStyles = original.responsiveStyles ?? null;
+    }
+    reverts[block.id] = revert;
+  }
+  return applyRelayedEdits(page, reverts);
 }

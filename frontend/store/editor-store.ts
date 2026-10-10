@@ -24,6 +24,25 @@ import {
   splitApiStyles,
   withBlockData,
 } from '@/lib/block-data';
+import {
+  applyRelayedEdits,
+  combineRelayedEdits,
+  relayedChanges,
+  withoutRelayedEdits,
+} from '@/lib/page-merge';
+import type { RelayedEdits } from '@/lib/page-merge';
+
+/**
+ * The block as its lock holder has it: relayed data (normalized for the type)
+ * and styles in the API shape. Either may be missing from a relay.
+ */
+function relayedBlock(current: Block, data: unknown, styles: unknown): Block {
+  const withData = isPlainObject(data) ? withBlockData(current, data) : current;
+  if (!isPlainObject(styles)) return withData;
+  const { styles: base, responsiveStyles } = splitApiStyles(styles);
+  // Rebuilt from its parts so per-device styles absent from the relay are dropped
+  return makeBlock({ id: withData.id, name: withData.name, styles: base, responsiveStyles }, withData.type, withData.data);
+}
 
 /** Blocks with block `id` replaced by `update(block)`. */
 function mapBlock(blocks: Block[], id: string, update: (block: Block) => Block): Block[] {
@@ -94,6 +113,29 @@ export function countOtherConnections({ presence, myConnectionId }: { presence: 
   return presence.filter((entry) => entry.connectionId !== myConnectionId).length;
 }
 
+/**
+ * Holder of block `id`'s lock when it is another connection (another person,
+ * or this person in another tab), else null.
+ */
+export function lockHeldByOther(
+  { blockLocks, myConnectionId }: { blockLocks: Record<string, PresenceEntry>; myConnectionId: string | null },
+  id: string,
+): PresenceEntry | null {
+  const holder = blockLocks[id];
+  return holder && holder.connectionId !== myConnectionId ? holder : null;
+}
+
+/** A selection or delete refused because another connection holds the block. */
+export interface LockRefusal {
+  blockId: string;
+  holder: PresenceEntry;
+  /** Grows with each refusal, so refusing the same block twice is two changes */
+  seq: number;
+}
+
+/** Why the editor lost access while open: the owner stopped sharing it, or deleted the page. */
+export type RevokedReason = 'unshared' | 'deleted';
+
 /** One entry per person (first connection wins): avatars show people, not tabs. */
 export function uniquePresenceUsers(presence: PresenceEntry[]): PresenceEntry[] {
   const seen = new Set<string>();
@@ -145,6 +187,14 @@ interface EditorState {
   cursorPositions: Record<string, CursorPosition>; // connectionId → cursor
   isRemoteUpdate: boolean;
   syncBase: SyncBase | null;
+  /** Fields relayed live by lock holders and not yet confirmed by a save (QA-033) */
+  relayedEdits: RelayedEdits;
+  /** Last refused selection/delete of a block someone else holds; useCollaboration tells the user */
+  lockRefusal: LockRefusal | null;
+  /** Set together with collabStatus 'revoked' */
+  revokedReason: RevokedReason | null;
+  /** Grows each time the user asks to reconnect the collaboration socket now */
+  collabReconnectRequest: number;
 
   // Toasts
   toasts: ToastData[];
@@ -184,11 +234,22 @@ interface EditorActions {
   updateBlockStyle: (id: string, styleKey: keyof BlockStyles, value: unknown) => void;
   updateBlockResponsiveStyle: (id: string, device: 'tablet' | 'mobile', styleKey: keyof BlockStyles, value: unknown) => void;
   deleteBlock: (id: string) => void;
-  requestDeleteBlock: (id: string) => void;
+  /**
+   * Ask to confirm deleting a block. Returns false, asking nothing, when
+   * another connection holds the block (QA-011) or editing is not allowed.
+   */
+  requestDeleteBlock: (id: string) => boolean;
   cancelDeleteBlock: () => void;
   confirmDeleteBlock: () => void;
   duplicateBlock: (id: string) => void;
-  selectBlock: (id: string | null) => void;
+  /**
+   * Select a block (null clears the selection). Returns whether the selection
+   * is now `id`: false while panning or previewing, after access was revoked,
+   * and when another connection holds the block's lock (QA-011: refused on
+   * every path, with `lockRefusal` set so the user is told). Callers that open
+   * an editing UI must check it.
+   */
+  selectBlock: (id: string | null) => boolean;
 
   // Quick Edit Mode
   setIsQuickEditMode: (value: boolean) => void;
@@ -226,6 +287,13 @@ interface EditorActions {
   // Collaboration
   setMyUserId: (id: string) => void;
   setCollabStatus: (status: CollabStatus) => void;
+  /**
+   * Access to the page is gone while editing (unshared or page deleted): the
+   * editor becomes read-only (QA-110), the selection is cleared.
+   */
+  setAccessRevoked: (reason: RevokedReason) => void;
+  /** Ask useCollaboration to reconnect now (the "Reconectar" button). */
+  requestCollabReconnect: () => void;
   /** Start of a session: own connection and everyone present. */
   setPresence: (connectionId: string | null, entries: PresenceEntry[]) => void;
   addPresence: (entry: PresenceEntry) => void;
@@ -242,17 +310,22 @@ interface EditorActions {
    * Replace the page with one merged from the server: no undo step, no
    * autosave. `rebase` brings each undo/redo snapshot up to date so undoing a
    * local edit does not revert someone else's. The selection is kept while
-   * its block still exists.
+   * its block still exists. Relayed live text of blocks whose holder still
+   * has them stays on screen; relays of released blocks are dropped.
    */
   applyRemotePage: (page: Page, rebase?: (snapshot: Page) => Page) => void;
   /** Replace a block's type and data (AI edit). Returns false, changing nothing, for an unknown type. */
   replaceBlockData: (blockId: string, newType: string, newData: unknown) => boolean;
   /**
-   * Live edit relayed from the block's lock holder: its data (normalized) and
-   * styles (API shape) REPLACE the block's, in the page, the undo snapshots
-   * and the sync base, so neither undo nor the next merge brings back the old text.
+   * Live edit relayed from the block's lock holder (`connectionId`): its data
+   * (normalized) and styles (API shape) are the holder's whole block. Only the
+   * fields that differ from what is on screen are written, in the page and in
+   * the undo snapshots, so undo neither brings back the old text nor loses
+   * this person's own steps on other fields (QA-032). They are recorded in
+   * `relayedEdits`, not in the sync base: until the holder saves, they are
+   * not this editor's to save (QA-033).
    */
-  applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: unknown) => void;
+  applyRemoteBlockUpdate: (blockId: string, data?: unknown, styles?: unknown, connectionId?: string) => void;
 
   // Toasts
   addToast: (message: string, variant?: 'success' | 'error' | 'info') => void;
@@ -273,7 +346,34 @@ export type EditorStore = EditorState & EditorActions;
 const HISTORY_LIMIT = 50;
 export const HISTORY_COALESCE_MS = 1000;
 
+/** Access to the page was revoked (unshared or deleted): the editor only shows it. */
+function isReadOnly(state: EditorState): boolean {
+  return state.collabStatus === 'revoked';
+}
+
+/**
+ * Whether this editor may change block `id` now: never one another connection
+ * holds. The UI refuses to select such a block; this also covers a field or
+ * shortcut that still points at it (QA-011).
+ */
+function canEditBlock(state: EditorState, id: string): boolean {
+  return !isReadOnly(state) && lockHeldByOther(state, id) === null;
+}
+
 export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, get) => {
+  /** True, recording the refusal for useCollaboration to announce, when another connection holds block `id`. */
+  const refuseLockedBlock = (id: string): boolean => {
+    const holder = lockHeldByOther(get(), id);
+    if (!holder) return false;
+    set((state) => ({ lockRefusal: { blockId: id, holder, seq: (state.lockRefusal?.seq ?? 0) + 1 } }));
+    return true;
+  };
+
+  /** Clear `isRemoteUpdate` once the subscribers (autosave, relay) have seen the change it flags. */
+  const endRemoteUpdateSoon = () => {
+    queueMicrotask(() => set({ isRemoteUpdate: false }));
+  };
+
   return ({
   // --- Initial state ---
   // The editor loads the real page before showing it; Spanish only fills the gap until then
@@ -300,6 +400,10 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   cursorPositions: {},
   isRemoteUpdate: false,
   syncBase: null,
+  relayedEdits: {},
+  lockRefusal: null,
+  revokedReason: null,
+  collabReconnectRequest: 0,
   viewportState: { zoom: 1, x: 0, y: 0 },
   interactionState: { isPanning: false, isSpacePressed: false, isMiddleClickPanning: false },
   toasts: [],
@@ -314,6 +418,8 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   // --- Page mutations with history ---
   setPageWithHistory: (updater, options) => {
     const { page, historyCoalesceKey, historyCoalesceAt } = get();
+    // Read-only once access is gone: nothing typed now could be saved (QA-110)
+    if (isReadOnly(get())) return;
     const newPage = typeof updater === 'function' ? updater(page) : updater;
     if (newPage === page) return;
 
@@ -342,6 +448,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
       past: [],
       future: [],
       selectedBlockId: null,
+      relayedEdits: {},
       isSaved: true,
       isRemoteUpdate: true,
       historyCoalesceKey: null,
@@ -369,7 +476,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
 
   updateBlockField: (id, path, value) => {
     const block = get().page.blocks.find((b) => b.id === id);
-    if (!block) return;
+    if (!block || !canEditBlock(get(), id)) return;
     const nextData = setAtPath(block.data, path, value);
     if (nextData === block.data) return;
     get().setPageWithHistory((prev) => ({
@@ -382,7 +489,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   // and the typing that follows starts a new one.
   addListItem: (id, listKey, item, index) => {
     const block = get().page.blocks.find((b) => b.id === id);
-    if (!block) return;
+    if (!block || !canEditBlock(get(), id)) return;
     const items = getAtPath(block.data, [listKey]);
     if (!Array.isArray(items) || items.length >= listMaxItems(block.type, listKey)) return;
     get().setPageWithHistory((prev) => ({
@@ -392,6 +499,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   removeListItem: (id, listKey, index) => {
+    if (!canEditBlock(get(), id)) return;
     get().setPageWithHistory((prev) => ({
       ...prev,
       blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, removeListItem(b.data, listKey, index))),
@@ -399,6 +507,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   moveListItem: (id, listKey, from, to) => {
+    if (!canEditBlock(get(), id)) return;
     get().setPageWithHistory((prev) => ({
       ...prev,
       blocks: mapBlock(prev.blocks, id, (b) => withBlockData(b, moveListItem(b.data, listKey, from, to))),
@@ -406,6 +515,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   updateBlockStyle: (id, styleKey, value) => {
+    if (!canEditBlock(get(), id)) return;
     get().setPageWithHistory((prev) => ({
       ...prev,
       blocks: prev.blocks.map((block) =>
@@ -417,6 +527,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   updateBlockResponsiveStyle: (id, device, styleKey, value) => {
+    if (!canEditBlock(get(), id)) return;
     get().setPageWithHistory((prev) => ({
       ...prev,
       blocks: prev.blocks.map((block) => {
@@ -443,6 +554,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
 
   deleteBlock: (id) => {
     const { selectedBlockId } = get();
+    if (!canEditBlock(get(), id)) return;
     get().setPageWithHistory((prev) => {
       const removedIndex = prev.blocks.findIndex((b) => b.id === id);
       if (removedIndex === -1) return prev;
@@ -459,14 +571,20 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     });
   },
 
-  requestDeleteBlock: (id) => set({ pendingDeleteBlockId: id }),
+  requestDeleteBlock: (id) => {
+    if (refuseLockedBlock(id)) return false;
+    if (isReadOnly(get())) return false;
+    set({ pendingDeleteBlockId: id });
+    return true;
+  },
   cancelDeleteBlock: () => set({ pendingDeleteBlockId: null }),
   confirmDeleteBlock: () => {
     const { pendingDeleteBlockId } = get();
-    if (pendingDeleteBlockId) {
-      get().deleteBlock(pendingDeleteBlockId);
-      set({ pendingDeleteBlockId: null });
-    }
+    if (!pendingDeleteBlockId) return;
+    set({ pendingDeleteBlockId: null });
+    // Someone may have taken the block while the dialog was open
+    if (refuseLockedBlock(pendingDeleteBlockId)) return;
+    get().deleteBlock(pendingDeleteBlockId);
   },
 
   duplicateBlock: (id) => {
@@ -484,10 +602,17 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
 
   selectBlock: (id) => {
-    const { isPreviewMode, interactionState } = get();
-    if (!isPreviewMode && !interactionState.isSpacePressed && !interactionState.isMiddleClickPanning) {
-      set({ selectedBlockId: id });
+    const state = get();
+    const { isPreviewMode, interactionState } = state;
+    if (isPreviewMode || interactionState.isSpacePressed || interactionState.isMiddleClickPanning) {
+      return state.selectedBlockId === id;
     }
+    if (id !== null) {
+      if (refuseLockedBlock(id)) return false;
+      if (isReadOnly(state)) return false;
+    }
+    set({ selectedBlockId: id });
+    return true;
   },
 
   // --- Quick Edit Mode ---
@@ -521,7 +646,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   // --- History ---
   undo: () => {
     const { past, page } = get();
-    if (past.length === 0) return;
+    if (past.length === 0 || isReadOnly(get())) return;
     const prevState = past[past.length - 1];
     set((state) => ({
       page: prevState,
@@ -533,7 +658,7 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
 
   redo: () => {
     const { future, page } = get();
-    if (future.length === 0) return;
+    if (future.length === 0 || isReadOnly(get())) return;
     const nextState = future[0];
     set((state) => ({
       page: nextState,
@@ -686,7 +811,18 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
 
   // --- Collaboration ---
   setMyUserId: (id) => set({ myUserId: id }),
-  setCollabStatus: (status) => set({ collabStatus: status }),
+  setCollabStatus: (status) => set((state) => ({
+    collabStatus: status,
+    revokedReason: status === 'revoked' ? (state.revokedReason ?? 'unshared') : null,
+    ...(status === 'revoked' ? { selectedBlockId: null, pendingDeleteBlockId: null } : {}),
+  })),
+  setAccessRevoked: (reason) => set({
+    collabStatus: 'revoked',
+    revokedReason: reason,
+    selectedBlockId: null,
+    pendingDeleteBlockId: null,
+  }),
+  requestCollabReconnect: () => set((state) => ({ collabReconnectRequest: state.collabReconnectRequest + 1 })),
   setPresence: (connectionId, entries) => {
     const own = entries.find((e) => e.connectionId === connectionId);
     set((state) => ({
@@ -701,6 +837,15 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     }));
   },
   removePresence: (connectionId) => {
+    const { relayedEdits, syncBase } = get();
+    // Text the leaving connection relayed and never saved goes with it (QA-033);
+    // a save it made on the way out arrives as page_updated and is merged
+    const leaving = Object.fromEntries(
+      Object.entries(relayedEdits).filter(([, edit]) => edit.connectionId === connectionId),
+    );
+    const hasLeaving = Object.keys(leaving).length > 0;
+    const revert = (page: Page): Page => (syncBase ? withoutRelayedEdits(page, syncBase.page, leaving) : page);
+
     set((state) => {
       const cursors = Object.fromEntries(
         Object.entries(state.cursorPositions).filter(([id]) => id !== connectionId),
@@ -708,12 +853,25 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
       const locks = Object.fromEntries(
         Object.entries(state.blockLocks).filter(([, holder]) => holder.connectionId !== connectionId),
       );
-      return {
+      const common = {
         presence: state.presence.filter((e) => e.connectionId !== connectionId),
         cursorPositions: cursors,
         blockLocks: locks,
       };
+      if (!hasLeaving) return common;
+      const page = revert(state.page);
+      return {
+        ...common,
+        page,
+        past: state.past.map(revert),
+        future: state.future.map(revert),
+        relayedEdits: Object.fromEntries(
+          Object.entries(state.relayedEdits).filter(([, edit]) => edit.connectionId !== connectionId),
+        ),
+        isRemoteUpdate: page !== state.page || state.isRemoteUpdate,
+      };
     });
+    if (hasLeaving) endRemoteUpdateSoon();
   },
   clearCollaboration: () => {
     set({ myConnectionId: null, presence: [], blockLocks: {}, cursorPositions: {} });
@@ -749,19 +907,27 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
   },
   setSyncBase: (base) => set({ syncBase: base }),
   applyRemotePage: (page, rebase) => {
-    const { selectedBlockId, pendingDeleteBlockId } = get();
+    const { selectedBlockId, pendingDeleteBlockId, relayedEdits, blockLocks } = get();
     const exists = (id: string | null) => id !== null && page.blocks.some((b) => b.id === id);
+    // The merged page carries the server's values. Live text of a block whose
+    // holder is still on it is newer than any save: keep showing it. Relays of
+    // a released block end here; the holder's save is already in `page`.
+    const stillHeld: RelayedEdits = Object.fromEntries(
+      Object.entries(relayedEdits).filter(([id, edit]) => blockLocks[id]?.connectionId === edit.connectionId),
+    );
+    const overlay = (p: Page) => applyRelayedEdits(p, stillHeld);
     set((state) => ({
-      page,
-      past: rebase ? state.past.map(rebase) : state.past,
-      future: rebase ? state.future.map(rebase) : state.future,
+      page: overlay(page),
+      past: (rebase ? state.past.map(rebase) : state.past).map(overlay),
+      future: (rebase ? state.future.map(rebase) : state.future).map(overlay),
+      relayedEdits: stillHeld,
       selectedBlockId: exists(selectedBlockId) ? selectedBlockId : null,
       pendingDeleteBlockId: exists(pendingDeleteBlockId) ? pendingDeleteBlockId : null,
       // The next local edit starts its own undo step
       historyCoalesceKey: null,
       isRemoteUpdate: true,
     }));
-    queueMicrotask(() => set({ isRemoteUpdate: false }));
+    endRemoteUpdateSoon();
   },
   replaceBlockData: (blockId, newType, newData) => {
     if (!isBlockType(newType)) return false;
@@ -772,24 +938,26 @@ export const useEditorStore = create<EditorStore>()(subscribeWithSelector((set, 
     return true;
   },
 
-  applyRemoteBlockUpdate: (blockId, data, styles) => {
-    const replace = (block: Block): Block => {
-      const withData = isPlainObject(data) ? withBlockData(block, data) : block;
-      if (!isPlainObject(styles)) return withData;
-      const { styles: base, responsiveStyles } = splitApiStyles(styles);
-      // Rebuilt from its parts so per-device styles absent from the relay are dropped
-      return makeBlock({ id: withData.id, name: withData.name, styles: base, responsiveStyles }, withData.type, withData.data);
-    };
-    const inPage = (page: Page): Page => ({ ...page, blocks: mapBlock(page.blocks, blockId, replace) });
-    set((state) => ({
-      page: inPage(state.page),
-      past: state.past.map(inPage),
-      future: state.future.map(inPage),
-      syncBase: state.syncBase ? { ...state.syncBase, page: inPage(state.syncBase.page) } : null,
-      isRemoteUpdate: true,
-    }));
+  applyRemoteBlockUpdate: (blockId, data, styles, connectionId = '') => {
+    const current = get().page.blocks.find((b) => b.id === blockId);
+    if (!current) return;
+    // Only what the holder changed compared with what is on screen
+    const change = relayedChanges(current, relayedBlock(current, data, styles), connectionId);
+    if (!change) return;
+    const patch = (page: Page): Page => applyRelayedEdits(page, { [blockId]: change });
+    set((state) => {
+      const previous = state.relayedEdits[blockId];
+      const edit = previous && previous.connectionId === connectionId ? combineRelayedEdits(previous, change) : change;
+      return {
+        page: patch(state.page),
+        past: state.past.map(patch),
+        future: state.future.map(patch),
+        relayedEdits: { ...state.relayedEdits, [blockId]: edit },
+        isRemoteUpdate: true,
+      };
+    });
     // Reset flag after microtask so auto-save subscriber can check it
-    queueMicrotask(() => set({ isRemoteUpdate: false }));
+    endRemoteUpdateSoon();
   },
 
   // --- Toasts ---

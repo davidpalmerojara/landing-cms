@@ -86,7 +86,7 @@ test.describe('Quick Edit on a phone', () => {
 
     // ...and the sheet publishes them (QA-014)
     await pending.tap();
-    await page.getByRole('dialog', { name: 'Página publicada' }).getByRole('button', { name: 'Publicar cambios' }).tap();
+    await page.getByRole('dialog', { name: 'Publicar cambios' }).getByRole('button', { name: 'Publicar cambios' }).tap();
     await expect(page.getByRole('button', { name: 'Página publicada' })).toBeVisible();
 
     // The closed sheet has given its history entry back

@@ -22,7 +22,7 @@ const es: TemplateBlock[] = [
       subtitle: 'La plataforma definitiva para conectar tus bases de datos sin escribir código de integración complejo.',
       buttonText: 'Comenzar prueba de 14 días',
       buttonLink: '#pricing',
-      backgroundImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80',
+      backgroundImage: '/templates/saas-hero.webp',
     },
   },
   {
@@ -175,7 +175,7 @@ const en: TemplateBlock[] = [
       subtitle: 'The platform for connecting your databases without writing complex integration code.',
       buttonText: 'Start your 14-day trial',
       buttonLink: '#pricing',
-      backgroundImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80',
+      backgroundImage: '/templates/saas-hero.webp',
     },
   },
   {

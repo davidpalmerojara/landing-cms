@@ -60,6 +60,10 @@ interface TouchReorderOptions {
 export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderOptions) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  /** How far the dragged item has moved from its place, so it follows the finger (MOBILE2-008) */
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragOffsetRef = useRef(0);
+  const dragOriginRef = useRef({ fingerY: 0, scrollTop: 0 });
   const dragIndexRef = useRef<number | null>(null);
   const dropIndexRef = useRef<number | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,19 +73,29 @@ export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderO
 
   const itemRects = useCallback((): ItemRect[] => {
     const items = listRef.current?.querySelectorAll('[role="listitem"]') ?? [];
-    return Array.from(items, (item) => {
+    return Array.from(items, (item, index) => {
       const rect = item.getBoundingClientRect();
-      return { top: rect.top, height: rect.height };
+      // The dragged item is measured where it sits in the list, not where the finger has taken it
+      const moved = index === dragIndexRef.current ? dragOffsetRef.current : 0;
+      return { top: rect.top - moved, height: rect.height };
     });
   }, [listRef]);
 
-  const updateDropIndex = useCallback(() => {
+  /** The dragged item under the finger, and where it would land */
+  const updateDrag = useCallback(() => {
+    // Measured before the offset changes: the rects still carry the transform last drawn
     const next = dropIndexAt(fingerYRef.current, itemRects());
     if (next !== dropIndexRef.current) {
       dropIndexRef.current = next;
       setDropIndex(next);
     }
-  }, [itemRects]);
+    const scrolled = (scrollRef.current?.scrollTop ?? 0) - dragOriginRef.current.scrollTop;
+    const offset = fingerYRef.current - dragOriginRef.current.fingerY + scrolled;
+    if (offset !== dragOffsetRef.current) {
+      dragOffsetRef.current = offset;
+      setDragOffset(offset);
+    }
+  }, [itemRects, scrollRef]);
 
   const stopAutoScroll = useCallback(() => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -100,9 +114,9 @@ export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderO
     const before = area.scrollTop;
     area.scrollTop = before + speed;
     if (area.scrollTop === before) return; // at the end of the list
-    updateDropIndex();
+    updateDrag();
     frameRef.current = requestAnimationFrame(() => autoScrollStepRef.current());
-  }, [scrollRef, updateDropIndex]);
+  }, [scrollRef, updateDrag]);
   useEffect(() => {
     autoScrollStepRef.current = autoScrollStep;
   }, [autoScrollStep]);
@@ -119,8 +133,10 @@ export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderO
     const to = dropIndexRef.current;
     dragIndexRef.current = null;
     dropIndexRef.current = null;
+    dragOffsetRef.current = 0;
     setDragIndex(null);
     setDropIndex(null);
+    setDragOffset(0);
     if (from !== null && to !== null && to !== from && to !== from + 1) onReorder(from, to);
   }, [clearHold, onReorder, stopAutoScroll]);
 
@@ -137,13 +153,15 @@ export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderO
     clearHold();
     holdTimerRef.current = setTimeout(() => {
       holdTimerRef.current = null;
+      dragOriginRef.current = { fingerY: fingerYRef.current, scrollTop: scrollRef.current?.scrollTop ?? 0 };
+      dragOffsetRef.current = 0;
       dragIndexRef.current = index;
       dropIndexRef.current = index;
       setDragIndex(index);
       setDropIndex(index);
       if (typeof navigator.vibrate === 'function') navigator.vibrate(50);
     }, HOLD_MS);
-  }, [clearHold]);
+  }, [clearHold, scrollRef]);
 
   /** touchmove anywhere in the list */
   const onTouchMove = useCallback((e: React.TouchEvent) => {
@@ -153,9 +171,9 @@ export function useTouchReorder({ scrollRef, listRef, onReorder }: TouchReorderO
       if (holdTimerRef.current && Math.abs(y - startYRef.current) > MOVE_TOLERANCE) clearHold();
       return;
     }
-    updateDropIndex();
+    updateDrag();
     if (frameRef.current === null) frameRef.current = requestAnimationFrame(autoScrollStep);
-  }, [autoScrollStep, clearHold, updateDropIndex]);
+  }, [autoScrollStep, clearHold, updateDrag]);
 
-  return { dragIndex, dropIndex, onHandleTouchStart, onTouchMove, onTouchEnd: finish };
+  return { dragIndex, dropIndex, dragOffset, onHandleTouchStart, onTouchMove, onTouchEnd: finish };
 }

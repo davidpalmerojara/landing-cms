@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, CloudOff, Loader2, WifiOff } from 'lucide-react';
+import { AlertTriangle, Check, CloudOff, Loader2, Pencil, WifiOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useSaveIssueText } from '@/hooks/useSaveIssueText';
 import { useEditorStore, getUserColor, uniquePresenceUsers } from '@/store/editor-store';
@@ -23,6 +23,48 @@ function useIsOnline(): boolean {
   return isOnline;
 }
 
+/** Longer than the autosave wait (3 s): a save that never starts (nothing left to send) must not leave the label up */
+const PENDING_EDIT_MAX_MS = 6000;
+
+/**
+ * Whether this person edited the page and the save has not started yet: the
+ * autosave waits a few seconds after the last edit (MOBILE2-012). Changes
+ * that arrive from other people are not this person's to wait for.
+ */
+function useHasPendingEdit(): boolean {
+  const [hasPendingEdit, setHasPendingEdit] = useState(false);
+  useEffect(() => {
+    let giveUp: ReturnType<typeof setTimeout> | null = null;
+    const stopWaiting = () => {
+      if (giveUp) clearTimeout(giveUp);
+      giveUp = null;
+      setHasPendingEdit(false);
+    };
+    const unsubscribeEdits = useEditorStore.subscribe(
+      (s) => s.page,
+      (page, previous) => {
+        if (page === previous || useEditorStore.getState().isRemoteUpdate) return;
+        setHasPendingEdit(true);
+        if (giveUp) clearTimeout(giveUp);
+        giveUp = setTimeout(stopWaiting, PENDING_EDIT_MAX_MS);
+      },
+    );
+    // The save started or failed: the wait is over
+    const unsubscribeStatus = useEditorStore.subscribe(
+      (s) => s.autoSaveStatus,
+      (status) => {
+        if (status === 'saving' || status === 'error') stopWaiting();
+      },
+    );
+    return () => {
+      unsubscribeEdits();
+      unsubscribeStatus();
+      if (giveUp) clearTimeout(giveUp);
+    };
+  }, []);
+  return hasPendingEdit;
+}
+
 /**
  * The line under the page name in Quick Edit (QA-125): the autosave state in
  * words at 12 px with its icon, from the shared save controller (QA-008), and
@@ -31,6 +73,7 @@ function useIsOnline(): boolean {
 export default function QuickEditStatus() {
   const t = useTranslations();
   const isOnline = useIsOnline();
+  const hasPendingEdit = useHasPendingEdit();
   const { status, issue, text } = useSaveIssueText();
   const presence = useEditorStore((s) => s.presence);
   const myUserId = useEditorStore((s) => s.myUserId);
@@ -50,6 +93,9 @@ export default function QuickEditStatus() {
     Icon = WifiOff;
     label = t('mobile.offline');
     tone = 'text-warning';
+  } else if (hasPendingEdit && status !== 'saving') {
+    Icon = Pencil;
+    label = t('mobile.unsaved');
   } else if (status === 'saving') {
     Icon = Loader2;
     label = t('mobile.saving');

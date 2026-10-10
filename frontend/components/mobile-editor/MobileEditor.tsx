@@ -26,6 +26,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useLeaveEditor } from '@/hooks/useLeaveEditor';
 import { useSaveIssueText } from '@/hooks/useSaveIssueText';
 import { useTouchReorder } from '@/hooks/useTouchReorder';
+import { useCloseOnBack } from '@/hooks/useCloseOnBack';
 import MobileBlockCard from './MobileBlockCard';
 import MobileBottomSheet from './MobileBottomSheet';
 import MobileBlockEditor from './MobileBlockEditor';
@@ -63,6 +64,8 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
   const redo = useEditorStore((s) => s.redo);
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
   const requestDeleteBlock = useEditorStore((s) => s.requestDeleteBlock);
+  const isDeleteConfirmOpen = useEditorStore((s) => s.pendingDeleteBlockId !== null);
+  const cancelDeleteBlock = useEditorStore((s) => s.cancelDeleteBlock);
   const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
   const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
   const selectBlock = useEditorStore((s) => s.selectBlock);
@@ -70,6 +73,8 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
   const setPageWithHistory = useEditorStore((s) => s.setPageWithHistory);
   const { issue, text: issueText } = useSaveIssueText();
   const leave = useLeaveEditor('/dashboard');
+  // The phone's back button answers the delete question instead of leaving the editor (MOBILE2-007)
+  useCloseOnBack(isDeleteConfirmOpen, cancelDeleteBlock);
 
   // --- Sheet state ---
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -91,7 +96,7 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
   const reorderBlocks = useCallback((from: number, to: number) => {
     useEditorStore.getState().reorderBlocks(from, to);
   }, []);
-  const { dragIndex, dropIndex, onHandleTouchStart, onTouchMove, onTouchEnd } = useTouchReorder({
+  const { dragIndex, dropIndex, dragOffset, onHandleTouchStart, onTouchMove, onTouchEnd } = useTouchReorder({
     scrollRef,
     listRef,
     onReorder: reorderBlocks,
@@ -234,6 +239,8 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
   const editingBlock = page.blocks.find((b) => b.id === sheetBlockId);
   const publication = publicationState(page.status, page.hasUnpublishedChanges);
   const anySheetOpen = sheetBlockId !== null || showAddSheet || showPublishSheet;
+  // While a block is carried, the buttons that float at the bottom would hide where it lands (MOBILE2-008)
+  const hideFloatingButtons = anySheetOpen || dragIndex !== null;
   const issueActionLabel = issue?.kind === 'failed'
     ? t('saveStatus.retryNow')
     : issue?.kind === 'rejected' && (issue.fields[0].blockId || issue.fields[0].path[0] === 'name')
@@ -363,11 +370,14 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
                 <div
                   key={block.id}
                   className={isNew ? 'animate-slideIn' : ''}
-                  style={{
-                    opacity: dragIndex === i ? 0.5 : 1,
-                    transform: dragIndex === i ? 'scale(1.02)' : undefined,
-                    transition: dragIndex !== null ? 'transform 150ms, opacity 150ms' : undefined,
-                  }}
+                  // The carried card follows the finger (MOBILE2-008)
+                  style={dragIndex === i ? {
+                    transform: `translateY(${dragOffset}px) scale(1.02)`,
+                    position: 'relative',
+                    zIndex: 20,
+                    opacity: 0.9,
+                    boxShadow: '0 12px 28px rgb(0 0 0 / 0.35)',
+                  } : undefined}
                 >
                   {dragIndex !== null && dropIndex === i && dragIndex !== i && (
                     <div className="h-0.5 bg-primary rounded-full mx-4 mb-1" />
@@ -403,7 +413,7 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
       </main>
 
       {/* --- Undo / redo, within thumb reach (QA-067) --- */}
-      {!anySheetOpen && (
+      {!hideFloatingButtons && (
         <div
           role="group"
           aria-label={t('mobile.history')}
@@ -432,7 +442,7 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
       )}
 
       {/* --- FAB: Add block --- */}
-      {!anySheetOpen && (
+      {!hideFloatingButtons && (
         <button
           type="button"
           onClick={() => setShowAddSheet(true)}

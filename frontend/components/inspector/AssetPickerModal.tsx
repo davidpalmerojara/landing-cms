@@ -292,7 +292,9 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
                         <UploadCloud aria-hidden="true" className="w-6 h-6 text-secondary group-hover:text-primary-color transition-colors" />
                       </span>
                       <span className="block text-sm font-medium text-primary mb-1 group-hover:text-primary-color transition-colors">
-                        {t('assets.uploadPrompt')}
+                        {/* Nothing to drag a file from on a touch screen (MOBILE2-009) */}
+                        <span className="pointer-coarse:hidden">{t('assets.uploadPrompt')}</span>
+                        <span className="hidden pointer-coarse:inline">{t('assets.uploadPromptTouch')}</span>
                       </span>
                       <span className="text-xs text-muted flex items-center gap-1.5">
                         <AlertCircle aria-hidden="true" className="w-3 h-3" /> {t('assets.uploadHint')}
@@ -345,7 +347,7 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-surface-elevated text-primary hover:bg-white px-6 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
+                        className="bg-surface-elevated text-primary hover:bg-white px-6 py-2.5 pointer-coarse:min-h-11 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-white/5"
                       >
                         {t('assets.uploadFirst')}
                       </button>

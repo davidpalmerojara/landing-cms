@@ -84,7 +84,11 @@ export default function EditorPage() {
     onSaveFailed: (kind) => {
       if (kind === 'conflict') addToast(t('collab.saveConflict'), 'error');
     },
-    onLocalChangesRecovered: () => addToast(t('saveStatus.recovered', { undo: undoShortcut }), 'info'),
+    // A phone has no keyboard shortcut to undo with: the Undo button is the way (MOBILE2-006)
+    onLocalChangesRecovered: () => addToast(
+      isQuickEditMode ? t('mobile.recoveredChanges') : t('saveStatus.recovered', { undo: undoShortcut }),
+      'info',
+    ),
   });
   useDragManager();
   useAutoSave(saveToApi, { saveOnLeave, hasUnsavedChanges });
@@ -138,10 +142,10 @@ export default function EditorPage() {
   const retrySave = useCallback(() => { void saveToApi(); }, [saveToApi]);
 
   const pendingDeleteBlock = page.blocks.find((b) => b.id === pendingDeleteBlockId);
-  const deleteBlockMessage = t('editor.deleteBlockMessage', {
-    name: pendingDeleteBlock ? getTranslatedBlockLabel(pendingDeleteBlock.type, t) : t('editor.components'),
-    undo: undoShortcut,
-  });
+  const deletedBlockName = pendingDeleteBlock ? getTranslatedBlockLabel(pendingDeleteBlock.type, t) : t('editor.components');
+  const deleteBlockMessage = isQuickEditMode
+    ? t('mobile.deleteBlockMessage', { name: deletedBlockName })
+    : t('editor.deleteBlockMessage', { name: deletedBlockName, undo: undoShortcut });
 
   if (isLoading || isAuthLoading || !user) {
     return (

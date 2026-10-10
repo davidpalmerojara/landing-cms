@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslations } from 'next-intl';
+import { useIsAnySheetOpen } from '@/hooks/useCloseOnBack';
 
 /** A button in the toast that undoes or follows up what it announces ("Deshacer"). */
 export interface ToastAction {
@@ -102,12 +103,17 @@ interface ToastContainerProps {
   onDismiss: (id: string) => void;
   /**
    * `aboveFab`: across the bottom of a phone screen, clear of the floating
-   * "+" button and the home indicator (Quick Edit). `corner`: bottom right.
+   * "+" button and the home indicator (Quick Edit). While a sheet, the media
+   * library, a confirmation or the preview is open there is no "+" and the
+   * bottom is where the person works, so the toasts move to the top, over the
+   * dimmed toolbar (MOBILE2-004). `corner`: bottom right.
    */
   placement?: 'corner' | 'aboveFab';
 }
 
-export function ToastContainer({ toasts, onDismiss, placement = 'corner' }: ToastContainerProps) {
+export function ToastContainer({ toasts, onDismiss, placement: requestedPlacement = 'corner' }: ToastContainerProps) {
+  const isSheetOpen = useIsAnySheetOpen();
+  const placement = requestedPlacement === 'aboveFab' && isSheetOpen ? 'top' : requestedPlacement;
   // The live region stays mounted so screen readers announce the first toast too
   return (
     <div
@@ -117,6 +123,8 @@ export function ToastContainer({ toasts, onDismiss, placement = 'corner' }: Toas
         placement === 'corner' && 'right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] max-w-[calc(100vw-2rem)]',
         // The FAB is 56 px high and 24 px from the bottom edge
         placement === 'aboveFab' && 'left-4 right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] items-stretch',
+        // The toolbar is 64 px high and sheets start under it
+        placement === 'top' && 'left-4 right-4 top-[calc(env(safe-area-inset-top)+0.5rem)] items-stretch',
       )}
       aria-live="polite"
     >

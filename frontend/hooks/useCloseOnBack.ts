@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 
 /**
  * The phone's back button (or gesture) closes the open sheet instead of
@@ -23,6 +23,11 @@ const RELEASE_DELAY_MS = 120;
 const openSheets: OpenSheet[] = [];
 let ownsHistoryEntry = false;
 let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+const openChangeListeners = new Set<() => void>();
+
+function notifyOpenChange() {
+  openChangeListeners.forEach((listener) => listener());
+}
 
 function isOnOurEntry(): boolean {
   const state: unknown = window.history.state;
@@ -50,11 +55,13 @@ function register(sheet: OpenSheet) {
   if (openSheets.length === 0) window.addEventListener('popstate', onPopState);
   openSheets.push(sheet);
   if (!ownsHistoryEntry) pushEntry();
+  notifyOpenChange();
 }
 
 function unregister(sheet: OpenSheet) {
   const index = openSheets.indexOf(sheet);
   if (index !== -1) openSheets.splice(index, 1);
+  notifyOpenChange();
   if (openSheets.length > 0) {
     // Back closed the top sheet and another is still open: it needs its own entry
     if (!ownsHistoryEntry) pushEntry();
@@ -104,4 +111,21 @@ export function useCloseOnBack(open: boolean, onClose: () => void): () => boolea
   }, [open]);
 
   return useCallback(() => sheetRef.current !== null && openSheets[openSheets.length - 1] === sheetRef.current, []);
+}
+
+function subscribeToOpenChange(listener: () => void): () => void {
+  openChangeListeners.add(listener);
+  return () => openChangeListeners.delete(listener);
+}
+
+const anySheetOpen = () => openSheets.length > 0;
+const neverOpenOnServer = () => false;
+
+/**
+ * Whether a sheet or dialog that closes with the back button is open (the
+ * block sheets, the media library, the preview, confirmations). Toasts use it
+ * to stay clear of whatever the person is working on (MOBILE2-004).
+ */
+export function useIsAnySheetOpen(): boolean {
+  return useSyncExternalStore(subscribeToOpenChange, anySheetOpen, neverOpenOnServer);
 }

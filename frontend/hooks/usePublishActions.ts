@@ -11,6 +11,11 @@ interface PublishHandlers {
   onUnpublish?: () => Promise<boolean>;
   /** Why the last publish or unpublish failed at the server (not the save before it) */
   publicationError?: () => unknown;
+  /**
+   * Quick Edit: the publish toast is the one message (with the note about
+   * buttons without links folded in), worded for a phone (MOBILE2-005).
+   */
+  phone?: boolean;
 }
 
 /**
@@ -19,7 +24,7 @@ interface PublishHandlers {
  * saves first, so a failed save is the usual reason it fails: the message
  * says so.
  */
-export function usePublishActions({ onPublish, onUnpublish, publicationError }: PublishHandlers) {
+export function usePublishActions({ onPublish, onUnpublish, publicationError, phone = false }: PublishHandlers) {
   const t = useTranslations();
   // Pages from servers that do not say who owns them are treated as the user's (the server decides anyway)
   const isOwner = useEditorStore((s) => s.page.isOwner !== false);
@@ -50,12 +55,13 @@ export function usePublishActions({ onPublish, onUnpublish, publicationError }: 
     if (ok) {
       setPublishedPath(`/p/${page.slug}`);
       // Published anyway; only a heads-up about what visitors won't be able to use (D9)
-      const notice = publishNotice(page.blocks, t);
+      const notice = publishNotice(page.blocks, t, { phone });
       if (notice) addToast(notice, 'info');
+      else if (phone) addToast(t('mobile.pagePublished'), 'success');
     } else {
       addToast(failureMessage('editor.publishError'), 'error');
     }
-  }, [explainOwnerOnly, failureMessage, isOwner, onPublish, t]);
+  }, [explainOwnerOnly, failureMessage, isOwner, onPublish, phone, t]);
 
   const unpublish = useCallback(async () => {
     if (!onUnpublish) return;

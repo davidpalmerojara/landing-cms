@@ -41,6 +41,48 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  backend-postgres:
+    # Production runs on PostgreSQL: the same suite against it catches what
+    # SQLite lets through (migrations, transactions, query differences).
+    name: Backend (pytest on PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: paxl
+          POSTGRES_PASSWORD: paxl
+          POSTGRES_DB: paxl
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U paxl"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://paxl:paxl@localhost:5432/paxl
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies from lockfile
+        run: pip install --require-hashes -r requirements.txt
+
+      - name: Create .env from template
+        run: cp .env.example .env
+
+      - name: Run tests
+        run: pytest -q
+
   frontend:
     name: Frontend (typecheck, lint, test, build)
     runs-on: ubuntu-latest

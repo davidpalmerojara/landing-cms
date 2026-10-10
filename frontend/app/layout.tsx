@@ -92,6 +92,7 @@ export default async function RootLayout({
       >
         <a
           href="#main-content"
+          lang={initialLocale}
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-9999 focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium"
         >
           {MESSAGES[initialLocale].navigation.skipToContent}

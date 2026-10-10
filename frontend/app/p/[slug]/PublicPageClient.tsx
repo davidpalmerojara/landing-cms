@@ -1,7 +1,7 @@
 'use client';
 
 import Script from 'next/script';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ApiPublicPage } from '@/lib/api';
 import { apiToTokens } from '@/lib/design-tokens';
 import { apiBlocksToLocal } from '@/lib/page-mapping';
@@ -20,13 +20,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
  */
 export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   const t = useTranslations();
+  // <html lang> is the page's language; Paxl's own words are the visitor's, so they say so (PUBLIC2-006)
+  const locale = useLocale();
   const blocks = apiBlocksToLocal(page.blocks);
   const themeVars = pageThemeVars(apiToTokens(page.design_tokens));
 
   if (blocks.length === 0) {
     // Paxl's screen, not the page's: fixed light colors whatever the visitor's system theme (QA-092)
     return (
-      <main id="main-content" tabIndex={-1} className="flex items-center justify-center h-screen bg-white text-[#4B5563] outline-none">
+      <main id="main-content" lang={locale} tabIndex={-1} className="flex items-center justify-center h-screen bg-white text-[#4B5563] outline-none">
         <p className="text-xl">{t('publicPage.empty')}</p>
       </main>
     );
@@ -35,7 +37,7 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   return (
     <>
       {page.is_guest_page && (
-        <aside aria-label={t('publicPage.noticeLabel')} className="relative z-10">
+        <aside lang={locale} aria-label={t('publicPage.noticeLabel')} className="relative z-10">
           <p role="note" className="m-0 px-4 py-2.5 text-center text-sm font-medium bg-amber-100 text-amber-900 border-b border-amber-300">
             {t('publicPage.guestNotice')}
           </p>
@@ -59,7 +61,7 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
       />
 
       {page.show_watermark && (
-        <aside aria-label={t('common.brand')} className="fixed bottom-4 right-4 z-50">
+        <aside lang={locale} aria-label={t('common.brand')} className="fixed bottom-4 right-4 z-50">
           <a
             href="/"
             target="_blank"

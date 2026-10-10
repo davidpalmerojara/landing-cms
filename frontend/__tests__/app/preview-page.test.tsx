@@ -32,13 +32,14 @@ describe('preview page', () => {
     document.title = '';
   });
 
-  it('names the page in the tab title and declares its language (QA-085, QA-091)', async () => {
+  it('names the page in the tab title; the page area declares its language, the interface keeps its own (QA-085, PUBLIC2-006)', async () => {
     vi.spyOn(api.pages, 'get').mockResolvedValue(apiPage());
     const view = render(<PreviewPage />);
     await flush();
 
     expect(document.title).toContain('Mi landing');
-    expect(document.documentElement.lang).toBe('en');
+    // Paxl's bar is in the interface language (es), only the page area is in the page's (en)
+    expect(document.documentElement.lang).not.toBe('en');
     expect(view.container.querySelector('main')?.getAttribute('lang')).toBe('en');
     view.unmount();
   });
@@ -58,8 +59,44 @@ describe('preview page', () => {
     const link = view.container.querySelector<HTMLAnchorElement>('a[href="/p/mi-landing"]');
     expect(link).not.toBeNull();
     expect(view.container.querySelector('[role="note"]')?.textContent).toContain('“Suscribirse”');
-    // Published and unchanged: the button now offers to publish changes
-    expect(Array.from(view.container.querySelectorAll('button')).some((b) => b.textContent === MESSAGES.es.preview.republish)).toBe(true);
+    // Just published, nothing changed since: nothing left to publish (PUBLIC2-011)
+    const buttons = Array.from(view.container.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent === MESSAGES.es.preview.republish)).toBe(false);
+    expect(buttons.find((b) => b.textContent === MESSAGES.es.preview.upToDate)?.disabled).toBe(true);
+    view.unmount();
+  });
+
+  it('PUBLIC2-001: a collaborator gets no publish button, only the reason', async () => {
+    vi.spyOn(api.pages, 'get').mockResolvedValue(apiPage({ is_owner: false }));
+    const publish = vi.spyOn(api.pages, 'publish');
+    const view = render(<PreviewPage />);
+    await flush();
+
+    const labels = Array.from(view.container.querySelectorAll('button')).map((b) => b.textContent);
+    expect(labels).not.toContain(MESSAGES.es.preview.publish);
+    expect(view.container.textContent).toContain(MESSAGES.es.publishing.ownerOnly);
+    expect(publish).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it('PUBLIC2-011: a published page with no changes does not offer "Publicar cambios"', async () => {
+    vi.spyOn(api.pages, 'get').mockResolvedValue(apiPage({ status: 'published', has_unpublished_changes: false }));
+    const view = render(<PreviewPage />);
+    await flush();
+
+    const button = Array.from(view.container.querySelectorAll('button')).find((b) => b.textContent === MESSAGES.es.preview.upToDate);
+    expect(button?.disabled).toBe(true);
+    expect(Array.from(view.container.querySelectorAll('button')).some((b) => b.textContent === MESSAGES.es.preview.republish)).toBe(false);
+    view.unmount();
+  });
+
+  it('PUBLIC2-011: once the draft has unpublished changes it offers to publish them', async () => {
+    vi.spyOn(api.pages, 'get').mockResolvedValue(apiPage({ status: 'published', has_unpublished_changes: true }));
+    const view = render(<PreviewPage />);
+    await flush();
+
+    const button = Array.from(view.container.querySelectorAll('button')).find((b) => b.textContent === MESSAGES.es.preview.republish);
+    expect(button?.disabled).toBe(false);
     view.unmount();
   });
 });

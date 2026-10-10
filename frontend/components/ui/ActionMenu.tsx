@@ -74,10 +74,7 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
 
   // Place the menu before it is painted, and keep it with the button while the page scrolls or resizes
   useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
+    if (!open) return;
     const update = () => {
       const trigger = triggerRef.current;
       const menu = menuRef.current;

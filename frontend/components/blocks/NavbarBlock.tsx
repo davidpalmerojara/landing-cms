@@ -32,7 +32,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
   // Following a link closes the menu; if focus was inside it, it goes to the button instead of being lost
   const closeMenu = () => {
     setMenuOpen(false);
-    if (navRef.current?.querySelector(`[id="${menuId}"]`)?.contains(document.activeElement)) {
+    if (document.getElementById(menuId)?.contains(document.activeElement)) {
       toggleRef.current?.focus({ preventScroll: true });
     }
   };
@@ -58,11 +58,11 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
     };
   }, [menuOpen]);
 
-  const renderNavLink = (index: number, label: string, href: string | null, className: string, onNavigate?: () => void) => {
+  const renderNavLink = (index: number, label: string, href: string | null, className: string, closesMenu = false) => {
     const style = { color: 'var(--theme-text-muted)' };
     if (href) {
       return (
-        <BlockLink key={index} href={href} className={`${className} hover:underline`} style={style} onNavigate={onNavigate}>
+        <BlockLink key={index} href={href} className={`${className} hover:underline`} style={style} onNavigate={closesMenu ? () => closeMenu() : undefined}>
           {label}
         </BlockLink>
       );
@@ -124,7 +124,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
           style={{ backgroundColor: 'var(--block-bg, var(--theme-bg))', borderColor: 'var(--theme-border)' }}
         >
           {/* Following a link (often an anchor on this same page) closes the menu */}
-          {navLinks.map(({ index, label, href }) => renderNavLink(index, label, href, 'text-sm flex items-center min-h-11', closeMenu))}
+          {navLinks.map(({ index, label, href }) => renderNavLink(index, label, href, 'text-sm flex items-center min-h-11', true))}
           {showCta && (
             <span className="block py-2">
               <BlockButton

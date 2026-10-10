@@ -33,6 +33,11 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
     setShowPicker(false);
   };
 
+  const handleSelectUrl = (url: string) => {
+    onChange(url);
+    setShowPicker(false);
+  };
+
   const handleRemove = () => {
     onChange('');
   };
@@ -58,7 +63,7 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
               onClick={() => setShowPicker(true)}
               aria-labelledby={withFieldLabel(id)}
               aria-describedby={valueId}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-secondary hover:text-primary active:text-primary bg-surface-elevated/50 border border-default/10 rounded-md hover:bg-surface-card active:bg-surface-card transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 pointer-coarse:min-h-11 text-[11px] font-medium text-secondary hover:text-primary active:text-primary bg-surface-elevated/50 border border-default/10 rounded-md hover:bg-surface-card active:bg-surface-card transition-colors"
             >
               <RefreshCw aria-hidden="true" className="w-3 h-3" />
               {t('common.change')}
@@ -70,7 +75,7 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
               aria-label={t('inspector.removeImage')}
               aria-labelledby={withFieldLabel(removeId)}
               title={t('inspector.removeImage')}
-              className="flex items-center justify-center gap-1.5 py-1.5 px-3 text-[11px] font-medium text-error bg-transparent border border-red-900/30 rounded-md hover:bg-red-500/10 hover:border-red-500/40 active:bg-red-500/10 active:border-red-500/40 transition-colors"
+              className="flex items-center justify-center gap-1.5 py-1.5 px-3 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-[11px] font-medium text-error bg-transparent border border-red-900/30 rounded-md hover:bg-red-500/10 hover:border-red-500/40 active:bg-red-500/10 active:border-red-500/40 transition-colors"
             >
               <Trash2 aria-hidden="true" className="w-3 h-3" />
             </button>
@@ -93,6 +98,7 @@ export default function ImageField({ id, labelId, value, onChange }: ImageFieldP
       {showPicker && (
         <AssetPickerModal
           onSelect={handleSelect}
+          onSelectUrl={handleSelectUrl}
           onClose={() => setShowPicker(false)}
         />
       )}

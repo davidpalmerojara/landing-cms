@@ -15,6 +15,7 @@ from decimal import Decimal
 
 import stripe
 from django.conf import settings
+from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
@@ -24,6 +25,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsNotGuest
+from config.features import BillingEnabled
 from .models import Plan, Subscription, PaymentHistory, WebhookLog
 from .permissions import get_user_subscription, invalidate_plan_cache
 from .serializers import (
@@ -45,11 +47,27 @@ class RawBodyParser(BaseParser):
 
 
 def _get_stripe():
-    """Configure and return stripe module. Raises if key not set."""
-    if not settings.STRIPE_SECRET_KEY:
-        raise ValueError('STRIPE_SECRET_KEY not configured')
+    """Configure and return the stripe module. Only reached with billing enabled (BillingEnabled permission)."""
     stripe.api_key = settings.STRIPE_SECRET_KEY
     return stripe
+
+
+def _billing_error(message, code, status_code):
+    return Response({'error': message, 'code': code}, status=status_code)
+
+
+def _not_configured(message):
+    return _billing_error(message, 'BILLING_NOT_CONFIGURED', status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+def _provider_error(error):
+    """Stripe refused or could not be reached: a gateway problem, never a 500 with Stripe's text."""
+    logger.error('Stripe request failed: %s', error, exc_info=True)
+    return _billing_error(
+        'No se pudo hablar con el proveedor de pagos. Inténtalo de nuevo en un momento.',
+        'BILLING_PROVIDER_ERROR',
+        status.HTTP_502_BAD_GATEWAY,
+    )
 
 
 class PlansView(APIView):
@@ -99,25 +117,20 @@ class CreateCheckoutView(APIView):
     Creates a Stripe Checkout Session for upgrading to Pro.
     Returns { "checkout_url": "https://checkout.stripe.com/..." }
     """
-    permission_classes = [IsAuthenticated, IsNotGuest]
+    permission_classes = [BillingEnabled, IsAuthenticated, IsNotGuest]
 
     def post(self, request):
         input_serializer = CreateCheckoutSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         cycle = input_serializer.validated_data['cycle']
 
-        try:
-            s = _get_stripe()
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        s = _get_stripe()
 
         # Determine price ID
         pro_plan = Plan.objects.filter(name='pro', is_active=True).first()
         if not pro_plan:
-            return Response(
-                {'error': 'Pro plan not found.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            logger.error('Checkout without an active Pro plan in the database')
+            return _not_configured('El plan Pro no está disponible.')
 
         if cycle == 'yearly':
             price_id = pro_plan.stripe_price_id_yearly or settings.STRIPE_PRO_PRICE_YEARLY
@@ -125,10 +138,8 @@ class CreateCheckoutView(APIView):
             price_id = pro_plan.stripe_price_id_monthly or settings.STRIPE_PRO_PRICE_MONTHLY
 
         if not price_id:
-            return Response(
-                {'error': f'Stripe price ID for {cycle} not configured.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            logger.error('Stripe price id for the %s cycle is not configured', cycle)
+            return _not_configured('Este plan de pago no está disponible todavía.')
 
         # Get or create Workspace + Subscription for this user
         sub = get_user_subscription(request.user)
@@ -146,36 +157,39 @@ class CreateCheckoutView(APIView):
                 defaults={'plan': free_plan or pro_plan, 'status': Subscription.Status.FREE},
             )
 
-        # Get or create Stripe customer
-        customer_id = sub.stripe_customer_id
+        try:
+            # Get or create Stripe customer
+            customer_id = sub.stripe_customer_id
 
-        if not customer_id:
-            customer = s.Customer.create(
-                email=request.user.email,
-                metadata={'user_id': str(request.user.pk)},
-            )
-            customer_id = customer.id
-            sub.stripe_customer_id = customer_id
-            sub.save(update_fields=['stripe_customer_id'])
+            if not customer_id:
+                customer = s.Customer.create(
+                    email=request.user.email,
+                    metadata={'user_id': str(request.user.pk)},
+                )
+                customer_id = customer.id
+                sub.stripe_customer_id = customer_id
+                sub.save(update_fields=['stripe_customer_id'])
 
-        # Create checkout session
-        frontend_url = settings.FRONTEND_URL.rstrip('/')
-        session = s.checkout.Session.create(
-            customer=customer_id,
-            mode='subscription',
-            line_items=[{'price': price_id, 'quantity': 1}],
-            success_url=f'{frontend_url}/dashboard?billing=success',
-            cancel_url=f'{frontend_url}/dashboard?billing=cancel',
-            metadata={
-                'user_id': str(request.user.pk),
-                'cycle': cycle,
-            },
-            subscription_data={
-                'metadata': {
+            # Create checkout session
+            frontend_url = settings.FRONTEND_URL.rstrip('/')
+            session = s.checkout.Session.create(
+                customer=customer_id,
+                mode='subscription',
+                line_items=[{'price': price_id, 'quantity': 1}],
+                success_url=f'{frontend_url}/dashboard?billing=success',
+                cancel_url=f'{frontend_url}/dashboard?billing=cancel',
+                metadata={
                     'user_id': str(request.user.pk),
+                    'cycle': cycle,
                 },
-            },
-        )
+                subscription_data={
+                    'metadata': {
+                        'user_id': str(request.user.pk),
+                    },
+                },
+            )
+        except stripe.StripeError as e:
+            return _provider_error(e)
 
         return Response({'checkout_url': session.url})
 
@@ -187,26 +201,26 @@ class CreatePortalView(APIView):
     Creates a Stripe Billing Portal session for managing subscription.
     Returns { "portal_url": "https://billing.stripe.com/..." }
     """
-    permission_classes = [IsAuthenticated, IsNotGuest]
+    permission_classes = [BillingEnabled, IsAuthenticated, IsNotGuest]
 
     def post(self, request):
-        try:
-            s = _get_stripe()
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        s = _get_stripe()
 
         sub = get_user_subscription(request.user)
         if not sub or not sub.stripe_customer_id:
             return Response(
-                {'error': 'No tienes una suscripción activa con Stripe.'},
+                {'error': 'No tienes una suscripción activa con Stripe.', 'code': 'NO_STRIPE_CUSTOMER'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         frontend_url = settings.FRONTEND_URL.rstrip('/')
-        session = s.billing_portal.Session.create(
-            customer=sub.stripe_customer_id,
-            return_url=f'{frontend_url}/dashboard',
-        )
+        try:
+            session = s.billing_portal.Session.create(
+                customer=sub.stripe_customer_id,
+                return_url=f'{frontend_url}/dashboard',
+            )
+        except stripe.StripeError as e:
+            return _provider_error(e)
 
         return Response({'portal_url': session.url})
 
@@ -219,22 +233,19 @@ class StripeWebhookView(APIView):
     Receives Stripe webhook events. Verifies signature, logs event,
     and dispatches to appropriate handler.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [BillingEnabled]
     authentication_classes = []
     parser_classes = [RawBodyParser]
 
     def post(self, request):
-        try:
-            s = _get_stripe()
-        except ValueError:
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        s = _get_stripe()
 
         payload = request.data  # raw bytes from RawBodyParser
         sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
 
         if not settings.STRIPE_WEBHOOK_SECRET:
             logger.error('STRIPE_WEBHOOK_SECRET not configured')
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return _not_configured('El webhook de pagos no está configurado.')
 
         # Verify signature
         try:
@@ -248,22 +259,41 @@ class StripeWebhookView(APIView):
             logger.warning('Invalid Stripe webhook signature')
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        # Idempotency: check if we already processed this event
         event_id = event['id']
         event_type = event['type']
 
-        webhook_log, created = WebhookLog.objects.get_or_create(
-            stripe_event_id=event_id,
-            defaults={
-                'event_type': event_type,
-                'payload': event['data'],
-            },
-        )
-        if not created and webhook_log.processed:
-            return Response(status=status.HTTP_200_OK)
-
-        # Dispatch
         try:
+            self._process_once(event, event_id, event_type)
+        except Exception as e:
+            # The handler's changes were rolled back, so Stripe can safely retry the event
+            logger.exception('Error processing Stripe webhook %s: %s', event_type, e)
+            WebhookLog.objects.update_or_create(
+                stripe_event_id=event_id,
+                defaults={'event_type': event_type, 'payload': event['data'], 'error': str(e)[:1000]},
+            )
+            return _billing_error(
+                'No se pudo procesar el evento.', 'WEBHOOK_FAILED', status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _process_once(event, event_id, event_type):
+        """Run the handler for an event at most once, even when Stripe sends it twice at the same time.
+
+        The log row is locked for the duration of the handler, so a concurrent
+        duplicate waits and then finds it processed. If the handler raises, its
+        changes and the lock are rolled back and the event stays unprocessed.
+        """
+        with transaction.atomic():
+            WebhookLog.objects.get_or_create(
+                stripe_event_id=event_id,
+                defaults={'event_type': event_type, 'payload': event['data']},
+            )
+            webhook_log = WebhookLog.objects.select_for_update().get(stripe_event_id=event_id)
+            if webhook_log.processed:
+                return
+
             handler = WEBHOOK_HANDLERS.get(event_type)
             if handler:
                 handler(event)
@@ -271,13 +301,8 @@ class StripeWebhookView(APIView):
                 logger.info('Unhandled Stripe event: %s', event_type)
 
             webhook_log.processed = True
-            webhook_log.save(update_fields=['processed'])
-        except Exception as e:
-            logger.exception('Error processing Stripe webhook %s: %s', event_type, e)
-            webhook_log.error = str(e)
-            webhook_log.save(update_fields=['error'])
-
-        return Response(status=status.HTTP_200_OK)
+            webhook_log.error = ''
+            webhook_log.save(update_fields=['processed', 'error'])
 
 
 # ── Webhook handlers ──────────────────────────────────
@@ -296,6 +321,21 @@ def _ts_to_dt(ts):
     if ts is None:
         return None
     return datetime.fromtimestamp(ts, tz=tz.utc)
+
+
+def _record_payment(sub, invoice, *, amount, payment_status):
+    """One payment row per invoice: an invoice that failed and is paid later updates its row."""
+    PaymentHistory.objects.update_or_create(
+        subscription=sub,
+        stripe_invoice_id=invoice.get('id', ''),
+        defaults={
+            'stripe_payment_intent_id': invoice.get('payment_intent') or '',
+            'amount': amount,
+            'currency': invoice.get('currency', 'eur'),
+            'status': payment_status,
+            'invoice_url': invoice.get('hosted_invoice_url') or '',
+        },
+    )
 
 
 def handle_checkout_completed(event):
@@ -367,14 +407,8 @@ def handle_invoice_paid(event):
 
     # Record payment
     amount_paid = Decimal(str(invoice.get('amount_paid', 0))) / 100
-    PaymentHistory.objects.create(
-        subscription=sub,
-        stripe_invoice_id=invoice.get('id', ''),
-        stripe_payment_intent_id=invoice.get('payment_intent') or '',
-        amount=amount_paid,
-        currency=invoice.get('currency', 'eur'),
-        status=PaymentHistory.Status.PAID,
-        invoice_url=invoice.get('hosted_invoice_url') or '',
+    _record_payment(
+        sub, invoice, amount=amount_paid, payment_status=PaymentHistory.Status.PAID,
     )
 
     if sub.workspace and sub.workspace.owner:
@@ -404,14 +438,8 @@ def handle_invoice_payment_failed(event):
 
     # Record failed payment
     amount = Decimal(str(invoice.get('amount_due', 0))) / 100
-    PaymentHistory.objects.create(
-        subscription=sub,
-        stripe_invoice_id=invoice.get('id', ''),
-        stripe_payment_intent_id=invoice.get('payment_intent') or '',
-        amount=amount,
-        currency=invoice.get('currency', 'eur'),
-        status=PaymentHistory.Status.FAILED,
-        invoice_url=invoice.get('hosted_invoice_url') or '',
+    _record_payment(
+        sub, invoice, amount=amount, payment_status=PaymentHistory.Status.FAILED,
     )
 
     if sub.workspace and sub.workspace.owner:

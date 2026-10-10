@@ -27,6 +27,7 @@ from .guests import (
     create_guest,
     sweep_before_creating,
 )
+from .messages import message
 from .models import MagicToken
 from .ownership import confirm_email_owner
 from .permissions import IsNotGuest
@@ -282,7 +283,7 @@ class GoogleLoginView(APIView):
             )
 
         google_sub = idinfo['sub']
-        email = idinfo['email']
+        email = idinfo['email'].strip().lower()
         name = idinfo.get('name', '')
         picture = idinfo.get('picture', '')
 
@@ -291,7 +292,7 @@ class GoogleLoginView(APIView):
         password_disabled = False
 
         if not user:
-            user = User.objects.filter(email=email).first()
+            user = User.objects.filter(email__iexact=email).first()
             if user:
                 # Google verified this email, so the person signing in owns it.
                 # A password set by whoever registered the address first stops working.
@@ -304,7 +305,7 @@ class GoogleLoginView(APIView):
                 # Create new user
                 base_username = email.split('@')[0][:30]
                 username = base_username
-                while User.objects.filter(username=username).exists():
+                while User.objects.filter(username__iexact=username).exists():
                     username = f"{base_username}_{uuid.uuid4().hex[:6]}"
 
                 user = User(
@@ -331,7 +332,7 @@ class MagicLinkRequestView(APIView):
         email = serializer.validated_data['email']
 
         # Invalidate previous unused tokens for this email
-        MagicToken.objects.filter(email=email, used=False).update(used=True)
+        MagicToken.objects.filter(email__iexact=email, used=False).update(used=True)
 
         # Create new token
         token = secrets.token_urlsafe(48)
@@ -341,19 +342,18 @@ class MagicLinkRequestView(APIView):
         frontend_url = settings.FRONTEND_URL.rstrip('/')
         magic_url = f"{frontend_url}/auth/magic/{token}"
 
-        # Send email
+        # Send email, in the language the client asked for
         send_mail(
-            subject='Tu enlace de acceso a Paxl',
-            message=f'Haz clic en el siguiente enlace para iniciar sesión:\n\n{magic_url}\n\nEste enlace expira en 15 minutos.',
+            subject=message('magic_subject'),
+            message=message('magic_text', url=magic_url),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             html_message=(
-                f'<p>Haz clic en el siguiente enlace para iniciar sesión en Paxl:</p>'
+                f'<p>{message("magic_html_intro")}</p>'
                 f'<p><a href="{magic_url}" style="display:inline-block;background:#2563EB;color:#fff;'
                 f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
-                f'Iniciar sesión</a></p>'
-                f'<p style="color:#666;font-size:14px;">Este enlace expira en 15 minutos. '
-                f'Si no solicitaste este acceso, ignora este correo.</p>'
+                f'{message("magic_html_button")}</a></p>'
+                f'<p style="color:#666;font-size:14px;">{message("magic_html_outro")}</p>'
             ),
         )
 
@@ -389,10 +389,10 @@ class MagicLinkVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        email = magic.email
+        email = magic.email.strip().lower()
 
         # Find or create user
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(email__iexact=email).first()
         password_disabled = False
         if user:
             # The link reached this inbox, so the person signing in owns the email
@@ -400,7 +400,7 @@ class MagicLinkVerifyView(APIView):
         else:
             base_username = email.split('@')[0][:30]
             username = base_username
-            while User.objects.filter(username=username).exists():
+            while User.objects.filter(username__iexact=username).exists():
                 username = f"{base_username}_{uuid.uuid4().hex[:6]}"
 
             user = User(username=username, email=email, email_verified=True)

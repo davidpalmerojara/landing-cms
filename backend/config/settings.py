@@ -62,6 +62,8 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # Picks the language of validation messages and emails from Accept-Language (es or en)
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'accounts.middleware.OriginCheckMiddleware',
@@ -132,6 +134,9 @@ else:
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Usernames are unique and matched ignoring case (D8)
+AUTHENTICATION_BACKENDS = ['accounts.backends.CaseInsensitiveModelBackend']
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -142,7 +147,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # i18n
 
-LANGUAGE_CODE = 'en-us'
+# The interface is Spanish by default; the frontend sends Accept-Language with its
+# locale and LocaleMiddleware answers validation errors and emails in es or en.
+LANGUAGE_CODE = 'es'
+LANGUAGES = [('es', 'Español'), ('en', 'English')]
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
@@ -209,7 +217,9 @@ REST_FRAMEWORK = {
     # Number of trusted proxies in front of the app. With the default (unset)
     # DRF used the whole X-Forwarded-For header as the client id, so any
     # client could reset its rate limits by sending a different value.
-    # 0 = use the connection address; set it to the real hop count in production.
+    # 0 = use the connection address, which behind a proxy is the proxy itself:
+    # every visitor would share one rate-limit bucket. Production must set the
+    # real hop count (config/checks.py refuses 0 when DEBUG is off, QA-007).
     'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')),
     'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
 }
@@ -260,6 +270,16 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # The platform redirects HTTP to HTTPS before the request reaches us (see above)
+    SILENCED_SYSTEM_CHECKS = ['security.W008']
+
+
+# Django admin (QA-102): on in development, off in production unless ADMIN_ENABLED=True.
+# When it is on in production, serve it from a path that is not the default and set
+# ADMIN_URL_PATH (for example 'panel-9x3k/'); logins are rate limited either way.
+ADMIN_ENABLED = os.environ.get('ADMIN_ENABLED', str(DEBUG)).lower() in ('true', '1', 'yes')
+ADMIN_URL_PATH = os.environ.get('ADMIN_URL_PATH', 'admin/').strip('/') + '/'
+ADMIN_LOGIN_RATE = os.environ.get('ADMIN_LOGIN_RATE', '10/minute')
 
 
 # Guest mode ("try it without signing up", accounts/guests.py)
@@ -330,7 +350,8 @@ AI_LIVE_DAILY_LIMIT = int(os.environ.get('AI_LIVE_DAILY_LIMIT', '30'))
 AI_LIVE_USER_DAILY_LIMIT = int(os.environ.get('AI_LIVE_USER_DAILY_LIMIT', '2'))
 
 
-# Stripe
+# Stripe (ADR-031): billing is a feature that exists only with a TEST key (sk_test_…).
+# Without a key the billing endpoints answer 503 FEATURE_DISABLED; a live key is refused.
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 STRIPE_PRO_PRICE_MONTHLY = os.environ.get('STRIPE_PRO_PRICE_MONTHLY', '')

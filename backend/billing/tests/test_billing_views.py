@@ -10,8 +10,9 @@ from tests.factories import UserFactory, WorkspaceFactory
 
 @pytest.fixture(autouse=True)
 def stripe_webhook_secret(settings):
-    """Tests must not depend on the developer's local .env."""
+    """Tests must not depend on the developer's local .env; billing is on with a Stripe TEST key (D2)."""
     settings.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret'
+    settings.STRIPE_SECRET_KEY = 'sk_test_unit'
 
 
 def get_plans() -> tuple[Plan, Plan]:
@@ -183,7 +184,7 @@ class TestBillingViews:
 
     @patch('billing.views._get_stripe', return_value=stripe)
     @patch('stripe.Webhook.construct_event')
-    def test_webhook_without_configured_secret_returns_500(self, mock_construct_event, _mock_get_stripe, auth_client, settings):
+    def test_webhook_without_configured_secret_returns_503(self, mock_construct_event, _mock_get_stripe, auth_client, settings):
         settings.STRIPE_WEBHOOK_SECRET = ''
 
         resp = auth_client.post(
@@ -193,7 +194,8 @@ class TestBillingViews:
             HTTP_STRIPE_SIGNATURE='t=123,v1=valid',
         )
 
-        assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert resp.json()['code'] == 'BILLING_NOT_CONFIGURED'
         mock_construct_event.assert_not_called()
 
     @patch('billing.views._get_stripe', return_value=stripe)

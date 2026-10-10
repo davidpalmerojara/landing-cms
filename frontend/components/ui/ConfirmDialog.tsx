@@ -31,8 +31,14 @@ export default function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
+  // Focus goes into the dialog when it opens and back to the element that had it when it closes (WCAG 2.4.3, APP2-003)
   useEffect(() => {
-    if (open) cancelRef.current?.focus();
+    if (!open) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelRef.current?.focus();
+    return () => {
+      if (opener?.isConnected && opener !== document.body) opener.focus();
+    };
   }, [open]);
 
   useEffect(() => {

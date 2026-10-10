@@ -86,6 +86,9 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   // Below lg the sidebar is a drawer; at lg and up it is always on screen
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const deletingRef = useRef(false);
+  const [deleteSettled, setDeleteSettled] = useState(0);
   const drawerRef = useRef<HTMLElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const isDrawerModal = drawerOpen && !isDesktop;
@@ -135,9 +138,21 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
     if (!pendingConfirmation) return;
     const { kind, id } = pendingConfirmation;
     setPendingConfirmation(null);
-    if (kind === 'delete') void remove(id);
-    else void unpublish(id);
+    if (kind === 'delete') {
+      deletingRef.current = true;
+      void remove(id).finally(() => setDeleteSettled((count) => count + 1));
+    } else {
+      void unpublish(id);
+    }
   };
+
+  // A deleted card takes its menu button with it: keyboard focus would fall to the top of the page (APP2-003).
+  // Once the list has been re-rendered without the card, the heading takes the focus.
+  useEffect(() => {
+    if (!deletingRef.current || deleteSettled === 0) return;
+    deletingRef.current = false;
+    if (document.activeElement === null || document.activeElement === document.body) headingRef.current?.focus();
+  }, [deleteSettled, pages]);
 
   // Totals come from the server (the list is paginated); until they arrive, from the pages on screen when those are all of them
   const allLoaded = !hasMore && search.trim() === '';
@@ -363,7 +378,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
           {/* Header section */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{t('dashboard.title')}</h1>
+              <h1 ref={headingRef} tabIndex={-1} className="text-3xl sm:text-4xl font-black tracking-tight mb-2 outline-none">{t('dashboard.title')}</h1>
               <p className="text-muted font-medium">
                 {totalPages === null ? '…' : t('dashboard.pagesCount', { count: totalPages })}
                 {' · '}

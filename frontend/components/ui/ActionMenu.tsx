@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { MoreVertical } from 'lucide-react';
 
@@ -23,16 +24,44 @@ interface ActionMenuProps {
   className?: string;
 }
 
+/** Gap between the button and the menu, and the smallest margin kept to the screen edge */
+const MENU_GAP = 4;
+const VIEWPORT_MARGIN = 8;
+
+/**
+ * Where the menu goes: under the button and aligned to its right edge, flipped
+ * above it when it does not fit below, and shrunk (it then scrolls) when it
+ * fits in neither place.
+ */
+function placeMenu(trigger: DOMRect, menu: { width: number; height: number }): CSSProperties {
+  const below = window.innerHeight - trigger.bottom - MENU_GAP - VIEWPORT_MARGIN;
+  const above = trigger.top - MENU_GAP - VIEWPORT_MARGIN;
+  const useBelow = menu.height <= below || below >= above;
+  const available = Math.max(useBelow ? below : above, 0);
+  const height = Math.min(menu.height, available);
+  const top = useBelow ? trigger.bottom + MENU_GAP : trigger.top - MENU_GAP - height;
+  const left = Math.min(
+    Math.max(trigger.right - menu.width, VIEWPORT_MARGIN),
+    Math.max(window.innerWidth - menu.width - VIEWPORT_MARGIN, VIEWPORT_MARGIN),
+  );
+  return { top, left, maxHeight: available };
+}
+
 /**
  * A "more actions" button with a menu (WAI-ARIA menu button pattern): Enter,
  * Space or the arrow keys open it and move through the items, Escape closes it
  * and returns focus to the button, Tab or a click anywhere else closes it.
- * Items are 44 px tall on touch screens.
+ * Items are 44 px tall on touch screens. The menu is drawn in a portal on
+ * <body> with fixed coordinates, so no ancestor (a card with rounded
+ * `overflow-hidden`, a scroll area) can clip it or let a click fall through to
+ * what lies below (APP2-001). Choosing an item returns focus to the button
+ * first, so a dialog the item opens remembers it as its opener (APP2-003).
  */
 export default function ActionMenu({ label, items, note, className }: ActionMenuProps) {
   const menuId = useId();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   // Which item gets focus when the menu opens: the first, or the last when it was opened with ArrowUp
@@ -43,13 +72,37 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
+  // Place the menu before it is painted, and keep it with the button while the page scrolls or resizes
+  useLayoutEffect(() => {
+    if (!open) {
+      setPosition(null);
+      return;
+    }
+    const update = () => {
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+      // scrollHeight is the full content height even when maxHeight has shrunk the box; add the 1 px borders
+      const height = menu.scrollHeight + (menu.offsetHeight - menu.clientHeight);
+      setPosition(placeMenu(trigger.getBoundingClientRect(), { width: menu.offsetWidth, height }));
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const enabled = itemRefs.current.filter((item): item is HTMLButtonElement => item !== null);
     (initialFocus.current === 'last' ? enabled[enabled.length - 1] : enabled[0])?.focus();
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
     };
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
@@ -106,7 +159,7 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
   };
 
   return (
-    <div ref={rootRef} className={clsx('relative', className)}>
+    <div className={className}>
       <button
         ref={triggerRef}
         type="button"
@@ -121,14 +174,17 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
         <MoreVertical className="h-5 w-5" aria-hidden="true" />
       </button>
 
-      {open && (
-        // The menu is a composite widget: key handling lives on the container, focus on the items
+      {open && createPortal(
+        // The menu is a composite widget: key handling lives on the container, focus on the items.
+        // Until the layout effect has placed it, it sits at the corner; that happens before the first paint.
         <div
+          ref={menuRef}
           id={menuId}
           role="menu"
           aria-label={label}
           onKeyDown={handleMenuKeyDown}
-          className="absolute right-0 top-11 z-30 w-56 rounded-xl border border-default/30 bg-surface-elevated py-1 shadow-2xl shadow-black/40"
+          style={position ?? { top: 0, left: 0 }}
+          className="fixed z-[90] w-56 overflow-y-auto rounded-xl border border-default/30 bg-surface-elevated py-1 shadow-2xl shadow-black/40"
         >
           {items.map((item, index) => (
             <div key={item.key}>
@@ -141,7 +197,7 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
                 role="menuitem"
                 tabIndex={-1}
                 onClick={() => {
-                  close(false);
+                  close(true);
                   item.onSelect();
                 }}
                 className={clsx(
@@ -157,7 +213,8 @@ export default function ActionMenu({ label, items, note, className }: ActionMenu
           {note && (
             <p className="mt-1 border-t border-default/30 px-3 py-2 text-xs leading-relaxed text-muted">{note}</p>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

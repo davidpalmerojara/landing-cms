@@ -80,8 +80,8 @@ const latest = () => {
 
 const onRemoteChange = vi.fn<(change: RemotePageChange) => void>();
 
-function Harness() {
-  useCollaboration(PAGE_ID, { onRemoteChange });
+function Harness({ pageId = PAGE_ID }: { pageId?: string }) {
+  useCollaboration(pageId, { onRemoteChange });
   return null;
 }
 
@@ -346,5 +346,26 @@ describe('useCollaboration', () => {
 
       expect(state().collabStatus).toBe('offline');
     });
+  });
+
+  it('opens one socket when the effect re-runs before the first ticket arrives', async () => {
+    // The first run is cleaned up (page change here; React's double mount in
+    // development does the same) while awaiting its ticket: when that ticket
+    // arrives it must not open a socket, or the editor sees its own cursor as
+    // someone else's
+    const pending: Array<(value: { ticket: string; expires_in: number }) => void> = [];
+    wsTicket.mockImplementation(() => new Promise((resolve) => { pending.push(resolve); }));
+    const OTHER_PAGE = '22222222-2222-4222-8222-222222222222';
+
+    const view = render(<Harness />);
+    await act(async () => {});
+    act(() => { view.rerender(<Harness pageId={OTHER_PAGE} />); });
+    await act(async () => {});
+    expect(pending.length).toBe(2);
+    await act(async () => { pending.forEach((resolve, i) => resolve({ ticket: `t${i}`, expires_in: 30 })); });
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(FakeWebSocket.instances[0].url).toContain(OTHER_PAGE);
+    view.unmount();
   });
 });

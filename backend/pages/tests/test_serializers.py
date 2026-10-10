@@ -215,6 +215,6 @@ class TestBlockSanitization:
         assert serializer.errors == {
             # DRF >= 3.17 keys list errors by item index
             'blocks': {0: {'data': {'backgroundImage': [
-                'URL de imagen no permitida. Usa https://, http:// o una ruta que empiece por /.',
+                'URL de imagen no permitida. Usa una dirección https:// o una ruta que empiece por /.',
             ]}}},
         }

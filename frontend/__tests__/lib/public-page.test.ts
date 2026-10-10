@@ -38,6 +38,35 @@ describe('getPublicPage', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('PUBLIC2-004: an unknown slug leaves nothing in the data cache, and the table of misses is bounded', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response('{}', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { getPublicPage } = await import('@/lib/public-page');
+
+    for (let i = 0; i < 600; i += 1) await getPublicPage(`aleatorio-${i}`);
+
+    expect(cacheStore.size).toBe(0);
+    // The oldest entries were forgotten, the newest are still answered from memory
+    fetchMock.mockClear();
+    await getPublicPage('aleatorio-599');
+    expect(fetchMock).not.toHaveBeenCalled();
+    await getPublicPage('aleatorio-0');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('PUBLIC2-004: publishing a slug that was missing is seen at once, and a found page is still cached', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { getPublicPage, forgetMissingPage } = await import('@/lib/public-page');
+    expect(await getPublicPage('pronto')).toBeNull();
+
+    forgetMissingPage('pronto');
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(page({ slug: 'pronto' })), { status: 200 }));
+
+    expect((await getPublicPage('pronto'))?.slug).toBe('pronto');
+    expect(cacheStore.size).toBe(1);
+  });
+
   it('never caches a server error: it throws, and the next visit asks again', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 500 }));
     vi.stubGlobal('fetch', fetchMock);

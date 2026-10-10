@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
-import { publicPageTag } from '@/lib/public-page';
+import { forgetMissingPage, publicPageTag } from '@/lib/public-page';
 
 // Django slugs (SlugField, max_length=200)
 const slugPattern = /^[-a-zA-Z0-9_]{1,200}$/;
@@ -46,6 +46,9 @@ export async function POST(request: Request) {
   }
 
   // expire: 0 — the owner just published; the next visit must not get the old copy
-  for (const slug of slugs) revalidateTag(publicPageTag(slug), { expire: 0 });
+  for (const slug of slugs) {
+    revalidateTag(publicPageTag(slug), { expire: 0 });
+    forgetMissingPage(slug);
+  }
   return Response.json({ revalidated: slugs });
 }

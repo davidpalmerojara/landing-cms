@@ -59,7 +59,7 @@ export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<H
           <div
             className="relative z-10 inline-flex w-fit items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 backdrop-blur-sm"
             style={{
-              backgroundColor: bgImage ? 'rgba(255,255,255,0.15)' : 'var(--theme-surface)',
+              backgroundColor: bgImage ? 'rgba(0,0,0,0.3)' : 'var(--theme-surface)',
               color: bgImage ? '#fff' : 'var(--theme-text-muted)',
             }}
           >

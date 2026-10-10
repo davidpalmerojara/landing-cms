@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import clsx from 'clsx';
 import { NextIntlClientProvider } from 'next-intl';
 import type { Block } from '@/types/blocks';
@@ -27,6 +27,14 @@ interface PageRendererProps {
   className?: string;
 }
 
+/** Index of the first of the footer blocks that end the page; the page length when it does not end with one */
+function trailingFooterStart(blocks: Block[]): number {
+  let start = blocks.length;
+  while (start > 0 && blocks[start - 1].type === 'footer') start -= 1;
+  // A page of only footers keeps them in <main>: the skip link needs somewhere to land
+  return start === 0 ? blocks.length : start;
+}
+
 /**
  * A page as visitors see it, shared by the public page and the preview.
  *
@@ -35,16 +43,20 @@ interface PageRendererProps {
  * container variants and per-device spacing comes from a stylesheet built
  * from the block styles (blockStylesCss).
  *
- * The root is the document's main landmark (the skip link's target, QA-090)
- * and its own stacking context: nothing a block draws can cover what Paxl
- * shows around the page (the guest notice, the watermark).
+ * <main> (the skip link's target, QA-090) holds the blocks; footer blocks that
+ * close the page sit after it, so they stay the contentinfo landmark. The root
+ * is its own stacking context: nothing a block draws can cover what Paxl shows
+ * around the page (the guest notice, the watermark).
  */
 const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactSlug, guestPage = false, className }: PageRendererProps) => {
   const anchorIds = blockAnchorIds(blocks);
   const css = blockStylesCss(blocks);
   const messagesLocale = pageMessagesLocale(language);
 
-  const content = blocks.map((block) => (
+  // A closing footer is the page's contentinfo landmark: inside <main> it would not be one (PUBLIC2-005)
+  const closingFooterStart = trailingFooterStart(blocks);
+
+  const renderBlock = (block: Block) => (
     <div
       key={block.id}
       id={anchorIds.get(block.id)}
@@ -55,27 +67,31 @@ const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactS
     >
       <BlockContent block={block} isPreviewMode={true} />
     </div>
-  ));
+  );
+  const mainContent = blocks.slice(0, closingFooterStart).map(renderBlock);
+  const closingContent = blocks.slice(closingFooterStart).map(renderBlock);
+  const withMessages = (content: ReactNode) => (messagesLocale ? (
+    // Landmark names, "Popular", form labels: in the page's language, not the visitor's (QA-091)
+    <NextIntlClientProvider locale={messagesLocale} messages={MESSAGES[messagesLocale]} timeZone="Europe/Madrid">
+      {content}
+    </NextIntlClientProvider>
+  ) : content);
 
   return (
     <LiveLinksProvider value={liveLinks}>
       <ContactFormProvider value={{ slug: contactSlug ?? null, guestPage }}>
-        <main
-          id="main-content"
-          tabIndex={-1}
+        <div
           lang={language}
-          className={clsx('@container isolate min-h-screen outline-none', className)}
+          className={clsx('@container isolate min-h-screen', className)}
           style={{ ...themeVars, backgroundColor: 'var(--theme-bg)', color: 'var(--theme-text)' }}
         >
           {/* Only numbers, plain colours and validated ids reach this string */}
           {css && <style dangerouslySetInnerHTML={{ __html: css }} />}
-          {messagesLocale ? (
-            // Landmark names, "Popular", form labels: in the page's language, not the visitor's (QA-091)
-            <NextIntlClientProvider locale={messagesLocale} messages={MESSAGES[messagesLocale]} timeZone="Europe/Madrid">
-              {content}
-            </NextIntlClientProvider>
-          ) : content}
-        </main>
+          <main id="main-content" tabIndex={-1} className="outline-none">
+            {withMessages(mainContent)}
+          </main>
+          {closingContent.length > 0 && withMessages(closingContent)}
+        </div>
       </ContactFormProvider>
     </LiveLinksProvider>
   );

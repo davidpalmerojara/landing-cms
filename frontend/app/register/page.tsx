@@ -71,8 +71,9 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1.5">{t('auth.username')}</label>
+            <label htmlFor="register-username" className="block text-xs font-medium text-secondary mb-1.5">{t('auth.username')}</label>
             <input
+              id="register-username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -84,8 +85,9 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1.5">{t('auth.email')}</label>
+            <label htmlFor="register-email" className="block text-xs font-medium text-secondary mb-1.5">{t('auth.email')}</label>
             <input
+              id="register-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -96,8 +98,9 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1.5">{t('auth.password')}</label>
+            <label htmlFor="register-password" className="block text-xs font-medium text-secondary mb-1.5">{t('auth.password')}</label>
             <input
+              id="register-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -108,8 +111,9 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1.5">{t('auth.confirmPassword')}</label>
+            <label htmlFor="register-confirm-password" className="block text-xs font-medium text-secondary mb-1.5">{t('auth.confirmPassword')}</label>
             <input
+              id="register-confirm-password"
               type="password"
               value={password2}
               onChange={(e) => setPassword2(e.target.value)}

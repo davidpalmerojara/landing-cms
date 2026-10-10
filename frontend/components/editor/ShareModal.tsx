@@ -124,7 +124,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-modal-title"
-        className="relative bg-surface-elevated border border-subtle rounded-xl shadow-2xl w-full max-w-[calc(100vw-32px)] sm:max-w-md mx-4 overflow-hidden"
+        className="relative bg-surface-elevated border border-subtle rounded-xl shadow-2xl w-full max-w-[calc(100vw-32px)] sm:max-w-md mx-4 max-h-[calc(100dvh-32px)] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">

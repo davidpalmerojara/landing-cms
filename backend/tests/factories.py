@@ -12,6 +12,9 @@ class UserFactory(DjangoModelFactory):
 
     username = factory.Sequence(lambda n: f'user{n}')
     email = factory.LazyAttribute(lambda obj: f'{obj.username}@example.com')
+    # An established account: its pages publish without the restrictions of
+    # an unverified email (ADR-051). Tests about verification set it to False.
+    email_verified = True
     password = factory.PostGenerationMethodCall('set_password', 'testpass123')
 
 

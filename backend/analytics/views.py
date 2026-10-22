@@ -1,9 +1,12 @@
 import logging
-from datetime import timedelta
+import sys
+from datetime import timedelta, timezone as dt_timezone
 
-from django.db.models import Count, F, Value, CharField
-from django.db.models.functions import TruncDate, TruncHour, TruncWeek
+from django.db.models import Avg, Count, FloatField, Max, Value
+from django.db.models.fields.json import KT
+from django.db.models.functions import Cast, Least, TruncDate, TruncHour, TruncWeek
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -12,14 +15,16 @@ from rest_framework.views import APIView
 
 from pages.models import Page, pages_accessible_to
 from .models import AnalyticsEvent
-from .privacy import MAX_SECONDS_ON_PAGE, daily_visitor_hash, is_finite_number, referrer_origin, sanitize_event_data
+from .privacy import MAX_SECONDS_ON_PAGE, daily_visitor_hash, referrer_origin, sanitize_event_data
+from .retention import page_daily_room
 from .serializers import EventBatchSerializer
 
 logger = logging.getLogger(__name__)
 
 
 class AnalyticsCollectThrottle(AnonRateThrottle):
-    rate = '100/min'
+    # A visitor sends a batch every 10 s at most; 30 a minute is plenty (DATA-002)
+    rate = '30/min'
     # Its own bucket: with the default scope ('anon') it shared a history with every
     # other anonymous endpoint behind the same IP
     scope = 'analytics'
@@ -58,13 +63,19 @@ class CollectView(APIView):
         if page.status != Page.Status.PUBLISHED:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+        # Past the page's daily cap new events are dropped, silently: the tracker
+        # has nothing to do about it and the database stays bounded (DATA-002)
+        room = page_daily_room(page.pk)
+        if room == 0:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         # Cookieless visitor id: computed here, never sent by the browser.
         visitor_id = daily_visitor_hash(request, page.pk)
 
-        # Build event objects
+        # Build event objects, dated now whatever the tracker says (SEC-001)
         now = timezone.now()
         event_objects = []
-        for evt in data['events']:
+        for evt in data['events'][:room]:
             event_objects.append(AnalyticsEvent(
                 page=page,
                 visitor_id=visitor_id,
@@ -77,7 +88,7 @@ class CollectView(APIView):
                 utm_source=evt.get('utm_source') or None,
                 utm_medium=evt.get('utm_medium') or None,
                 utm_campaign=evt.get('utm_campaign') or None,
-                created_at=evt.get('timestamp') or now,
+                created_at=now,
             ))
 
         # Bulk insert — for production scale, enqueue to Celery instead
@@ -90,15 +101,42 @@ class CollectView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# A custom range covers at most a year, between these years (so the previous
+# period, computed for the trend, can never fall off the calendar)
+MAX_CUSTOM_RANGE = timedelta(days=366)
+EARLIEST_YEAR = 2000
+LATEST_YEAR = 2100
+
+
+class InvalidPeriod(Exception):
+    """The custom range cannot be read, is reversed or is too long."""
+
+
+def _parse_moment(value):
+    """An aware datetime from an ISO string; None if it is not one (SEC-008:
+    month 13, year 1 and naive values used to answer 500)."""
+    try:
+        moment = parse_datetime(value)
+    except (ValueError, OverflowError):
+        return None
+    if moment is None:
+        return None
+    if timezone.is_naive(moment):
+        moment = moment.replace(tzinfo=dt_timezone.utc)
+    if not EARLIEST_YEAR <= moment.year <= LATEST_YEAR:
+        return None
+    return moment
+
+
 def _parse_period(period_str, custom_start=None, custom_end=None):
-    """Parse period string into (start_date, end_date) datetimes."""
+    """Parse period string into (start_date, end_date) datetimes. Raises InvalidPeriod."""
     now = timezone.now()
-    if period_str == 'custom' and custom_start and custom_end:
-        from django.utils.dateparse import parse_datetime
-        start = parse_datetime(custom_start)
-        end = parse_datetime(custom_end)
-        if start and end:
-            return start, end
+    if period_str == 'custom' and (custom_start or custom_end):
+        start = _parse_moment(custom_start or '')
+        end = _parse_moment(custom_end or '')
+        if start is None or end is None or start >= end or end - start > MAX_CUSTOM_RANGE:
+            raise InvalidPeriod()
+        return start, end
     days_map = {'7d': 7, '30d': 30, '90d': 90}
     days = days_map.get(period_str, 30)
     return now - timedelta(days=days), now
@@ -128,14 +166,46 @@ def _classify_device(screen_size):
     return 'desktop'
 
 
-def _stored_seconds(event_data) -> float:
-    """Seconds in a stored time_on_page event, 0 for anything that is not a sane
-    number: rows written before the collect endpoint clamped values may hold
-    1e308 or worse, and one of them must not break the whole dashboard."""
-    raw = event_data.get('seconds', 0) if isinstance(event_data, dict) else event_data
-    if not is_finite_number(raw):
-        return 0.0
-    return float(min(max(raw, 0), MAX_SECONDS_ON_PAGE))
+def _average_time_on_page(events) -> float:
+    """Mean over visitors of each one's longest time_on_page.
+
+    Rows written before the collect endpoint clamped values may hold 1e308 or
+    a string: numbers are clamped to MAX_SECONDS_ON_PAGE like new ones, and
+    anything else is left out instead of breaking the dashboard. The range
+    filter does that on both databases: in JSON ordering PostgreSQL puts
+    strings below numbers (and booleans above), SQLite puts text above them."""
+    seconds = Cast(KT('event_data__seconds'), FloatField())
+    per_visitor = (
+        events.filter(
+            event_type='time_on_page',
+            event_data__seconds__gte=0,
+            event_data__seconds__lte=sys.float_info.max,
+        )
+        .values('visitor_id')
+        .annotate(longest=Max(Least(seconds, Value(float(MAX_SECONDS_ON_PAGE)))))
+    )
+    average = per_visitor.aggregate(average=Avg('longest'))['average']
+    return round(average, 1) if average is not None else 0.0
+
+
+SCROLL_DEPTHS = (25, 50, 75, 100)
+
+
+def _scroll_distribution(events) -> dict[int, int]:
+    distribution = {depth: 0 for depth in SCROLL_DEPTHS}
+    rows = (
+        events.filter(event_type='scroll_depth')
+        .values(depth=KT('event_data__depth'))
+        .annotate(visitors=Count('visitor_id', distinct=True))
+    )
+    for row in rows:
+        try:
+            depth = int(float(row['depth']))
+        except (TypeError, ValueError):
+            continue
+        if depth in distribution:
+            distribution[depth] += row['visitors']
+    return distribution
 
 
 class PageAnalyticsView(APIView):
@@ -169,11 +239,17 @@ class PageAnalyticsView(APIView):
         # Parse query params
         period = request.query_params.get('period', '30d')
         granularity = request.query_params.get('granularity', 'day')
-        start_date, end_date = _parse_period(
-            period,
-            request.query_params.get('start'),
-            request.query_params.get('end'),
-        )
+        try:
+            start_date, end_date = _parse_period(
+                period,
+                request.query_params.get('start'),
+                request.query_params.get('end'),
+            )
+        except InvalidPeriod:
+            return Response(
+                {'error': 'El periodo personalizado no es válido (fechas ISO, como mucho un año).', 'code': 'INVALID_PERIOD'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Also compute previous period for trend comparison
         period_duration = end_date - start_date
@@ -199,21 +275,8 @@ class PageAnalyticsView(APIView):
         # Distinct daily hashes: a visitor returning on another day counts again.
         unique_visitors = qs.filter(event_type='pageview').values('visitor_id').distinct().count()
 
-        # Average time on page: compute in Python to avoid SQLite JSON aggregation issues.
-        # For production with PostgreSQL, this could use DB-level aggregation instead.
-        time_events = list(
-            qs.filter(event_type='time_on_page')
-            .values_list('visitor_id', 'event_data')
-        )
-        visitor_max_time: dict[str, float] = {}
-        for vid, edata in time_events:
-            seconds = _stored_seconds(edata)
-            if seconds > visitor_max_time.get(vid, 0):
-                visitor_max_time[vid] = seconds
-        if visitor_max_time:
-            avg_time_on_page = round(sum(visitor_max_time.values()) / len(visitor_max_time), 1)
-        else:
-            avg_time_on_page = 0.0
+        # Average time on page: the longest time of each visitor, averaged, in SQL (PERF-009)
+        avg_time_on_page = _average_time_on_page(qs)
 
         # Bounce rate: visitors with only 1 pageview and no other interactions
         visitors_with_views = qs.filter(event_type='pageview').values('visitor_id').annotate(
@@ -265,20 +328,8 @@ class PageAnalyticsView(APIView):
             item['ctr'] = round((item['click_count'] / total_views * 100) if total_views > 0 else 0, 1)
 
         # ── Scroll depth distribution ────────────────────
-        # Compute in Python to avoid SQLite JSON aggregation issues
-        scroll_distribution = {25: 0, 50: 0, 75: 0, 100: 0}
-        scroll_rows = list(
-            qs.filter(event_type='scroll_depth')
-            .values_list('visitor_id', 'event_data')
-        )
-        # Track unique visitors per depth threshold
-        depth_visitors: dict[int, set] = {25: set(), 50: set(), 75: set(), 100: set()}
-        for vid, edata in scroll_rows:
-            depth = edata.get('depth') if isinstance(edata, dict) else None
-            if depth in depth_visitors:
-                depth_visitors[depth].add(vid)
-        for d, visitors in depth_visitors.items():
-            scroll_distribution[d] = len(visitors)
+        # Unique visitors per depth threshold, counted in SQL (PERF-009)
+        scroll_distribution = _scroll_distribution(qs)
 
         # ── Top referrers ────────────────────────────────
         top_referrers = list(

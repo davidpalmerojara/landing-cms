@@ -1,5 +1,8 @@
 from rest_framework import serializers
 
+# The tracker sends batches of 5; ten leaves room without letting one request write 50 rows (DATA-002)
+MAX_EVENTS_PER_BATCH = 10
+
 VALID_EVENT_TYPES = {'pageview', 'click', 'scroll_depth', 'time_on_page', 'cta_conversion'}
 
 
@@ -15,11 +18,11 @@ class SingleEventSerializer(serializers.Serializer):
     utm_source = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
     utm_medium = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
     utm_campaign = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
-    timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    # A `timestamp` sent by the tracker is ignored: events are dated when they arrive (SEC-001)
 
 
 class EventBatchSerializer(serializers.Serializer):
     """Validates a batch of analytics events for a specific page."""
 
     page_id = serializers.UUIDField()
-    events = SingleEventSerializer(many=True, min_length=1, max_length=50)
+    events = SingleEventSerializer(many=True, min_length=1, max_length=MAX_EVENTS_PER_BATCH)

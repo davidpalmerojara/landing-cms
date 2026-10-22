@@ -109,8 +109,10 @@ class TestCollectThrottleBucket:
     def test_it_has_its_own_scope(self):
         assert AnalyticsCollectThrottle.scope == 'analytics'
 
-    def test_collecting_does_not_use_up_the_anonymous_limit_of_other_endpoints(self, api_client, published):
-        # 70 batches from one IP: more than the default anonymous limit (60/min) of everything else
+    def test_collecting_does_not_use_up_the_anonymous_limit_of_other_endpoints(self, api_client, published, monkeypatch):
+        # Above its own default (30/min, DATA-002) so that 70 batches fit: more than
+        # the default anonymous limit (60/min) of everything else
+        monkeypatch.setattr(AnalyticsCollectThrottle, 'rate', '100/min')
         for _ in range(70):
             assert collect(api_client, published, [{'event_type': 'pageview'}]).status_code == 204
         assert api_client.get('/api/billing/plans/').status_code == 200

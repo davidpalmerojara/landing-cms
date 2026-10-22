@@ -16,8 +16,18 @@ def disable_throttling(settings):
             'login_username': '10000/minute',
             'contact': '10000/minute',
             'guest': '10000/hour',
+            'refresh': '10000/minute',
+            'version_create': '10000/hour',
         },
     }
+
+
+@pytest.fixture(autouse=True)
+def real_plans(settings):
+    """Tests exercise the Free and Pro plans as they are; the demo plan that
+    gives everyone Pro while payments are off (billing/demo.py) is turned on by
+    the tests about it."""
+    settings.DEMO_ALL_PRO = False
 
 
 @pytest.fixture

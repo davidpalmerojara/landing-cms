@@ -227,7 +227,12 @@ REST_FRAMEWORK = {
         'auth': os.environ.get('AUTH_RATE', '10/minute'),
         'login_username': '5/minute',
         'contact': '5/minute',
-        'guest': os.environ.get('GUEST_CREATION_RATE', '5/hour'),
+        # Guests behind one office or event NAT share this; GUEST_MAX_ACTIVE is what protects the database (SEC-010)
+        'guest': os.environ.get('GUEST_CREATION_RATE', '20/hour'),
+        # Token refresh has its own bucket: people behind one NAT no longer share sign-in and refresh (SEC-010)
+        'refresh': os.environ.get('REFRESH_RATE', '60/minute'),
+        # Manual "Save version" per account: each snapshot costs storage (SEC-001)
+        'version_create': os.environ.get('VERSION_CREATE_RATE', '30/hour'),
     },
     # Number of trusted proxies in front of the app. With the default (unset)
     # DRF used the whole X-Forwarded-For header as the client id, so any
@@ -306,6 +311,25 @@ GUEST_MAX_ACTIVE = int(os.environ.get('GUEST_MAX_ACTIVE', '200'))
 GUEST_MAX_PAGES = int(os.environ.get('GUEST_MAX_PAGES', '5'))
 
 
+# --- Demo plan and storage limits (ADR-050, ADR-052) ---
+# While payments are off, every account and guest gets the Pro features (C1).
+# GET /api/features/ answers it as `demo_all_pro`.
+DEMO_ALL_PRO = os.environ.get('DEMO_ALL_PRO', 'True').lower() in ('true', '1', 'yes')
+# Hard caps for every plan, Pro included: the free database is 0.5 GB (SEC-001)
+MAX_PAGES_PER_ACCOUNT = int(os.environ.get('MAX_PAGES_PER_ACCOUNT', '20'))
+MAX_VERSIONS_PER_PAGE = int(os.environ.get('MAX_VERSIONS_PER_PAGE', '20'))
+# Serialized blocks of one page (data + styles), in bytes
+MAX_PAGE_BYTES = int(os.environ.get('MAX_PAGE_BYTES', '300000'))
+# Pages plus saved versions of one account, in bytes (approximate: JSON text length)
+ACCOUNT_STORAGE_LIMIT_BYTES = int(os.environ.get('ACCOUNT_STORAGE_LIMIT_BYTES', str(5 * 1024 * 1024)))
+GUEST_STORAGE_LIMIT_BYTES = int(os.environ.get('GUEST_STORAGE_LIMIT_BYTES', str(1536 * 1024)))
+# PostgreSQL only: past this size new guests and sign-ups get 503 instead of filling the database
+DATABASE_SIZE_LIMIT_MB = int(os.environ.get('DATABASE_SIZE_LIMIT_MB', '400'))
+# Analytics: events kept, and events accepted per page per UTC day (DATA-002, PERF-004)
+ANALYTICS_RETENTION_DAYS = int(os.environ.get('ANALYTICS_RETENTION_DAYS', '90'))
+ANALYTICS_PAGE_DAILY_LIMIT = int(os.environ.get('ANALYTICS_PAGE_DAILY_LIMIT', '5000'))
+
+
 # Google OAuth
 
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
@@ -325,6 +349,15 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+# Seconds before a send gives up (SMTP and the Brevo API): a blocked port must not hang the request
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
+# Brevo transactional API key (EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend). Render's free
+# plan blocks outgoing SMTP, so production sends over HTTPS (ADR-049).
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+# Emails sent per UTC day, everything included: below Brevo's free 300/day (ADR-049)
+EMAIL_DAILY_LIMIT = int(os.environ.get('EMAIL_DAILY_LIMIT', '250'))
+# Emails one address can receive per UTC day, whoever asks (magic links and share notices)
+EMAIL_RECIPIENT_DAILY_LIMIT = int(os.environ.get('EMAIL_RECIPIENT_DAILY_LIMIT', '5'))
 
 # Magic link
 # Emails one address can receive per 15 minutes, whoever asks and from wherever

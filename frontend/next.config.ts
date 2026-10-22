@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
   // Django URLs end in '/'; without this Next would redirect '/api/pages/'
   // to '/api/pages' before the rewrite and Django would redirect back.
   skipTrailingSlashRedirect: true,
+  // The image optimizer only works on the landing's own screenshots: /_next/image must not
+  // fetch, resize and re-serve user uploads (/media/...) or anything else (SEC, ADR-049)
+  images: {
+    localPatterns: [{ pathname: '/landing/**', search: '' }],
+    remotePatterns: [],
+  },
   // With BACKEND_URL set, the browser calls '/api/...' on this origin and Next
   // forwards it to Django, so the session cookies are first-party even when
   // the frontend and the API are hosted on different domains (ADR-008).

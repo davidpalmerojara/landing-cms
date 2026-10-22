@@ -110,6 +110,8 @@ export default function LandingPage() {
               alt={t('marketing.home.heroImageAlt')}
               width={1440}
               height={900}
+              // Its displayed width, so a phone gets a ~828 px file instead of 3840 px (PERF-015)
+              sizes="(min-width: 1152px) 1152px, 100vw"
               priority
               className="w-full h-auto"
             />
@@ -164,6 +166,7 @@ export default function LandingPage() {
                 alt={t('marketing.home.mobileImageAlt')}
                 width={600}
                 height={1298}
+                sizes="224px"
                 className="w-56 h-auto mx-auto -mb-40 rounded-3xl border-4 border-surface-card shadow-xl"
               />
             </div>
@@ -178,6 +181,7 @@ export default function LandingPage() {
                 alt={t('marketing.home.publishedImageAlt')}
                 width={1440}
                 height={900}
+                sizes="(min-width: 1152px) 672px, (min-width: 768px) 58vw, 100vw"
                 className="w-full h-auto rounded-lg border border-default/30 mt-auto"
               />
             </div>

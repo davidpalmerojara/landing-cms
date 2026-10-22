@@ -1,0 +1,21 @@
+Copyright (c) 2026 David Palmero Jara. All rights reserved.
+
+This repository is public so that the source code can be read and reviewed
+(for example, as a portfolio piece). Being public does not grant any licence.
+
+No permission is given to copy, modify, merge, publish, distribute, sublicense,
+sell, host or otherwise use the code, the design, the text or the images in
+this repository, in whole or in part, for any purpose, without the prior
+written permission of the copyright holder. Cloning the repository to read it
+and running it locally to evaluate it is allowed.
+
+The software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and non-infringement. In no event shall the
+author be liable for any claim, damages or other liability arising from the
+use of the software.
+
+Third-party components keep their own licences (see the dependency manifests,
+`frontend/package.json` and `backend/requirements.in`).
+
+Contact: davidpalmerojara@gmail.com

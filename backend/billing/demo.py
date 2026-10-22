@@ -1,4 +1,4 @@
-"""Demo plan: every account gets the Pro features while payments are off (C1, ADR-050).
+"""Demo plan: every account gets the Pro features while payments are off (C1, ADR-051).
 
 Registered accounts used to fall to Free (no collaboration, no analytics, the
 watermark) right after a guest trial that had everything. With no way to pay,

@@ -1,4 +1,4 @@
-"""System checks for the email settings (ADR-049).
+"""System checks for the email settings (ADR-050).
 
 Registered without `deploy=True`, like paxl.E001: `manage.py check`, `migrate`
 and the Daphne start (config/asgi.py) refuse to run with these errors.

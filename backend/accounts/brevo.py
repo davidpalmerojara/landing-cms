@@ -1,4 +1,4 @@
-"""Email backend that sends through Brevo's HTTPS API (ADR-049).
+"""Email backend that sends through Brevo's HTTPS API (ADR-050).
 
 Render's free web services cannot open outgoing SMTP connections (ports 25,
 465 and 587 are blocked), so production sends with one HTTPS request per

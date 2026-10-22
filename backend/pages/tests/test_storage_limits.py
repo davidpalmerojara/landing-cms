@@ -1,4 +1,4 @@
-"""SEC-001 (ADR-052): one account cannot fill the 0.5 GB database.
+"""SEC-001 (ADR-053): one account cannot fill the 0.5 GB database.
 
 Measured in the review: a guest wrote a 4.4 MB page of Custom HTML in one
 PUT and 9 MB more with two manual versions; Pro (everyone, in the demo) kept

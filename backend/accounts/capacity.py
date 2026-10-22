@@ -1,4 +1,4 @@
-"""A last guard for the free database (SEC-001, ADR-052).
+"""A last guard for the free database (SEC-001, ADR-053).
 
 When PostgreSQL grows past DATABASE_SIZE_LIMIT_MB, new guests and sign-ups get
 `503 SERVICE_FULL` instead of letting the provider's storage limit stop every

@@ -101,7 +101,7 @@ class PublicPageView(generics.RetrieveAPIView):
         plan = get_user_plan(page.owner)
         # A guest's page is a demo: never indexed, always with the watermark
         is_guest_page = page.owner.is_guest if page.owner else False
-        # An account that has not proved its email publishes like a guest (C5, ADR-051)
+        # An account that has not proved its email publishes like a guest (C5, ADR-052)
         restricted = publishes_restricted(page.owner)
         seo = {field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS}
         blocks = sorted(version.snapshot, key=lambda b: b.get('order', 0))
@@ -292,7 +292,7 @@ class PageViewSet(viewsets.ModelViewSet):
         collaborator list shows who was added). A notice email goes out at most
         once per page and recipient, only to a verified address, and under the
         email caps (accounts/mailing.py); when it cannot go out the person is
-        still added (SEC-003, ADR-049).
+        still added (SEC-003, ADR-050).
         """
         from django.contrib.auth import get_user_model
         User = get_user_model()

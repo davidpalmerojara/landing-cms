@@ -1,4 +1,4 @@
-"""Who publishes with the demo's protections (C5, ADR-051).
+"""Who publishes with the demo's protections (C5, ADR-052).
 
 Anyone can register with any address in one request, and published pages live
 on the app's own origin. Until the owner proves the email (a magic link or

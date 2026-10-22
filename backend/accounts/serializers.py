@@ -87,7 +87,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        # email_verified: until it is true the account's published pages are limited like a guest's (ADR-051)
+        # email_verified: until it is true the account's published pages are limited like a guest's (ADR-052)
         fields = [
             'id', 'email', 'username', 'avatar', 'created_at', 'has_google', 'has_password', 'is_guest',
             'email_verified', 'expires_at',

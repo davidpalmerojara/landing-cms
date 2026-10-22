@@ -1,4 +1,4 @@
-"""C1 (ADR-050): while payments are off every account and guest has the Pro features.
+"""C1 (ADR-051): while payments are off every account and guest has the Pro features.
 
 UX-005: a registered account fell to Free right after a guest trial that had
 everything: no collaboration, no analytics, the watermark, 3 pages.

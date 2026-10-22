@@ -48,6 +48,9 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 - **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL)
 - **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth (el script de Google solo se carga en `/login` y `/register`, ADR-039), Magic Links. Email y usuario son unicos sin distinguir mayusculas (ADR-037)
 - **Storage**: imagenes subidas en PostgreSQL (`AssetBlob`), recodificadas con Pillow (WebP, 1600 px, sin EXIF), con cuotas por cuenta y global, servidas por `pages.media` en `/media/assets/...` con cache inmutable y ETag; el navegador reduce las fotos antes de subirlas (ADR-049)
+- **Email**: produccion por la API HTTPS de Brevo (`EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend`, `BREVO_API_KEY`; Render gratis bloquea SMTP). Todo envio pasa por `accounts/mailing.py`: tope global diario (`EMAIL_DAILY_LIMIT`, 250) y por destinatario (`EMAIL_RECIPIENT_DAILY_LIMIT`, 5), fallo = `503 EMAIL_UNAVAILABLE`. Con `DEBUG` apagado el backend de consola detiene el arranque (`paxl.E004`); apagar el email: backend `dummy` (ADR-050)
+- **Plan demo**: con `DEMO_ALL_PRO` (por defecto) y sin clave de Stripe, toda cuenta e invitado tiene Pro (`demo_all_pro` en `/api/features/`, ADR-051). Una cuenta sin email verificado publica como un invitado (ADR-052)
+- **Topes de almacenamiento** (base gratuita de 0,5 GB, ADR-053): pagina `MAX_PAGE_BYTES`, cuenta `ACCOUNT_STORAGE_LIMIT_BYTES`/`GUEST_STORAGE_LIMIT_BYTES`, `MAX_PAGES_PER_ACCOUNT`, `MAX_VERSIONS_PER_PAGE`, analitica `ANALYTICS_PAGE_DAILY_LIMIT` y `ANALYTICS_RETENTION_DAYS`, `DATABASE_SIZE_LIMIT_MB`
 - **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-038)
 - **Realtime**: Django Channels. Sin `REDIS_URL`: capa de canales y bloqueos en memoria (un solo proceso); con `REDIS_URL`: Redis
 
@@ -183,7 +186,8 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 ### Modelo de datos (Django)
 
 - **User** (AbstractUser): UUID pk, email unico, google_id, is_guest (cuenta temporal, ADR-022). Las claves de IA del usuario no se guardan: viajan en la peticion de generacion y se descartan
-- **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones (ADR-018)
+- **User.email_verified / sessions_revoked_at**: el enlace magico o Google demuestran el email; si la cuenta tenia una contrasena sin confirmar, se desactiva y se cierran todas las sesiones y sus enlaces de invitacion (ADR-018, ADR-054). Sin verificar, sus paginas publicadas llevan las protecciones de las de invitado (ADR-052); `/api/auth/me/` devuelve `email_verified`
+- **SentEmail**: kind (magic_link/share), recipient_hash (SHA-256 de la direccion), page_id, created_at. Cuenta los topes de email; se poda a los 30 dias (ADR-050)
 - **Workspace**: owner FK, nombre
 - **Page**: owner FK, workspace FK, name, slug (unique), status (draft/published, solo cambia con publish/unpublish), published_version FK + published_at (copia publica congelada, ADR-017), version (control de concurrencia, ADR-024), design_tokens (JSON, el tema completo de la pagina, ADR-020), language (etiqueta BCP 47, por defecto `es`, ADR-033), SEO fields (seo_title, seo_description, og_* con `og_type` website/article, noindex)
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
@@ -261,11 +265,11 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
 | POST | `/register/` | No | Crear cuenta + tokens. Usuario nuevo: solo letras ASCII, números y `_ . -` (ADR-047) |
-| POST | `/login/` | No | Login + httpOnly cookies. Usuario o contraseña incorrectos o vacíos: `401 INVALID_CREDENTIALS` en el idioma de la petición (ADR-048) |
-| POST | `/refresh/` | No | Renovar access token |
+| POST | `/login/` | No | Login + httpOnly cookies. Usuario o contraseña incorrectos o vacíos: `401 INVALID_CREDENTIALS` en el idioma de la petición (ADR-048); cuenta sin contraseña utilizable (enlace mágico, Google o desactivada por ADR-018): `401 PASSWORD_DISABLED` (ADR-054) |
+| POST | `/refresh/` | No | Renovar access token. Cupo propio por IP (`REFRESH_RATE`); el token viejo vale una sola vez (ADR-054) |
 | POST | `/logout/` | No | Limpiar cookies |
 | POST | `/google/` | No | Login con Google ID token. Una cuenta nueva toma el usuario de la parte local del correo, con lo que no sea `[A-Za-z0-9_.-]` cambiado por `_` (igual con el enlace mágico, ADR-048) |
-| POST | `/magic/request/` | No | Enviar magic link (como mucho 3 por buzón cada 15 min; pasado el límite, la misma respuesta sin envío, ADR-047) |
+| POST | `/magic/request/` | No | Enviar magic link (como mucho 3 por buzón cada 15 min y 5 correos al día; pasado el límite, la misma respuesta sin envío, ADR-047). Email apagado, tope global o fallo del proveedor: `503 EMAIL_UNAVAILABLE`, sin token guardado (ADR-050) |
 | POST | `/magic/verify/` | No | Verificar magic token |
 | POST | `/guest/` | No | Sesión de invitado temporal, 24 h (ADR-022) |
 | POST | `/guest/claim/` | Si (invitado) | Convertir el invitado en cuenta normal y conservar sus páginas |
@@ -287,10 +291,10 @@ Diseno responsive: los bloques no saben en que dispositivo estan. Usan clases mo
 | POST | `/{id}/unpublish/` | Si (propietario) | Despublicar |
 | GET | `/{id}/submissions/` | Si | Mensajes del formulario de contacto (paginado) |
 | DELETE | `/{id}/submissions/{sid}/` | Si | Borrar un mensaje |
-| GET/POST | `/{id}/versions/` | Si | Listar/crear versiones (la lista incluye `max_versions`: cuántas guarda el plan del propietario, -1 todas) |
+| GET/POST | `/{id}/versions/` | Si | Listar/crear versiones (la lista incluye `max_versions`: cuántas guarda el plan del propietario, como mucho `MAX_VERSIONS_PER_PAGE`; crear está limitado por hora y necesita sitio, ADR-053) |
 | DELETE | `/{id}/versions/{vid}/` | Si (propietario) | Borrar version (`400 PUBLISHED_VERSION` si es la publicada) |
 | POST | `/{id}/versions/{vid}/restore/` | Si | Restaurar version (conserva los ids de los bloques) |
-| POST | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024) |
+| POST/DELETE | `/{id}/invite/` | Si (propietario) | Enlace de invitación, 24 h y 5 usos (ADR-024). `DELETE` revoca todos los enlaces; quitar un colaborador también (ADR-054) |
 
 Un colaborador que intenta una acción del propietario recibe `403 {"error", "code": "NOT_OWNER"}` (ADR-032); el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029); las URLs de imagen (bloques y `og_image`) solo admiten `https://host/...` o una ruta `/...` (ADR-047), sin comillas, paréntesis ni `;` (ADR-034).
 
@@ -303,7 +307,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 | GET | `/api/sitemap/` | No | Sitemap XML (cache 1h) |
 | GET | `/api/public/sitemap-data/` | No | JSON para Next.js sitemap |
 | GET | `/api/public/resolve-domain/` | No | Resolver dominio custom (404 `FEATURE_DISABLED` si `CUSTOM_DOMAINS_ENABLED` está apagado, ADR-027) |
-| GET | `/api/features/` | No | Funciones opcionales del despliegue: `{ "custom_domains": bool, "billing": bool }` (ADR-027, ADR-036) |
+| GET | `/api/features/` | No | Funciones opcionales del despliegue: `{ "custom_domains", "billing", "demo_all_pro", "email" }` (booleanos; ADR-027, ADR-036, ADR-050, ADR-051) |
 
 ### Assets, Domains, AI, Analytics, Billing
 
@@ -316,7 +320,7 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 | GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |
 | POST | `/api/pages/{id}/generate/` | Si (propietario) | Generar pagina con IA (demo: pagina guardada; con clave propia: llamada real) |
 | POST | `/api/pages/{id}/blocks/{bid}/edit-ai/` | Si | Editar bloque con IA (demo: variante guardada del bloque). `409 BLOCK_CHANGED` si el bloque cambió mientras tanto, `409 BLOCK_LOCKED` si otra conexión lo tiene bloqueado. Responde `block` y `page_version` (la versión de la página tras escribir). La variante de demo está en el idioma de la página |
-| POST | `/api/analytics/collect/` | No | Trackear evento |
+| POST | `/api/analytics/collect/` | No | Trackear eventos: lotes de 10, 30 por minuto e IP, `ANALYTICS_PAGE_DAILY_LIMIT` por página y día, fecha del servidor (ADR-053) |
 | GET | `/api/pages/{id}/analytics/` | Si | Analitica de pagina |
 | GET | `/api/billing/plans/` | No | Planes disponibles |
 | GET | `/api/billing/subscription/` | Si | Suscripcion actual y `usage` (`pages` propias, `visible_pages`, `published_pages`, `blocks`) |

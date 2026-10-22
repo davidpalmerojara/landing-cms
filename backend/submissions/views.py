@@ -61,7 +61,7 @@ class PublicContactView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         if publishes_restricted(page.owner):
-            # Nor do pages of an account that has not proved its email (C5, ADR-051)
+            # Nor do pages of an account that has not proved its email (C5, ADR-052)
             return Response(
                 {'error': 'Esta página no recibe mensajes hasta que su autor verifique su email.', 'code': 'UNVERIFIED_PAGE'},
                 status=status.HTTP_403_FORBIDDEN,

@@ -83,8 +83,8 @@ class BillingEnabled(permissions.BasePermission):
 def features_view(request):
     """GET /api/features/ — which optional features this deployment offers.
 
-    demo_all_pro: every account has the Pro features because payments are off (ADR-050).
-    email: the server sends email (magic links, share notices); off, magic links answer 503 (ADR-049).
+    demo_all_pro: every account has the Pro features because payments are off (ADR-051).
+    email: the server sends email (magic links, share notices); off, magic links answer 503 (ADR-050).
     """
     from accounts.mailing import email_enabled
     from billing.demo import demo_all_pro

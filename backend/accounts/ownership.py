@@ -13,7 +13,7 @@ def confirm_email_owner(user) -> bool:
     (SEC-005). Returns True when a password was disabled.
 
     A verified account publishes without the restrictions of an unverified one
-    (ADR-051), so its published pages are refreshed and the sitemap rebuilt.
+    (ADR-052), so its published pages are refreshed and the sitemap rebuilt.
     """
     if user.email_verified:
         return False

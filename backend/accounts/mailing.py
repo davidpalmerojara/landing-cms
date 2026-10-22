@@ -1,4 +1,4 @@
-"""Every email the app sends goes through `send_capped_email` (ADR-049).
+"""Every email the app sends goes through `send_capped_email` (ADR-050).
 
 The free email plan sends 300 messages a day and anyone can ask for a magic
 link to any address, so sending is guarded:

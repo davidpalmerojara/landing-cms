@@ -165,7 +165,9 @@ Jerarquía principal:
 - `Block` -> pertenece a `Page`; guarda `type`, `order`, `data` y `styles` en JSON.
 
 Relaciones relevantes:
-- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan. `email_verified` se marca al entrar con enlace mágico o Google; si había una contraseña sin confirmar, se desactiva y `sessions_revoked_at` invalida todas las sesiones previas (ADR-018).
+- `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan. `email_verified` se marca al entrar con enlace mágico o Google; si había una contraseña sin confirmar, se desactiva y `sessions_revoked_at` invalida todas las sesiones previas (ADR-018). Mientras no está verificado, sus páginas publicadas llevan las protecciones de las de invitado: `noindex`, fuera del sitemap, sin Custom HTML, formulario sin envío y aviso (ADR-052).
+- `SentEmail` cuenta los correos enviados (hash de la dirección) para los topes diarios; todo envío pasa por `accounts/mailing.py` (ADR-050).
+- Plan demo: con `DEMO_ALL_PRO` y la facturación apagada, `get_user_plan` responde Pro para todos (ADR-051). Topes de almacenamiento en `pages/quotas.py` y retención de analítica en `analytics/retention.py` (ADR-053).
 - `Page.collaborators` permite edición compartida.
 - `PageVersion` guarda snapshots completos de bloques y metadata de página.
 - `Asset` representa una imagen subida por usuario/workspace: `path` (lo que va tras `/media/`), tipo detectado, tamaño, `width`/`height`, `sha256` (ETag). Sus bytes están en `AssetBlob` (1:1, cascada), que el listado y el borrado nunca leen.
@@ -216,7 +218,8 @@ Validación de inputs relevante:
 - `POST /api/pages/{page_id}/generate/` valida `prompt` (max 2000), `tone` por choice y `language` en `es|en`.
 - `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/` valida `instruction` (max 1000) y responde `block` y `page_version` (versión de la página tras escribir, ADR-047).
 - `POST /api/billing/checkout/` valida `cycle` en `monthly|yearly`.
-- `POST /api/pages/{id}/share/` valida `email`; `POST /api/pages/{id}/unshare/` valida `user_id`.
+- `POST /api/pages/{id}/share/` valida `email` y responde lo mismo exista o no la cuenta (un aviso por página y destinatario, solo a direcciones verificadas); `POST /api/pages/{id}/unshare/` valida `user_id` y borra los enlaces de invitación; `DELETE /api/pages/{id}/invite/` los revoca (ADR-054).
+- Errores de límites: `413 PAGE_TOO_LARGE`, `403 STORAGE_LIMIT`, `403 PAGE_LIMIT`, `503 SERVICE_FULL`, `503 EMAIL_UNAVAILABLE`, `401 PASSWORD_DISABLED`, `400 INVALID_PERIOD` (analítica), `403 UNVERIFIED_PAGE` (contacto).
 - `POST|PATCH /api/pages/{page_id}/versions/` valida `label` opcional con max 200.
 
 ## Arquitectura Del Frontend

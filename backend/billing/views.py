@@ -109,7 +109,7 @@ class SubscriptionView(APIView):
             'subscription': SubscriptionSerializer(sub).data,
             'usage': _dashboard_usage(request.user),
             # The plan whose features the account has now: Pro for everyone while
-            # payments are off (ADR-050), whatever the stored subscription says
+            # payments are off (ADR-051), whatever the stored subscription says
             'effective_plan': PlanSerializer(get_user_plan(request.user)).data,
             'demo_all_pro': demo_all_pro(),
         })

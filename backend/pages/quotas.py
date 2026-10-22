@@ -1,4 +1,4 @@
-"""Storage limits of pages and versions (SEC-001, ADR-052).
+"""Storage limits of pages and versions (SEC-001, ADR-053).
 
 The demo runs on a 0.5 GB database, and one guest could fill half of it in a
 minute with pages of Custom HTML and saved versions. Two limits:

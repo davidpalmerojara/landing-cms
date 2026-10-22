@@ -68,7 +68,7 @@ class MagicToken(models.Model):
 
 class SentEmail(models.Model):
     """One email that left the server: the global daily cap and the
-    per-recipient caps are counted here (ADR-049).
+    per-recipient caps are counted here (ADR-050).
 
     The recipient is kept only as a SHA-256 of the lower-cased address, which
     is enough to count and does not say who it was. Rows are pruned after a

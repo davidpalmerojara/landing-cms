@@ -636,3 +636,70 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Presupuesto**: con 0,5 GB, unos 150 MB para datos y 300 MB para imágenes. Una foto de móvil recodificada ocupa 150-400 KB, así que caben más de 1.000; 30 imágenes llenas de una cuenta son como mucho 15 MB. El tráfico de salida de Neon (5 GB/mes) depende de que Vercel cachee `/media/*` (los proyectos nuevos respetan el `Cache-Control` del origen en rewrites externos); comprobar `x-vercel-cache: HIT` tras el despliegue (RUNBOOK §6).
 - **Alternativas**: Object Storage de Neon (5 GB en el plan gratuito según su web; estado y API sin verificar), S3/R2/Cloudinary (otra cuenta y otra clave para una demo que no cobra), dejar los archivos en disco (Render gratis lo borra), guardar los bytes en `Asset` con `defer()` (cualquier consulta que lo olvide los lee), generar varias resoluciones con `srcset` (triplica el espacio; 1600 px acota el exceso), rechazar sin más las fotos de más de 5 MB (el caso normal de un móvil).
 - **Consecuencias**: Las imágenes viajan Vercel → Render → Neon en cada fallo de caché, y una imagen nueva despierta la base si dormía. Las animaciones de más de 1,5 MB tras recodificar se rechazan. Tras borrar una imagen, quien ya la tenga en la caché de su navegador puede seguir viéndola donde aún se use. Las cuotas son las mismas para todas las cuentas mientras los pagos estén apagados.
+
+---
+
+## ADR-050: Email por la API HTTPS de Brevo, con topes y sin 500
+
+- **Fecha**: 2026-10-22
+- **Contexto**: El plan gratuito de Render bloquea la salida SMTP (puertos 25, 465 y 587). Con SMTP, un puerto bloqueado colgaba la petición 75-127 s y acababa en un 500 en HTML, y el token del enlace mágico ya guardado contaba para el límite del buzón (DEPLOY-003). Brevo gratis envía 300 correos al día y cualquiera puede pedir un enlace mágico para cualquier dirección: una sola IP vaciaba la cuota en media hora. Compartir una página mandaba texto escrito por el atacante a cualquier dirección, sin límite, y la respuesta decía si la dirección tenía cuenta (SEC-003).
+- **Decisión**:
+  - **Envío**: `accounts.brevo.BrevoEmailBackend`, un backend de email de Django que hace una petición HTTPS por mensaje a `api.brevo.com/v3/smtp/email` con `requests` (ya era dependencia) y `EMAIL_TIMEOUT` (10 s por defecto, también para SMTP). Variables: `EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend`, `BREVO_API_KEY` (la clave de API de la cuenta, solo en el entorno del hosting) y `DEFAULT_FROM_EMAIL` con un remitente verificado en Brevo.
+  - **Un solo camino** (`accounts/mailing.py`, `send_capped_email`): un tope global por día UTC (`EMAIL_DAILY_LIMIT`, 250, por debajo de los 300 de Brevo; al llegar se registra un error) y un tope por destinatario y día (`EMAIL_RECIPIENT_DAILY_LIMIT`, 5), pida quien pida. Un fallo del proveedor (puerto, tiempo, clave) se registra y responde `503 {"error", "code": "EMAIL_UNAVAILABLE"}`, nunca un 500, y no cuenta. Solo se guarda lo enviado (`SentEmail`: tipo, SHA-256 de la dirección, página), 30 días (`prune_sent_emails()` para el mantenimiento diario).
+  - **Enlace mágico**: con el email apagado o el tope global alcanzado, 503 sin crear token; si el envío falla, el token se borra; los enlaces anteriores sin usar se invalidan solo cuando el nuevo ha salido. Pasado el tope del buzón (3 cada 15 min, o el diario) la respuesta es la de siempre y no se envía nada.
+  - **Compartir**: la misma respuesta exista o no la cuenta; como mucho un aviso por página y destinatario; ninguno a una dirección sin verificar ni a un invitado; si el aviso no puede salir, la persona se añade igual.
+  - **Apagar el email**: `EMAIL_BACKEND=django.core.mail.backends.dummy.EmailBackend`. `GET /api/features/` responde `email: false` y el enlace mágico 503.
+  - **Comprobaciones de arranque**: con `DEBUG` apagado, el backend de consola es un error (`paxl.E004`: imprimiría credenciales de acceso en los logs) y Brevo sin clave también (`paxl.E005`).
+- **Alternativas**: SMTP de Brevo por el puerto 2525 (Render no lo documenta como bloqueado, pero no se puede comprobar hasta desplegar y deja el problema del tiempo de espera); contar en la caché (en memoria se pierde con cada reinicio del plan gratuito, que duerme); CAPTCHA en el enlace mágico (más fricción; queda como siguiente paso si hay abuso).
+- **Consecuencias**: Sin dominio propio Brevo reescribe el remitente y los correos pueden ir a spam; la demo no depende del email (invitado, registro con contraseña, cuenta demo). Un buzón recibe como mucho 5 correos al día de Paxl. Una tabla más (`accounts_sentemail`), pequeña y podada.
+
+---
+
+## ADR-051: Todas las cuentas con las funciones Pro mientras los pagos están apagados
+
+- **Fecha**: 2026-10-22
+- **Contexto**: Decisión C1 del propietario. Un invitado probaba Pro (colaboración en directo, analítica) y, al crear la cuenta, pasaba a Free: sin colaboración, sin analítica, con la marca de agua y 3 páginas. Sin forma de pagar, ese salto solo escondía el producto, y la página de precios contradecía lo que la demo hacía (UX-005).
+- **Decisión**: `billing.demo.demo_all_pro()` es verdadero con `DEMO_ALL_PRO` (activado por defecto) y la facturación apagada (sin clave de prueba de Stripe, ADR-036). Entonces `get_user_plan` responde el plan Pro (la fila `pro`, o unos límites Pro fijos si no se sembraron los planes) para toda cuenta e invitado. Las suscripciones guardadas no se tocan: con una clave de prueba de Stripe vuelven los planes reales. `GET /api/features/` añade `demo_all_pro` (contrato con la interfaz, que lo dice en precios y facturación) y `GET /api/billing/subscription/` añade `effective_plan` y `demo_all_pro`. Pro sigue teniendo los topes de la base de datos gratuita (ADR-053): `MAX_PAGES_PER_ACCOUNT` (20, `403 PAGE_LIMIT`) y `MAX_VERSIONS_PER_PAGE`.
+- **Alternativas**: Dar Pro al registrarse con una suscripción real (habría que deshacerlo al activar pagos); dejar Free y corregir textos (mantiene el salto que oculta las dos funciones que más enseñan).
+- **Consecuencias**: Las pruebas de backend fijan `DEMO_ALL_PRO=False` (conftest) para seguir probando los planes; las del plan demo lo activan. Los invitados siguen con sus límites propios (5 páginas, sin subidas, sin compartir por email).
+
+---
+
+## ADR-052: Una cuenta sin email verificado publica como un invitado
+
+- **Fecha**: 2026-10-22
+- **Contexto**: Decisión C5 del propietario (SEC-004). Registrarse no verifica el email y lleva una petición; las páginas publicadas viven en el mismo origen que el editor y el acceso. Una cuenta recién creada publicaba una página indexable con HTML personalizado y un formulario de contacto que recogía datos: una página de phishing que podía hacer que Google Safe Browsing marcara el dominio entero. Las protecciones de ADR-022 solo se aplicaban a los invitados.
+- **Decisión**: `accounts.verification.publishes_restricted(owner)` es verdadero para invitados y para cuentas con `email_verified` en falso. Sus páginas publicadas: `noindex`, fuera de `/api/sitemap/` y `/api/public/sitemap-data/`, sin bloques Custom HTML en la respuesta pública, formulario de contacto con `403 UNVERIFIED_PAGE` (los invitados siguen con `GUEST_PAGE`) y un aviso para el visitante. La API pública añade `is_unverified_page`; la página pública muestra el aviso y el formulario explica que no envía. Se verifica con un enlace mágico o con Google (lo que ya marcaba `email_verified`); al verificar, las páginas publicadas se revalidan y el sitemap se reconstruye. `GET /api/auth/me/` devuelve `email_verified` para que el editor lo diga. Una cuenta de invitado reclamada queda sin verificar.
+- **Alternativas**: Exigir email verificado para publicar (más simple, pero corta el camino de quien prueba sin correo); verificar con un enlace que no desactive la contraseña (un usuario con sesión podría pedirlo para la dirección de otra persona y quedarse la cuenta: el problema de ADR-018); servir `/p/*` desde otro origen (lo correcto a largo plazo, fuera del alcance de la demo).
+- **Consecuencias**: Verificar con un enlace mágico una cuenta que tenía contraseña la desactiva (ADR-018): el acceso responde `401 PASSWORD_DISABLED` para que la interfaz ofrezca el enlace. La cuenta demo sembrada debe tener `email_verified=True`. Las pruebas e2e verifican el email leyendo el enlace de un fichero (`EMAIL_BACKEND` de ficheros, `e2e/support.ts` `verifyEmail`).
+
+---
+
+## ADR-053: Topes de almacenamiento para una base de datos de 0,5 GB
+
+- **Fecha**: 2026-10-22
+- **Contexto**: La demo usa la base gratuita de Neon (0,5 GB). En la revisión, un invitado escribió una página de 4,4 MB en un PUT y 9 MB más con dos versiones; Pro guardaba todas las versiones; el endpoint público de analítica aceptaba 5.000 filas por minuto e IP y nada se borraba nunca (SEC-001, DATA-002, PERF-004). Cuando Neon se llena falla toda escritura: guardados, rotación de tokens, invitados.
+- **Decisión**:
+  - **Página**: los bloques (data + styles en JSON) hasta `MAX_PAGE_BYTES` (300 KB): `413 PAGE_TOO_LARGE`.
+  - **Cuenta** (`pages/quotas.py`): bloques de sus páginas más sus versiones hasta `ACCOUNT_STORAGE_LIMIT_BYTES` (5 MB; invitados `GUEST_STORAGE_LIMIT_BYTES`, 1,5 MB): `403 STORAGE_LIMIT` en lo que lo haría crecer (guardar más grande, crear, duplicar, "Guardar versión", publicar). Cuenta el propietario aunque guarde un colaborador; un guardado que no agranda la página siempre pasa. Tamaño aproximado: longitud del texto JSON.
+  - **Versiones**: como mucho `MAX_VERSIONS_PER_PAGE` (20) para cualquier plan, "todas" incluido (la publicada no se poda); "Guardar versión" limitado a `VERSION_CREATE_RATE` (30/h por cuenta).
+  - **Analítica**: lotes de 10 eventos, 30 lotes por minuto e IP, `ANALYTICS_PAGE_DAILY_LIMIT` (5.000) eventos por página y día (los demás se descartan en silencio), fecha del servidor siempre, y `analytics.retention.prune_old_events()` borra lo que pasa de `ANALYTICS_RETENTION_DAYS` (90; contrato con el trabajo diario de mantenimiento). El panel agrega en SQL; un periodo personalizado ilegible, invertido o de más de un año es `400 INVALID_PERIOD`.
+  - **Último recurso**: en PostgreSQL, con la base por encima de `DATABASE_SIZE_LIMIT_MB` (400), los invitados y registros nuevos reciben `503 SERVICE_FULL`; las cuentas existentes siguen funcionando.
+  - **Límites de acceso** (SEC-010): la renovación de sesión tiene su propio cupo (`REFRESH_RATE`, 60/min por IP); crear invitados pasa a 20/h por IP (`GUEST_MAX_ACTIVE` es lo que protege la base).
+- **Alternativas**: Comprimir instantáneas (no evita el abuso, solo lo retrasa); medir con `pg_column_size` (solo PostgreSQL); un tope solo global (un abusador llena el cupo de todos).
+- **Consecuencias**: Una página muy grande de verdad (muchas imágenes en Custom HTML) puede toparse con los 300 KB. Las versiones de más de 20 se pierden también en Pro. La interfaz muestra `PAGE_TOO_LARGE`, `STORAGE_LIMIT` y `PAGE_LIMIT` como errores genéricos hasta que tenga textos propios.
+
+---
+
+## ADR-054: Sesiones y enlaces de invitación que se pueden cerrar
+
+- **Fecha**: 2026-10-22
+- **Contexto**: Revisión de lanzamiento: varias renovaciones en paralelo con el mismo token daban sesiones distintas (SEC-007); un enlace de invitación sobrevivía a quitar al colaborador y a la toma de cuenta de ADR-018 (SEC-005); el WebSocket seguía autorizado tras cerrar sesión (DATA-007), un `type` que no era texto lo tumbaba sin limpiar y dejaba un participante fantasma (DATA-006), y borrar una cuenta no avisaba a los editores de sus páginas (DATA-009). El acceso con un cuerpo JSON de lista daba 500 (SEC-008).
+- **Decisión**:
+  - **Renovación**: el token viejo se toma una sola vez: la fila de la lista negra es la reclamación (`get_or_create`); quien no la crea recibe `401 INVALID_REFRESH_TOKEN`.
+  - **Invitaciones**: `DELETE /api/pages/{id}/invite/` (solo el propietario) revoca todos los enlaces; quitar a un colaborador y la toma de cuenta los borran también.
+  - **WebSocket**: cada conexión entra en el grupo `user_<id>`. Cerrar sesión, revocar las sesiones o borrar la cuenta lo cierra con el código 4002, que el editor no trata como final: vuelve a conectar con un ticket nuevo si su navegador aún tiene sesión. Cada ping comprueba, como mucho una vez por minuto, que la sesión sigue valiendo. Un mensaje mal formado o un manejador que falla responde un error y la conexión sigue.
+  - **Borrar una cuenta** avisa con `page_deleted` a quien tenga abiertas sus páginas.
+  - **Acceso**: un cuerpo que no es un objeto es `401 INVALID_CREDENTIALS`; una cuenta sin contraseña utilizable (enlace mágico, Google o desactivada por ADR-018) responde `401 PASSWORD_DISABLED`, buscada por nombre de usuario o email. Dice lo mismo que el registro ("ese usuario ya existe").
+- **Alternativas**: Detectar la reutilización y revocar toda la familia de tokens (simplejwt no guarda familias); cerrar solo el socket de la sesión que cierra (el ticket no sabe de qué sesión viene); revocar los enlaces uno a uno (no hay listado de enlaces en la interfaz).
+- **Consecuencias**: Cerrar sesión en un dispositivo reconecta un momento el editor abierto en otro. El editor aún no tiene botón para revocar enlaces (contrato con la interfaz).

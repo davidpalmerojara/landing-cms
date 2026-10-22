@@ -1,4 +1,4 @@
-"""C5 / SEC-004 (ADR-051): an account that has not proved its email publishes like a guest.
+"""C5 / SEC-004 (ADR-052): an account that has not proved its email publishes like a guest.
 
 Registration takes one request and any address, and published pages live on
 the app's own origin: until the owner verifies the email (magic link or

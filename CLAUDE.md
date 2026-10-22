@@ -45,13 +45,14 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 
 ### Infraestructura
 
-- **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL)
+- **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL; en Neon la cadena con pooler, `CONN_MAX_AGE=0`, ADR-056)
 - **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth (el script de Google solo se carga en `/login` y `/register`, ADR-039), Magic Links. Email y usuario son unicos sin distinguir mayusculas (ADR-037)
 - **Storage**: imagenes subidas en PostgreSQL (`AssetBlob`), recodificadas con Pillow (WebP, 1600 px, sin EXIF), con cuotas por cuenta y global, servidas por `pages.media` en `/media/assets/...` con cache inmutable y ETag; el navegador reduce las fotos antes de subirlas (ADR-049)
 - **Email**: produccion por la API HTTPS de Brevo (`EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend`, `BREVO_API_KEY`; Render gratis bloquea SMTP). Todo envio pasa por `accounts/mailing.py`: tope global diario (`EMAIL_DAILY_LIMIT`, 250) y por destinatario (`EMAIL_RECIPIENT_DAILY_LIMIT`, 5), fallo = `503 EMAIL_UNAVAILABLE`. Con `DEBUG` apagado el backend de consola detiene el arranque (`paxl.E004`); apagar el email: backend `dummy` (ADR-050)
 - **Plan demo**: con `DEMO_ALL_PRO` (por defecto) y sin clave de Stripe, toda cuenta e invitado tiene Pro (`demo_all_pro` en `/api/features/`, ADR-051). Una cuenta sin email verificado publica como un invitado (ADR-052)
 - **Topes de almacenamiento** (base gratuita de 0,5 GB, ADR-053): pagina `MAX_PAGE_BYTES`, cuenta `ACCOUNT_STORAGE_LIMIT_BYTES`/`GUEST_STORAGE_LIMIT_BYTES`, `MAX_PAGES_PER_ACCOUNT`, `MAX_VERSIONS_PER_PAGE`, analitica `ANALYTICS_PAGE_DAILY_LIMIT` y `ANALYTICS_RETENTION_DAYS`, `DATABASE_SIZE_LIMIT_MB`
-- **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-038)
+- **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` y `/api/healthz/` sin base de datos ni validacion de Host (ADR-015, ADR-056). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-038)
+- **Despliegue** (ADR-055, ADR-056): `render.yaml` (Render gratis; el build `backend/build.sh` ejecuta collectstatic, migrate, seed_plans y seed_demo), Vercel para el frontend (`frontend/vercel.json` anade `X-Paxl-Origin-Secret` a `/api` y `/media`), Neon para la base. La IP del cliente sale de `config/client_ip.py` (`ORIGIN_SECRET`, `NUM_PROXIES`, `DIRECT_PROXY_HOPS`); el mantenimiento diario es `manage.py daily_maintenance` lanzado por `.github/workflows/cleanup.yml` (secreto `PROD_DATABASE_URL`). Node 22 (`.nvmrc`), Python 3.13
 - **Realtime**: Django Channels. Sin `REDIS_URL`: capa de canales y bloqueos en memoria (un solo proceso); con `REDIS_URL`: Redis
 
 ---

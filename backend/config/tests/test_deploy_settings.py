@@ -69,6 +69,33 @@ class TestSettingsFromTheEnvironment:
         assert loaded['middleware'] == ['config.middleware.HealthzMiddleware', 'config.client_ip.ClientIPMiddleware']
 
 
+def run_check(**env):
+    """`manage.py check` as the Render build runs it, with exactly this environment."""
+    clean = {
+        'PATH': os.environ.get('PATH', ''), 'DJANGO_DEBUG': 'False', 'DJANGO_SECRET_KEY': 'x' * 50,
+        'CSRF_TRUSTED_ORIGINS': 'https://paxl.example', 'CORS_ALLOWED_ORIGINS': 'https://paxl.example',
+        'NUM_PROXIES': '2', 'DIRECT_PROXY_HOPS': '1', 'ORIGIN_SECRET': 'o' * 40,
+        'EMAIL_BACKEND': 'accounts.brevo.BrevoEmailBackend', 'BREVO_API_KEY': 'key',
+    }
+    return subprocess.run(
+        [sys.executable, 'manage.py', 'check'], cwd=BACKEND_DIR, env={**clean, **env},
+        capture_output=True, text=True,
+    )
+
+
+class TestProductionStartsWithTheBlueprintsSettings:
+    def test_a4_the_settings_render_yaml_provides_pass_the_system_checks(self):
+        result = run_check()
+
+        assert result.returncode == 0, result.stderr
+
+    def test_a4_without_a_proxy_count_the_build_stops(self):
+        assert run_check(NUM_PROXIES='0').returncode != 0
+
+    def test_a4_brevo_without_its_key_stops_the_build(self):
+        assert run_check(BREVO_API_KEY='').returncode != 0
+
+
 class TestHealthz:
     @pytest.fixture(autouse=True)
     def only_the_real_host_is_allowed(self, settings):

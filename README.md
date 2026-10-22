@@ -88,7 +88,7 @@ Están en [`DECISIONS.md`](DECISIONS.md), con su contexto, alternativas y consec
 
 ## Cómo ejecutarlo
 
-Requisitos: Python 3.13, Node 20.19 o superior (`.nvmrc`) y `make`. No hace falta ningún servicio externo: en local se usa SQLite, la capa de canales en memoria y el email se imprime en la consola.
+Requisitos: Python 3.13, Node 22 (`.nvmrc`) y `make`. No hace falta ningún servicio externo: en local se usa SQLite, la capa de canales en memoria y el email se imprime en la consola.
 
 ```bash
 make install   # crea backend/venv, instala dependencias y copia los .env de ejemplo

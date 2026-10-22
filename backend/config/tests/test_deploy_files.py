@@ -63,9 +63,15 @@ class TestRenderBlueprint:
         assert int(render_env('DIRECT_PROXY_HOPS')) == 1
         assert 'generateValue: true' in read('render.yaml')
 
+    def test_a6_email_goes_out_over_the_brevo_api_so_the_production_checks_pass(self):
+        from accounts.checks import BREVO_BACKEND
+
+        assert render_env('EMAIL_BACKEND') == BREVO_BACKEND
+        assert re.search(r'- key: BREVO_API_KEY\n\s+sync: false', read('render.yaml'))
+
     def test_the_blueprint_commits_no_secret_values(self):
         blueprint = read('render.yaml')
-        for name in ('ORIGIN_SECRET', 'DATABASE_URL', 'MIGRATE_DATABASE_URL', 'REVALIDATE_SECRET', 'DEMO_PASSWORD'):
+        for name in ('ORIGIN_SECRET', 'DATABASE_URL', 'MIGRATE_DATABASE_URL', 'REVALIDATE_SECRET', 'DEMO_PASSWORD', 'BREVO_API_KEY'):
             assert re.search(rf'- key: {name}\n\s+sync: false', blueprint), name
 
 

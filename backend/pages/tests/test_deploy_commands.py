@@ -1,8 +1,5 @@
 """Management commands the deployment runs without a shell (A14, DEPLOY-009)."""
 import io
-import logging
-import sys
-import types
 from datetime import timedelta
 
 import pytest
@@ -12,10 +9,12 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 
 from accounts.guests import create_guest
-from accounts.models import MagicToken
+from accounts.models import MagicToken, SentEmail
+from analytics.models import AnalyticsEvent
 from billing.models import Plan, Subscription
 from billing.permissions import get_user_plan
 from pages.management.commands import daily_maintenance
+from tests.factories import PageFactory
 
 User = get_user_model()
 
@@ -96,12 +95,14 @@ class TestSeedDemo:
             run('seed_demo')
 
 
+def old_event(page, days):
+    event = AnalyticsEvent.objects.create(page=page, visitor_id='v' * 16, event_type='pageview')
+    AnalyticsEvent.objects.filter(pk=event.pk).update(created_at=timezone.now() - timedelta(days=days))
+    return event
+
+
 @pytest.mark.django_db
 class TestDailyMaintenance:
-    @pytest.fixture(autouse=True)
-    def no_analytics_module(self, monkeypatch):
-        monkeypatch.setitem(sys.modules, 'analytics.retention', None)  # import fails until the real one exists
-
     def test_a14_it_removes_expired_guests_and_old_magic_tokens(self, plans):
         guest = create_guest()
         User.objects.filter(pk=guest.pk).update(created_at=timezone.now() - timedelta(hours=48))
@@ -121,30 +122,35 @@ class TestDailyMaintenance:
 
         assert User.objects.filter(pk=guest.pk).exists()
 
-    def test_a14_a_missing_analytics_prune_is_reported_not_fatal(self, caplog):
-        with caplog.at_level(logging.WARNING):
-            output = run('daily_maintenance')
+    def test_a14_it_prunes_analytics_past_the_retention_and_keeps_recent_events(self, user):
+        page = PageFactory(owner=user)
+        old = old_event(page, days=120)
+        recent = old_event(page, days=3)
 
-        assert 'skipped' in output
-        assert 'Analytics retention is not available' in caplog.text
+        output = run('daily_maintenance')
 
-    def test_a14_it_calls_the_analytics_prune_when_it_exists(self, monkeypatch):
-        module = types.ModuleType('analytics.retention')
-        module.prune_old_events = lambda: 7
-        monkeypatch.setitem(sys.modules, 'analytics.retention', module)
+        assert not AnalyticsEvent.objects.filter(pk=old.pk).exists()
+        assert AnalyticsEvent.objects.filter(pk=recent.pk).exists()
+        assert 'Pruned 1 old analytics events' in output
 
-        assert 'Pruned 7 old analytics events' in run('daily_maintenance')
+    def test_a14_it_prunes_the_sent_email_records_that_the_daily_caps_no_longer_need(self):
+        old = SentEmail.objects.create(kind=SentEmail.Kind.MAGIC_LINK, recipient_hash='a' * 64)
+        SentEmail.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=60))
+        recent = SentEmail.objects.create(kind=SentEmail.Kind.MAGIC_LINK, recipient_hash='b' * 64)
+
+        run('daily_maintenance')
+
+        assert not SentEmail.objects.filter(pk=old.pk).exists()
+        assert SentEmail.objects.filter(pk=recent.pk).exists()
 
     def test_a14_a_failing_step_does_not_stop_the_rest_but_fails_the_run(self, monkeypatch, plans):
         guest = create_guest()
         User.objects.filter(pk=guest.pk).update(created_at=timezone.now() - timedelta(hours=48))
-        module = types.ModuleType('analytics.retention')
 
         def broken():
             raise RuntimeError('database went away')
 
-        module.prune_old_events = broken
-        monkeypatch.setitem(sys.modules, 'analytics.retention', module)
+        monkeypatch.setattr(daily_maintenance, 'prune_old_events', broken)
 
         with pytest.raises(CommandError, match='analytics'):
             run('daily_maintenance')
@@ -152,5 +158,5 @@ class TestDailyMaintenance:
         assert not User.objects.filter(pk=guest.pk).exists()
 
     def test_a14_the_command_skips_system_checks(self):
-        """CI runs it with a placeholder secret key and no proxy count."""
+        """CI runs it with a placeholder secret key, the console email backend and no proxy count."""
         assert daily_maintenance.Command.requires_system_checks == []

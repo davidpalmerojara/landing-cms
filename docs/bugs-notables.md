@@ -471,3 +471,32 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: El correo sale por la API HTTPS de Brevo con tiempo máximo (`accounts.brevo.BrevoEmailBackend`, `EMAIL_TIMEOUT`) y siempre por `send_capped_email`: tope global diario por debajo de la cuota, tope por destinatario y día, y un fallo responde `503 EMAIL_UNAVAILABLE` sin contar ni dejar el token. Compartir avisa una vez por página y destinatario, solo a direcciones verificadas, y responde igual exista o no la cuenta. Con `DEBUG` apagado, el backend de consola detiene el arranque (`paxl.E004`). ADR-050.
 - **Cómo se verificó**: Pruebas de backend (`accounts/tests/test_launch_email.py`): con el envío fallando la respuesta es un 503 JSON, no queda token y cuatro fallos seguidos no impiden el siguiente envío; un tiempo agotado de Brevo da 503; el tope global corta todo envío y lo registra; un buzón no recibe más de su cupo diario aunque cambie quien pide; compartir dos veces (o quitar y volver a añadir) manda un solo correo y nunca a una dirección sin verificar. Fallan sin el arreglo.
 - **Lección**: Un servicio externo con cuota es parte del estado del sistema: cada envío tiene que estar acotado, su fallo es un resultado esperado (503) y no puede dejar a medias lo que lo acompaña (el token).
+
+---
+
+## 54. Quien llamaba directo a la URL pública del backend elegía su IP, y con ella saltaba todos los límites por IP
+
+- **Fecha**: 2026-10-22
+- **Qué pasaba**: Con el recuento de saltos (`NUM_PROXIES=2`) que pide el despliegue Vercel + Render, el backend tomaba la IP del cliente de `X-Forwarded-For`. Vercel sobrescribe esa cabecera, pero la URL de Render también es pública (el WebSocket la necesita) y quien la llamaba directo escribía la cabecera a su gusto. Doce accesos con una IP falsa distinta cada vez nunca se limitaron; lo mismo valía para crear invitados (hasta llenar el tope de 200), registrarse, el formulario de contacto, la analítica y los correos de enlace mágico.
+- **Cómo se detectó**: Revisión de lanzamiento (SEC-002, DEPLOY-004), con un ensayo contra Daphne con y sin cabeceras falsas.
+- **Arreglo**: Vercel añade un secreto a cada petición que reenvía y el backend solo confía en `X-Forwarded-For` más allá del salto de la plataforma si el secreto llega; si no, usa solo la entrada que añadió la plataforma. Un middleware escribe el resultado en `REMOTE_ADDR` para todo el backend. ADR-055.
+- **Cómo se verificó**: Pruebas de backend (`config/tests/test_client_ip.py`): una llamada directa con cabeceras falsas queda en la IP real, un secreto incorrecto o vacío no vale, una entrada mal formada cae al socket, y un endpoint con límite de verdad devuelve 429 aunque cada petición lleve otra IP falsa. Fallan sin el arreglo.
+- **Lección**: Confiar en una cabecera de proxy exige poder demostrar que la petición pasó por el proxy; contar saltos no lo demuestra si hay otra puerta de entrada.
+
+## 55. Las conexiones a la base de datos se acumulaban hasta el error `too many clients`
+
+- **Fecha**: 2026-10-22
+- **Qué pasaba**: Con `CONN_MAX_AGE=60` bajo Daphne (ASGI), cada petición corre en un hilo propio y la conexión persistente es de ese hilo: nunca se reutiliza ni se cierra. 40 peticiones en paralelo dejaron 49 conexiones inactivas durante minutos y, al llegar al máximo de PostgreSQL, las peticiones siguientes respondían 500 (`FATAL: sorry, too many clients already`). Neon gratis tiene un tope parecido.
+- **Cómo se detectó**: Revisión de lanzamiento (CODE-002, DATA-001, PERF-006): ráfagas de clientes mirando `pg_stat_activity`, y los 500 en el log del backend.
+- **Arreglo**: `CONN_MAX_AGE=0` y `DISABLE_SERVER_SIDE_CURSORS=True`, con la cadena con pooler de Neon (`config/database.py`, ADR-056).
+- **Cómo se verificó**: Pruebas de la configuración que genera `DATABASE_URL` (también arrancando `config.settings` en un proceso limpio). Fallan con el valor anterior.
+- **Lección**: Un ajuste de Django que depende del modelo de hilos del servidor (conexiones persistentes) hay que revisarlo cuando cambia el servidor (WSGI a ASGI).
+
+## 56. El despliegue en Render arrancaba sin tablas ni planes, y el control de salud seguía en verde
+
+- **Fecha**: 2026-10-22
+- **Qué pasaba**: El `Procfile` tenía `release: migrate && seed_plans`, pero Render no lee el `Procfile` y su plan gratis no tiene comando de pre-despliegue ni consola. Una base de Neon vacía habría arrancado sin tablas: todos los endpoints con 500, y `/healthz` (que no toca la base) en 200. Además el puerto de Render pregunta con `Host: localhost:<puerto>`, un 400 `DisallowedHost`.
+- **Cómo se detectó**: Revisión de lanzamiento (DEPLOY-002, DATA-003, CODE-015, DEPLOY-006), ensayando el build contra un PostgreSQL vacío.
+- **Arreglo**: `render.yaml` con un build que ejecuta `collectstatic`, `migrate`, `seed_plans` y `seed_demo` (`backend/build.sh`); el `Procfile` ya no promete un `release`; `/healthz` responde antes de validar el Host. ADR-056.
+- **Cómo se verificó**: Pruebas que leen los ficheros de despliegue (el build ejecuta cada paso y falla sin `DATABASE_URL`, el arranque coincide con el `Procfile`, Python fijado a la misma menor que el lockfile), pruebas de `/healthz` con Hosts no permitidos y un e2e contra Daphne real (`frontend/e2e/deploy-health.spec.ts`). Fallan sin el arreglo.
+- **Lección**: Un paso de despliegue que depende de la convención de otra plataforma (Heroku) no está probado hasta que se ejecuta en la plataforma real.

@@ -45,6 +45,16 @@ services:
         sync: false
       - key: REVALIDATE_SECRET
         sync: false
+      # Email over Brevo's HTTPS API (Render's free plan blocks SMTP). With DJANGO_DEBUG=False the
+      # service refuses to start on the console backend (paxl.E004) or on Brevo without a key
+      # (paxl.E005). To run with no email at all, set EMAIL_BACKEND to
+      # django.core.mail.backends.dummy.EmailBackend (magic links then answer 503)
+      - key: EMAIL_BACKEND
+        value: accounts.brevo.BrevoEmailBackend
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
       # Neon POOLED endpoint (host with -pooler)
       - key: DATABASE_URL
         sync: false

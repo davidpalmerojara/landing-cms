@@ -102,7 +102,7 @@ export default function MobileImageField({ id, label, value, onChange, error }: 
           aria-label={t('mobile.imageUrlLabel', { field: label })}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
-          className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 text-primary text-base placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none"
+          className="w-full px-4 py-3 rounded-xl bg-surface-card border border-default/15 in-data-[theme=light]:border-[#838C99] text-primary text-base placeholder-muted focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none"
         />
       )}
       {error && <p id={errorId} className="text-xs text-error">{error}</p>}

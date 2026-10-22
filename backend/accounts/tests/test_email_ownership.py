@@ -43,7 +43,7 @@ def sign_in_with_magic_link(email=VICTIM_EMAIL):
 @pytest.fixture
 def attacker_account():
     """Account registered with the victim's email and the attacker's password."""
-    return UserFactory(username='squatter', email=VICTIM_EMAIL)
+    return UserFactory(username='squatter', email=VICTIM_EMAIL, email_verified=False)
 
 
 @pytest.mark.django_db
@@ -131,7 +131,7 @@ class TestMagicLinkOnVerifiedAccounts:
         assert login.status_code == status.HTTP_200_OK
 
     def test_passwordless_account_is_not_reported_as_taken_over(self):
-        user = UserFactory(email=VICTIM_EMAIL)
+        user = UserFactory(email=VICTIM_EMAIL, email_verified=False)
         user.set_unusable_password()
         user.save()
 

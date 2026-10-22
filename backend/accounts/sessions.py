@@ -9,10 +9,13 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 
 
 def revoke_all_sessions(user):
-    """Log the user out everywhere. The caller saves `sessions_revoked_at`."""
+    """Log the user out everywhere, open collaboration sockets included. The caller saves `sessions_revoked_at`."""
+    from collaboration.sessions import close_user_sockets
+
     user.sessions_revoked_at = timezone.now()
     for outstanding in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=outstanding)
+    close_user_sockets(user.pk)
 
 
 def issued_before_revocation(user, token) -> bool:

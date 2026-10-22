@@ -36,6 +36,18 @@ _MESSAGES = {
         'es': 'El usuario o la contraseña no son correctos.',
         'en': 'The username or password is not correct.',
     },
+    'password_disabled': {
+        'es': 'Esta cuenta entra con un enlace por email o con Google, no con contraseña.',
+        'en': 'This account signs in with an email link or with Google, not with a password.',
+    },
+    'email_unavailable': {
+        'es': 'Ahora mismo no podemos enviar emails. Inténtalo más tarde o entra de otra forma.',
+        'en': 'We cannot send emails right now. Try again later or sign in another way.',
+    },
+    'service_full': {
+        'es': 'La demo está llena ahora mismo. Inténtalo más tarde.',
+        'en': 'The demo is full right now. Try again later.',
+    },
     'magic_invalid': {'es': 'Enlace inválido o expirado.', 'en': 'The link is invalid or has expired.'},
     'google_not_configured': {'es': 'Google OAuth no está configurado.', 'en': 'Google sign-in is not configured.'},
     'google_invalid': {'es': 'Token de Google inválido o expirado.', 'en': 'The Google token is invalid or has expired.'},

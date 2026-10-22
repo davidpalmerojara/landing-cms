@@ -489,7 +489,9 @@ class TestGuestClaim:
         resp = APIClient().post('/api/auth/login/', {'username': 'ana', 'password': STRONG_PASSWORD}, format='json')
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_published_pages_are_revalidated_and_indexable_again(self, settings, api_client, django_capture_on_commit_callbacks):
+    def test_published_pages_are_revalidated_and_stay_protected_until_the_email_is_verified(
+        self, settings, api_client, django_capture_on_commit_callbacks,
+    ):
         settings.REVALIDATE_SECRET = 'secret'
         settings.FRONTEND_URL = 'http://frontend.test'
         client, guest, _ = self.guest_with_pages(count=1)
@@ -502,7 +504,10 @@ class TestGuestClaim:
         [request] = [call.args[0] for call in urlopen.call_args_list]
         assert json.loads(request.data) == {'slugs': ['publicada']}
         data = api_client.get('/api/public/pages/publicada/').data
-        assert data['noindex'] is False
+        # No longer a guest page, but a claimed account has not proved its email (C5, ADR-051)
+        assert data['is_guest_page'] is False
+        assert data['is_unverified_page'] is True
+        assert data['noindex'] is True
         assert data['show_watermark'] is True  # Free plan
 
     @pytest.mark.parametrize('overrides, field', [

@@ -7,11 +7,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .guests import is_expired_guest
 from .messages import message
 from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
-from .throttles import AuthRateThrottle, LoginUsernameThrottle
+from .throttles import AuthRateThrottle, LoginUsernameThrottle, RefreshRateThrottle
 from .views import (
     GoogleLoginView,
     GuestClaimView,
@@ -47,6 +48,13 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         try:
             response = super().post(request, *args, **kwargs)
         except AuthenticationFailed:
+            if self._signs_in_without_password(request.data['username']):
+                # The account has no password (magic link or Google), or the one it had was
+                # turned off when the owner of the email signed in (ADR-018): say so (UX-003)
+                return Response(
+                    {'error': message('password_disabled'), 'code': 'PASSWORD_DISABLED'},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
             return wrong_credentials
         if response.status_code == 200:
             set_auth_cookies(response, response.data['access'], response.data['refresh'])
@@ -54,18 +62,60 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         return response
 
     @staticmethod
+    def _signs_in_without_password(identifier: str) -> bool:
+        """An account named by this username (or email) exists and has no usable password.
+
+        Says no more than registration does ("that username/email is taken"), and
+        lets the sign-in page offer the email link instead of "wrong password"."""
+        identifier = identifier.strip()
+        user = (
+            User.objects.filter(username__iexact=identifier).first()
+            or User.objects.filter(email__iexact=identifier).first()
+        )
+        return user is not None and not user.is_guest and not user.has_usable_password()
+
+    @staticmethod
     def _has_credentials(data) -> bool:
-        if not hasattr(data, 'get'):
+        if not isinstance(data, dict):
             return False
         username, password = data.get('username'), data.get('password')
         return isinstance(username, str) and bool(username.strip()) and isinstance(password, str) and bool(password)
+
+
+class SingleUseRefreshSerializer(TokenRefreshSerializer):
+    """simplejwt's rotation, with the old token taken exactly once (SEC-007).
+
+    simplejwt checks the blacklist when it reads the token and blacklists it
+    later with get_or_create, so parallel refreshes with one token all passed
+    the check and each got its own new refresh token. Here the blacklist row is
+    the claim: only the request that creates it rotates; the others are refused.
+    """
+
+    def validate(self, attrs):
+        refresh = self.token_class(attrs['refresh'])
+        user_id = refresh.payload.get(api_settings.USER_ID_CLAIM)
+        user = User.objects.get(**{api_settings.USER_ID_FIELD: user_id})
+        if not api_settings.USER_AUTHENTICATION_RULE(user):
+            raise AuthenticationFailed('No active account found for the given token.', 'no_active_account')
+
+        _, created = refresh.blacklist()
+        if not created:
+            raise TokenError('Token already used')
+
+        data = {'access': str(refresh.access_token)}
+        refresh.set_jti()
+        refresh.set_exp()
+        refresh.set_iat()
+        refresh.outstand()
+        data['refresh'] = str(refresh)
+        return data
 
 
 class CookieTokenRefreshView(APIView):
     """Refresh using only the refresh cookie. Rotates it and blacklists the old one."""
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
-    throttle_classes = [AuthRateThrottle]
+    throttle_classes = [RefreshRateThrottle]
 
     @staticmethod
     def _belongs_to_expired_guest(raw_refresh: str) -> bool:
@@ -90,10 +140,10 @@ class CookieTokenRefreshView(APIView):
             clear_auth_cookies(response)
             return response
 
-        serializer = TokenRefreshSerializer(data={'refresh': raw_refresh})
+        serializer = SingleUseRefreshSerializer(data={'refresh': raw_refresh})
         try:
             serializer.is_valid(raise_exception=True)
-        except (TokenError, InvalidToken, ValidationError, User.DoesNotExist):
+        except (TokenError, InvalidToken, ValidationError, AuthenticationFailed, User.DoesNotExist):
             # User.DoesNotExist: the account was deleted while its refresh token was still valid (QA-101)
             response = Response({'error': message('session_expired'), 'code': 'INVALID_REFRESH_TOKEN'}, status=status.HTTP_401_UNAUTHORIZED)
             clear_auth_cookies(response)

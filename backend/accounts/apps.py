@@ -7,3 +7,4 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         import config.checks  # noqa: F401  (registers the production settings checks)
+        import accounts.checks  # noqa: F401  (email settings, ADR-049)

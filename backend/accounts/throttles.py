@@ -41,7 +41,9 @@ class LoginUsernameThrottle(CurrentRatesMixin, SimpleRateThrottle):
     scope = 'login_username'
 
     def get_cache_key(self, request, view):
-        username = request.data.get('username') if hasattr(request, 'data') else None
+        data = getattr(request, 'data', None)
+        # A JSON array (or any other non-object body) has no username: no per-account bucket (SEC-008)
+        username = data.get('username') if isinstance(data, dict) else None
         if not isinstance(username, str) or not username.strip():
             return None
         return self.cache_format % {'scope': self.scope, 'ident': username.strip().lower()}
@@ -54,3 +56,22 @@ class GuestCreationThrottle(CurrentRatesMixin, SimpleRateThrottle):
 
     def get_cache_key(self, request, view):
         return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
+
+class RefreshRateThrottle(CurrentRatesMixin, SimpleRateThrottle):
+    """Per-IP limit on token refresh, apart from sign-in: ten people behind one
+    NAT refreshing their sessions no longer lock each other out of logging in (SEC-010)."""
+    scope = 'refresh'
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
+
+class VersionCreateThrottle(CurrentRatesMixin, SimpleRateThrottle):
+    """Per-account limit on "Save version": every snapshot is stored (SEC-001)."""
+    scope = 'version_create'
+
+    def get_cache_key(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return None
+        return self.cache_format % {'scope': self.scope, 'ident': request.user.pk}

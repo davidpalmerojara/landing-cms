@@ -64,3 +64,33 @@ class MagicToken(models.Model):
 
     def __str__(self):
         return f"MagicToken for {self.email}"
+
+
+class SentEmail(models.Model):
+    """One email that left the server: the global daily cap and the
+    per-recipient caps are counted here (ADR-049).
+
+    The recipient is kept only as a SHA-256 of the lower-cased address, which
+    is enough to count and does not say who it was. Rows are pruned after a
+    few days (`accounts.mailing.prune_sent_emails`)."""
+
+    class Kind(models.TextChoices):
+        MAGIC_LINK = 'magic_link', 'Magic link'
+        SHARE = 'share', 'Share notice'
+
+    id = models.BigAutoField(primary_key=True)
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    recipient_hash = models.CharField(max_length=64)
+    # The shared page, for share notices: one notice per page and recipient
+    page_id = models.UUIDField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_at'], name='sentemail_created_idx'),
+            models.Index(fields=['recipient_hash', 'created_at'], name='sentemail_recipient_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.kind} at {self.created_at:%Y-%m-%d %H:%M}'

@@ -13,6 +13,7 @@ editors that it changed (`page_updated`) so they fetch and merge (ADR-024).
 import json
 import logging
 import math
+import time
 import uuid
 
 from asgiref.sync import sync_to_async
@@ -24,11 +25,15 @@ from rest_framework.exceptions import ValidationError
 from pages.block_validators import clean_block_data, clean_block_styles
 
 from .locks import InMemoryLockManager, LockManager, get_lock_manager
+from .sessions import user_group_name
 
 logger = logging.getLogger(__name__)
 
 # Close codes
 CLOSE_UNAUTHENTICATED = 4001
+# The session behind the socket ended (logout, revoked, deleted): not final, the
+# editor reconnects with a new ticket if its browser still has a session (DATA-007)
+CLOSE_SESSION_ENDED = 4002
 CLOSE_FORBIDDEN = 4003
 CLOSE_SERVER_ERROR = 4500
 
@@ -39,6 +44,9 @@ MAX_BLOCK_ID_LENGTH = 64
 # Cursor positions are canvas coordinates (they can be negative once the canvas
 # is panned); anything beyond this is a broken or hostile client
 CURSOR_LIMIT = 100_000
+# How often a ping re-checks that the session behind the socket is still valid
+SESSION_RECHECK_SECONDS = 60
+MAX_ECHOED_TYPE_LENGTH = 50
 
 
 @database_sync_to_async
@@ -56,6 +64,18 @@ def get_accessible_page(user, page_id: str):
         )
     except (DjangoValidationError, ValueError):  # malformed UUID
         return None
+
+
+@database_sync_to_async
+def session_has_ended(user_id, connected_at) -> bool:
+    """The account is gone, its sessions were revoked after the socket opened,
+    or it is a guest past its lifetime."""
+    from django.contrib.auth import get_user_model
+    from accounts.guests import is_expired_guest
+    user = get_user_model().objects.filter(pk=user_id).first()
+    if user is None or is_expired_guest(user):
+        return True
+    return user.sessions_revoked_at is not None and user.sessions_revoked_at > connected_at
 
 
 @database_sync_to_async
@@ -143,6 +163,9 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         # so it never broadcasts anything.
         self._joined = False
         self._lock_manager: LockManager | InMemoryLockManager | None = None
+        self._user_group = ''
+        self._connected_at = None
+        self._last_session_check = 0.0
 
     @property
     def lock_manager(self) -> LockManager | InMemoryLockManager:
@@ -222,6 +245,15 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         }
         self._presence()[self.connection_id] = self.entry
         self._joined = True
+        from django.utils import timezone
+        self._connected_at = timezone.now()
+        self._last_session_check = time.monotonic()
+        try:
+            # Lets logout, revocation and deletion close this socket (DATA-007)
+            await self.channel_layer.group_add(user_group_name(self.user.pk), self.channel_name)
+            self._user_group = user_group_name(self.user.pk)
+        except Exception:
+            logger.warning('Failed to join the user group of %s', self.user.pk, exc_info=True)
 
         await self.accept()
 
@@ -273,6 +305,8 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
 
         try:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            if self._user_group:
+                await self.channel_layer.group_discard(self._user_group, self.channel_name)
         except Exception:
             logger.warning('Failed to leave channel group %s', self.group_name, exc_info=True)
 
@@ -297,6 +331,11 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
             return
 
         msg_type = content.get('type', '')
+        if not isinstance(msg_type, str):
+            # A dict as `type` used to crash the consumer without running disconnect,
+            # leaving a ghost participant and its locks behind (DATA-006)
+            await self._send_error('invalid_message', 'Mensaje no válido.')
+            return
 
         handlers = {
             'ping': self.handle_ping,
@@ -308,10 +347,15 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
         }
 
         handler = handlers.get(msg_type)
-        if handler:
+        if handler is None:
+            await self._send_error('unknown_message_type', f'Tipo de mensaje desconocido: {msg_type[:MAX_ECHOED_TYPE_LENGTH]}')
+            return
+        try:
             await handler(content)
-        else:
-            await self._send_error('unknown_message_type', f'Tipo de mensaje desconocido: {msg_type}')
+        except Exception:
+            # One bad message must not take the socket down without its cleanup (DATA-006)
+            logger.exception('Collaboration handler %s failed on page %s', msg_type, self.page_id)
+            await self._send_error('server_error', 'No se ha podido procesar el mensaje.')
 
     async def _send_error(self, code: str, message: str) -> None:
         await self.send_json({'type': 'error', 'code': code, 'message': message})
@@ -319,6 +363,11 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
     # ─── Handlers ───────────────────────────────────────────
 
     async def handle_ping(self, content):
+        if time.monotonic() - self._last_session_check >= SESSION_RECHECK_SECONDS:
+            self._last_session_check = time.monotonic()
+            if await session_has_ended(self.user.pk, self._connected_at):
+                await self.close(code=CLOSE_SESSION_ENDED)
+                return
         await self.send_json({'type': 'pong'})
 
     async def handle_lock_acquire(self, content):
@@ -482,6 +531,12 @@ class PageConsumer(AsyncJsonWebsocketConsumer):
             'by': event.get('by'),
             'connection_id': event.get('connection_id'),
         })
+
+    async def session_ended(self, event):
+        """The user logged out, had every session revoked or deleted the account (collaboration/sessions.py)."""
+        if not self._joined:
+            return
+        await self.close(code=CLOSE_SESSION_ENDED)
 
     async def access_revoked(self, event):
         """The owner removed a collaborator, or deleted the page: those open

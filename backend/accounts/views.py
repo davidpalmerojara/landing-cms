@@ -6,7 +6,6 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -19,6 +18,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .capacity import refuse_new_accounts_when_full
 from .deletion import delete_account, has_active_stripe_subscription
 from .guests import (
     GuestCapacityReached,
@@ -28,8 +28,9 @@ from .guests import (
     create_guest,
     sweep_before_creating,
 )
+from .mailing import EmailUnavailable, RecipientLimitReached, check_can_send, email_enabled, send_capped_email
 from .messages import message
-from .models import MagicToken
+from .models import MagicToken, SentEmail
 from .ownership import confirm_email_owner
 from .permissions import IsNotGuest
 from .serializers import (
@@ -82,6 +83,7 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        refuse_new_accounts_when_full()
         user = serializer.save()
 
         # Create default workspace (triggers Free subscription via signal)
@@ -105,6 +107,7 @@ class GuestView(APIView):
         if active_guests().count() >= settings.GUEST_MAX_ACTIVE:
             logger.warning('Guest capacity reached (%s active)', settings.GUEST_MAX_ACTIVE)
             raise GuestCapacityReached()
+        refuse_new_accounts_when_full()
         user = create_guest()
         return _auth_response(user, status_code=status.HTTP_201_CREATED)
 
@@ -154,6 +157,7 @@ class JoinView(APIView):
         if active_guests().count() >= settings.GUEST_MAX_ACTIVE:
             logger.warning('Guest capacity reached (%s active)', settings.GUEST_MAX_ACTIVE)
             raise GuestCapacityReached()
+        refuse_new_accounts_when_full()
         with transaction.atomic():
             # If the use cannot be taken (someone else took the last one) no guest is created
             self._use(invite)
@@ -314,7 +318,7 @@ class GoogleLoginView(APIView):
                     user.avatar = picture
                 user.save(update_fields=['google_id', 'avatar', 'updated_at'])
             else:
-                # Create new user
+                refuse_new_accounts_when_full()
                 user = User(
                     username=unique_username_for(email),
                     email=email,
@@ -340,7 +344,13 @@ def _magic_link_quota_left(email: str) -> bool:
 
 
 class MagicLinkRequestView(APIView):
-    """POST /api/auth/magic/request/ — send magic link email."""
+    """POST /api/auth/magic/request/ — send magic link email.
+
+    The answer is the same whether or not the address has an account, and also
+    when the address reached its limits (nothing is sent then). `503
+    EMAIL_UNAVAILABLE` when email is off, the daily cap is reached or the
+    provider fails: then no token is kept, so nothing counts against the address.
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthRateThrottle]
 
@@ -348,41 +358,49 @@ class MagicLinkRequestView(APIView):
         serializer = MagicLinkRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
+        sent_answer = Response({'message': message('magic_sent')})
 
+        if not email_enabled():
+            raise EmailUnavailable()
         if not _magic_link_quota_left(email):
             # Same answer as a sent link: the caller learns nothing, and the inbox is not flooded
             logger.warning('Magic link not sent: the address reached its limit of %s per %s',
                            settings.MAGIC_LINK_EMAIL_LIMIT, MAGIC_LINK_EMAIL_WINDOW)
-            return Response({'message': message('magic_sent')})
+            return sent_answer
+        try:
+            check_can_send(email)
+        except RecipientLimitReached:
+            return sent_answer
 
-        # Invalidate previous unused tokens for this email
-        MagicToken.objects.filter(email__iexact=email, used=False).update(used=True)
-
-        # Create new token
         token = secrets.token_urlsafe(48)
-        MagicToken.objects.create(email=email, token=token)
+        magic = MagicToken.objects.create(email=email, token=token)
+        magic_url = f"{settings.FRONTEND_URL.rstrip('/')}/auth/magic/{token}"
+        try:
+            # In the language the client asked for
+            send_capped_email(
+                kind=SentEmail.Kind.MAGIC_LINK,
+                to=email,
+                subject=message('magic_subject'),
+                text=message('magic_text', url=magic_url),
+                html=(
+                    f'<p>{message("magic_html_intro")}</p>'
+                    f'<p><a href="{magic_url}" style="display:inline-block;background:#2563EB;color:#fff;'
+                    f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
+                    f'{message("magic_html_button")}</a></p>'
+                    f'<p style="color:#666;font-size:14px;">{message("magic_html_outro")}</p>'
+                ),
+            )
+        except RecipientLimitReached:
+            magic.delete()
+            return sent_answer
+        except EmailUnavailable:
+            # A link that never left must not count against the 3 per 15 minutes (DEPLOY-003)
+            magic.delete()
+            raise
 
-        # Build magic link URL
-        frontend_url = settings.FRONTEND_URL.rstrip('/')
-        magic_url = f"{frontend_url}/auth/magic/{token}"
-
-        # Send email, in the language the client asked for
-        send_mail(
-            subject=message('magic_subject'),
-            message=message('magic_text', url=magic_url),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=(
-                f'<p>{message("magic_html_intro")}</p>'
-                f'<p><a href="{magic_url}" style="display:inline-block;background:#2563EB;color:#fff;'
-                f'padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">'
-                f'{message("magic_html_button")}</a></p>'
-                f'<p style="color:#666;font-size:14px;">{message("magic_html_outro")}</p>'
-            ),
-        )
-
-        # Always return success (don't reveal if email exists)
-        return Response({'message': message('magic_sent')})
+        # Only the newest link works: the earlier unused ones stop now that this one went out
+        MagicToken.objects.filter(email__iexact=email, used=False).exclude(pk=magic.pk).update(used=True)
+        return sent_answer
 
 
 class MagicLinkVerifyView(APIView):
@@ -422,6 +440,7 @@ class MagicLinkVerifyView(APIView):
             # The link reached this inbox, so the person signing in owns the email
             password_disabled = confirm_email_owner(user)
         else:
+            refuse_new_accounts_when_full()
             user = User(username=unique_username_for(email), email=email, email_verified=True)
             user.set_unusable_password()
             user.save()
@@ -436,13 +455,19 @@ class LogoutView(APIView):
     authentication_classes = []
 
     def post(self, request):
+        from collaboration.sessions import close_user_sockets
+
         raw_refresh = request.COOKIES.get(REFRESH_COOKIE)
         if raw_refresh:
             try:
-                RefreshToken(raw_refresh).blacklist()
+                refresh = RefreshToken(raw_refresh)
+                refresh.blacklist()
             except TokenError:
                 # Already expired or revoked: there is nothing left to invalidate
                 logger.info('Logout with an invalid refresh token')
+            else:
+                # The editor's socket was authenticated once, at the handshake: close it too (DATA-007)
+                close_user_sockets(refresh.payload.get('user_id'))
         response = Response({'message': message('signed_out')})
         clear_auth_cookies(response)
         return response

@@ -47,6 +47,8 @@ def has_active_stripe_subscription(user) -> bool:
 
 def delete_users_with_data(ids) -> Deletion:
     """Delete these users and everything they own, then clean up what the database cascade cannot."""
+    from collaboration.sessions import close_user_sockets
+    from pages import sync
     from pages.models import Asset, Page
     from pages.revalidation import revalidate_public_pages
     from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
@@ -58,12 +60,19 @@ def delete_users_with_data(ids) -> Deletion:
         Page.objects.filter(owned, status=Page.Status.PUBLISHED).values_list('slug', flat=True)
     )
     files = Asset.objects.filter(owned).count()
+    # Collaborators may have these pages open: they are told the page is gone (DATA-009)
+    page_ids = list(Page.objects.filter(owned).values_list('pk', flat=True))
 
     with transaction.atomic():
         # Their refresh tokens are no use any more (the blacklist rows cascade from them)
         OutstandingToken.objects.filter(user_id__in=ids).delete()
         rows, _ = User.objects.filter(pk__in=ids).delete()
         revalidate_public_pages(*published_slugs)
+        for page_id in page_ids:
+            transaction.on_commit(lambda page_id=page_id: sync.notify_page_deleted(page_id))
+        # Their sockets on pages they were invited to edit close too
+        for user_id in ids:
+            close_user_sockets(user_id)
 
     if published_slugs:
         cache.delete('sitemap_xml')

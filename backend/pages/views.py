@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 from django.utils.html import escape
+from django.utils.translation import get_language
 from rest_framework import viewsets, status, generics, mixins, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -12,6 +13,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from accounts.permissions import IsNotGuest
+from accounts.throttles import VersionCreateThrottle
+from accounts.verification import publishes_restricted, verified_owner_filter
 from config.features import CustomDomainsEnabled
 from config.pagination import SitePageNumberPagination
 from .assets import UploadRefused, store_upload
@@ -22,6 +25,7 @@ from .models import (
     pages_accessible_to,
 )
 from .permissions import require_page_owner
+from .quotas import blocks_bytes, check_page_write, check_snapshot, stored_page_bytes
 from .revalidation import revalidate_public_pages
 from . import sync
 from .serializers import (
@@ -97,13 +101,15 @@ class PublicPageView(generics.RetrieveAPIView):
         plan = get_user_plan(page.owner)
         # A guest's page is a demo: never indexed, always with the watermark
         is_guest_page = page.owner.is_guest if page.owner else False
+        # An account that has not proved its email publishes like a guest (C5, ADR-051)
+        restricted = publishes_restricted(page.owner)
         seo = {field: meta.get(field, getattr(page, field)) for field in PUBLISHED_METADATA_FIELDS}
         blocks = sorted(version.snapshot, key=lambda b: b.get('order', 0))
-        if is_guest_page:
+        if restricted:
             seo['noindex'] = True
-            # Anyone can create a guest: their pages must not be usable for
-            # phishing on this domain. No custom HTML, and the client shows a
-            # notice and keeps the contact form from sending.
+            # Anyone can create a guest or register any address: their pages must
+            # not be usable for phishing on this domain. No custom HTML, and the
+            # client shows a notice and keeps the contact form from sending.
             blocks = [b for b in blocks if b.get('type') != 'customHtml']
         return Response({
             'id': str(page.id),
@@ -115,6 +121,7 @@ class PublicPageView(generics.RetrieveAPIView):
             'updated_at': published,
             'show_watermark': is_guest_page or not getattr(plan, 'remove_watermark', False),
             'is_guest_page': is_guest_page,
+            'is_unverified_page': restricted and not is_guest_page,
         })
 
 
@@ -151,6 +158,7 @@ class PageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         from billing.permissions import check_page_limit
         check_page_limit(self.request.user)
+        check_page_write(self.request.user, None, blocks_bytes(serializer.validated_data.get('blocks', [])))
         serializer.save(
             owner=self.request.user,
             workspace=get_or_create_user_workspace(self.request.user),
@@ -184,6 +192,9 @@ class PageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        if 'blocks' in serializer.validated_data:
+            # The owner's budget, whoever saves (SEC-001)
+            check_page_write(instance.owner, instance.pk, blocks_bytes(serializer.validated_data['blocks']))
         try:
             with transaction.atomic():
                 # First statement: the conditional bump decides which of two
@@ -223,6 +234,7 @@ class PageViewSet(viewsets.ModelViewSet):
         """POST /api/pages/{id}/publish/ — freeze the current draft as the public page. Owner only."""
         page = self.get_object()
         require_page_owner(page, request.user, 'Solo el propietario puede publicar esta página.')
+        check_snapshot(page)
         page.publish(request.user)
         sync.bump_version(page)
         revalidate_public_pages(page.slug)
@@ -247,12 +259,15 @@ class PageViewSet(viewsets.ModelViewSet):
         original = self.get_object()
         require_page_owner(original, request.user, 'Solo el propietario puede duplicar esta página.')
         check_page_limit(request.user)
+        check_page_write(request.user, None, stored_page_bytes([original.pk]))
         blocks = list(original.blocks.all())
 
         original.pk = None
         original._state.adding = True  # a new row, not an update of the original
         original.slug = ''
-        original.name = f'{original.name} (copy)'
+        # In the language of the person duplicating it (CODE-005); the name is theirs to change
+        copy_suffix = 'copia' if (get_language() or 'es')[:2] == 'es' else 'copy'
+        original.name = f'{original.name} ({copy_suffix})'[:200]
         original.status = Page.Status.DRAFT
         original.published_version = None
         original.published_at = None
@@ -271,7 +286,14 @@ class PageViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsNotGuest])
     def share(self, request, id=None):
-        """POST /api/pages/{id}/share/ — add a collaborator by email."""
+        """POST /api/pages/{id}/share/ — add a collaborator by email.
+
+        The answer is the same whether or not the address has an account (the
+        collaborator list shows who was added). A notice email goes out at most
+        once per page and recipient, only to a verified address, and under the
+        email caps (accounts/mailing.py); when it cannot go out the person is
+        still added (SEC-003, ADR-049).
+        """
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
@@ -281,39 +303,52 @@ class PageViewSet(viewsets.ModelViewSet):
         input_serializer = SharePageSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         email = input_serializer.validated_data['email']
+        same_answer = Response({'message': 'Si el usuario existe, se le ha compartido la página.'})
 
         target_user = User.objects.filter(email__iexact=email).first()
         if not target_user:
-            # Return generic success to prevent user enumeration
-            return Response({'message': 'Si el usuario existe, se le ha compartido la página.'})
+            return same_answer
 
         if target_user == request.user:
             return Response(
-                {'error': 'No puedes compartir contigo mismo.'},
+                {'error': 'No puedes compartir contigo mismo.', 'code': 'SHARE_SELF'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if page.collaborators.filter(pk=target_user.pk).exists():
+            return same_answer
         page.collaborators.add(target_user)
+        self._send_share_notice(page, request.user, target_user)
+        return same_answer
 
-        # Send notification email. The page name and the username are typed by
-        # the sender: text in the plain body, escaped in the HTML one, and
-        # without line breaks in the subject (header injection).
-        from django.core.mail import send_mail
-        from django.conf import settings as django_settings
-        frontend_url = django_settings.FRONTEND_URL.rstrip('/')
-        editor_url = f"{frontend_url}/editor/{page.pk}"
-        inviter = ' '.join(request.user.username.split())
+    @staticmethod
+    def _send_share_notice(page, inviter_user, target_user) -> None:
+        """Best effort: a notice that cannot go out does not undo the share."""
+        from accounts.mailing import EmailUnavailable, RecipientLimitReached, send_capped_email, share_notice_sent
+        from accounts.models import SentEmail
+
+        # An unverified address may have been registered by anyone: no mail to it (SEC-003)
+        if target_user.is_guest or not target_user.email_verified:
+            return
+        if share_notice_sent(target_user.email, page.pk):
+            return
+        # The page name and the username are typed by the sender: text in the plain
+        # body, escaped in the HTML one, and without line breaks in the subject
+        # (header injection).
+        editor_url = f"{settings.FRONTEND_URL.rstrip('/')}/editor/{page.pk}"
+        inviter = ' '.join(inviter_user.username.split())
         page_name = ' '.join(page.name.split())
         try:
-            send_mail(
+            send_capped_email(
+                kind=SentEmail.Kind.SHARE,
+                to=target_user.email,
+                page_id=page.pk,
                 subject=f'{inviter} te ha invitado a colaborar en "{page_name}"',
-                message=(
+                text=(
                     f'{inviter} te ha invitado a editar la página "{page_name}" en Paxl.\n\n'
                     f'Abre el editor: {editor_url}\n'
                 ),
-                from_email=django_settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[target_user.email],
-                html_message=(
+                html=(
                     f'<p><strong>{escape(inviter)}</strong> te ha invitado a colaborar '
                     f'en la página <strong>"{escape(page_name)}"</strong>.</p>'
                     f'<p><a href="{editor_url}" style="display:inline-block;background:#2563EB;color:#fff;'
@@ -321,14 +356,8 @@ class PageViewSet(viewsets.ModelViewSet):
                     f'Abrir editor</a></p>'
                 ),
             )
-        except Exception:
-            import logging
-            logging.getLogger(__name__).warning(
-                'Failed to send share notification email to %s for page %s',
-                target_user.email, page.pk, exc_info=True,
-            )
-
-        return Response({'message': f'Página compartida con {target_user.username}.'})
+        except (EmailUnavailable, RecipientLimitReached):
+            logger.warning('Share notice for page %s not sent', page.pk)
 
     @action(detail=True, methods=['get'])
     def collaborators(self, request, id=None):
@@ -370,19 +399,29 @@ class PageViewSet(viewsets.ModelViewSet):
             )
 
         page.collaborators.remove(removed)
+        # An open invite link would let them straight back in (SEC-005)
+        PageInvite.objects.filter(page=page).delete()
         # Their open editors must stop working now, not at the next reconnect
         sync.notify_access_revoked(page.pk, removed.pk)
         return Response({'message': f'{removed.username} eliminado como colaborador.'})
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def invite(self, request, id=None):
         """POST /api/pages/{id}/invite/ — a link that adds whoever opens it as a collaborator.
 
         Owner only. Guests may create it (unlike share, it sends no email), so a
         visitor can open their page in another browser to try collaboration.
+
+        DELETE revokes every invite link of the page (SEC-005): 204, with how
+        many were open in `X-Revoked-Invites`. Collaborators who already joined stay.
         """
         page = self.get_object()
         require_page_owner(page, request.user, 'Solo el propietario puede invitar a esta página.')
+        if request.method == 'DELETE':
+            revoked, _ = PageInvite.objects.filter(page=page).delete()
+            response = Response(status=status.HTTP_204_NO_CONTENT)
+            response['X-Revoked-Invites'] = str(revoked)
+            return response
         # Old links stay valid until they expire; only the dead ones are swept
         PageInvite.objects.filter(page=page, expires_at__lte=timezone.now()).delete()
         invite = PageInvite.objects.create(page=page, created_by=request.user)
@@ -415,6 +454,12 @@ class PageVersionViewSet(viewsets.GenericViewSet):
     """
     pagination_class = VersionPagination
     lookup_field = 'id'
+
+    def get_throttles(self):
+        # "Save version" stores a snapshot each time (SEC-001)
+        if self.action == 'create':
+            return [*super().get_throttles(), VersionCreateThrottle()]
+        return super().get_throttles()
 
     def _get_page(self):
         """Get the page and verify the user has access."""
@@ -460,6 +505,7 @@ class PageVersionViewSet(viewsets.GenericViewSet):
         page = self._get_page()
         input_serializer = VersionLabelSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
+        check_snapshot(page)
         version = create_version_snapshot(
             page=page,
             user=request.user,
@@ -589,7 +635,8 @@ class PageVersionViewSet(viewsets.GenericViewSet):
                 page=page,
                 user=request.user,
                 trigger='auto_restore',
-                label=f'Antes de restaurar v{version.version_number}',
+                # No server-written text: the editor names the trigger in its own language (CODE-005)
+                label='',
             )
 
             # Delete all current blocks
@@ -651,9 +698,10 @@ class SitemapView(generics.GenericAPIView):
             return HttpResponse(cached, content_type='application/xml')
 
         pages = Page.objects.filter(
+            verified_owner_filter(),
             status=Page.Status.PUBLISHED,
             published_version__page_metadata__noindex=False,
-        ).exclude(owner__is_guest=True).values('slug', 'published_at').order_by('-published_at')
+        ).values('slug', 'published_at').order_by('-published_at')
 
         from django.conf import settings as django_settings
         frontend_url = django_settings.FRONTEND_URL.rstrip('/')
@@ -737,15 +785,17 @@ class SitemapDataView(generics.GenericAPIView):
 
     def get(self, request):
         pages = Page.objects.filter(
+            verified_owner_filter(),
             status=Page.Status.PUBLISHED,
             published_version__page_metadata__noindex=False,
-        ).exclude(owner__is_guest=True).values('slug', 'published_at', 'published_version__page_metadata').order_by('-published_at')
+        ).values('slug', 'published_at').order_by('-published_at')
 
+        # No canonical URL: the sitemap lists only this site's own /p/<slug> addresses.
+        # A canonical typed by the author belongs in the page's <link rel="canonical"> only (SEC-006)
         data = [
             {
                 'slug': p['slug'],
                 'updated_at': p['published_at'].isoformat(),
-                'seo_canonical_url': (p['published_version__page_metadata'] or {}).get('seo_canonical_url') or '',
             }
             for p in pages
         ]

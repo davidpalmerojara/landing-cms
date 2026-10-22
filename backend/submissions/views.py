@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.verification import publishes_restricted
 from pages.models import Page, pages_accessible_to
 from .models import FormSubmission
 from .serializers import ContactSubmissionSerializer, FormSubmissionSerializer
@@ -57,6 +58,12 @@ class PublicContactView(APIView):
             # Guest pages are demos anyone can create: they don't collect visitors' data
             return Response(
                 {'error': 'Las páginas de prueba no reciben mensajes.', 'code': 'GUEST_PAGE'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if publishes_restricted(page.owner):
+            # Nor do pages of an account that has not proved its email (C5, ADR-051)
+            return Response(
+                {'error': 'Esta página no recibe mensajes hasta que su autor verifique su email.', 'code': 'UNVERIFIED_PAGE'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

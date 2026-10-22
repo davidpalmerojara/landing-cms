@@ -140,7 +140,8 @@ class Page(models.Model):
         from django.core.cache import cache
         from django.utils import timezone
 
-        version = create_version_snapshot(self, user, PageVersion.Trigger.AUTO_PUBLISH, label='Publicación')
+        # No label: the editor names the trigger in its own language (CODE-005)
+        version = create_version_snapshot(self, user, PageVersion.Trigger.AUTO_PUBLISH)
         self.published_version = version
         self.published_at = timezone.now()
         self.status = self.Status.PUBLISHED
@@ -349,14 +350,19 @@ def _create_version_row(page, user, trigger, label):
 
 
 def max_versions_for(page):
-    """How many versions the page keeps: the owner's plan decides (-1: all).
-    Guests keep GUEST_MAX_VERSIONS. Older ones are pruned when a new one is saved."""
+    """How many versions the page keeps: the owner's plan decides, up to
+    MAX_VERSIONS_PER_PAGE for every plan ("all" included: the free database is
+    small, SEC-001). Guests keep GUEST_MAX_VERSIONS. Older ones are pruned when
+    a new one is saved; the published one is never pruned."""
     from billing.permissions import get_user_plan
 
     if getattr(page.owner, 'is_guest', False):
         from accounts.guests import GUEST_MAX_VERSIONS
-        return GUEST_MAX_VERSIONS
-    return getattr(get_user_plan(page.owner), 'max_version_history', 5)
+        return min(GUEST_MAX_VERSIONS, settings.MAX_VERSIONS_PER_PAGE)
+    plan_limit = getattr(get_user_plan(page.owner), 'max_version_history', 5)
+    if plan_limit == -1:
+        return settings.MAX_VERSIONS_PER_PAGE
+    return min(plan_limit, settings.MAX_VERSIONS_PER_PAGE)
 
 
 def create_version_snapshot(page, user, trigger, label=''):

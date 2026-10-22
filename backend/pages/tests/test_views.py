@@ -162,9 +162,15 @@ class TestPageDuplicate:
         page = page_with_blocks
         resp = auth_client.post(page_duplicate_url(page.id))
         assert resp.status_code == status.HTTP_201_CREATED
-        assert resp.data['name'] == f'{page.name} (copy)'
+        # The suffix follows the language of the request; Spanish by default (CODE-005)
+        assert resp.data['name'] == f'{page.name} (copia)'
         assert resp.data['status'] == 'draft'
         assert len(resp.data['blocks']) == 3  # same blocks as original
+
+    @patch(CHECK_LIMIT)
+    def test_code_005_duplicate_suffix_in_english(self, mock_limit, auth_client, page_with_blocks):
+        resp = auth_client.post(page_duplicate_url(page_with_blocks.id), HTTP_ACCEPT_LANGUAGE='en')
+        assert resp.data['name'] == f'{page_with_blocks.name} (copy)'
 
     @patch(CHECK_LIMIT)
     def test_duplicate_creates_new_ids(self, mock_limit, auth_client, page_with_blocks):

@@ -46,4 +46,5 @@ class TestPublicSitemap:
         assert published.slug in slugs
         assert draft.slug not in slugs
         assert noindex.slug not in slugs
-        assert resp.data[0]['seo_canonical_url'] == ''
+        # Only this site's own /p/<slug> addresses: an author's canonical never reaches the sitemap (SEC-006)
+        assert 'seo_canonical_url' not in resp.data[0]

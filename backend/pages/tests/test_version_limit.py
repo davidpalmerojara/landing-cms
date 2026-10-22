@@ -30,10 +30,12 @@ def test_the_list_carries_the_owners_plan_limit(auth_client, user):
     assert len(resp.data['results']) == 1
 
 
-def test_unlimited_plans_say_minus_one(auth_client, user):
+def test_unlimited_plans_keep_the_hard_cap(auth_client, user, settings):
+    # "All versions" still stops at MAX_VERSIONS_PER_PAGE: the free database is small (SEC-001)
+    settings.MAX_VERSIONS_PER_PAGE = 20
     page = PageFactory(owner=user)
     with patch(GET_PLAN, return_value=plan(-1)):
-        assert list_versions(auth_client, page).data['max_versions'] == -1
+        assert list_versions(auth_client, page).data['max_versions'] == 20
 
 
 def test_a_collaborator_sees_the_owners_limit_not_their_own(api_client):

@@ -239,7 +239,8 @@ def _replace_page_blocks_locked(page: Page, user, sanitized: list[dict]) -> list
             page=page,
             user=user,
             trigger='auto_ai_generation',
-            label='Antes de generación IA',
+            # No server-written text: the editor names the trigger in its own language (CODE-005)
+            label='',
         )
 
     page.blocks.all().delete()
@@ -469,7 +470,8 @@ class EditBlockView(APIView):
                 page=page,
                 user=request.user,
                 trigger='auto_ai_generation',
-                label=f'Antes de editar bloque {block.type} con IA',
+                # No server-written text: the editor names the trigger in its own language (CODE-005)
+                label='',
             )
 
             block.type = new_type

@@ -7,6 +7,7 @@ from .block_sanitizers import validate_safe_image_url
 from .block_validators import BLOCK_VALIDATORS, clean_block_data, clean_block_styles
 from .permissions import is_page_owner
 from .design_tokens import clean_design_tokens
+from .quotas import check_page_size
 
 
 # A page is a handful of landing sections: more than this is a mistake or abuse
@@ -136,6 +137,8 @@ class PageDetailSerializer(serializers.ModelSerializer):
         """At most MAX_BLOCKS_PER_PAGE; client-generated ids must be unique and must not belong to another page."""
         if len(blocks) > MAX_BLOCKS_PER_PAGE:
             raise serializers.ValidationError(f'Máximo {MAX_BLOCKS_PER_PAGE} bloques por página.')
+        # 413 PAGE_TOO_LARGE, not a field error: the whole page is refused (SEC-001)
+        check_page_size(blocks)
         ids = [str(b['id']) for b in blocks if b.get('id')]
         if len(ids) != len(set(ids)):
             raise serializers.ValidationError('Hay bloques con el mismo id.')

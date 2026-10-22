@@ -124,6 +124,40 @@ describe('ShareModal', () => {
       vi.unstubAllGlobals();
     });
 
+    it('SEC-005: the owner can revoke every link, and the one on screen goes away', async () => {
+      vi.spyOn(api.pages, 'invite').mockResolvedValue({ token: 'tok', path: '/join/tok', expires_at: '' });
+      const revoke = vi.spyOn(api.pages, 'revokeInvites').mockResolvedValue(undefined);
+      view = await open(normalUser);
+
+      await act(async () => { buttonByText(document.body, 'Crear enlace de invitación').click(); });
+      expect(document.body.querySelector('#share-invite-link')).not.toBeNull();
+
+      await act(async () => { buttonByText(document.body, 'Revocar todos los enlaces').click(); });
+
+      expect(revoke).toHaveBeenCalledWith(PAGE_ID);
+      expect(document.body.querySelector('#share-invite-link')).toBeNull();
+      expect(text(view)).toContain('Enlaces revocados.');
+      // A new link can be made afterwards
+      expect(buttonByText(document.body, 'Crear enlace de invitación')).toBeTruthy();
+    });
+
+    it('SEC-005: a failed revoke says so and keeps the link', async () => {
+      vi.spyOn(api.pages, 'invite').mockResolvedValue({ token: 'tok', path: '/join/tok', expires_at: '' });
+      vi.spyOn(api.pages, 'revokeInvites').mockRejectedValue(new ApiError(500, '{}'));
+      view = await open(normalUser);
+      await act(async () => { buttonByText(document.body, 'Crear enlace de invitación').click(); });
+
+      await act(async () => { buttonByText(document.body, 'Revocar todos los enlaces').click(); });
+
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('No se han podido revocar');
+      expect(document.body.querySelector('#share-invite-link')).not.toBeNull();
+    });
+
+    it('a collaborator has no revoke button', async () => {
+      view = await open({ ...normalUser, id: collaborator.id, username: collaborator.username });
+      expect(() => buttonByText(document.body, 'Revocar todos los enlaces')).toThrow();
+    });
+
     it('explains when the clipboard is not available', async () => {
       vi.spyOn(api.pages, 'invite').mockResolvedValue({ token: 't', path: '/join/t', expires_at: '' });
       vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });

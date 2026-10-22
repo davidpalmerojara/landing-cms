@@ -21,6 +21,7 @@ import AnalyticsPanelLoading from '@/components/analytics/AnalyticsPanelLoading'
 import SubmissionsPanel from '@/components/editor/SubmissionsPanel';
 import MobileEditor from '@/components/mobile-editor/MobileEditor';
 import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
+import UnverifiedEmailBanner from '@/components/editor/UnverifiedEmailBanner';
 import { useEditorStore } from '@/store/editor-store';
 import { useEditorShortcuts } from '@/hooks/useEditorShortcuts';
 import { useIsQuickEditMode } from '@/hooks/useIsQuickEditMode';
@@ -217,6 +218,7 @@ export default function EditorPage() {
           onPublish={publishToApi}
           onUnpublish={unpublishToApi}
           publicationError={lastPublicationError}
+          user={user}
         />
         <ConfirmDialog
           open={pendingDeleteBlockId !== null}
@@ -240,6 +242,7 @@ export default function EditorPage() {
       tabIndex={0}
     >
       <GuestBanner />
+      <UnverifiedEmailBanner user={user} />
       <AccessRevokedBanner />
       <TopBar
         onSave={saveToApi}

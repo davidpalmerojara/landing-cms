@@ -1024,7 +1024,11 @@
     "cannotShareSelf": "You cannot share the page with yourself.",
     "notCollaborator": "That person no longer had access to the page.",
     "throttled": "Too many attempts in a row. Wait a moment and try again.",
-    "realtimeUnavailableDemo": "Live editing isn't available right now. People with access can edit the page and every change is saved, but they won't see each other's changes straight away."
+    "realtimeUnavailableDemo": "Live editing isn't available right now. People with access can edit the page and every change is saved, but they won't see each other's changes straight away.",
+    "inviteLinkRevoke": "Revoke all links",
+    "inviteLinkRevokeHint": "The links stop working. People who already joined keep their access: remove them from the list to take it away.",
+    "inviteLinkRevoked": "Links revoked.",
+    "inviteLinkRevokeError": "The links couldn't be revoked. Please try again."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -1286,5 +1290,18 @@
   "wakeUp": {
     "title": "Waking up the server…",
     "description": "After a quiet spell, the first request can take up to a minute. Please keep this page open."
+  },
+  "verifyEmail": {
+    "label": "Email verification",
+    "text": "Your email isn't verified yet, so your published pages aren't indexed, can't use custom HTML or the contact form, and show visitors a notice.",
+    "short": "Email not verified: your published pages are limited.",
+    "passwordWarning": "We'll email you a link to verify the account. For safety, opening it turns off this account's password and signs it out everywhere: from then on you'll sign in with email links.",
+    "action": "Verify email",
+    "retry": "Try again",
+    "sent": "We sent a link to {email}. Open it to verify your account.",
+    "error": "We couldn't send the link. Please try again in a few minutes.",
+    "emailOff": "Sending emails isn't available on this server right now.",
+    "confirmTitle": "Verify with a link?",
+    "confirmSend": "Send link"
   }
 }

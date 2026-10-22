@@ -21,7 +21,9 @@ import { PAGE_FIELD_LIMITS } from '@/lib/field-limits';
 import type { BlockType } from '@/types/blocks';
 import type { ToastData } from '@/components/ui/Toast';
 import AccessRevokedBanner from '@/components/editor/AccessRevokedBanner';
+import type { ApiUser } from '@/lib/api';
 import GuestBanner from '@/components/guest/GuestBanner';
+import UnverifiedEmailBanner from '@/components/editor/UnverifiedEmailBanner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useLeaveEditor } from '@/hooks/useLeaveEditor';
 import { useSaveIssueText } from '@/hooks/useSaveIssueText';
@@ -42,6 +44,8 @@ interface MobileEditorProps {
   onUnpublish?: () => Promise<boolean>;
   /** Why the last publish or unpublish failed at the server */
   publicationError?: () => unknown;
+  /** The signed-in account, for the notice about an unverified email */
+  user?: ApiUser | null;
 }
 
 /** A toast with a button, added straight to the store's list (addToast takes no action). */
@@ -50,7 +54,7 @@ function addToastWithAction(message: string, action: NonNullable<ToastData['acti
   useEditorStore.setState((s) => ({ toasts: [...s.toasts, { id, message, variant: 'success', action }] }));
 }
 
-export default function MobileEditor({ onSave, onPublish, onUnpublish, publicationError }: MobileEditorProps) {
+export default function MobileEditor({ onSave, onPublish, onUnpublish, publicationError, user }: MobileEditorProps) {
   const t = useTranslations();
   const locale = useLocale();
   const page = useEditorStore((s) => s.page);
@@ -255,6 +259,7 @@ export default function MobileEditor({ onSave, onPublish, onUnpublish, publicati
   return (
     <div className="flex flex-col h-dvh bg-surface text-primary">
       <GuestBanner compact />
+      <UnverifiedEmailBanner user={user ?? null} compact />
       <AccessRevokedBanner />
       {/* --- Toolbar --- */}
       <header className="flex items-center gap-1 px-2 h-16 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shrink-0 z-30">

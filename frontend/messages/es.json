@@ -1024,7 +1024,11 @@
     "cannotShareSelf": "No puedes compartir la página contigo.",
     "notCollaborator": "Esa persona ya no tenía acceso a la página.",
     "throttled": "Demasiados intentos seguidos. Espera un momento y vuelve a probar.",
-    "realtimeUnavailableDemo": "La edición en directo no está disponible ahora mismo. Las personas con acceso pueden editar la página y todos los cambios se guardan, pero no se ven al momento."
+    "realtimeUnavailableDemo": "La edición en directo no está disponible ahora mismo. Las personas con acceso pueden editar la página y todos los cambios se guardan, pero no se ven al momento.",
+    "inviteLinkRevoke": "Revocar todos los enlaces",
+    "inviteLinkRevokeHint": "Los enlaces dejan de funcionar. Quien ya haya entrado conserva el acceso: para quitárselo, elimínalo de la lista.",
+    "inviteLinkRevoked": "Enlaces revocados.",
+    "inviteLinkRevokeError": "No se han podido revocar los enlaces. Inténtalo de nuevo."
   },
   "seo": {
     "panelTitle": "SEO",
@@ -1286,5 +1290,18 @@
   "wakeUp": {
     "title": "Despertando el servidor…",
     "description": "Tras un rato sin uso, la primera petición puede tardar hasta un minuto. No cierres esta página."
+  },
+  "verifyEmail": {
+    "label": "Verificación del email",
+    "text": "Tu email aún no está verificado, así que tus páginas publicadas no se indexan, no admiten HTML personalizado ni formulario de contacto, y muestran un aviso a los visitantes.",
+    "short": "Email sin verificar: tus páginas publicadas son limitadas.",
+    "passwordWarning": "Te enviamos un enlace por email para verificar la cuenta. Por seguridad, al abrirlo se desactiva la contraseña de esta cuenta y se cierran sus sesiones: desde entonces entrarás con enlaces por email.",
+    "action": "Verificar email",
+    "retry": "Reintentar",
+    "sent": "Te hemos enviado un enlace a {email}. Ábrelo para verificar tu cuenta.",
+    "error": "No hemos podido enviar el enlace. Inténtalo de nuevo en unos minutos.",
+    "emailOff": "El envío de emails no está disponible ahora mismo en este servidor.",
+    "confirmTitle": "¿Verificar con un enlace?",
+    "confirmSend": "Enviar enlace"
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, Trash2, Crown, Loader2, Users, Link2, Copy, Check } from 'lucide-react';
+import { X, UserPlus, Trash2, Crown, Loader2, Users, Link2, Link2Off, Copy, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api, ApiError } from '@/lib/api';
 import { isGuestEmail, isGuestUsername } from '@/lib/collab-names';
@@ -288,7 +288,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
 /** Owner only: a link that lets whoever opens it edit the page, with a copy button. */
 function InviteLinkSection({ pageId }: { pageId: string }) {
   const t = useTranslations();
-  const { link, isCreating, hasError, copyState, create, copy } = useInviteLink(pageId);
+  const { link, isCreating, hasError, copyState, create, copy, revoke, isRevoking, revokeState } = useInviteLink(pageId);
 
   return (
     <section aria-labelledby="share-invite-link-title" className="px-5 py-4 border-b border-subtle">
@@ -337,6 +337,23 @@ function InviteLinkSection({ pageId }: { pageId: string }) {
       )}
       {hasError && (
         <p role="alert" className="mt-2 text-xs text-error">{t('share.inviteLinkError')}</p>
+      )}
+      <button
+        type="button"
+        onClick={() => void revoke()}
+        disabled={isRevoking}
+        aria-busy={isRevoking}
+        className="mt-3 min-h-11 w-full text-xs font-medium px-3 rounded-lg text-secondary hover:text-error hover:bg-surface-card flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+      >
+        {isRevoking ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Link2Off className="w-3.5 h-3.5" aria-hidden="true" />}
+        {t('share.inviteLinkRevoke')}
+      </button>
+      <p className="mt-1 text-[11px] text-muted">{t('share.inviteLinkRevokeHint')}</p>
+      {revokeState === 'revoked' && (
+        <p role="status" className="mt-2 text-xs text-success">{t('share.inviteLinkRevoked')}</p>
+      )}
+      {revokeState === 'error' && (
+        <p role="alert" className="mt-2 text-xs text-error">{t('share.inviteLinkRevokeError')}</p>
       )}
     </section>
   );

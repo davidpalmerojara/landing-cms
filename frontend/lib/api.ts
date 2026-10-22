@@ -580,6 +580,10 @@ export const api = {
     invite: (id: string) =>
       request<{ token: string; path: string; expires_at: string }>(`/pages/${id}/invite/`, { method: 'POST' }),
 
+    /** Owner only: every invite link of the page stops working (204). People who already joined keep their access. */
+    revokeInvites: (id: string) =>
+      request<void>(`/pages/${id}/invite/`, { method: 'DELETE' }),
+
     collaborators: (id: string) =>
       request<{
         owner: { id: string; username: string; email: string };

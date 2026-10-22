@@ -53,3 +53,6 @@ venv/
 # Django collectstatic output
 staticfiles/
 frontend/demo-video/
+
+# local agent notes (the public guide is AGENTS.md)
+CLAUDE.md

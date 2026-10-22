@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { SAAS_TEMPLATE_BLOCK_COUNT, fetchServerPage, pageIdFromUrl, setLocale, test } from './support';
 
-/** A phone held upright: Quick Edit (CLAUDE.md §5) */
+/** A phone held upright: Quick Edit (AGENTS.md §7) */
 const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
 
 /** Records every Content-Security-Policy violation the page runs into. */

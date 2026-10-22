@@ -3,10 +3,12 @@
 import { useTranslations } from 'next-intl';
 import MarketingShell from '@/components/marketing/MarketingShell';
 
+const SECTION_COUNT = 10;
+
 export default function PrivacyPage() {
   const t = useTranslations();
 
-  const sections = [1, 2, 3, 4, 5, 6].map((index) => ({
+  const sections = Array.from({ length: SECTION_COUNT }, (_, position) => position + 1).map((index) => ({
     title: t(`marketing.pages.privacy.section${index}Title`),
     body: t(`marketing.pages.privacy.section${index}Body`),
   }));
@@ -21,7 +23,7 @@ export default function PrivacyPage() {
         {sections.map((section) => (
           <article key={section.title} className="rounded-3xl border border-subtle/70 bg-surface-elevated/35 p-8">
             <h2 className="text-2xl font-bold text-primary">{section.title}</h2>
-            <p className="mt-4 text-sm leading-8 text-muted">{section.body}</p>
+            <p className="mt-4 text-sm leading-8 text-muted whitespace-pre-line">{section.body}</p>
           </article>
         ))}
       </div>

@@ -3,10 +3,12 @@
 import { useTranslations } from 'next-intl';
 import MarketingShell from '@/components/marketing/MarketingShell';
 
+const ENTRY_COUNT = 5;
+
 export default function ChangelogPage() {
   const t = useTranslations();
 
-  const entries = [1, 2, 3].map((index) => ({
+  const entries = Array.from({ length: ENTRY_COUNT }, (_, position) => position + 1).map((index) => ({
     date: t(`marketing.pages.changelog.entry${index}Date`),
     title: t(`marketing.pages.changelog.entry${index}Title`),
     body: t(`marketing.pages.changelog.entry${index}Body`),

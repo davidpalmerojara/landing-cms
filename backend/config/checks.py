@@ -1,6 +1,6 @@
 """System checks for settings that are safe in development and dangerous in production.
 
-`manage.py check` (and so `migrate`, which the release step runs) fails on the
+`manage.py check` (and so `migrate`, which the Render build runs) fails on the
 errors; `config/asgi.py` runs the same checks when the server starts with
 DEBUG off, so a bad deploy does not come up half working. `check --deploy`
 adds the warnings.
@@ -39,10 +39,27 @@ def check_trusted_proxies(app_configs, **kwargs):
             'Set NUM_PROXIES to the number of proxies between the visitor and this server '
             '(for example 2: the frontend host that rewrites /api, and the platform router). '
             'Too low and every visitor shares one rate-limit bucket; too high and a client can '
-            'spoof its address with X-Forwarded-For. Check it with a temporary log of '
-            'REMOTE_ADDR and X-Forwarded-For on the deployed stack.'
+            'spoof its address with X-Forwarded-For. Check it on the deployed stack with '
+            'LOG_CLIENT_IP=True (see config/client_ip.py).'
         ),
         id='paxl.E001',
+    )]
+
+
+@register(Tags.security)
+def check_origin_secret(app_configs, **kwargs):
+    """Without ORIGIN_SECRET the frontend host's rewrite cannot be told from a direct call (SEC-002).
+
+    Safe, but every visitor then shares the address of the frontend host's egress, so
+    one rate-limit bucket: a warning, not an error.
+    """
+    if settings.DEBUG or settings.ORIGIN_SECRET or not settings.NUM_PROXIES:
+        return []
+    return [Warning(
+        'ORIGIN_SECRET is empty: X-Forwarded-For is never trusted past the hosting platform.',
+        hint='Set the same random ORIGIN_SECRET here and in the frontend host (PAXL_ORIGIN_SECRET), '
+             'so the visitor address behind the rewrite is used for rate limits.',
+        id='paxl.W010',
     )]
 
 

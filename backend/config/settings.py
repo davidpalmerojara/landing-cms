@@ -9,6 +9,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from corsheaders.defaults import default_headers
 
+from config.database import postgres_config
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
@@ -27,6 +29,9 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Render sets the service's public hostname: it is always an allowed host (DEPLOY-006)
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
 
 
 # Apps
@@ -58,6 +63,10 @@ INSTALLED_APPS = [
 # Middleware
 
 MIDDLEWARE = [
+    # Health checks answer before any host validation (DEPLOY-006), and REMOTE_ADDR
+    # becomes the trusted client address before anything reads it (SEC-002, ADR-050)
+    'config.middleware.HealthzMiddleware',
+    'config.client_ip.ClientIPMiddleware',
     'django.middleware.security.SecurityMiddleware',
     # Uploaded images (/media/...) are answered here, before session, locale and CORS (ADR-049)
     'pages.media.MediaMiddleware',
@@ -105,23 +114,9 @@ ASGI_APPLICATION = 'config.asgi.application'
 # Database — SQLite for dev, PostgreSQL for production
 
 if os.environ.get('DATABASE_URL'):
-    # Production: postgres://user:pass@host:5432/name?sslmode=require
-    import urllib.parse
-    url = urllib.parse.urlparse(os.environ['DATABASE_URL'])
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': url.path[1:],
-            'USER': urllib.parse.unquote(url.username or ''),
-            'PASSWORD': urllib.parse.unquote(url.password or ''),
-            'HOST': url.hostname,
-            'PORT': url.port or 5432,
-            # Query parameters (e.g. sslmode=require for Neon) go to the driver
-            'OPTIONS': dict(urllib.parse.parse_qsl(url.query)),
-            'CONN_MAX_AGE': 60,
-            'CONN_HEALTH_CHECKS': True,
-        }
-    }
+    # Production: postgres://user:pass@host:5432/name?sslmode=require. On Neon use the
+    # pooled endpoint (host with -pooler); see config/database.py for the reasons
+    DATABASES = {'default': postgres_config(os.environ['DATABASE_URL'])}
 else:
     DATABASES = {
         'default': {
@@ -205,6 +200,23 @@ ASSET_UPLOAD_RATE = os.environ.get('ASSET_UPLOAD_RATE', '30/hour')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# Client address behind proxies (SEC-002, ADR-050; config/client_ip.py)
+# Hops between the visitor and this server for a request that came through the
+# frontend host's rewrite: 2 on Vercel + Render (the visitor, then Vercel's egress).
+# Too low: visitors share a rate-limit bucket. config/checks.py refuses 0 with DEBUG off.
+NUM_PROXIES = int(os.environ.get('NUM_PROXIES', '0'))
+# Secret the frontend host adds to every proxied /api and /media request
+# (X-Paxl-Origin-Secret). Only a request that carries it may use X-Forwarded-For
+# past the hosting platform's own hop; anything else is a direct call to this server.
+ORIGIN_SECRET = os.environ.get('ORIGIN_SECRET', '')
+# Entries of X-Forwarded-For the hosting platform itself appended to a request that did
+# not come through the frontend host: 1 on Render (its router), 0 on a plain server.
+DIRECT_PROXY_HOPS = int(os.environ.get('DIRECT_PROXY_HOPS', '0'))
+# Temporary diagnostic for deploy day: logs REMOTE_ADDR, X-Forwarded-For and the chosen
+# address of every request (runbook, "Comprobar NUM_PROXIES"). Turn it off afterwards.
+LOG_CLIENT_IP = os.environ.get('LOG_CLIENT_IP', 'False').lower() in ('true', '1', 'yes')
+
+
 # DRF
 
 REST_FRAMEWORK = {
@@ -234,13 +246,10 @@ REST_FRAMEWORK = {
         # Manual "Save version" per account: each snapshot costs storage (SEC-001)
         'version_create': os.environ.get('VERSION_CREATE_RATE', '30/hour'),
     },
-    # Number of trusted proxies in front of the app. With the default (unset)
-    # DRF used the whole X-Forwarded-For header as the client id, so any
-    # client could reset its rate limits by sending a different value.
-    # 0 = use the connection address, which behind a proxy is the proxy itself:
-    # every visitor would share one rate-limit bucket. Production must set the
-    # real hop count (config/checks.py refuses 0 when DEBUG is off, QA-007).
-    'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')),
+    # DRF reads the client address from REMOTE_ADDR here: config.client_ip has already
+    # put the trusted one there and removed X-Forwarded-For. The count is kept so
+    # that a request that skipped the middleware is still limited by hop count.
+    'NUM_PROXIES': NUM_PROXIES,
     'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
 }
 

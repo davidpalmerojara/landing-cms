@@ -141,7 +141,12 @@ class PageViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(Q(name__icontains=search) | Q(slug__icontains=search))
             # The dashboard card previews the first blocks: loading every block of
             # every page made the list cost seconds for big pages (QA-103)
-            return queryset.annotate(block_total=Count('blocks', distinct=True)).prefetch_related(
+            # order_by after the annotate: Django ignores Meta.ordering once there is a
+            # GROUP BY, and PostgreSQL then returns rows in any order, so "load more"
+            # could repeat or skip pages (CODE-003). `id` breaks ties between equal times.
+            return queryset.annotate(block_total=Count('blocks', distinct=True)).order_by(
+                '-updated_at', 'id',
+            ).prefetch_related(
                 Prefetch(
                     'blocks',
                     queryset=Block.objects.order_by('order')[:LIST_PREVIEW_BLOCKS],

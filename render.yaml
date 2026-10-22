@@ -1,0 +1,60 @@
+# Render Blueprint for the Paxl backend (free plan). Render > New > Blueprint, pick this repo.
+# What each value is and how to set the `sync: false` ones: the deployment runbook.
+#
+# The free plan has no pre-deploy command, no shell and no cron, and Render does not read
+# backend/Procfile, so the build runs the migrations (backend/build.sh, ADR-051).
+services:
+  - type: web
+    name: paxl-api
+    runtime: python
+    plan: free
+    # Cannot be changed after creation: keep it next to Neon (AWS eu-central-1) and Vercel (fra1)
+    region: frankfurt
+    rootDir: backend
+    buildCommand: bash build.sh
+    startCommand: daphne -b 0.0.0.0 -p $PORT config.asgi:application
+    healthCheckPath: /healthz
+    # Deploy only after the GitHub checks pass
+    autoDeployTrigger: checksPass
+    envVars:
+      # Render defaults to the newest Python (3.14); the lockfile and CI are 3.13.
+      # Fully qualified, and the same minor as backend/.python-version (a test checks it)
+      - key: PYTHON_VERSION
+        value: 3.13.9
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      # Visitor -> Vercel -> Render's router -> Daphne: the visitor is the second entry
+      # from the end of X-Forwarded-For. Check it on deploy day with LOG_CLIENT_IP=True
+      - key: NUM_PROXIES
+        value: "2"
+      # Calls straight to the public Render URL: only the entry Render's router appended counts
+      - key: DIRECT_PROXY_HOPS
+        value: "1"
+      # The same random value in Vercel (PAXL_ORIGIN_SECRET), added to every proxied request
+      - key: ORIGIN_SECRET
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: REVALIDATE_SECRET
+        sync: false
+      # Neon POOLED endpoint (host with -pooler)
+      - key: DATABASE_URL
+        sync: false
+      # Neon DIRECT endpoint, used only by the build for migrations (optional)
+      - key: MIGRATE_DATABASE_URL
+        sync: false
+      # Demo account created or refreshed by the build; leave empty for none
+      - key: DEMO_USERNAME
+        value: demo
+      - key: DEMO_EMAIL
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false

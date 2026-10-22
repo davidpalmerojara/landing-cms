@@ -1,0 +1,64 @@
+name: Daily maintenance (production)
+
+# Render's free plan has no cron: this job runs the daily cleanup (expired guests, magic
+# tokens, JWT blacklist, old analytics events) straight against the production database.
+#
+# Needs one repository secret, PROD_DATABASE_URL (Settings > Secrets and variables >
+# Actions): Neon's DIRECT connection string. Without it the job does nothing and passes.
+# GitHub pauses scheduled workflows after 60 days without repository activity.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # every day, 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-maintenance
+  cancel-in-progress: false
+
+jobs:
+  maintenance:
+    name: Clean up the production database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      # The commands only touch the database: nothing here is signed or served
+      DJANGO_DEBUG: "False"
+      DJANGO_SECRET_KEY: maintenance-job-nothing-is-signed-with-this-value
+    steps:
+      - name: Is the database secret set?
+        id: secret
+        # Before the checkout there is no backend/ directory yet
+        working-directory: .
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::PROD_DATABASE_URL is not set: nothing to clean up."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.secret.outputs.enabled == 'true'
+
+      - uses: actions/setup-python@v6
+        if: steps.secret.outputs.enabled == 'true'
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies from lockfile
+        if: steps.secret.outputs.enabled == 'true'
+        run: pip install --require-hashes -r requirements.txt
+
+      - name: Run the daily maintenance
+        if: steps.secret.outputs.enabled == 'true'
+        run: python manage.py daily_maintenance

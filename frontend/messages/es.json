@@ -104,7 +104,8 @@
     "passwordDisabledContinue": "Continuar",
     "required": "Este campo es obligatorio.",
     "invalidEmail": "Escribe un email válido.",
-    "backToHome": "Volver al inicio"
+    "backToHome": "Volver al inicio",
+    "passwordDisabledNotice": "Esta cuenta ya no entra con contraseña: se desactivó por seguridad al confirmar el email con un enlace. Escribe tu email y te enviamos un enlace para entrar."
   },
   "guest": {
     "tryButton": "Probar sin registrarse",
@@ -498,7 +499,10 @@
     "closeInspector": "Cerrar el inspector",
     "blockPosition": "Bloque {position} de {total}",
     "moveBlockUp": "Subir {name}",
-    "moveBlockDown": "Bajar {name}"
+    "moveBlockDown": "Bajar {name}",
+    "loadErrorDescription": "No hemos podido cargar la página. Inténtalo de nuevo.",
+    "loadErrorWakingHint": "Si el servidor estaba en reposo, puede tardar hasta un minuto en despertar.",
+    "retryLoad": "Reintentar"
   },
   "versionHistory": {
     "title": "Historial de versiones",
@@ -1258,5 +1262,9 @@
     "emptyPage": "La página está publicada, pero no tiene bloques: quien la visite la verá vacía.",
     "linkless": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla en el inspector.",
     "linklessPhone": "Página publicada. {count, plural, one {# botón o enlace no tiene} other {# botones o enlaces no tienen}} dirección ({names}): en la página se ven como texto. Puedes añadirla al editar cada bloque."
+  },
+  "wakeUp": {
+    "title": "Despertando el servidor…",
+    "description": "Tras un rato sin uso, la primera petición puede tardar hasta un minuto. No cierres esta página."
   }
 }

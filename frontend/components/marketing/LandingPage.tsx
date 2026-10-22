@@ -11,12 +11,14 @@ import GuestStartButton from '@/components/guest/GuestStartButton';
 import MobileMenu from '@/components/marketing/MobileMenu';
 import { toContentLocale } from '@/lib/content-locale';
 import { useAccountDeletedNotice } from '@/hooks/useAccountDeletedNotice';
+import { useServerWarmUp } from '@/hooks/useServerWarmUp';
 
 export default function LandingPage() {
   const t = useTranslations();
   // Product screenshots in the visitor's language
   const shotLocale = toContentLocale(useLocale());
   const accountDeleted = useAccountDeletedNotice();
+  useServerWarmUp();
   const menuLinks = [
     { href: '#features', label: t('navigation.features') },
     { href: '#how-it-works', label: t('navigation.howItWorks') },

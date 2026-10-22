@@ -714,6 +714,23 @@ export const api = {
       }),
   },
 
+  health: {
+    /**
+     * Wakes the free backend (DEPLOY-005): answers 200 without touching the database.
+     * Resolves true when the server answered OK; never rejects (a 404 from an older
+     * server or a network failure just means it was not warmed).
+     */
+    warmUp: async (): Promise<boolean> => {
+      try {
+        const res = await fetch(`${API_BASE}/healthz/`, { cache: 'no-store', credentials: 'omit' });
+        return res.ok;
+      } catch {
+        // Offline or the server is still starting: this ping is only a courtesy
+        return false;
+      }
+    },
+  },
+
   features: {
     /** Optional features the deployment has turned on. */
     get: () => publicRequest<ApiFeatures>('/features/'),

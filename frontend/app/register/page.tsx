@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ApiError, api } from '@/lib/api';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 import { accountErrorKey } from '@/lib/account-errors';
 import { validateSignUp } from '@/lib/auth-validation';
 import type { SignUpField, SignUpValues } from '@/lib/auth-validation';
@@ -15,6 +16,7 @@ import GoogleSignIn, { GOOGLE_SIGN_IN_AVAILABLE } from '@/components/auth/Google
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 import GuestStartButton from '@/components/guest/GuestStartButton';
 import { useFocusOnMount } from '@/hooks/useFocusOnMount';
+import { useServerWarmUp } from '@/hooks/useServerWarmUp';
 
 const FIELDS: ReadonlyArray<{
   name: SignUpField;
@@ -40,6 +42,7 @@ export default function RegisterPage() {
   const [passwordDisabled, setPasswordDisabled] = useState(false);
   const usernameRef = useRef<HTMLInputElement>(null);
   useFocusOnMount(usernameRef);
+  useServerWarmUp();
 
   const focusField = (name: SignUpField) => {
     document.getElementById(`register-${name}`)?.focus();
@@ -160,6 +163,7 @@ export default function RegisterPage() {
           {t('auth.register')}
         </button>
       </form>
+      <WakingServerNotice pending={isLoading} className="mt-3" />
 
       {GOOGLE_SIGN_IN_AVAILABLE && (
         <>

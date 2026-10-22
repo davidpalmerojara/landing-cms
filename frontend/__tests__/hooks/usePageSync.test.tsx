@@ -177,12 +177,30 @@ describe('usePageSync', () => {
     });
 
     it('has no status when the failure was not an HTTP response', async () => {
-      getPage.mockRejectedValue(new Error('offline'));
+      getPage.mockRejectedValue(new TypeError('Failed to fetch'));
 
       const view = await mount();
 
       expect(sync.error).toBe('offline');
       expect(sync.errorStatus).toBeNull();
+      view.unmount();
+    });
+
+    it('UX-002: a gateway error is reported as a kind, never as the response text, and can be retried', async () => {
+      getPage.mockRejectedValueOnce(new ApiError(502, '<html><h1>502 Bad Gateway</h1></html>'));
+
+      const view = await mount();
+
+      expect(sync.error).toBe('server');
+      expect(sync.isLoading).toBe(false);
+
+      getPage.mockResolvedValue(apiPage({ version: 3 }));
+      await act(async () => { sync.retryLoad(); });
+
+      expect(getPage).toHaveBeenCalledTimes(2);
+      expect(sync.error).toBeNull();
+      expect(sync.isLoading).toBe(false);
+      expect(state().syncBase?.version).toBe(3);
       view.unmount();
     });
 

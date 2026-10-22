@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 import { accountErrorKey } from '@/lib/account-errors';
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 
@@ -54,6 +55,7 @@ export default function MagicVerifyPage() {
           <div role="status" className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-primary-color animate-spin" aria-hidden="true" />
             <p className="text-secondary">{t('auth.magicVerifying')}</p>
+            <WakingServerNotice pending />
           </div>
         )}
 

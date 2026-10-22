@@ -28,6 +28,21 @@ describe('getPublicPage', () => {
   beforeEach(() => cacheStore.clear());
   afterEach(() => vi.unstubAllGlobals());
 
+  it('PERF-001: the read of Django has a time limit, and a timeout is an error, not a missing page', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'));
+    vi.stubGlobal('fetch', fetchMock);
+    const { getPublicPage, PUBLIC_PAGE_TIMEOUT_MS } = await import('@/lib/public-page');
+
+    await expect(getPublicPage('despierta')).rejects.toThrow();
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(PUBLIC_PAGE_TIMEOUT_MS).toBeLessThanOrEqual(30_000);
+    // A second visit asks again: nothing was remembered as "not found"
+    await expect(getPublicPage('despierta')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('caches "no such page" too, so unknown slugs stop reaching Django (QA-006)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 404 }));
     vi.stubGlobal('fetch', fetchMock);

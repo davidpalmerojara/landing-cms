@@ -104,7 +104,8 @@
     "passwordDisabledContinue": "Continue",
     "required": "This field is required.",
     "invalidEmail": "Enter a valid email address.",
-    "backToHome": "Back to the home page"
+    "backToHome": "Back to the home page",
+    "passwordDisabledNotice": "This account no longer signs in with a password: it was turned off for safety when the email was confirmed with a link. Enter your email and we'll send you a sign-in link."
   },
   "guest": {
     "tryButton": "Try it without signing up",
@@ -498,7 +499,10 @@
     "closeInspector": "Close the inspector",
     "blockPosition": "Block {position} of {total}",
     "moveBlockUp": "Move {name} up",
-    "moveBlockDown": "Move {name} down"
+    "moveBlockDown": "Move {name} down",
+    "loadErrorDescription": "We couldn't load the page. Please try again.",
+    "loadErrorWakingHint": "If the server was asleep, it can take up to a minute to wake up.",
+    "retryLoad": "Try again"
   },
   "versionHistory": {
     "title": "Version history",
@@ -1258,5 +1262,9 @@
     "emptyPage": "The page is published, but it has no blocks: visitors will see it empty.",
     "linkless": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one in the inspector.",
     "linklessPhone": "Page published. {count, plural, one {# button or link has} other {# buttons or links have}} no address ({names}): on the page they show as text. You can add one by editing each block."
+  },
+  "wakeUp": {
+    "title": "Waking up the server…",
+    "description": "After a quiet spell, the first request can take up to a minute. Please keep this page open."
   }
 }

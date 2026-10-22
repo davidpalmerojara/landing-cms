@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { api, ApiError } from '@/lib/api';
+import { apiErrorKind } from '@/lib/api-errors';
+import type { ApiErrorKind } from '@/lib/api-errors';
 import { clearBackup, logSyncError, readBackup } from '@/lib/page-backup';
 import { PageSyncController } from '@/lib/page-sync';
 import type { PageSyncCallbacks, RemotePageChange, SaveOptions } from '@/lib/page-sync';
@@ -19,8 +21,10 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
   const page = useEditorStore((s) => s.page);
   const loadedPageIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  /** The page could not be loaded */
-  const [error, setError] = useState<string | null>(null);
+  /** Why the page could not be loaded (never the server's text); null when it did */
+  const [error, setError] = useState<ApiErrorKind | null>(null);
+  /** Bumped by `retryLoad` to load the page again */
+  const [loadAttempt, setLoadAttempt] = useState(0);
   /** HTTP status of the failed load (404: the page does not exist or is not theirs); null for network errors */
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
@@ -59,8 +63,9 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
 
   // Load page from API on mount or pageId change
   useEffect(() => {
-    if (loadedPageIdRef.current === (pageId ?? '__no_page__')) return;
-    loadedPageIdRef.current = pageId ?? '__no_page__';
+    const loadKey = `${pageId ?? '__no_page__'}:${loadAttempt}`;
+    if (loadedPageIdRef.current === loadKey) return;
+    loadedPageIdRef.current = loadKey;
 
     async function loadPage(controller: PageSyncController) {
       try {
@@ -76,7 +81,7 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
         }
       } catch (e) {
         logSyncError('Failed to load page from API, using local backup if any:', e);
-        setError(e instanceof Error ? e.message : 'Error al cargar');
+        setError(apiErrorKind(e));
         setErrorStatus(e instanceof ApiError ? e.status : null);
         const backup = pageId ? readBackup(pageId) : null;
         // The copy's base, if it has one, is what the next save is checked against; without it the first save fetches it
@@ -88,7 +93,15 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     }
 
     loadPage(sync);
-  }, [pageId, sync]);
+  }, [pageId, sync, loadAttempt]);
+
+  /** Try loading the page again after a failure (the server may have been asleep). */
+  const retryLoad = useCallback(() => {
+    setError(null);
+    setErrorStatus(null);
+    setIsLoading(true);
+    setLoadAttempt((n) => n + 1);
+  }, []);
 
   const saveToApi = useCallback((options?: SaveOptions) => sync.save(options), [sync]);
 
@@ -118,6 +131,7 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     isLoading,
     error,
     errorStatus,
+    retryLoad,
     saveToApi,
     saveOnLeave,
     hasUnsavedChanges,

@@ -80,6 +80,19 @@ describe('login page', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('UX-003: a disabled password (ADR-018) explains why and offers the sign-in link, not "wrong credentials"', async () => {
+    vi.spyOn(api.auth, 'login').mockRejectedValue(
+      new ApiError(401, '{"error":"x","code":"PASSWORD_DISABLED"}'),
+    );
+
+    await logIn('ana@example.com');
+
+    expect(alertText()).toBe('');
+    expect(view.container.textContent).toContain('ya no entra con contraseña');
+    expect(field(view.container, 'Email').value).toBe('ana@example.com');
+    expect(buttonByText(view.container, 'Enviar enlace de acceso')).toBeTruthy();
+  });
+
   it('QA-055: a throttled login does not say the credentials are wrong', async () => {
     vi.spyOn(api.auth, 'login').mockRejectedValue(new ApiError(429, '{"error":"x","code":"THROTTLED"}'));
 

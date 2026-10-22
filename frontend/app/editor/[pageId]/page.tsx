@@ -16,6 +16,7 @@ import SeoPanel from '@/components/editor/SeoPanel';
 import DesignTokensPanel from '@/components/editor/DesignTokensPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { ToastContainer } from '@/components/ui/Toast';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 import AnalyticsPanelLoading from '@/components/analytics/AnalyticsPanelLoading';
 import SubmissionsPanel from '@/components/editor/SubmissionsPanel';
 import MobileEditor from '@/components/mobile-editor/MobileEditor';
@@ -31,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import GuestSessionProvider from '@/components/guest/GuestSessionProvider';
 import GuestBanner from '@/components/guest/GuestBanner';
 import { getTranslatedBlockLabel } from '@/lib/block-i18n';
+import { apiErrorKindMessage } from '@/lib/api-errors';
 import { isMacPlatform } from '@/lib/keyboard';
 import { inspectorInputId } from '@/lib/save-issue';
 import type { RejectedField } from '@/lib/page-sync';
@@ -68,7 +70,7 @@ export default function EditorPage() {
   }, [user, setMyUserId]);
   useEditorShortcuts();
   const {
-    isLoading, error, errorStatus, saveToApi, saveOnLeave, hasUnsavedChanges,
+    isLoading, error, errorStatus, retryLoad, saveToApi, saveOnLeave, hasUnsavedChanges,
     publishToApi, unpublishToApi, lastPublicationError, restoreVersion, handleRemoteChange,
   } = usePageSync(pageId, {
     onRemoteMerged: (change) => {
@@ -156,6 +158,7 @@ export default function EditorPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <span className="text-sm">{t('editor.loadingPage')}</span>
+          <WakingServerNotice pending className="max-w-xs text-center" />
         </div>
       </div>
     );
@@ -175,12 +178,27 @@ export default function EditorPage() {
           <p className="text-sm text-muted">
             {is404
               ? t('editor.pageNotFoundDescription')
-              : error}
+              : apiErrorKindMessage(error, t, 'editor.loadErrorDescription')}
           </p>
+          {!is404 && (error === 'server' || error === 'offline') && (
+            <p className="text-xs text-muted">{t('editor.loadErrorWakingHint')}</p>
+          )}
+          {!is404 && (
+            <button
+              type="button"
+              onClick={retryLoad}
+              className="mt-4 min-h-11 px-6 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95"
+              style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
+            >
+              {t('editor.retryLoad')}
+            </button>
+          )}
           <a
             href="/dashboard"
-            className="mt-4 px-6 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95"
-            style={{ background: 'linear-gradient(to right, #2563EB, #2563EB)' }}
+            className={is404
+              ? 'mt-4 px-6 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95'
+              : 'min-h-11 inline-flex items-center px-4 text-sm font-medium text-secondary hover:text-primary underline underline-offset-2'}
+            style={is404 ? { background: 'linear-gradient(to right, #2563EB, #2563EB)' } : undefined}
           >
             {t('editor.goToDashboard')}
           </a>

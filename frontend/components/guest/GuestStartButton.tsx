@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useStartGuest } from '@/hooks/useStartGuest';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 
 interface GuestStartButtonProps {
   /** hero: large pill for the landing page; form: full-width button under the login and register forms */
@@ -38,6 +39,7 @@ export default function GuestStartButton({ variant, className }: GuestStartButto
         {isStarting ? t('guest.starting') : t('guest.tryButton')}
       </button>
       <p className={clsx('mt-2 text-xs text-muted', variant === 'form' && 'text-center')}>{t('guest.hint')}</p>
+      <WakingServerNotice pending={isStarting} className="mt-2" />
       {error && (
         <p role="alert" className="mt-3 flex items-start gap-2 text-left text-sm text-error">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />

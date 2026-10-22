@@ -20,6 +20,13 @@ import { serverApiUrl } from '@/lib/server-api';
 
 export const publicPageRevalidateSeconds = 60;
 
+/**
+ * How long a render waits for Django. A free backend that went to sleep needs about
+ * a minute to answer: past this the visitor gets the error page (and can retry)
+ * instead of a render that hangs until the platform kills it (PERF-001).
+ */
+export const PUBLIC_PAGE_TIMEOUT_MS = 20_000;
+
 export function publicPageTag(slug: string): string {
   return `public-page:${slug}`;
 }
@@ -69,7 +76,10 @@ class PublicPageNotFound extends Error {
 }
 
 async function fetchPublicPage(slug: string): Promise<ApiPublicPage> {
-  const res = await fetch(`${serverApiUrl()}/public/pages/${encodeURIComponent(slug)}/`, { cache: 'no-store' });
+  const res = await fetch(`${serverApiUrl()}/public/pages/${encodeURIComponent(slug)}/`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(PUBLIC_PAGE_TIMEOUT_MS),
+  });
   // Thrown, not returned: Next's data cache keeps only what the function returns
   if (res.status === 404) throw new PublicPageNotFound();
   // Anything else is a server problem, not a missing page: show an error (never cached), not a 404

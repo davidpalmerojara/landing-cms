@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, AlertCircle, Mail, CheckCircle, ArrowLeft, Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ApiError, api } from '@/lib/api';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 import { accountErrorKey } from '@/lib/account-errors';
 import { nextPathFromLocation } from '@/lib/safe-redirect';
 import AuthLayout from '@/components/auth/AuthLayout';
@@ -14,6 +15,7 @@ import GoogleSignIn, { GOOGLE_SIGN_IN_AVAILABLE } from '@/components/auth/Google
 import PasswordDisabledScreen from '@/components/auth/PasswordDisabledScreen';
 import GuestStartButton from '@/components/guest/GuestStartButton';
 import { useFocusOnMount } from '@/hooks/useFocusOnMount';
+import { useServerWarmUp } from '@/hooks/useServerWarmUp';
 import { useGuestExpiredNotice } from '@/hooks/useGuestExpiredNotice';
 
 type AuthMode = 'password' | 'magic';
@@ -31,10 +33,18 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [securedNextPath, setSecuredNextPath] = useState<string | null>(null);
+  // The account's password was turned off (ADR-018): the link is the way in (UX-003)
+  const [passwordDisabled, setPasswordDisabled] = useState(false);
   const usernameRef = useRef<HTMLInputElement>(null);
+  const magicEmailRef = useRef<HTMLInputElement>(null);
   // useAuth sends an expired guest here with ?guest=expired
   const guestExpired = useGuestExpiredNotice();
   useFocusOnMount(usernameRef);
+  useServerWarmUp();
+
+  useEffect(() => {
+    if (passwordDisabled) magicEmailRef.current?.focus();
+  }, [passwordDisabled]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +55,14 @@ export default function LoginPage() {
       await api.auth.login({ username: username.trim(), password });
       router.replace(nextPathFromLocation());
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'PASSWORD_DISABLED') {
+        // Offer the sign-in link straight away; what was typed is already an email in the usual case
+        setPasswordDisabled(true);
+        setMode('magic');
+        if (username.includes('@')) setMagicEmail(username.trim());
+        setIsLoading(false);
+        return;
+      }
       // Wrong credentials are a 401; a throttled, offline or broken server must not say "wrong password" (QA-055)
       const wrongCredentials = err instanceof ApiError && err.status === 401;
       setError(t(wrongCredentials ? 'auth.loginError' : accountErrorKey(err) ?? 'errors.server'));
@@ -84,6 +102,7 @@ export default function LoginPage() {
     setMode(newMode);
     setError('');
     setMagicSent(false);
+    setPasswordDisabled(false);
   };
 
   if (securedNextPath) {
@@ -108,6 +127,13 @@ export default function LoginPage() {
           </div>
         )}
       </div>
+
+      {passwordDisabled && mode === 'magic' && !magicSent && (
+        <div role="status" className="flex items-start gap-2 text-secondary text-sm bg-surface-elevated border border-subtle rounded-lg px-4 py-3 mb-4">
+          <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />
+          <span>{t('auth.passwordDisabledNotice')}</span>
+        </div>
+      )}
 
       {/* Password form */}
       {mode === 'password' && (
@@ -152,6 +178,7 @@ export default function LoginPage() {
             value={magicEmail}
             onChange={setMagicEmail}
             autoComplete="email"
+            inputRef={magicEmailRef}
           />
 
           <button
@@ -188,6 +215,8 @@ export default function LoginPage() {
           </button>
         </div>
       )}
+
+      <WakingServerNotice pending={isLoading} className="mt-3" />
 
       {/* Toggle between password and magic link */}
       <div className="flex items-center gap-3 my-5">

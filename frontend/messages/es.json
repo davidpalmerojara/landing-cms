@@ -126,7 +126,7 @@
     "pageLimit": "Has llegado al máximo de páginas de una sesión de invitado. Crea una cuenta para seguir.",
     "expiredNotice": "Tu sesión de invitado ha caducado y se ha borrado. Puedes empezar otra o crear una cuenta.",
     "billingTitle": "Los planes necesitan una cuenta",
-    "billingBody": "Durante la prueba tienes las funciones de Pro. Crea una cuenta para conservar tu trabajo y elegir un plan.",
+    "billingBody": "Durante la prueba tienes las funciones de Pro. Crea una cuenta para conservar tu trabajo.",
     "domainsTitle": "Los dominios propios necesitan una cuenta",
     "domainsBody": "En una sesión de invitado no se pueden conectar dominios. Crea una cuenta para usar el tuyo.",
     "domainsLocked": "Necesita una cuenta. Crea una para conectar tu dominio.",
@@ -145,7 +145,8 @@
       "expired": "La sesión de invitado ha caducado y se ha borrado. Empieza otra desde el inicio.",
       "successTitle": "Cuenta creada",
       "successBody": "Tus páginas ya son de tu cuenta y no se borrarán.",
-      "continue": "Continuar"
+      "continue": "Continuar",
+      "descriptionDemo": "Tus páginas pasan a tu cuenta y dejan de caducar. Mientras los pagos estén desactivados, tu cuenta conserva todas las funciones de Pro."
     },
     "logoutTitle": "¿Cerrar la sesión de invitado?",
     "logoutBody": "Perderás tus páginas: se borran junto con la sesión. Crea una cuenta para conservarlas.",
@@ -249,7 +250,10 @@
         "loading": "Cargando planes…",
         "loadError": "No se han podido cargar los planes. Inténtalo de nuevo en unos segundos.",
         "note": "Estos son los límites que aplica la aplicación a cada plan.",
-        "paymentsOffNotice": "Paxl es un proyecto personal: los pagos no están activos en esta demo, así que el plan Pro todavía no se puede contratar."
+        "paymentsOffNotice": "Paxl es un proyecto personal: los pagos no están activos en esta demo, así que el plan Pro todavía no se puede contratar.",
+        "demoAllProNotice": "En esta demo todas las cuentas tienen las funciones del plan Pro: los pagos están desactivados y no se cobra nada.",
+        "demoBadge": "Incluido en la demo",
+        "freeNotApplied": "En esta demo no se aplica: tu cuenta tiene las funciones de Pro."
       },
       "about": {
         "title": "Sobre Paxl",
@@ -399,7 +403,8 @@
     "editPageNamed": "Editar {name}",
     "deleteTitle": "Eliminar página",
     "unpublishTitle": "Despublicar página",
-    "loadMore": "Cargar más páginas"
+    "loadMore": "Cargar más páginas",
+    "currentPlanDemo": "Plan {plan} (demo)"
   },
   "settingsPage": {
     "title": "Configuración",
@@ -852,7 +857,9 @@
     "testMode": "Modo de prueba: usa la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC. No se cobra nada.",
     "perMonth": "/mes",
     "perYear": "/año",
-    "unavailableInDemo": "No disponible en esta demo"
+    "unavailableInDemo": "No disponible en esta demo",
+    "proDemo": "Pro (demo)",
+    "demoAllPro": "En esta demo todas las cuentas tienen las funciones del plan Pro, porque los pagos están desactivados. No hay nada que contratar."
   },
   "domains": {
     "title": "Dominios personalizados",
@@ -974,7 +981,9 @@
     "description": "Esta funcionalidad está disponible en el plan Pro. Actualiza para desbloquearla.",
     "cta": "Actualizar a Pro",
     "compactDemo": "{feature}: no disponible en esta demo (los pagos no están activos)",
-    "descriptionDemo": "Esta función es del plan Pro, y los pagos no están activos en esta demo."
+    "descriptionDemo": "Esta función es del plan Pro, y los pagos no están activos en esta demo.",
+    "compactDemoAllPro": "{feature}: en esta demo todas las cuentas tienen Pro. Recarga la página si no lo ves.",
+    "descriptionDemoAllPro": "En esta demo todas las cuentas tienen las funciones Pro. Recarga la página si esta función no aparece."
   },
   "publicPage": {
     "empty": "Esta página no tiene contenido.",
@@ -1014,7 +1023,8 @@
     "invalidEmail": "Escribe una dirección de email válida.",
     "cannotShareSelf": "No puedes compartir la página contigo.",
     "notCollaborator": "Esa persona ya no tenía acceso a la página.",
-    "throttled": "Demasiados intentos seguidos. Espera un momento y vuelve a probar."
+    "throttled": "Demasiados intentos seguidos. Espera un momento y vuelve a probar.",
+    "realtimeUnavailableDemo": "La edición en directo no está disponible ahora mismo. Las personas con acceso pueden editar la página y todos los cambios se guardan, pero no se ven al momento."
   },
   "seo": {
     "panelTitle": "SEO",

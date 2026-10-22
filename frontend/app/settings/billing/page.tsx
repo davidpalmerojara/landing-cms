@@ -28,7 +28,7 @@ export default function BillingPage() {
   const { user, setUser, isLoading: isAuthLoading } = useAuth({ redirectTo: loginRedirectFor('/settings/billing') });
 
   // A guest session has no plan to manage: it never reaches the billing API
-  const { plans, subscription, payments, isLoading, hasError, error: loadFailure } = useBillingOverview({
+  const { plans, subscription, effectivePlan, demoAllPro, payments, isLoading, hasError, error: loadFailure } = useBillingOverview({
     enabled: Boolean(user && !user.is_guest),
   });
   const { features } = useFeatures();
@@ -88,7 +88,9 @@ export default function BillingPage() {
   const freePlan = plans.find((p) => p.name === 'free');
   const proPlan = plans.find((p) => p.name === 'pro');
   const currentPlanName = subscription?.plan?.name || 'free';
-  const isPro = currentPlanName === 'pro' && (subscription?.status === 'active' || subscription?.status === 'trialing');
+  // In the demo every account has the Pro features (ADR-051), whatever the stored subscription says
+  const isPro = demoAllPro || (currentPlanName === 'pro' && (subscription?.status === 'active' || subscription?.status === 'trialing'));
+  const shownPlan = demoAllPro ? effectivePlan ?? proPlan ?? subscription?.plan : subscription?.plan;
 
   return (
     <div className="min-h-screen bg-surface text-secondary">
@@ -118,7 +120,13 @@ export default function BillingPage() {
         )}
 
         {/* Payments run only with a Stripe test key (ADR-036): say which mode this is */}
-        {isBillingKnown && !billingEnabled && (
+        {demoAllPro && (
+          <p role="note" className="flex items-start gap-2 text-sm text-secondary mb-6 bg-surface-elevated/60 border border-subtle rounded-lg px-4 py-3">
+            <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />
+            {t('billing.demoAllPro')}
+          </p>
+        )}
+        {isBillingKnown && !billingEnabled && !demoAllPro && (
           <p role="note" className="flex items-start gap-2 text-sm text-secondary mb-6 bg-surface-elevated/60 border border-subtle rounded-lg px-4 py-3">
             <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary-color" aria-hidden="true" />
             {t('billing.paymentsOff')}
@@ -144,7 +152,7 @@ export default function BillingPage() {
                   <p className="text-sm text-muted mb-1">{t('billing.currentPlan')}</p>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-primary">
-                      {isPro ? t('billing.pro') : t('billing.free')}
+                      {isPro ? t(demoAllPro ? 'billing.proDemo' : 'billing.pro') : t('billing.free')}
                     </h2>
                     {isPro && <Crown className="w-5 h-5 text-warning" />}
                   </div>
@@ -170,10 +178,10 @@ export default function BillingPage() {
                 )}
               </div>
               {/* The plans are not offered to someone who has Pro, so this is where its limits are seen (APP2-004) */}
-              {isPro && subscription?.plan && (
+              {isPro && shownPlan && (
                 <div className="mt-6 border-t border-subtle/80 pt-5">
                   <PlanFeatureList
-                    features={planFeatures(subscription.plan, t, { customDomains: showCustomDomains })}
+                    features={planFeatures(shownPlan, t, { customDomains: showCustomDomains })}
                     includedLabel={t('billing.included')}
                     notIncludedLabel={t('billing.notIncluded')}
                   />

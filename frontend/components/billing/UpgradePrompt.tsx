@@ -4,6 +4,7 @@ import { Crown, ArrowRight, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useBillingEnabled } from '@/hooks/useBillingEnabled';
+import { useFeatures } from '@/hooks/useFeatures';
 
 interface UpgradePromptProps {
   feature: string;
@@ -16,14 +17,17 @@ export default function UpgradePrompt({ feature, description, className = '', co
   const router = useRouter();
   const t = useTranslations();
   const { billingEnabled, isKnown } = useBillingEnabled();
+  const { features } = useFeatures();
+  // Every account has the Pro features in the demo (ADR-051): there is nothing to upgrade to
+  const demoAllPro = features?.demo_all_pro === true;
 
   // Without payments (ADR-036) there is nothing to upgrade to: say so instead of leading to a dead end
-  if (isKnown && !billingEnabled) {
+  if (demoAllPro || (isKnown && !billingEnabled)) {
     if (compact) {
       return (
         <p className={`flex items-center gap-2 text-xs text-muted bg-surface-card border border-subtle rounded-lg px-3 py-2 ${className}`}>
           <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          <span>{t('upgrade.compactDemo', { feature })}</span>
+          <span>{t(demoAllPro ? 'upgrade.compactDemoAllPro' : 'upgrade.compactDemo', { feature })}</span>
         </p>
       );
     }
@@ -33,7 +37,7 @@ export default function UpgradePrompt({ feature, description, className = '', co
           <Info className="w-7 h-7 text-muted" aria-hidden="true" />
         </div>
         <h3 className="text-lg font-semibold text-primary mb-2">{feature}</h3>
-        <p className="text-sm text-muted max-w-sm">{t('upgrade.descriptionDemo')}</p>
+        <p className="text-sm text-muted max-w-sm">{t(demoAllPro ? 'upgrade.descriptionDemoAllPro' : 'upgrade.descriptionDemo')}</p>
       </div>
     );
   }

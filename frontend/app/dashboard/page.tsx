@@ -59,8 +59,9 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
   const searchId = useId();
   const { isGuest, openClaim } = useGuestSession();
   const { billingEnabled } = useBillingEnabled();
-  const { subscription, usage, refresh: refreshUsage } = useSubscription({ enabled: Boolean(user) });
-  const plan = subscription?.plan ?? null;
+  const { subscription, usage, effectivePlan, demoAllPro, refresh: refreshUsage } = useSubscription({ enabled: Boolean(user) });
+  const plan = effectivePlan ?? subscription?.plan ?? null;
+  const planLabel = (displayName: string) => t(demoAllPro ? 'dashboard.currentPlanDemo' : 'dashboard.currentPlan', { plan: displayName });
 
   const [searchText, setSearchText] = useState('');
   const search = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
@@ -276,7 +277,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
           {/* Usage card: only rendered once the real plan and the real count are known */}
           {plan && ownedPages !== null && !isGuest && (
             <div className="p-4 rounded-xl bg-surface-card border border-default/10">
-              <p className="text-xs font-bold text-primary mb-1">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
+              <p className="text-xs font-bold text-primary mb-1">{planLabel(plan.display_name)}</p>
               <p className="text-xs text-muted mb-3">{usageLabel}</p>
               {!isUnlimited && (
                 <div
@@ -370,7 +371,7 @@ function Dashboard({ user, isAuthLoading, logout }: DashboardProps) {
               {isGuest ? (
                 <p className="text-[10px] text-muted uppercase tracking-wider">{t('guest.cardTitle')}</p>
               ) : plan && (
-                <p className="text-[10px] text-muted uppercase tracking-wider">{t('dashboard.currentPlan', { plan: plan.display_name })}</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider">{planLabel(plan.display_name)}</p>
               )}
             </div>
             <div className="w-10 h-10 rounded-full border-2 border-primary/20 bg-surface-card flex items-center justify-center text-sm font-bold text-primary-color" aria-hidden="true">

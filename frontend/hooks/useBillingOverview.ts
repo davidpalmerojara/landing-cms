@@ -8,10 +8,13 @@ import { useAsyncData } from '@/hooks/useAsyncData';
 interface BillingOverview {
   plans: ApiBillingPlan[];
   subscription: ApiSubscription | null;
+  /** The plan whose features the account has now (Pro for everyone in the demo, ADR-051) */
+  effectivePlan: ApiBillingPlan | null;
+  demoAllPro: boolean;
   payments: ApiPayment[];
 }
 
-const EMPTY_OVERVIEW: BillingOverview = { plans: [], subscription: null, payments: [] };
+const EMPTY_OVERVIEW: BillingOverview = { plans: [], subscription: null, effectivePlan: null, demoAllPro: false, payments: [] };
 
 async function loadBillingOverview(): Promise<BillingOverview> {
   const [plans, subscription, payments] = await Promise.all([
@@ -19,7 +22,13 @@ async function loadBillingOverview(): Promise<BillingOverview> {
     api.billing.subscription(),
     api.billing.payments(),
   ]);
-  return { plans, subscription: subscription.subscription, payments: payments.payments };
+  return {
+    plans,
+    subscription: subscription.subscription,
+    effectivePlan: subscription.effective_plan ?? null,
+    demoAllPro: subscription.demo_all_pro === true,
+    payments: payments.payments,
+  };
 }
 
 /**
@@ -38,6 +47,8 @@ export function useBillingOverview({ enabled }: { enabled: boolean }) {
   return {
     plans: overview.plans,
     subscription: overview.subscription,
+    effectivePlan: overview.effectivePlan,
+    demoAllPro: overview.demoAllPro,
     payments: overview.payments,
     isLoading,
     hasError,

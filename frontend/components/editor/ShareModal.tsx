@@ -11,6 +11,7 @@ import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { useInviteLink } from '@/hooks/useInviteLink';
 import { useCollaborators } from '@/hooks/useCollaborators';
 import { useGuestSession } from '@/components/guest/GuestSessionProvider';
+import { useFeatures } from '@/hooks/useFeatures';
 
 interface ShareModalProps {
   pageId: string;
@@ -129,6 +130,7 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
   const isOwner = owner !== null && myUserId !== null && owner.id === myUserId;
   // Live editing is off on this plan: said here instead of a toast on every open (EDITOR2-007)
   const realtimeUnavailable = useEditorStore((s) => s.collabStatus === 'unavailable');
+  const { features } = useFeatures();
 
   // In the body: inside the top bar (backdrop-filter) `fixed` is relative to the 56 px
   // header and the dialog was cut off above the screen (UX-001). Only mounted on a click.
@@ -194,7 +196,9 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
           <p className="px-5 pt-4 text-xs text-secondary">{t('share.guestEmailLocked')}</p>
         )}
         {isOwner && realtimeUnavailable && (
-          <p className="px-5 pt-4 text-xs text-secondary">{t('share.realtimeNeedsPro')}</p>
+          <p className="px-5 pt-4 text-xs text-secondary">
+            {t(features?.demo_all_pro ? 'share.realtimeUnavailableDemo' : 'share.realtimeNeedsPro')}
+          </p>
         )}
         {!isLoading && owner && !isOwner && (
           <p className="px-5 py-4 border-b border-subtle text-xs text-secondary">{t('share.notOwner')}</p>

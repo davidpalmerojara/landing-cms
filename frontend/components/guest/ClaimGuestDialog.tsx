@@ -9,6 +9,7 @@ import { validateSignUp } from '@/lib/auth-validation';
 import type { SignUpField, SignUpValues } from '@/lib/auth-validation';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { useCloseOnBack } from '@/hooks/useCloseOnBack';
+import { useFeatures } from '@/hooks/useFeatures';
 
 interface ClaimGuestDialogProps {
   /** Closes the dialog without claiming */
@@ -35,6 +36,7 @@ const INPUT_CLASSES =
 export default function ClaimGuestDialog({ onCancel, onClaimed }: ClaimGuestDialogProps) {
   const t = useTranslations();
   const idPrefix = useId();
+  const { features } = useFeatures();
   const dialogRef = useRef<HTMLDivElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
   const [values, setValues] = useState<SignUpValues>({ username: '', email: '', password: '', password2: '' });
@@ -160,7 +162,7 @@ export default function ClaimGuestDialog({ onCancel, onClaimed }: ClaimGuestDial
               <div>
                 <h2 id={`${idPrefix}-title`} className="text-lg font-semibold text-primary">{t('guest.claim.title')}</h2>
                 <p id={`${idPrefix}-description`} className="text-sm text-secondary mt-1 leading-relaxed">
-                  {t('guest.claim.description')}
+                  {t(features?.demo_all_pro ? 'guest.claim.descriptionDemo' : 'guest.claim.description')}
                 </p>
               </div>
               <button

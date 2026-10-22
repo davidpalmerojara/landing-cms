@@ -126,7 +126,7 @@
     "pageLimit": "You've reached the page limit for a guest session. Create an account to keep going.",
     "expiredNotice": "Your guest session expired and was deleted. You can start another one or create an account.",
     "billingTitle": "Plans need an account",
-    "billingBody": "During the trial you have the Pro features. Create an account to keep your work and pick a plan.",
+    "billingBody": "During the trial you have the Pro features. Create an account to keep your work.",
     "domainsTitle": "Custom domains need an account",
     "domainsBody": "Guest sessions can't connect domains. Create an account to use yours.",
     "domainsLocked": "Needs an account. Create one to connect your domain.",
@@ -145,7 +145,8 @@
       "expired": "The guest session expired and was deleted. Start another one from the home page.",
       "successTitle": "Account created",
       "successBody": "Your pages now belong to your account and won't be deleted.",
-      "continue": "Continue"
+      "continue": "Continue",
+      "descriptionDemo": "Your pages move to your account and stop expiring. While payments are turned off, your account keeps every Pro feature."
     },
     "logoutTitle": "Log out of the guest session?",
     "logoutBody": "You will lose your pages: they are deleted along with the session. Create an account to keep them.",
@@ -249,7 +250,10 @@
         "loading": "Loading plans…",
         "loadError": "The plans could not be loaded. Please try again in a few seconds.",
         "note": "These are the limits the app applies to each plan.",
-        "paymentsOffNotice": "Paxl is a personal project: payments are not active in this demo, so the Pro plan cannot be purchased yet."
+        "paymentsOffNotice": "Paxl is a personal project: payments are not active in this demo, so the Pro plan cannot be purchased yet.",
+        "demoAllProNotice": "In this demo every account has the Pro features: payments are turned off and nothing is charged.",
+        "demoBadge": "Included in the demo",
+        "freeNotApplied": "Not applied in this demo: your account has the Pro features."
       },
       "about": {
         "title": "About Paxl",
@@ -399,7 +403,8 @@
     "editPageNamed": "Edit {name}",
     "deleteTitle": "Delete page",
     "unpublishTitle": "Unpublish page",
-    "loadMore": "Load more pages"
+    "loadMore": "Load more pages",
+    "currentPlanDemo": "{plan} plan (demo)"
   },
   "settingsPage": {
     "title": "Settings",
@@ -852,7 +857,9 @@
     "testMode": "Test mode: use the card 4242 4242 4242 4242, any future date and any CVC. Nothing is charged.",
     "perMonth": "/month",
     "perYear": "/year",
-    "unavailableInDemo": "Not available in this demo"
+    "unavailableInDemo": "Not available in this demo",
+    "proDemo": "Pro (demo)",
+    "demoAllPro": "In this demo every account has the Pro features because payments are turned off. There is nothing to buy."
   },
   "domains": {
     "title": "Custom domains",
@@ -974,7 +981,9 @@
     "description": "This feature is available on the Pro plan. Upgrade to unlock it.",
     "cta": "Upgrade to Pro",
     "compactDemo": "{feature}: not available in this demo (payments are not active)",
-    "descriptionDemo": "This feature belongs to the Pro plan, and payments are not active in this demo."
+    "descriptionDemo": "This feature belongs to the Pro plan, and payments are not active in this demo.",
+    "compactDemoAllPro": "{feature}: in this demo every account has Pro. Reload the page if you don't see it.",
+    "descriptionDemoAllPro": "In this demo every account has the Pro features. Reload the page if this feature doesn't show up."
   },
   "publicPage": {
     "empty": "This page has no content.",
@@ -1014,7 +1023,8 @@
     "invalidEmail": "Enter a valid email address.",
     "cannotShareSelf": "You cannot share the page with yourself.",
     "notCollaborator": "That person no longer had access to the page.",
-    "throttled": "Too many attempts in a row. Wait a moment and try again."
+    "throttled": "Too many attempts in a row. Wait a moment and try again.",
+    "realtimeUnavailableDemo": "Live editing isn't available right now. People with access can edit the page and every change is saved, but they won't see each other's changes straight away."
   },
   "seo": {
     "panelTitle": "SEO",

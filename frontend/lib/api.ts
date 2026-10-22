@@ -638,7 +638,7 @@ export const api = {
     plans: () => publicRequest<ApiBillingPlan[]>('/billing/plans/'),
 
     subscription: () =>
-      request<{ subscription: ApiSubscription | null; usage?: ApiUsage }>('/billing/subscription/'),
+      request<ApiSubscriptionResponse>('/billing/subscription/'),
 
     payments: () =>
       request<{ payments: ApiPayment[] }>('/billing/payments/'),
@@ -786,6 +786,16 @@ export interface ApiBillingPlan {
   has_ab_testing: boolean;
   remove_watermark: boolean;
   max_version_history: number;
+}
+
+/** GET /api/billing/subscription/ */
+export interface ApiSubscriptionResponse {
+  subscription: ApiSubscription | null;
+  usage?: ApiUsage;
+  /** The plan whose features the account has now: Pro for everyone while payments are off (ADR-051) */
+  effective_plan?: ApiBillingPlan;
+  /** True while every account has the Pro features */
+  demo_all_pro?: boolean;
 }
 
 export interface ApiSubscription {

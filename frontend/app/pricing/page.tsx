@@ -15,6 +15,7 @@ export default function PricingPage() {
   const { plans, error, isLoading } = usePlans();
   const { features } = useFeatures();
   const customDomains = features?.custom_domains ?? false;
+  const demoAllPro = features?.demo_all_pro === true;
   const { billingEnabled, isKnown: isBillingKnown } = useBillingEnabled();
 
   return (
@@ -24,9 +25,11 @@ export default function PricingPage() {
     >
       <p className="mb-8 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-secondary">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary-color" aria-hidden="true" />
-        {isBillingKnown && !billingEnabled
-          ? t('marketing.pages.pricing.paymentsOffNotice')
-          : t('marketing.pages.pricing.demoNotice')}
+        {demoAllPro
+          ? t('marketing.pages.pricing.demoAllProNotice')
+          : isBillingKnown && !billingEnabled
+            ? t('marketing.pages.pricing.paymentsOffNotice')
+            : t('marketing.pages.pricing.demoNotice')}
       </p>
 
       {isLoading && (
@@ -53,7 +56,14 @@ export default function PricingPage() {
                     : 'border-subtle/70 bg-surface-elevated/40'
                 }`}
               >
-                <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{plan.display_name}</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted flex items-center gap-2">
+                  {plan.display_name}
+                  {demoAllPro && highlighted && (
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] tracking-wider text-primary-color">
+                      {t('marketing.pages.pricing.demoBadge')}
+                    </span>
+                  )}
+                </h2>
                 <p className="mt-3 mb-8 flex items-baseline gap-1">
                   <span className="text-4xl font-black text-primary">${parseFloat(plan.price_monthly).toFixed(0)}</span>
                   <span className="text-sm text-muted">{t('marketing.pages.pricing.perMonth')}</span>
@@ -64,6 +74,10 @@ export default function PricingPage() {
                   includedLabel={t('billing.included')}
                   notIncludedLabel={t('billing.notIncluded')}
                 />
+
+                {demoAllPro && !highlighted && (
+                  <p className="mt-6 text-xs text-muted">{t('marketing.pages.pricing.freeNotApplied')}</p>
+                )}
 
                 <Link
                   href="/register"

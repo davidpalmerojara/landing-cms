@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { verifyEmail } from './support';
 
 /**
  * SEC2-002 / PUBLIC2-008: what the server accepts must be what the pages' CSP lets the browser load.
@@ -13,6 +14,8 @@ async function signUp(request: APIRequestContext, baseURL: string): Promise<void
     headers: { Origin: baseURL },
   });
   expect(response.ok(), await response.text()).toBe(true);
+  // Custom HTML is published only for a verified email (ADR-052)
+  await verifyEmail(request, baseURL, `${name}@example.com`);
 }
 
 function heroWith(backgroundImage: string) {

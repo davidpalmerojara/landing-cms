@@ -31,14 +31,20 @@ export STRIPE_SECRET_KEY=
 export STRIPE_WEBHOOK_SECRET=
 export AI_DEMO_MODE=True
 export AI_DEMO_DELAY_SECONDS=0
-export EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+# Emails are written to files the tests read (a magic link verifies an account, ADR-052)
+export EMAIL_BACKEND=django.core.mail.backends.filebased.EmailBackend
+export EMAIL_FILE_PATH="${E2E_EMAIL_DIR:-$BACKEND_DIR/e2e-mail}"
+export EMAIL_DAILY_LIMIT=100000
+export EMAIL_RECIPIENT_DAILY_LIMIT=1000
 # Every test starts guests from the same IP; the default (5/hour) would stop the suite
 export GUEST_CREATION_RATE="${GUEST_CREATION_RATE:-1000/hour}"
-# Same for register, join and token refresh (10/minute per IP by default)
+# Same for register, join and magic links (10/minute per IP by default), and token refresh (60/minute)
 export AUTH_RATE="${AUTH_RATE:-1000/minute}"
+export REFRESH_RATE="${REFRESH_RATE:-1000/minute}"
 
 cd "$BACKEND_DIR"
 rm -f "$SQLITE_PATH"
+rm -rf "$EMAIL_FILE_PATH"
 "$PYTHON" manage.py migrate --noinput
 "$PYTHON" manage.py seed_plans
 exec "$PYTHON" -m daphne -b 127.0.0.1 -p "$BACKEND_PORT" config.asgi:application

@@ -3,7 +3,7 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import { getBlockDefaults } from '@/lib/block-defaults';
 import { presetTokens, tokenPresets, tokensToApi } from '@/lib/design-tokens';
 import type { BlockType } from '@/types/block-data';
-import { test } from './support';
+import { test, verifyEmail } from './support';
 
 /**
  * Published pages, QA round 1 batch 3: WCAG AA contrast on every palette
@@ -42,6 +42,7 @@ function allBlocks() {
   }));
 }
 
+/** A registered account with a verified email: its pages publish with Custom HTML and a working form (ADR-052). */
 async function signUp(request: APIRequestContext, baseURL: string): Promise<void> {
   const name = `pub${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const response = await request.post('/api/auth/register/', {
@@ -49,6 +50,7 @@ async function signUp(request: APIRequestContext, baseURL: string): Promise<void
     headers: { Origin: baseURL },
   });
   expect(response.ok(), await response.text()).toBe(true);
+  await verifyEmail(request, baseURL, `${name}@example.com`);
 }
 
 class PublishedPage {

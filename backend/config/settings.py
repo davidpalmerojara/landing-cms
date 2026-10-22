@@ -311,7 +311,7 @@ GUEST_MAX_ACTIVE = int(os.environ.get('GUEST_MAX_ACTIVE', '200'))
 GUEST_MAX_PAGES = int(os.environ.get('GUEST_MAX_PAGES', '5'))
 
 
-# --- Demo plan and storage limits (ADR-050, ADR-052) ---
+# --- Demo plan and storage limits (ADR-051, ADR-053) ---
 # While payments are off, every account and guest gets the Pro features (C1).
 # GET /api/features/ answers it as `demo_all_pro`.
 DEMO_ALL_PRO = os.environ.get('DEMO_ALL_PRO', 'True').lower() in ('true', '1', 'yes')
@@ -352,9 +352,12 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1',
 # Seconds before a send gives up (SMTP and the Brevo API): a blocked port must not hang the request
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
 # Brevo transactional API key (EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend). Render's free
-# plan blocks outgoing SMTP, so production sends over HTTPS (ADR-049).
+# plan blocks outgoing SMTP, so production sends over HTTPS (ADR-050).
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
-# Emails sent per UTC day, everything included: below Brevo's free 300/day (ADR-049)
+# Directory of django.core.mail.backends.filebased (the e2e suite reads magic links from it)
+if os.environ.get('EMAIL_FILE_PATH'):
+    EMAIL_FILE_PATH = os.environ['EMAIL_FILE_PATH']
+# Emails sent per UTC day, everything included: below Brevo's free 300/day (ADR-050)
 EMAIL_DAILY_LIMIT = int(os.environ.get('EMAIL_DAILY_LIMIT', '250'))
 # Emails one address can receive per UTC day, whoever asks (magic links and share notices)
 EMAIL_RECIPIENT_DAILY_LIMIT = int(os.environ.get('EMAIL_RECIPIENT_DAILY_LIMIT', '5'))

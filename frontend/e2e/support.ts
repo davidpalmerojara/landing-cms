@@ -1,4 +1,6 @@
-import { expect, test as base, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { expect, test as base, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 /** Blocks in the SaaS template (the one guests start with), navbar to footer. */
 export const SAAS_TEMPLATE_BLOCK_COUNT = 10;
@@ -107,3 +109,39 @@ export function watchCollabMessages(page: Page): { has: (type: string) => boolea
   return { has: (type) => seen.has(type) };
 }
 
+
+/** Where the e2e backend writes its emails (e2e/scripts/start-backend.sh); the suite runs from frontend/. */
+const EMAIL_DIR = process.env.E2E_EMAIL_DIR ?? join(process.cwd(), '..', 'backend', 'e2e-mail');
+
+/** The newest magic link the backend emailed to this address. */
+function latestMagicToken(email: string): string | null {
+  let files: string[];
+  try {
+    files = readdirSync(EMAIL_DIR).map((name) => join(EMAIL_DIR, name));
+  } catch {
+    return null; // no email written yet
+  }
+  const newestFirst = files.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+  for (const file of newestFirst) {
+    const text = readFileSync(file, 'utf8');
+    if (!text.includes(`To: ${email}`)) continue;
+    const match = text.match(/\/auth\/magic\/([A-Za-z0-9_-]+)/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Proves the email of the account signed in on `request` the way a person does:
+ * asks for a magic link, reads it from the email and opens it (ADR-052). The
+ * link replaces the session (and turns off a password set before, ADR-018);
+ * the new session cookies stay in `request`.
+ */
+export async function verifyEmail(request: APIRequestContext, baseURL: string, email: string): Promise<void> {
+  const asked = await request.post('/api/auth/magic/request/', { data: { email }, headers: { Origin: baseURL } });
+  expect(asked.ok(), await asked.text()).toBe(true);
+  let token: string | null = null;
+  await expect.poll(() => (token = latestMagicToken(email)), { message: `a magic link emailed to ${email}` }).not.toBeNull();
+  const verified = await request.post('/api/auth/magic/verify/', { data: { token }, headers: { Origin: baseURL } });
+  expect(verified.ok(), await verified.text()).toBe(true);
+}

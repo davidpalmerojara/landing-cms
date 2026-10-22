@@ -39,7 +39,7 @@ export default function FloatingViewportControls({ onCenterCanvas, onZoomStep }:
       >
         <Minus aria-hidden="true" className="w-4 h-4" />
       </button>
-      <span className="text-[11px] font-medium text-secondary w-10 text-center select-none cursor-default">
+      <span className="text-[11px] font-medium text-primary w-10 text-center select-none cursor-default">
         {Math.round(zoom * 100)}%
       </span>
       <button

@@ -49,6 +49,20 @@ describe('list field in the inspector', () => {
 
   afterEach(() => view.unmount());
 
+  it('MOBILE-003: on touch screens every control of a list row is 44 px, and delete sits apart from the arrows', () => {
+    const controls = [
+      byLabel(view, 'Mover pregunta 2 arriba'),
+      byLabel(view, 'Mover pregunta 2 abajo'),
+      byLabel(view, 'Eliminar pregunta 2'),
+      view.container.querySelectorAll<HTMLElement>('[aria-controls$="-panel"]')[1],
+      buttonByText(view, 'Añadir pregunta'),
+    ];
+    for (const control of controls) {
+      expect(control.className, control.textContent || control.getAttribute('aria-label') || '').toContain('pointer-coarse:min-h-11');
+    }
+    expect(byLabel(view, 'Eliminar pregunta 2').className).toContain('pointer-coarse:ml-2');
+  });
+
   it('shows one collapsed item per entry with its position and a counter', () => {
     expect(view.container.textContent).toContain('3 de 12');
     const toggles = view.container.querySelectorAll('[aria-controls$="-panel"]');

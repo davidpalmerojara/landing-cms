@@ -108,7 +108,7 @@ export default function ListField({
   const iconButtonClass = clsx(
     'shrink-0 flex items-center justify-center rounded-md text-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed',
     'hover:text-primary hover:bg-surface-card active:bg-surface-card focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50',
-    isMobile ? 'min-w-11 min-h-11' : 'w-7 h-7',
+    isMobile ? 'min-w-11 min-h-11' : 'w-7 h-7 pointer-coarse:min-w-11 pointer-coarse:min-h-11',
   );
 
   return (
@@ -148,7 +148,7 @@ export default function ListField({
                     onClick={() => setOpenIndex(isOpen ? null : index)}
                     className={clsx(
                       'flex-1 min-w-0 flex items-center gap-2 px-1.5 rounded-md text-left hover:bg-surface-card/60 active:bg-surface-card/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50',
-                      isMobile ? 'min-h-11' : 'py-1.5',
+                      isMobile ? 'min-h-11' : 'py-1.5 pointer-coarse:min-h-11',
                     )}
                   >
                     <ChevronDown
@@ -185,7 +185,7 @@ export default function ListField({
                     data-list-focus={`remove-${index}`}
                     onClick={() => handleRemove(index)}
                     aria-label={t('listRemove', { item: itemName, position })}
-                    className={clsx(iconButtonClass, 'hover:text-red-400 hover:bg-red-500/10 active:bg-red-500/10')}
+                    className={clsx(iconButtonClass, 'hover:text-red-400 hover:bg-red-500/10 active:bg-red-500/10', !isMobile && 'pointer-coarse:ml-2')}
                   >
                     <Trash2 aria-hidden="true" className="w-3.5 h-3.5" />
                   </button>
@@ -219,7 +219,7 @@ export default function ListField({
         aria-describedby={atMax ? `${baseId}-max` : undefined}
         className={clsx(
           'w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-default/20 bg-surface-elevated/30 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50',
-          isMobile ? 'min-h-11' : 'py-2',
+          isMobile ? 'min-h-11' : 'py-2 pointer-coarse:min-h-11',
           atMax
             ? 'text-muted opacity-60 cursor-not-allowed'
             : 'text-secondary hover:text-primary hover:bg-surface-card active:bg-surface-card hover:border-primary/40',

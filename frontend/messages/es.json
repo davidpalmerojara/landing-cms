@@ -53,7 +53,9 @@
     "selectionCleared": "Selección quitada",
     "blockLockedRefused": "{name} no se puede seleccionar: lo está editando {user}.",
     "blockMoved": "Bloque {name} movido a la posición {position} de {total}",
-    "blockDuplicated": "Bloque {name} duplicado"
+    "blockDuplicated": "Bloque {name} duplicado",
+    "shortcutUndo": "Ctrl o Cmd con Z: deshacer; con Mayús añadido, rehacer",
+    "shortcutCancelEdit": "Escape mientras escribes en un texto: descartar lo que has escrito"
   },
   "preferences": {
     "themeLight": "Cambiar a modo claro",
@@ -502,7 +504,10 @@
     "moveBlockDown": "Bajar {name}",
     "loadErrorDescription": "No hemos podido cargar la página. Inténtalo de nuevo.",
     "loadErrorWakingHint": "Si el servidor estaba en reposo, puede tardar hasta un minuto en despertar.",
-    "retryLoad": "Reintentar"
+    "retryLoad": "Reintentar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "history": "Historial de cambios"
   },
   "versionHistory": {
     "title": "Historial de versiones",

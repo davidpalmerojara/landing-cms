@@ -88,16 +88,17 @@ export interface CursorPosition {
   timestamp: number;
 }
 
-// Stable color palette for collaboration — deterministic by user ID
+// Stable color palette for collaboration: deterministic by user ID. Each one carries
+// white text (block label chips, avatar initials) at 4.5:1 or more (UX-006).
 export const COLLAB_COLORS = [
-  { hex: '#6366f1', bg: 'bg-[#2563EB]', outline: 'outline-[#2563EB]', hoverBg: 'hover:bg-indigo-700' },
-  { hex: '#f59e0b', bg: 'bg-amber-500', outline: 'outline-amber-500', hoverBg: 'hover:bg-amber-700' },
-  { hex: '#10b981', bg: 'bg-emerald-500', outline: 'outline-emerald-500', hoverBg: 'hover:bg-emerald-700' },
-  { hex: '#ef4444', bg: 'bg-red-500', outline: 'outline-red-500', hoverBg: 'hover:bg-red-700' },
-  { hex: '#8b5cf6', bg: 'bg-violet-500', outline: 'outline-violet-500', hoverBg: 'hover:bg-violet-700' },
-  { hex: '#ec4899', bg: 'bg-pink-500', outline: 'outline-pink-500', hoverBg: 'hover:bg-pink-700' },
-  { hex: '#06b6d4', bg: 'bg-cyan-500', outline: 'outline-cyan-500', hoverBg: 'hover:bg-cyan-700' },
-  { hex: '#f97316', bg: 'bg-orange-500', outline: 'outline-orange-500', hoverBg: 'hover:bg-orange-700' },
+  { hex: '#4f46e5', bg: 'bg-indigo-600', outline: 'outline-indigo-600', hoverBg: 'hover:bg-indigo-700' },
+  { hex: '#b45309', bg: 'bg-amber-700', outline: 'outline-amber-700', hoverBg: 'hover:bg-amber-800' },
+  { hex: '#047857', bg: 'bg-emerald-700', outline: 'outline-emerald-700', hoverBg: 'hover:bg-emerald-800' },
+  { hex: '#dc2626', bg: 'bg-red-600', outline: 'outline-red-600', hoverBg: 'hover:bg-red-700' },
+  { hex: '#7c3aed', bg: 'bg-violet-600', outline: 'outline-violet-600', hoverBg: 'hover:bg-violet-700' },
+  { hex: '#be185d', bg: 'bg-pink-700', outline: 'outline-pink-700', hoverBg: 'hover:bg-pink-800' },
+  { hex: '#0e7490', bg: 'bg-cyan-700', outline: 'outline-cyan-700', hoverBg: 'hover:bg-cyan-800' },
+  { hex: '#c2410c', bg: 'bg-orange-700', outline: 'outline-orange-700', hoverBg: 'hover:bg-orange-800' },
 ];
 
 export function getUserColor(userId: string) {

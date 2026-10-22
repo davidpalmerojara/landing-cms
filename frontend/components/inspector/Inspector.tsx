@@ -307,7 +307,7 @@ export default function Inspector() {
                                   onChange={(e) =>
                                     handleStyleChange('borderRadius', parseInt(e.target.value, 10))
                                   }
-                                  className="flex-1 accent-primary h-1.5"
+                                  className="flex-1 accent-primary h-1.5 pointer-coarse:h-11"
                                 />
                                 <span className="text-[12px] text-secondary font-mono w-10 text-right">
                                   {styles.borderRadius}px

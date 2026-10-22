@@ -280,12 +280,12 @@ export default function BlockWrapper({ block, index, isTabStop = true, onFocusBl
           {isLockedByOther && (
             <div
               className="h-7 text-white text-[11px] font-(family-name:--font-dm-sans) font-medium whitespace-nowrap rounded-full shadow-lg flex items-center opacity-100 scale-100"
-              style={{ backgroundColor: otherColor ? `${otherColor.hex}` : '#f59e0b' }}
+              style={{ backgroundColor: otherColor ? `${otherColor.hex}` : '#b45309' }}
             >
               <div className="px-3 h-full flex items-center gap-1.5 rounded-full">
                 <Lock className="w-3 h-3 opacity-70" />
                 <span className="tracking-wide">{blockLabel}</span>
-                <span className="text-white/60">— {lockedByOther.username}</span>
+                <span className="text-white/90">— {lockedByOther.username}</span>
               </div>
             </div>
           )}

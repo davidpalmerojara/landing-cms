@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Tablet,
   Eye, Save, CheckCircle2, BookmarkPlus,
   Loader2, Globe, Share2, BarChart3, Search, MessageSquare,
-  Pencil, History, X, Check, Palette, ChevronDown, ExternalLink,
+  Pencil, History, X, Check, Palette, ChevronDown, ExternalLink, Undo2, Redo2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ShareModal from './ShareModal';
@@ -22,6 +22,7 @@ import { usePublishActions } from '@/hooks/usePublishActions';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-errors';
 import { flushPendingSave } from '@/lib/save-flush';
+import { isMacPlatform } from '@/lib/keyboard';
 import type { RejectedField } from '@/lib/page-sync';
 
 type EditorView = 'design' | 'styles' | 'seo' | 'analytics' | 'messages';
@@ -65,6 +66,10 @@ export default function TopBar({
   const deviceMode = useEditorStore((s) => s.deviceMode);
   const setDeviceMode = useEditorStore((s) => s.setDeviceMode);
   const isSaved = useEditorStore((s) => s.isSaved);
+  const canUndo = useEditorStore((s) => s.past.length > 0);
+  const canRedo = useEditorStore((s) => s.future.length > 0);
+  const undo = useEditorStore((s) => s.undo);
+  const redo = useEditorStore((s) => s.redo);
   const presence = useEditorStore((s) => s.presence);
   const myUserId = useEditorStore((s) => s.myUserId);
   const presentUsers = useMemo(() => uniquePresenceUsers(presence), [presence]);
@@ -138,10 +143,13 @@ export default function TopBar({
   }, [showPublishMenu]);
 
   const isPublished = page.status === 'published';
+  const modKey = isMacPlatform() ? '⌘' : 'Ctrl+';
+  const undoLabel = `${t('editor.undo')} (${modKey}Z)`;
+  const redoLabel = `${t('editor.redo')} (${modKey}${isMacPlatform() ? '⇧Z' : 'Shift+Z'})`;
   const ownerOnlyId = 'topbar-owner-only-note';
 
   return (
-    <header className="min-h-14 lg:h-14 flex-wrap lg:flex-nowrap gap-y-1 max-lg:py-1 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 in-data-[theme=light]:shadow-sm in-data-[theme=light]:shadow-black/5 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
+    <header className="min-h-14 xl:h-14 flex-wrap xl:flex-nowrap gap-y-1 max-xl:py-1 bg-surface-card/80 backdrop-blur-2xl border-b border-default/15 shadow-2xl shadow-black/40 in-data-[theme=light]:shadow-sm in-data-[theme=light]:shadow-black/5 flex items-center justify-between px-2 xl:px-4 shrink-0 z-30">
       <div className="flex items-center gap-2 xl:gap-4 flex-1 min-w-0 overflow-hidden">
         <a
           href="/dashboard"
@@ -178,8 +186,8 @@ export default function TopBar({
         </div>
       </div>
 
-      {/* Below lg the view and device switchers get their own row, so nothing overlaps (QA-083) */}
-      <div className="flex items-center gap-3 max-lg:order-last max-lg:w-full max-lg:justify-center">
+      {/* Below xl (1280 px) the view and device switchers get their own row, so nothing overlaps (QA-083) */}
+      <div className="flex items-center gap-3 max-xl:order-last max-xl:w-full max-xl:justify-center">
         {/* Editor view: plain toggle buttons, one pressed (QA-088) */}
         {onViewChange && (
           <div role="group" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
@@ -202,6 +210,32 @@ export default function TopBar({
                 <span className="hidden 2xl:inline" aria-hidden="true">{t(labelKey)}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Undo and redo for people who do not know the keyboard shortcut (UX-004) */}
+        {activeView === 'design' && (
+          <div role="group" aria-label={t('editor.history')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              aria-label={undoLabel}
+              title={undoLabel}
+              className={`p-1.5 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 disabled:pointer-events-none ${TOUCH_TARGET}`}
+            >
+              <Undo2 className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              aria-label={redoLabel}
+              title={redoLabel}
+              className={`p-1.5 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 disabled:pointer-events-none ${TOUCH_TARGET}`}
+            >
+              <Redo2 className="w-4 h-4" aria-hidden="true" />
+            </button>
           </div>
         )}
 

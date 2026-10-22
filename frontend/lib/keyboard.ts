@@ -63,6 +63,8 @@ export const CANVAS_SHORTCUT_KEYS = [
   'shortcutMove',
   'shortcutDuplicate',
   'shortcutDelete',
+  'shortcutUndo',
+  'shortcutCancelEdit',
 ] as const;
 
 /** Apple keyboards use Cmd where others use Ctrl (shortcuts and the hints that name them). */

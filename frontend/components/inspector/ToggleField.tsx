@@ -12,7 +12,7 @@ export default function ToggleField({ id, value, onChange }: ToggleFieldProps) {
       role="switch"
       aria-checked={value}
       onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] ${
         value ? 'bg-primary' : 'bg-default'
       }`}
     >

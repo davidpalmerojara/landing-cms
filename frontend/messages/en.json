@@ -53,7 +53,9 @@
     "selectionCleared": "Selection cleared",
     "blockLockedRefused": "{name} cannot be selected: {user} is editing it.",
     "blockMoved": "{name} block moved to position {position} of {total}",
-    "blockDuplicated": "{name} block duplicated"
+    "blockDuplicated": "{name} block duplicated",
+    "shortcutUndo": "Ctrl or Cmd with Z: undo; add Shift to redo",
+    "shortcutCancelEdit": "Escape while typing in a text: discard what you typed"
   },
   "preferences": {
     "themeLight": "Switch to light mode",
@@ -502,7 +504,10 @@
     "moveBlockDown": "Move {name} down",
     "loadErrorDescription": "We couldn't load the page. Please try again.",
     "loadErrorWakingHint": "If the server was asleep, it can take up to a minute to wake up.",
-    "retryLoad": "Try again"
+    "retryLoad": "Try again",
+    "undo": "Undo",
+    "redo": "Redo",
+    "history": "Change history"
   },
   "versionHistory": {
     "title": "Version history",

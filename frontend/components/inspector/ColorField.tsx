@@ -144,7 +144,7 @@ export default function ColorField({ id, labelId, value, onChange, inheritedColo
         aria-expanded={isOpen}
         aria-controls={isOpen ? popoverId : undefined}
         aria-labelledby={labelId ? `${labelId} ${id}` : undefined}
-        className="w-full flex items-center gap-3 p-2 rounded-lg bg-surface-elevated border border-default/10 cursor-pointer hover:border-default transition-colors shadow-inner text-left"
+        className="w-full flex items-center gap-3 p-2 pointer-coarse:min-h-11 rounded-lg bg-surface-elevated border border-default/10 cursor-pointer hover:border-default transition-colors shadow-inner text-left"
         onClick={handleToggleOpen}
       >
         <div
@@ -174,7 +174,7 @@ export default function ColorField({ id, labelId, value, onChange, inheritedColo
           className="absolute z-50 top-full left-0 mt-2 w-66 max-w-[calc(100vw-32px)] bg-surface-card border border-default/20 rounded-xl shadow-2xl shadow-black/50 p-3 space-y-3"
         >
           {/* Swatches grid */}
-          <div className="grid grid-cols-8 gap-1">
+          <div className="grid grid-cols-8 pointer-coarse:grid-cols-5 gap-1 pointer-coarse:gap-2">
             {PRESET_COLORS.map((color, index) => (
               <button
                 key={color}
@@ -184,7 +184,7 @@ export default function ColorField({ id, labelId, value, onChange, inheritedColo
                 aria-label={t('colorOption', { value: formatHex(color) })}
                 aria-pressed={value.toLowerCase() === color}
                 onKeyDown={(e) => handleSwatchKeyDown(e, index)}
-                className={`w-6 h-6 rounded-md border transition-all hover:scale-110 ${
+                className={`w-6 h-6 pointer-coarse:w-11 pointer-coarse:h-11 rounded-md border transition-all hover:scale-110 ${
                   value.toLowerCase() === color
                     ? 'border-primary ring-1 ring-primary scale-110'
                     : 'border-default hover:border-default'
@@ -215,14 +215,14 @@ export default function ColorField({ id, labelId, value, onChange, inheritedColo
                   if (e.key === 'Enter') handleHexSubmit();
                 }}
                 aria-label={t('hexInput')}
-                className="flex-1 bg-transparent text-[12px] text-primary font-mono py-1.5 px-1 outline-none uppercase"
+                className="flex-1 bg-transparent text-[12px] text-primary font-mono py-1.5 pointer-coarse:py-3 px-1 outline-none uppercase"
                 maxLength={6}
                 spellCheck={false}
               />
             </div>
             <button
               type="button"
-              className="w-8 h-8 rounded-lg bg-surface-elevated border border-default/10 hover:border-default flex items-center justify-center transition-colors"
+              className="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg bg-surface-elevated border border-default/10 hover:border-default flex items-center justify-center transition-colors"
               onClick={() => nativeRef.current?.click()}
               aria-label={t('advancedPicker')}
               title={t('advancedPicker')}

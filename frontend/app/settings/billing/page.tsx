@@ -100,7 +100,7 @@ export default function BillingPage() {
           <button
             onClick={() => router.push('/dashboard')}
             aria-label={t('common.backToDashboard')}
-            className="text-muted hover:text-secondary p-1.5 rounded-md hover:bg-surface-card/50 transition-colors"
+            className="text-muted hover:text-secondary w-11 h-11 flex items-center justify-center rounded-md hover:bg-surface-card/50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -196,7 +196,7 @@ export default function BillingPage() {
                 <div className="flex items-center justify-center gap-3 mb-8">
                   <button
                     onClick={() => setCycle('monthly')}
-                    className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${
+                    className={`text-sm px-4 py-1.5 min-h-11 rounded-lg transition-colors ${
                       cycle === 'monthly'
                         ? 'text-white font-bold'
                         : 'text-secondary hover:text-primary'
@@ -207,7 +207,7 @@ export default function BillingPage() {
                   </button>
                   <button
                     onClick={() => setCycle('yearly')}
-                    className={`text-sm px-4 py-1.5 rounded-lg transition-colors flex items-center gap-2 ${
+                    className={`text-sm px-4 py-1.5 min-h-11 rounded-lg transition-colors flex items-center gap-2 ${
                       cycle === 'yearly'
                         ? 'text-white font-bold'
                         : 'text-secondary hover:text-primary'

@@ -246,28 +246,28 @@ export default function LandingPage() {
             {/* Product */}
             <div>
               <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.product')}</h3>
-              <ul className="space-y-2 text-sm text-muted">
-                <li><a href="#features" className="hover:text-primary-color transition-colors">{t('navigation.features')}</a></li>
-                <li><Link href="/pricing" className="hover:text-primary-color transition-colors">{t('navigation.pricing')}</Link></li>
+              <ul className="text-sm text-muted">
+                <li><a href="#features" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.features')}</a></li>
+                <li><Link href="/pricing" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.pricing')}</Link></li>
               </ul>
             </div>
 
             {/* Company */}
             <div>
               <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.company')}</h3>
-              <ul className="space-y-2 text-sm text-muted">
-                <li><Link href="/about" className="hover:text-primary-color transition-colors">{t('navigation.about')}</Link></li>
-                <li><Link href="/changelog" className="hover:text-primary-color transition-colors">{t('marketing.pages.changelog.title')}</Link></li>
-                <li><Link href="/privacy" className="hover:text-primary-color transition-colors">{t('navigation.privacy')}</Link></li>
-                <li><Link href="/terms" className="hover:text-primary-color transition-colors">{t('navigation.terms')}</Link></li>
+              <ul className="text-sm text-muted">
+                <li><Link href="/about" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.about')}</Link></li>
+                <li><Link href="/changelog" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('marketing.pages.changelog.title')}</Link></li>
+                <li><Link href="/privacy" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.privacy')}</Link></li>
+                <li><Link href="/terms" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.terms')}</Link></li>
               </ul>
             </div>
 
             {/* Connect */}
             <div>
               <h3 className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">{t('navigation.connect')}</h3>
-              <ul className="space-y-2 text-sm text-muted">
-                <li><Link href="/contact" className="hover:text-primary-color transition-colors">{t('navigation.contact')}</Link></li>
+              <ul className="text-sm text-muted">
+                <li><Link href="/contact" className="flex min-h-11 items-center hover:text-primary-color transition-colors">{t('navigation.contact')}</Link></li>
               </ul>
             </div>
           </div>

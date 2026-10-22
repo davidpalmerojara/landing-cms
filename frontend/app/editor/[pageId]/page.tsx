@@ -239,7 +239,7 @@ export default function EditorPage() {
     <GuestSessionProvider user={user} onClaimed={setUser}>
     <div
       className="flex flex-col h-dvh bg-surface font-sans text-secondary overflow-hidden outline-none"
-      tabIndex={0}
+      tabIndex={-1}
     >
       <GuestBanner />
       <UnverifiedEmailBanner user={user} />

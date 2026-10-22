@@ -109,7 +109,7 @@ export default function PageCard({ page, onDuplicate, onUnpublish, onDelete }: P
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-1 flex items-start justify-between gap-2">
           <h2 className="min-w-0 flex-1 truncate text-lg font-bold text-primary">
-            <Link href={editHref} className="hover:underline">
+            <Link href={editHref} prefetch={false} className="hover:underline">
               {page.name}
             </Link>
           </h2>
@@ -140,6 +140,7 @@ export default function PageCard({ page, onDuplicate, onUnpublish, onDelete }: P
           </div>
           <Link
             href={editHref}
+            prefetch={false}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-card text-primary-color transition-all hover:bg-primary hover:text-white"
             aria-label={t('dashboard.editPageNamed', { name: page.name })}
           >

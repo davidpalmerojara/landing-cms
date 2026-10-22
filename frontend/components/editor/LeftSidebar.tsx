@@ -300,7 +300,7 @@ export default function LeftSidebar() {
                       <div className="w-10 h-10 rounded-lg bg-surface-card flex items-center justify-center text-secondary group-hover:text-primary-color group-hover:bg-primary/10 transition-colors">
                         <IconComponent aria-hidden="true" className="w-4 h-4" />
                       </div>
-                      <span className="text-[11px] leading-tight font-medium text-secondary group-hover:text-primary text-center line-clamp-2 hyphens-auto w-full">
+                      <span className="text-[10px] xl:text-[11px] leading-tight font-medium text-secondary group-hover:text-primary text-center line-clamp-2 hyphens-none w-full">
                         {b.label}
                       </span>
                     </button>

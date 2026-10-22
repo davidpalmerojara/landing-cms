@@ -3,6 +3,8 @@
 import { AlertCircle, CheckCircle2, CloudOff, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useSaveIssueText } from '@/hooks/useSaveIssueText';
+import { useEditorStore } from '@/store/editor-store';
+import { loginRedirectFor } from '@/lib/login-redirect';
 import type { RejectedField, SaveIssue } from '@/lib/page-sync';
 
 interface SaveIssueActions {
@@ -64,7 +66,12 @@ export default function SaveStatusIndicator({ onRetry, onShowField }: SaveIssueA
 export function SaveIssueBanner({ onRetry, onShowField }: SaveIssueActions) {
   const t = useTranslations();
   const { issue, text } = useSaveIssueText();
+  const pageId = useEditorStore((s) => s.page.id);
   if (!issue || !text) return null;
+
+  // The session ended (a guest's 24 h, or cookies cleared): retrying cannot work until they sign in again.
+  // A new tab keeps this one, and the edits kept in this browser, open (UX-012)
+  const sessionEnded = issue.kind === 'failed' && issue.error === 'session';
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 text-[12px] bg-error/10 border-b border-error/30 text-primary shrink-0">
@@ -77,6 +84,17 @@ export function SaveIssueBanner({ onRetry, onShowField }: SaveIssueActions) {
       >
         {issue.kind === 'rejected' ? t('saveStatus.showField') : t('saveStatus.retryNow')}
       </button>
+      {sessionEnded && (
+        <a
+          href={loginRedirectFor(`/editor/${pageId}`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 font-semibold text-primary-color hover:underline rounded-md px-2 py-1 min-h-8 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+        >
+          {t('auth.login')}
+          <span className="sr-only"> ({t('publishing.opensInNewTab')})</span>
+        </a>
+      )}
     </div>
   );
 }

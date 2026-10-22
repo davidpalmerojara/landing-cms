@@ -9,6 +9,8 @@ import type { Block } from '@/types/blocks';
 import BlockContent from '@/components/blocks/BlockContent';
 
 const SWIPE_THRESHOLD = 80;
+/** How far the card stays open once delete is revealed: room for the icon and the 44 px button */
+const SWIPE_REVEALED_OFFSET = 132;
 const LONG_PRESS_MS = 500;
 
 interface MobileBlockCardProps {
@@ -218,7 +220,7 @@ function MobileBlockCard({
       if (swipeDirection === 'left') {
         setSwipeRevealed(true);
         setDeleteConfirm(true);
-        setSwipeX(-SWIPE_THRESHOLD);
+        setSwipeX(-SWIPE_REVEALED_OFFSET);
       } else if (swipeDirection === 'right') {
         onDuplicate(block.id);
         resetSwipe();
@@ -269,7 +271,7 @@ function MobileBlockCard({
       {/* Swipe backgrounds */}
       <div className="relative overflow-hidden rounded-xl">
         {swipeDirection === 'left' && (
-          <div className="absolute inset-0 bg-error/20 flex items-center justify-end pr-5 rounded-xl">
+          <div className="absolute inset-0 bg-error/20 flex items-center justify-end pr-3 rounded-xl">
             <div className="flex items-center gap-2 text-error" style={{ opacity: swipeProgress }}>
               <Trash2 size={18} />
               {deleteConfirm ? (

@@ -271,7 +271,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-muted mt-6">
         {t('auth.noAccount')}{' '}
-        <Link href="/register" className="text-primary-color underline underline-offset-2 hover:text-primary-color/80 transition-colors">
+        <Link href="/register" className="inline-flex min-h-11 items-center text-primary-color underline underline-offset-2 hover:text-primary-color/80 transition-colors">
           {t('auth.registerLink')}
         </Link>
       </p>

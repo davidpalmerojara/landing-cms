@@ -35,7 +35,7 @@ describe('GuestBanner', () => {
 
     const banner = view.container.querySelector('[role="region"]');
     expect(banner?.getAttribute('aria-label')).toBe('Sesión de invitado');
-    expect(banner?.textContent).toContain('Sesión de invitado: lo que hagas se borra en 24 h.');
+    expect(banner?.textContent).toContain('Sesión de invitado: lo que hagas se borra al caducar.');
     expect(banner?.textContent).toContain('Caduca en 16 h');
   });
 

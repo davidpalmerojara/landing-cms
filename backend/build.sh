@@ -3,7 +3,7 @@
 #
 # Render's free plan has no pre-deploy command and no shell, and it does not read the
 # Procfile, so everything the new version needs before it starts runs here. If any step
-# fails the build fails and the previous version keeps serving (ADR-051).
+# fails the build fails and the previous version keeps serving (ADR-056).
 #
 # Migrations therefore run BEFORE the new code is live: keep them backward compatible
 # (add, deploy, use, then remove).

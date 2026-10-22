@@ -1,4 +1,4 @@
-"""Which address is the visitor's, behind Vercel and Render (SEC-002, ADR-050).
+"""Which address is the visitor's, behind Vercel and Render (SEC-002, ADR-055).
 
 In production a visitor's request travels visitor -> Vercel (rewrite of /api and
 /media) -> Render's router -> Daphne. Vercel overwrites `X-Forwarded-For` with the

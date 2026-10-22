@@ -57,6 +57,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Contexto**: Se necesita un sistema de estilos que permita prototipado rápido y consistencia con el design system Paxl.
 - **Decisión**: Tailwind CSS v4 con arbitrary values para los tokens de diseño específicos de Paxl.
 - **Consecuencias**: Clases utilitarias en JSX. Arbitrary values (`bg-[#0A0F1A]`) para colores del design system. `clsx()` para clases condicionales. No hay CSS modules ni styled-components.
+- **Enmienda (ADR-012)**: los colores del design system ya no se escriben como valores arbitrarios. Son tokens registrados como tema de Tailwind (`bg-surface-card`, `text-muted`, `border-subtle`), y los valores arbitrarios quedan para lo que no tiene token. Los hex de este ADR siguen siendo los valores de la paleta.
 
 ---
 
@@ -98,7 +99,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Contexto**: La primera versión enviaba el JWT en la query string (`?token=`), sacándolo de localStorage, con el riesgo de que acabara en logs y en el historial. Al pasar a cookies httpOnly (ADR-008), JavaScript ya no tiene el token.
 - **Decisión**: `collaboration.middleware.JWTAuthMiddleware` lee la cookie `bp_access` del handshake con el parser de cookies de Django. `channels.security.websocket.OriginValidator` rechaza handshakes cuyo `Origin` no esté en `CSRF_TRUSTED_ORIGINS`: como la cookie autentica el socket, sin esta comprobación otra web podría abrir uno con la sesión del usuario (*cross-site WebSocket hijacking*).
 - **Ticket para dominios distintos**: En producción el WebSocket va a otro dominio (Render) que el frontend (Vercel), y el navegador no envía la cookie. Antes de cada conexión, el cliente pide `POST /api/auth/ws-ticket/` (autenticado con la cookie a través del rewrite) y conecta con `?ticket=`. El ticket es aleatorio, vale 30 segundos y se consume al usarlo, así que aunque quede en un log no sirve para nada. Si no hay ticket, el middleware usa la cookie.
-- **Consecuencias**: Los tickets viven en la caché de Django: con un solo proceso basta la caché en memoria; con varios procesos hace falta una caché compartida (Redis).
+- **Consecuencias**: Los tickets viven en la caché de Django. `CACHES` no está definida, así que es la caché en memoria de cada proceso, también con `REDIS_URL` (que solo cambia la capa de canales y los bloqueos). Con un proceso basta; con varios hay que definir `CACHES` con una caché compartida antes de escalar.
 
 ---
 
@@ -128,7 +129,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Contexto**: `npm audit` marcaba una vulnerabilidad crítica en Next.js 16.2 (denegación de servicio en Server Components) y un *open redirect* en next-intl, además de varias altas en dependencias de desarrollo. Al aplicar `npm audit fix`, `eslint-plugin-react-hooks` pasaba de 7.0.1 a 7.1.1, cuya regla `set-state-in-effect` es más estricta: marca 8 componentes que cargan datos llamando a una función `async` desde un `useEffect`.
 - **Decisión**: Subir `next` a 16.4.0 y aplicar `npm audit fix` sin cambios incompatibles. Fijar `eslint-plugin-react-hooks` en 7.0.1 con `overrides` en `package.json` hasta mover esa carga de datos a hooks (`useSubscription` y `usePlans` ya siguen ese patrón). `eslint-config-next` se queda en 16.2.1.
 - **Consecuencias**: Quedan 5 avisos altos, todos en la cadena de `eslint-config-next` (`fast-glob` → `micromatch` → `braces`). Es una herramienta de desarrollo que no llega al código desplegado, y npm solo ofrece "arreglarlo" bajando a la versión 14. El `override` debe quitarse cuando los 8 componentes usen hooks de datos; entonces la regla nueva pasará sin cambios.
-- **Seguimiento (2026-10-10)**: el `override` se ha quitado. Los ocho componentes (más el aviso de invitado caducado de `/login`) cargan ahora sus datos con hooks (`usePageList`, `useBillingOverview`, `useAnalytics`, `useCollaborators`, `useVersionHistory`, `useAssets`, `useDomainSettings`, `useGuestExpiredNotice`), todos sobre `useAsyncData`, que solo toca el estado desde los callbacks de la promesa. `eslint-plugin-react-hooks` se resuelve a 7.1.1 y `npm run lint` da 0 errores y los mismos 37 avisos de antes.
+- **Seguimiento (2026-10-10)**: el `override` se ha quitado. Los ocho componentes (más el aviso de invitado caducado de `/login`) cargan ahora sus datos con hooks (`usePageList`, `useBillingOverview`, `useAnalytics`, `useCollaborators`, `useVersionHistory`, `useAssets`, `useDomainSettings`, `useGuestExpiredNotice`), todos sobre `useAsyncData`, que solo toca el estado desde los callbacks de la promesa. `eslint-plugin-react-hooks` se resuelve a 7.1.1 y `npm run lint` da 0 errores y los mismos 37 avisos de antes. (Hoy el script admite como máximo 40 avisos, `--max-warnings 40`, y quedan 25.)
 
 ---
 
@@ -153,7 +154,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - Detrás del proxy del hosting, `SECURE_PROXY_SSL_HEADER`; sin `SECURE_SSL_REDIRECT`, porque la plataforma ya redirige y su chequeo de salud llega por HTTP.
   - `DATABASE_URL` admite parámetros como `?sslmode=require`.
   - `/healthz` responde sin consultar la base de datos, para que los pings no impidan que una base de datos serverless se duerma.
-- **Consecuencias**: Funciona con un solo proceso. Escalar a varios procesos exige definir `REDIS_URL`, y entonces todo pasa a Redis sin tocar código. Los bloqueos en memoria se pierden al reiniciar, lo cual es aceptable porque caducan a los 30 segundos.
+- **Consecuencias**: Funciona con un solo proceso. Escalar a varios procesos exige definir `REDIS_URL`, con lo que la capa de canales y los bloqueos pasan a Redis sin tocar código. Los tickets del WebSocket, los límites de DRF, la caché del plan y la del sitemap siguen en la caché en memoria de cada proceso (`CACHES` no está definida), así que antes de escalar también hace falta una caché compartida. Los bloqueos en memoria se pierden al reiniciar, lo cual es aceptable porque caducan a los 30 segundos.
 
 ---
 
@@ -216,6 +217,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - Los clientes que aún envíen `theme_id` o `custom_theme` no fallan: DRF ignora los campos que no conoce.
 - **Alternativas**: Dejar `theme_id` como alias de un preset (un segundo sitio donde mirar el tema, justo lo que se quería quitar); convertir los temas al cargar la página en el cliente (las copias publicadas seguirían dependiendo de código que acabaría borrándose); rechazar los tokens parciales (rompería las copias ya guardadas).
 - **Consecuencias**: El tema de una página no se puede volver a perder por una edición. Las páginas antiguas conservan su aspecto, salvo los colores que ya eran inválidos, que pasan al valor por defecto. Marcha atrás de la migración: recrea las columnas con sus valores por defecto y el código anterior usa los tokens, que ahora existen siempre. Una copia local (localStorage) de antes del cambio no tiene tokens y se abre con los de por defecto. Los bloques no consumen `textOnPrimary` todavía.
+- **Enmienda (ADR-041)**: los bloques sí consumen colores derivados del tema (`--theme-text-on-primary`, `--theme-inverse-*`...) que garantizan contraste AA.
 
 ---
 
@@ -224,7 +226,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Fecha**: 2026-10-09
 - **Contexto**: Los elementos repetidos de un bloque eran claves numeradas (`feature1Title`, `q2`, `plan2Price`, `link3Url`). No se podía añadir una tercera característica ni quitar una pregunta, el número de elementos lo fijaba el código del componente, y cada sitio que conocía esos nombres (bloques, inspector, validadores, sanitizadores, esquemas de IA, plantillas, traducciones) tenía que mantenerlos a mano. Los componentes leían `data` sin tipos, con unos cien `as string`.
 - **Decisión**:
-  - Cada lista es un array de objetos con forma fija (`features: [{title, description}]`, `plans: [{name, price, features, buttonText, buttonLink, highlighted}]`...) y un máximo por bloque. La tabla está en CLAUDE.md, sección 6.
+  - Cada lista es un array de objetos con forma fija (`features: [{title, description}]`, `plans: [{name, price, features, buttonText, buttonLink, highlighted}]`...) y un máximo por bloque. La tabla está en AGENTS.md, sección 8.
   - Frontend: `Block` es una unión discriminada por `type` y cada componente recibe sus datos tipados, sin casts. `normalizeBlockData` es la frontera: lo que llega de la API, del WebSocket o de la IA se convierte al tipo del bloque, con los huecos rellenos y sin lanzar nunca. El inspector y el editor móvil comparten un campo `list` (añadir, quitar, mover, con etiquetas por posición y foco que sigue a la acción). La edición en línea direcciona por ruta (`['features', 2, 'title']`). Añadir, quitar y mover son pasos de deshacer propios; escribir en un mismo campo se agrupa.
   - Backend: `clean_block_data` valida las listas con reglas por elemento (enlaces, URLs de imagen y texto enriquecido igual que los campos sueltos de antes) y es el único camino: REST, WebSocket, IA y restauración de versiones.
   - La migración `0014_block_lists_to_arrays` convierte los bloques y todas las versiones, las publicadas incluidas. Quita los elementos que el bloque ya ocultaba, para que la página se vea igual.
@@ -247,6 +249,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - Una página publicada por un invitado no sirve para phishing en este dominio: lleva un aviso visible de página de prueba, no muestra bloques de HTML personalizado y su formulario de contacto no envía (el servidor responde 403 `GUEST_PAGE` y el formulario lo explica).
 - **Alternativas**: Una cuenta de demostración compartida (todos verían y borrarían el trabajo de los demás); invitados sin límite de vida hasta que se llene la base de datos; un cron externo (no hay).
 - **Consecuencias**: Un invitado es un usuario real en la tabla durante 24 h, así que toda comprobación de permisos pasa por `user.is_guest` en lugar de por el plan, que es Pro. Un mismo atacante con muchas IP puede llenar los 200 huecos durante 24 h; el tope protege la base de datos, no la disponibilidad de la prueba.
+
+---
 
 ## ADR-023: La IA de la demo no cuesta nada y lo dice
 
@@ -294,6 +298,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Traducir en el servidor según `Accept-Language` (el texto de los bloques es del cliente y las plantillas también); un diccionario de mensajes por clave para el contenido de ejemplo (más indirección y perdería el tipado de ADR-021); mantener `initialData` en el registro con una función por idioma (mezcla estructura y palabras).
 - **Consecuencias**: Un bloque o una plantilla nuevos exigen texto en los dos idiomas (las pruebas comprueban que ambos tienen la misma forma y que el inglés no contiene español). Añadir un tercer idioma es añadir una clave en `ContentLocale` y rellenar las mismas tablas. `AI_PLAN_LIMIT` cubre dos casos (plan sin IA y límite por hora) y se muestra con un solo mensaje.
 
+---
+
 ## ADR-026: Teclado en el lienzo: una sola parada de tabulación y flechas entre bloques
 
 - **Fecha**: 2026-10-10
@@ -306,6 +312,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - El anillo de foco se dibuja dentro del bloque (el marco del lienzo recorta lo que queda fuera).
 - **Alternativas**: Todos los bloques en el orden de tabulación (más simple, pero cada bloque suma una parada y la edición del inspector queda lejos); `aria-activedescendant` desde el contenedor (no mueve el foco real ni sirve con el desplazamiento del lienzo); un `role="listbox"` (los bloques contienen texto y controles que un `option` no permite).
 - **Consecuencias**: La edición de texto en el propio lienzo sigue siendo con doble clic; con teclado se edita el mismo campo en el inspector. Mover un bloque con teclado depende de Alt más flechas, que algunos lectores de pantalla en modo exploración pueden interceptar. Las paletas predefinidas de color pasan AA para texto principal, secundario (sobre fondo y superficie) y texto sobre el color primario; las páginas ya creadas conservan los colores que guardaron.
+
+---
 
 ## ADR-027: Los dominios personalizados son una función que se activa por entorno
 
@@ -355,6 +363,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - CI: un trabajo `e2e` aparte, con navegadores en caché; sube el informe y las trazas solo si falla.
 - **Consecuencias**: El trabajo tarda más que los demás (compila el frontend). Las pruebas dependen de los textos en español (cookie `paxl-locale=es` explícita). Se ejecutan en serie y con una sola IP, así que cuentan contra los límites de peticiones.
 
+---
+
 ## ADR-031: Guardar sin perder nada: un campo rechazado no bloquea el resto, reintentos y copia local con su base
 
 - **Fecha**: 2026-10-10
@@ -369,7 +379,9 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - `lib/field-limits.ts` copia los límites de `block_validators.py` y de `Page` para que los campos del inspector se paren en el límite y los enlaces se completen (`example.com` → `https://example.com`); una prueba lee los ficheros de Python y falla si las dos copias se separan.
   - Publicar y despublicar son del propietario (D1): con `is_owner: false` en la página, el botón queda `aria-disabled` y explica por qué. Sin el campo (servidor antiguo) se muestra como antes y decide el servidor.
 - **Alternativas**: Rechazar en el cliente cualquier valor no válido antes de guardar (no evita valores que vienen de la IA, de otra persona o de datos antiguos, y el servidor seguiría bloqueando); guardar por bloque o por campo (otra API y otra fusión, cuando la de página ya existe); `navigator.sendBeacon` (no permite PUT ni cabeceras); una pregunta en cada cierre de pestaña (molesta y Chrome la ignora sin interacción previa).
-- **Consecuencias**: Mientras quede un campo rechazado, publicar falla con "antes hay que guardar todos los cambios" y "Guardar versión" no se hace. La copia local ocupa el doble (página y base) y se escribe en cada pulsación. Los mensajes del servidor se clasifican por su texto (`ruleMessage`); una prueba comprueba que los textos de `block_validators.py` y `block_sanitizers.py` siguen ahí. La edición en el lienzo (`EditableText`) y el editor móvil aún no usan `field-limits`; el servidor sigue siendo la barrera.
+- **Consecuencias**: Mientras quede un campo rechazado, publicar falla con "antes hay que guardar todos los cambios" y "Guardar versión" no se hace. La copia local ocupa el doble (página y base) y se escribe en cada pulsación. Los mensajes del servidor se clasifican por su texto (`ruleMessage`); una prueba comprueba que los textos de `block_validators.py` y `block_sanitizers.py` siguen ahí. El servidor sigue siendo la barrera. (Enmienda: `EditableText` y el editor móvil ya usan `field-limits`.)
+
+---
 
 ## ADR-032: Qué hace cada persona en una página compartida
 
@@ -406,6 +418,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - Una página admite como máximo 100 bloques, y la lista del panel solo carga los 4 primeros bloques de cada página (con el total anotado).
 - **Consecuencias**: Se pierde alguna URL de imagen con paréntesis sin codificar al migrar (se vacía). Un editor al que le llega `BLOCK_CHANGED` debe ofrecer reintentar. El bloqueo de fila solo ordena de verdad en PostgreSQL; el test con hilos corre en el trabajo de CI de PostgreSQL. Sin límite de peticiones en lo público, la protección contra abusos pasa a la caché de Next y al proveedor de hosting.
 
+---
+
 ## ADR-035: Colaboración, ronda 1 de QA: bloqueos en el store, texto en directo que no es tuyo, deshacer que no resucita
 
 - **Fecha**: 2026-10-10
@@ -424,17 +438,6 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
-## Plantilla para nuevas decisiones
-
-```markdown
-## ADR-XXX: [Título]
-
-- **Fecha**: YYYY-MM-DD
-- **Contexto**: [Por qué surge esta decisión]
-- **Decisión**: [Qué se decidió]
-- **Consecuencias**: [Qué implica, trade-offs]
-```
-
 ## ADR-036: La facturación es una función que existe solo con una clave de prueba de Stripe
 
 - **Fecha**: 2026-10-10
@@ -448,6 +451,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Dejar el 500 y esconder el botón (el endpoint seguiría roto); borrar la facturación (se perdería lo hecho); aceptar claves reales con un aviso (una demo pública cobrando por error es el peor caso).
 - **Consecuencias**: Para encender los pagos de prueba basta una clave `sk_test_`, `STRIPE_WEBHOOK_SECRET` y los ids de precio. Pasar a pagos reales exigiría quitar la guarda a propósito y revisar términos y privacidad.
 
+---
+
 ## ADR-037: Email y nombre de usuario son únicos sin distinguir mayúsculas
 
 - **Fecha**: 2026-10-10
@@ -458,16 +463,20 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - Los mensajes de validación y el email del enlace mágico siguen `Accept-Language` (`LocaleMiddleware`, `es` por defecto y `en`); el cliente envía el idioma de la interfaz (`<html lang>`). Los mensajes propios están en `accounts/messages.py`.
 - **Consecuencias**: Antes del primer despliegue hay que borrar o renombrar los duplicados que ya existan en bases de pruebas (la migración dice cuáles). El nombre de usuario conserva las mayúsculas con las que se escribió; solo se compara sin ellas.
 
+---
+
 ## ADR-038: Ajustes de producción que se comprueban al arrancar, y política de contenido del frontend
 
 - **Fecha**: 2026-10-10
 - **Contexto**: Detrás de un proxy la dirección de conexión es la del proxy: con `NUM_PROXIES=0` todos los visitantes compartían el mismo cupo de límites (cinco invitados por hora, cinco mensajes de contacto por minuto, el hash de visitante de la analítica). Subirlo a ciegas deja falsear la IP con `X-Forwarded-For`. Tampoco había política de contenido, y el panel de Django estaba en `/admin/` sin límite de intentos.
 - **Decisión**:
-  - `config/checks.py` registra system checks: `paxl.E001` (con `DEBUG` apagado, `NUM_PROXIES` no puede ser 0), `paxl.E002` (clave real de Stripe) y, con `check --deploy`, avisos para `ALLOWED_HOSTS='*'`, orígenes de confianza solo locales, `REVALIDATE_SECRET` vacío y el panel en la ruta por defecto. `config/asgi.py` ejecuta `check` al arrancar con `DEBUG` apagado, porque Daphne no lo hace. El valor correcto se mide en el despliegue (registro temporal de `REMOTE_ADDR` y `X-Forwarded-For`); la variable está documentada en los dos `.env.example`.
+  - `config/checks.py` registra system checks: `paxl.E001` (con `DEBUG` apagado, `NUM_PROXIES` no puede ser 0), `paxl.E002` (clave real de Stripe) y, con `check --deploy`, avisos para `ALLOWED_HOSTS='*'`, orígenes de confianza solo locales, `REVALIDATE_SECRET` vacío y el panel en la ruta por defecto. `config/asgi.py` ejecuta `check` al arrancar con `DEBUG` apagado, porque Daphne no lo hace. El valor correcto se mide en el despliegue (registro temporal de `REMOTE_ADDR` y `X-Forwarded-For`); la variable está documentada en `backend/.env.example` (el `.env.example` del frontend solo documenta el secreto de origen de ADR-055).
   - El panel de Django está apagado salvo `ADMIN_ENABLED=True` (activo con `DJANGO_DEBUG`), se sirve en `ADMIN_URL_PATH` y limita los intentos de acceso por IP (`ADMIN_LOGIN_RATE`, 10/minuto).
   - Frontend: `poweredByHeader: false`, `Strict-Transport-Security` y una `Content-Security-Policy` construida en `lib/content-security-policy.ts`. Las páginas publicadas (`/p/…`) llevan la política estricta, sin ningún tercero (tampoco Google); el resto, la misma más el script, el marco y los estilos de Google solo si hay `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Se aplica solo en builds de producción: el servidor de desarrollo necesita `eval` y un socket de recarga. Los scripts incluyen `'unsafe-inline'` porque Next escribe en línea los datos de hidratación y un `nonce` obligaría a renderizar cada página publicada en cada petición. Sigue bloqueando scripts de otros orígenes, `eval`, plugins, marcos de otros sitios y un `<base>` cambiado.
 - **Alternativas**: `nonce` por petición desde el proxy de Next (CSP más estricta, pero deja de cachearse la página publicada); documentar `NUM_PROXIES` sin comprobarlo (es lo que ya había y falló).
 - **Consecuencias**: Un despliegue sin `NUM_PROXIES` no arranca y el mensaje dice qué hacer. En dominios propios (ADR-027) la página de inicio de un dominio llega reescrita a `/p/…` pero la política se elige por la ruta pedida, así que recibe la de la aplicación.
+
+---
 
 ## ADR-039: Visitar una página no guarda nada ni contacta con Google; la cookie de idioma solo nace al cambiar de idioma
 
@@ -494,6 +503,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - En pantallas táctiles todos los campos de texto tienen al menos 16 px (`app/globals.css`), también en las páginas publicadas, para que iOS no amplíe la página al enfocarlos.
 - **Alternativas**: Quick Edit también para tabletas (era la recomendación del triaje; el propietario prefirió el editor completo táctil); paridad completa con el escritorio en el teléfono (tema, SEO y versiones no caben en una hoja sin perder lo que hace útil a Quick Edit); cerrar las hojas con atrás usando una ruta por hoja (cambiaría la URL y recargaría datos).
 - **Consecuencias**: Una ventana de escritorio baja con ratón sigue con el editor completo. La entrada de historial de las hojas es compartida y se devuelve 120 ms después de cerrar la última, para que cambiar de hoja (añadir un bloque abre su hoja) no la pierda.
+
+---
 
 ## ADR-041: Contraste AA garantizado en las páginas, derivado del tema
 
@@ -541,6 +552,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Quick Edit para todas las tabletas (recomendación del triaje; descartada por el dueño); una biblioteca de gestos (dependencia nueva para pocas reglas); arrastrar bloques con un dedo sin pulsación larga (impide desplazar el lienzo, que los bloques llenan).
 - **Consecuencias**: En el escritorio nada cambia salvo los botones Subir/Bajar en la barra del bloque, los controles de zoom en la esquina del lienzo y el zoom mínimo más bajo. La apertura del teclado al editar texto tras un doble toque en iOS real no se puede comprobar en Playwright; WebKit y Chromium con pantalla táctil emulada se probaron a 1024×768 y 768×1024.
 
+---
+
 ## ADR-044: Quick Edit, ronda 2: avisos fuera de lo que se está usando, un solo mensaje al publicar
 
 - **Fecha**: 2026-10-10
@@ -554,7 +567,6 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Alternativas**: Mover siempre los avisos arriba en el teléfono (tapan la barra y el nombre de la página sin motivo cuando no hay nada abierto); esconder los avisos mientras haya una hoja (un error de guardado quedaría sin leer); un contexto de React con "hay una hoja abierta" (el registro de `useCloseOnBack` ya lo sabe y cubre los diálogos de fuera de Quick Edit).
 - **Consecuencias**: Cualquier diálogo que use `useCloseOnBack` mueve los avisos arriba sin tocar nada más. El háptico al arrastrar sigue sin existir en iOS (Safari no implementa `navigator.vibrate`).
 
-
 ---
 
 ## ADR-045: Lo que ve el visitante, segunda ronda: pie fuera de `<main>`, bloques vacíos fuera, "no existe" en memoria, imágenes de plantilla propias
@@ -562,7 +574,7 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 - **Fecha**: 2026-10-10
 - **Contexto**: La segunda ronda de QA (PUBLIC2-004, 005, 006, 007, 009, 011 y APP2-001) encontró efectos secundarios de ADR-042 y huecos de privacidad en las plantillas.
 - **Decisión**:
-  - **Estructura (PUBLIC2-005, enmienda de ADR-042)**: `PageRenderer` pinta un `<div>` raíz (contenedor, tema, `lang` de la página) con `<main id="main-content">` dentro para los bloques; los bloques `footer` que cierran la página van después de `</main>`, para que sigan siendo el landmark `contentinfo` (dentro de `main` un `<footer>` no lo es y su `aria-label` está prohibido). Una página solo de pies los deja en `main`.
+  - **Estructura (PUBLIC2-005, enmienda de ADR-042)**: `PageRenderer` pinta un `<div>` raíz (contenedor, tema, `lang` de la página) con `<main id="main-content">` dentro para los bloques; el bloque `footer` que cierra la página (solo el último, y solo si hay otros bloques antes; PUBLIC3-002) va después de `</main>`, para que siga siendo el landmark `contentinfo` (dentro de `main` un `<footer>` no lo es y su `aria-label` está prohibido). Un pie que no es el último, o una página de un solo pie, se queda en `main`.
   - **Bloques sin contenido (PUBLIC2-009)**: la página publicada y la vista previa no pintan un bloque cuyos textos e imágenes están vacíos (`lib/block-emptiness.ts`; los enlaces y las opciones de diseño no cuentan como contenido). El editor los sigue mostrando.
   - **Idioma (PUBLIC2-006)**: `<html lang>` sigue siendo el de la página; las palabras de Paxl alrededor (aviso de invitado, marca de agua, "esta página no tiene contenido", enlace de salto) llevan `lang` del visitante. La vista previa ya no cambia `<html lang>`: su barra es de Paxl.
   - **"No existe" (PUBLIC2-004, enmienda de ADR-042)**: `getPublicPage` ya no deja una entrada en la caché de datos de Next por cada slug desconocido (un archivo en disco por petición anónima). Las respuestas 404 se recuerdan en una tabla en memoria acotada (500 entradas, 60 s) y `/revalidate` la vacía para ese slug al publicar. Las páginas encontradas siguen en la caché de Next.
@@ -571,6 +583,8 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - **Menú de acciones (APP2-001)**: `ActionMenu` se pinta en un portal con coordenadas fijas (bug notable 47).
 - **Alternativas**: `role="contentinfo"` en el pie dentro de `main` (no es un rol permitido para `footer`); dos `main` o quitar `main` (rompe el destino del enlace de salto); persistir los 404 con una tarea de limpieza (más piezas que mantener); subir las fotos como assets del usuario al crear la página (cuotas, borrados y permisos para algo que es contenido de ejemplo).
 - **Consecuencias**: La tabla de 404 es por proceso: con varios procesos cada uno tiene la suya (el límite de 60 s sigue acotando la espera tras publicar). Las fotos de Unsplash se usan bajo su licencia, que permite alojarlas.
+
+---
 
 ## ADR-046: Lo que el servidor escribe fuera de un guardado entra en la base de sincronización del editor
 
@@ -735,3 +749,29 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
   - **Lista de páginas**: `order_by('-updated_at', 'id')` tras el `annotate` (CODE-003): Django ignora `Meta.ordering` con `GROUP BY` y PostgreSQL devolvía las filas en cualquier orden.
 - **Alternativas**: Migrar en el comando de arranque (cada arranque en frío, de ~1 minuto, pagaría las migraciones); pre-despliegue de Render (solo de pago); conexiones persistentes con un límite (no hay forma fiable de cerrarlas bajo ASGI); PgBouncer propio; un cron de Render (de pago); un `release` en el Procfile (Render no lo lee).
 - **Consecuencias**: Cada petición abre una conexión (decenas de ms más contra Neon sin pooler: por eso el pooler es obligatorio en la demo). El pooler en modo transacción no admite cursores del lado del servidor, así que `.iterator()` carga por bloques del cliente. GitHub desactiva los cron tras 60 días sin actividad en el repositorio. El Blueprint con `EMAIL_BACKEND` de Brevo exige `BREVO_API_KEY` para arrancar (ADR-050); para desplegar sin email se cambia a `django.core.mail.backends.dummy.EmailBackend`.
+
+---
+
+## ADR-057: Repositorio público: guía en AGENTS.md, notas locales fuera del repositorio y licencia de derechos reservados
+
+- **Fecha**: 2026-10-22
+- **Contexto**: Decisiones C2, C4 y C7 del propietario. El repositorio es público y sirve de portfolio. Había además un segundo documento de guía, versionado, con un nombre que apunta a una herramienta, y su contenido discrepaba del código (acciones del store que no existen, "colaboración en desarrollo", "Railway/Fly.io", "fallback en localStorage"); `AGENTS.md` repetía parte y lo contradecía en otra (CODE-004). El pie de la web dice "Todos los derechos reservados" y no había `LICENSE`, que para un repositorio público es lo que decide si alguien puede reutilizar el código (PORTFOLIO-004). La política de privacidad no nombraba al responsable ni a los proveedores (PORTFOLIO-002).
+- **Decisión**:
+  - `AGENTS.md` es la única guía pública del código: stack, estructura, arranque, tests, arquitectura, decisiones de producto, bloques, endpoints, convenciones, estándares de calidad y paleta. Todo lo que estaba en el otro documento y sigue siendo cierto se movió allí, corregido contra el código. Ese fichero se queda en el disco de cada persona, sin versionar (está en `.gitignore`), para notas locales.
+  - `LICENSE`: todos los derechos reservados. El código es visible para revisarlo, y leerlo o ejecutarlo en local para evaluarlo está permitido; copiarlo, modificarlo, alojarlo o reutilizarlo exige permiso escrito. Las páginas de privacidad y términos lo dicen igual.
+  - Privacidad y términos nombran a David Palmero Jara como responsable (con `davidpalmerojara@gmail.com`), los fines y bases legales, cada proveedor (Vercel, Render, Neon, Brevo, Google, GitHub), los plazos que aplica el backend (invitados 24 h, analítica 90 días, registro de correos 30 días, 20 versiones por página), los derechos y la reclamación ante la AEPD, y que la IA de la demo no envía nada a ningún proveedor. Una prueba (`__tests__/lib/privacy-copy.test.ts`) fija estas frases al código.
+- **Alternativas**: Mantener las dos guías versionadas y sincronizarlas (dos fuentes que se separan, justo lo que pasó); licencia MIT o Apache-2.0 (el propietario no quiere conceder reutilización); un formulario de contacto en vez del email en la política (más piezas que mantener para una demo).
+- **Consecuencias**: Quien use una herramienta que espere su propio fichero de notas debe crearlo en local (por ejemplo, con una línea que remita a `AGENTS.md`). Si cambian los plazos de conservación o los proveedores, hay que actualizar la política y la prueba a la vez. La política no es asesoramiento jurídico.
+
+---
+
+## Plantilla para nuevas decisiones
+
+```markdown
+## ADR-XXX: [Título]
+
+- **Fecha**: YYYY-MM-DD
+- **Contexto**: [Por qué surge esta decisión]
+- **Decisión**: [Qué se decidió]
+- **Consecuencias**: [Qué implica, trade-offs]
+```

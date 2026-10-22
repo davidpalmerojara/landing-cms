@@ -2,7 +2,7 @@
 # What each value is and how to set the `sync: false` ones: the deployment runbook.
 #
 # The free plan has no pre-deploy command, no shell and no cron, and Render does not read
-# backend/Procfile, so the build runs the migrations (backend/build.sh, ADR-051).
+# backend/Procfile, so the build runs the migrations (backend/build.sh, ADR-056).
 services:
   - type: web
     name: paxl-api

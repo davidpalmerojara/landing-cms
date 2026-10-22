@@ -64,7 +64,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # Health checks answer before any host validation (DEPLOY-006), and REMOTE_ADDR
-    # becomes the trusted client address before anything reads it (SEC-002, ADR-050)
+    # becomes the trusted client address before anything reads it (SEC-002, ADR-055)
     'config.middleware.HealthzMiddleware',
     'config.client_ip.ClientIPMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -200,7 +200,7 @@ ASSET_UPLOAD_RATE = os.environ.get('ASSET_UPLOAD_RATE', '30/hour')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Client address behind proxies (SEC-002, ADR-050; config/client_ip.py)
+# Client address behind proxies (SEC-002, ADR-055; config/client_ip.py)
 # Hops between the visitor and this server for a request that came through the
 # frontend host's rewrite: 2 on Vercel + Render (the visitor, then Vercel's egress).
 # Too low: visitors share a rate-limit bucket. config/checks.py refuses 0 with DEBUG off.

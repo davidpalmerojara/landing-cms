@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { test, verifyEmail } from './support';
 
 /**
- * C5 / SEC-004 (ADR-051): an account registered in one request with any email
+ * C5 / SEC-004 (ADR-052): an account registered in one request with any email
  * published an indexable page with Custom HTML and a working contact form on
  * the app's own origin. Until the email is verified the page is published like
  * a guest's: a notice, no Custom HTML, a form that does not send, noindex and

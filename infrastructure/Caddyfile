@@ -1,6 +1,6 @@
 # Caddyfile — Reverse proxy with automatic SSL for custom domains
 #
-# Only needed when the backend runs with CUSTOM_DOMAINS_ENABLED=True (ADR-025).
+# Only needed when the backend runs with CUSTOM_DOMAINS_ENABLED=True (ADR-027).
 # Replace tu-dominio.com with the domain of your deployment.
 #
 # Caddy automatically provisions and renews Let's Encrypt certificates

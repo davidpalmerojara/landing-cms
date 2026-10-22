@@ -804,7 +804,8 @@
       "name": "Enter your name.",
       "email": "Enter a valid email, like name@example.com.",
       "message": "Enter your message."
-    }
+    },
+    "contactAuthorNote": "Your message goes to the person who made this page."
   },
   "preview": {
     "backToEditor": "Back to editor",

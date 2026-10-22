@@ -77,6 +77,11 @@ describe('ContactBlock', () => {
       expect(view.container.querySelector('button[type="submit"]')?.textContent).toContain('Mandar mensaje');
     });
 
+    it('PORTFOLIO-010: says the message goes to the person who made the page', () => {
+      view = renderBlock({ slug: 'mi-landing' });
+      expect(view.container.textContent).toContain('Tu mensaje le llega a la persona que ha creado esta página.');
+    });
+
     it('hides the honeypot from people and assistive tech', () => {
       view = renderBlock({ slug: 'mi-pagina' });
       const honeypot = field(view.container, 'website');

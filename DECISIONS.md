@@ -765,6 +765,24 @@ Formato: Título, Fecha, Contexto, Decisión, Consecuencias.
 
 ---
 
+## ADR-058: Interfaz de lanzamiento: diálogos en el body, arranque en frío visible, plan demo dicho y copias locales con fecha de caducidad
+
+- **Fecha**: 2026-10-22
+- **Contexto**: Revisión de lanzamiento (UX, móvil, rendimiento, datos). El diálogo de compartir y la confirmación de despublicar nacían dentro de la barra superior, que tiene `backdrop-filter`: ese filtro hace de ella el bloque contenedor de `position: fixed`, y los diálogos quedaban recortados fuera de la pantalla (UX-001). La primera petición tras un rato sin uso espera hasta un minuto al backend de Render gratis y la interfaz solo mostraba un círculo, o el cuerpo crudo de un 502 (UX-002, DEPLOY-005). Con la decisión C1 toda cuenta es Pro y la interfaz seguía hablando de planes. Las copias locales de las páginas sobrevivían a cerrar sesión y al borrado (DATA-008), y un bloqueo concedido después de que la persona cambiara de bloque se renovaba para siempre (DATA-005).
+- **Decisión**:
+  - **Diálogos**: `ConfirmDialog` y `ShareModal` usan `createPortal(…, document.body)`. Cualquier diálogo nuevo hace lo mismo.
+  - **Arranque en frío** (decisión C6): la portada, el acceso y el registro llaman a `GET /api/healthz/` (sin base de datos) para despertar el backend; tras 4 s esperando, `WakingServerNotice` lo explica; el editor traduce el error de carga por tipo (`apiErrorKind`) y ofrece "Reintentar"; la lectura de una página pública corta a los 20 s. No hay pinger externo.
+  - **Códigos de error** con texto propio, en los dos mapas (`lib/api-errors.ts`, `lib/account-errors.ts`): `EMAIL_UNAVAILABLE`, `PAGE_TOO_LARGE`, `STORAGE_LIMIT`, `PAGE_LIMIT`, `SERVICE_FULL`. Ninguno se reintenta solo. El acceso con `PASSWORD_DISABLED` pasa al formulario del enlace mágico con una explicación (UX-003).
+  - **Plan demo**: con `demo_all_pro` (de `/api/features/` y de `/api/billing/subscription/`) la interfaz muestra "Pro (demo)", sin comparativa de planes ni botones de compra, y precios, avisos de mejora, compartir y crear cuenta lo dicen. El plan que cuenta es `effective_plan`, no la suscripción guardada.
+  - **Email sin verificar** (ADR-052): aviso en el editor con la lista de límites y un botón que pide el enlace mágico de la cuenta; si tiene contraseña, antes se confirma que abrir el enlace la desactiva (ADR-018).
+  - **Copias locales**: se borran al cerrar sesión y al borrar la cuenta; la de una página que da 404 o 403, o cuyo acceso se revoca, se borra y no se reescribe hasta que la página vuelva a abrirse; se conservan las 10 más recientes.
+  - **Bloqueos**: si llega un `lock_acquired` propio de un bloque que ya no es el seleccionado, se devuelve con `lock_release` en vez de renovarlo.
+  - **Contraste y táctil**: la paleta de colaboración y los bordes de campos en modo claro (`#838C99`, 3:1) cumplen WCAG 1.4.11 y 1.4.3; el inspector mide 44 px con `pointer-coarse:` (ADR-043); la barra superior pasa a dos filas por debajo de 1280 px.
+- **Alternativas**: Mover el `backdrop-filter` de la barra a un pseudo-elemento (arregla este caso, no el siguiente diálogo declarado dentro de un contenedor con filtro o transformación); un servicio externo que visite el backend cada 10 minutos (usa casi todas las 750 horas gratuitas de Render y el propietario lo descartó); borrar las copias locales solo al cerrar sesión (no cubre una página que deja de ser tuya).
+- **Consecuencias**: Cerrar sesión descarta los cambios que el servidor no había confirmado (antes se enviaban al volver a abrir); `flushPendingSave()` se llama antes de salir, así que solo se pierden los de una sesión que ya no podía guardar. La paleta de colaboración es más oscura que antes. El ruido de 401 en la consola de una primera visita anónima (UX-013) sigue: el navegador lo imprime y evitarlo exige una marca de sesión que el servidor aún no envía.
+
+---
+
 ## Plantilla para nuevas decisiones
 
 ```markdown

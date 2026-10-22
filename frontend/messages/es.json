@@ -804,7 +804,8 @@
       "name": "Escribe tu nombre.",
       "email": "Escribe un email válido, como nombre@ejemplo.com.",
       "message": "Escribe tu mensaje."
-    }
+    },
+    "contactAuthorNote": "Tu mensaje le llega a la persona que ha creado esta página."
   },
   "preview": {
     "backToEditor": "Volver al editor",

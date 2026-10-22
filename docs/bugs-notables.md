@@ -500,3 +500,21 @@ Formato: qué pasaba, por qué, cómo se detectó, arreglo, cómo se verificó.
 - **Arreglo**: `render.yaml` con un build que ejecuta `collectstatic`, `migrate`, `seed_plans` y `seed_demo` (`backend/build.sh`); el `Procfile` ya no promete un `release`; `/healthz` responde antes de validar el Host. ADR-056.
 - **Cómo se verificó**: Pruebas que leen los ficheros de despliegue (el build ejecuta cada paso y falla sin `DATABASE_URL`, el arranque coincide con el `Procfile`, Python fijado a la misma menor que el lockfile), pruebas de `/healthz` con Hosts no permitidos y un e2e contra Daphne real (`frontend/e2e/deploy-health.spec.ts`). Fallan sin el arreglo.
 - **Lección**: Un paso de despliegue que depende de la convención de otra plataforma (Heroku) no está probado hasta que se ejecuta en la plataforma real.
+
+## 57. El diálogo de compartir y la confirmación de despublicar salían recortados fuera de la pantalla
+
+- **Fecha**: 2026-10-22
+- **Qué pasaba**: La barra superior del editor tiene `backdrop-filter`, que la convierte en el bloque contenedor de `position: fixed`. El diálogo de compartir y las confirmaciones de despublicar y de salir estaban declarados dentro de ella: su "pantalla completa" medía lo que la barra (56 px) y el cuadro quedaba centrado en ella, con el título y el campo de invitación por encima del borde de la ventana (en 1440x900, `y = -212`). Solo se oscurecía la barra; el resto del editor seguía activo.
+- **Cómo se detectó**: Revisión de lanzamiento (UX-001), midiendo la caja del diálogo con Playwright en Chromium y WebKit.
+- **Arreglo**: `ConfirmDialog` y `ShareModal` se pintan con `createPortal` en el `body` (ADR-058).
+- **Cómo se verificó**: Una prueba de componentes que declara cada diálogo dentro de un `<header>` y comprueba que sale de él, y un e2e (`frontend/e2e/interface-fixes.spec.ts`) que mide que el cuadro entra entero en la ventana. Fallan sin el arreglo.
+- **Lección**: Un `position: fixed` dentro de un ancestro con `filter`, `backdrop-filter` o `transform` ya no es fijo a la ventana; los diálogos van en el `body`.
+
+## 58. Un bloque quedaba bloqueado para los demás por alguien que ya no lo editaba
+
+- **Fecha**: 2026-10-22
+- **Qué pasaba**: Al seleccionar dos bloques con menos tiempo entre clics que el viaje de ida y vuelta al servidor, la liberación del primero no encontraba nada que soltar (el bloqueo aún no se había confirmado) y, cuando llegaba la confirmación, el editor lo daba por suyo y lo renovaba cada 10 s. Los demás veían el bloque "bloqueado, lo está editando" sin que nadie lo editara, hasta que su dueño volvía a seleccionarlo, recargaba o se desconectaba.
+- **Cómo se detectó**: Revisión de lanzamiento (DATA-005), retrasando 400 ms los mensajes del servidor con dos selecciones a 150 ms.
+- **Arreglo**: Un `lock_acquired` propio de un bloque que ya no es el seleccionado (y que no es una comprobación de bloqueo ajeno) se devuelve con `lock_release` en lugar de entrar en el conjunto de bloqueos que se renuevan (`hooks/useCollaboration.ts`).
+- **Cómo se verificó**: Una prueba del hook (`useCollaboration.test.tsx`) con las dos confirmaciones tardías: falla sin el arreglo (no se envía ninguna liberación y se renuevan los dos bloques).
+- **Lección**: Una liberación que depende de haber recibido la confirmación pierde la carrera contra una persona rápida; lo que llega tarde se evalúa contra el estado de ahora.

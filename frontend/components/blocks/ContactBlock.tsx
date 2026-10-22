@@ -120,7 +120,10 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
         <span>{isSending ? t('contactSending') : data.buttonText || t('contactSend')}</span>
       </button>
 
-      {!canSend && (
+      {canSend ? (
+        // Whoever fills it in should know who reads it (PORTFOLIO-010)
+        <p className="text-center text-xs" style={{ color: 'var(--theme-text-muted)' }}>{t('contactAuthorNote')}</p>
+      ) : (
         <p className="text-center text-sm" style={{ color: 'var(--theme-text-muted)' }}>
           {t(unverifiedPage ? 'contactUnverifiedNote' : guestPage ? 'contactGuestNote' : 'contactPreviewNote')}
         </p>

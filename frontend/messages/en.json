@@ -730,7 +730,12 @@
         "lg": "Very rounded ({px} px)"
       },
       "custom": "Custom ({px} px)"
-    }
+    },
+    "copyLink": "Copy link",
+    "shareLink": "Share",
+    "linkCopied": "Link copied",
+    "linkShared": "Link shared",
+    "copyLinkError": "Couldn't copy it. Press and hold the address to copy it by hand."
   },
   "blocks": {
     "hero": "Hero",

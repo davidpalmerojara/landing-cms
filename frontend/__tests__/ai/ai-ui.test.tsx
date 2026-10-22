@@ -213,6 +213,16 @@ describe('AIGenerateModal', () => {
     expect(onGenerated).toHaveBeenCalledWith('p1');
   });
 
+  it('MOBILE-005: the submit button sits outside the scrolling body, so it never falls below the fold', async () => {
+    await openModal();
+    const submit = buttonByText(view.container, 'Generar página');
+    expect(submit.closest('.overflow-y-auto')).toBeNull();
+    const dialog = view.container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.className).toContain('overflow-hidden');
+    expect(submit.className).toContain('pointer-coarse:min-h-11');
+    expect(dialog.querySelector('.overflow-y-auto')).not.toBeNull();
+  });
+
   it('opens the editor straight away for a real generation', async () => {
     await openModal();
     vi.spyOn(api.ai, 'generate').mockResolvedValue(generated({ source: 'live', provider: 'gemini' }));

@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, Info } from 'lucide-react';
+import { Copy, ExternalLink, Info, Share2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editor-store';
 import { usePublishActions } from '@/hooks/usePublishActions';
 import { useCloseOnBack } from '@/hooks/useCloseOnBack';
+import { linkActionToast, usePublicLink } from '@/hooks/usePublicLink';
+import type { LinkAction } from '@/hooks/usePublicLink';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import MobileBottomSheet from './MobileBottomSheet';
 
@@ -46,6 +48,12 @@ export default function MobilePublishSheet({ open, onClose, onPublish, onUnpubli
   } = usePublishActions({ onPublish, onUnpublish, publicationError, phone: true });
   const state = publicationState(page.status, page.hasUnpublishedChanges);
   const publicPath = `/p/${page.slug}`;
+  const addToast = useEditorStore((s) => s.addToast);
+  const announceLinkAction = useCallback((action: LinkAction) => {
+    const { type, messageKey } = linkActionToast(action);
+    addToast(t(messageKey), type);
+  }, [addToast, t]);
+  const publicLink = usePublicLink(page.slug, page.name, announceLinkAction);
 
   // Published: close (the hook has said so in one toast; a failure leaves the sheet open, with its error toast)
   useEffect(() => {
@@ -118,6 +126,32 @@ export default function MobilePublishSheet({ open, onClose, onPublish, onUnpubli
               <ExternalLink size={14} aria-hidden="true" />
               <span className="sr-only">{t('publishing.opensInNewTab')}</span>
             </a>
+          )}
+
+          {state !== 'draft' && publicLink.url && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted break-all select-all" data-testid="public-url">{publicLink.url}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void publicLink.copy()}
+                  className="flex-1 min-h-11 py-3 rounded-xl border border-default/20 bg-surface-card text-sm font-semibold text-primary flex items-center justify-center gap-2 active:bg-surface-elevated"
+                >
+                  <Copy size={14} aria-hidden="true" />
+                  {t('mobile.copyLink')}
+                </button>
+                {publicLink.canShare && (
+                  <button
+                    type="button"
+                    onClick={() => void publicLink.share()}
+                    className="flex-1 min-h-11 py-3 rounded-xl border border-default/20 bg-surface-card text-sm font-semibold text-primary flex items-center justify-center gap-2 active:bg-surface-elevated"
+                  >
+                    <Share2 size={14} aria-hidden="true" />
+                    {t('mobile.shareLink')}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {isOwner && state !== 'draft' && onUnpublish && (

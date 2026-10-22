@@ -206,7 +206,7 @@ function BackgroundPicker({
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="flex-1 min-h-11 px-3 py-2.5 rounded-xl bg-surface-card border border-default/15 text-primary text-base font-mono focus:border-primary/50 outline-none"
+            className="flex-1 min-h-11 px-3 py-2.5 rounded-xl bg-surface-card border border-default/15 in-data-[theme=light]:border-[#838C99] text-primary text-base font-mono focus:border-primary/50 outline-none"
           />
           <div
             aria-hidden="true"

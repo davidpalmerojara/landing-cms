@@ -50,7 +50,7 @@ export default function MobileAiBlockEdit({ pageId, blockId, onDone }: MobileAiB
           rows={2}
           disabled={ai.isLoading}
           enterKeyHint="send"
-          className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-surface-elevated border border-default/15 text-primary text-sm placeholder-muted focus:border-violet-500/50 outline-none resize-none disabled:opacity-50"
+          className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-surface-elevated border border-default/15 in-data-[theme=light]:border-[#838C99] text-primary text-sm placeholder-muted focus:border-violet-500/50 outline-none resize-none disabled:opacity-50"
         />
         <button
           type="button"

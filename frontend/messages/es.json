@@ -730,7 +730,12 @@
         "lg": "Muy redondeadas ({px} px)"
       },
       "custom": "Personalizado ({px} px)"
-    }
+    },
+    "copyLink": "Copiar enlace",
+    "shareLink": "Compartir",
+    "linkCopied": "Enlace copiado",
+    "linkShared": "Enlace compartido",
+    "copyLinkError": "No se ha podido copiar. Mantén pulsada la dirección para copiarla a mano."
   },
   "blocks": {
     "hero": "Hero",

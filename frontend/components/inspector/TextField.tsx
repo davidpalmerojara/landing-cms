@@ -33,7 +33,7 @@ export default function TextField({ id, value, onChange, onBlur, maxLength, inva
         'w-full text-[13px] px-3 py-2.5 rounded-lg bg-surface-elevated border text-primary placeholder-muted focus:ring-1 outline-none transition-all shadow-inner',
         invalid
           ? 'border-error/70 focus:border-error focus:ring-error/30'
-          : 'border-default/10 focus:border-primary/50 focus:ring-primary/30',
+          : 'border-default/10 in-data-[theme=light]:border-[#838C99] focus:border-primary/50 focus:ring-primary/30',
       )}
     />
   );

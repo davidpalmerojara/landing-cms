@@ -11,6 +11,7 @@ import AiKeyFields, { type AiProvider } from '@/components/ai/AiKeyFields';
 import AiModeNotice from '@/components/ai/AiModeNotice';
 import AiSavedAnswerNotice from '@/components/ai/AiSavedAnswerNotice';
 import AiSuggestions from '@/components/ai/AiSuggestions';
+import WakingServerNotice from '@/components/ui/WakingServerNotice';
 
 interface AIGenerateModalProps {
   open: boolean;
@@ -160,10 +161,10 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-generate-title"
-        className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-2xl mx-4 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col"
+        className="relative bg-surface border border-subtle rounded-2xl shadow-2xl shadow-black/40 w-full max-w-2xl mx-4 max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle/80 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-tr from-primary to-primary rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
@@ -177,14 +178,14 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
             onClick={dismiss}
             disabled={isGenerating}
             aria-label={t('common.close')}
-            className="p-1.5 rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors disabled:opacity-50"
+            className="p-1.5 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
           {!savedResult && options && (
             <AiSuggestions prompts={options.prompts} onPick={pickSuggestion} disabled={isGenerating} />
           )}
@@ -285,6 +286,8 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
             <AiSavedAnswerNotice kind="page" source={savedResult.source} demo={savedResult.demo} />
           )}
 
+          {isGenerating && <WakingServerNotice pending />}
+
           {/* Generating status */}
           {isGenerating && statusMsg && (
             <div className="flex items-center gap-3 text-sm text-secondary bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
@@ -295,11 +298,11 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-subtle/80 shrink-0 bg-surface">
           {savedResult ? (
             <button
               onClick={dismiss}
-              className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95"
+              className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 pointer-coarse:min-h-11 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95"
               style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
             >
               {t('ai.openEditor')}
@@ -309,14 +312,14 @@ export default function AIGenerateModal({ open, onClose, onGenerated }: AIGenera
               <button
                 onClick={onClose}
                 disabled={isGenerating}
-                className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 rounded-lg hover:bg-surface-card transition-colors disabled:opacity-50"
+                className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 pointer-coarse:min-h-11 rounded-lg hover:bg-surface-card transition-colors disabled:opacity-50"
               >
                 {t('common.cancel')}
               </button>
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 pointer-coarse:min-h-11 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
               >
                 {isGenerating ? (

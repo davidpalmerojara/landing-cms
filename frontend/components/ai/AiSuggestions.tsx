@@ -20,7 +20,7 @@ export default function AiSuggestions({ prompts, onPick, disabled = false }: AiS
   return (
     <div role="group" aria-labelledby={labelId}>
       <p id={labelId} className="text-xs font-medium text-secondary mb-1.5">{t('ai.suggestionsLabel')}</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0">
         {prompts.map((suggestion) => (
           <button
             key={suggestion.id}
@@ -28,7 +28,7 @@ export default function AiSuggestions({ prompts, onPick, disabled = false }: AiS
             onClick={() => onPick(suggestion)}
             disabled={disabled}
             title={suggestion.prompt}
-            className="text-xs px-3 min-h-11 md:min-h-8 rounded-full bg-surface-elevated border border-subtle text-secondary hover:text-primary hover:border-default transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50"
+            className="text-xs px-3 min-h-11 md:min-h-8 shrink-0 whitespace-nowrap rounded-full bg-surface-elevated border border-subtle text-secondary hover:text-primary hover:border-default transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50"
           >
             {suggestion.title}
           </button>

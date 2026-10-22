@@ -149,7 +149,7 @@ const INPUT_CLASS =
 function inputBorder(invalid: boolean): string {
   return invalid
     ? 'border-error/70 focus:border-error focus:ring-error/30'
-    : 'border-default/15 focus:border-primary/50 focus:ring-primary/30';
+    : 'border-default/15 in-data-[theme=light]:border-[#838C99] focus:border-primary/50 focus:ring-primary/30';
 }
 
 function MobileField({

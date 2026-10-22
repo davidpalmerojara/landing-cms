@@ -19,7 +19,7 @@ export default function MobileSelect({ className, invalid = false, children, ...
           'w-full min-h-11 pl-4 pr-10 py-2.5 rounded-xl bg-surface-card border text-primary text-base outline-none focus:ring-1 appearance-none transition-all',
           invalid
             ? 'border-error/70 focus:border-error focus:ring-error/30'
-            : 'border-default/15 focus:border-primary/50 focus:ring-primary/30',
+            : 'border-default/15 in-data-[theme=light]:border-[#838C99] focus:border-primary/50 focus:ring-primary/30',
           className,
         )}
       >

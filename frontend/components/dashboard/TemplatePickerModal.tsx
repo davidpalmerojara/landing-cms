@@ -66,7 +66,7 @@ export default function TemplatePickerModal({
           <button
             onClick={onClose}
             aria-label={t('common.close')}
-            className="p-1.5 rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors"
+            className="p-1.5 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded-md text-muted hover:text-secondary hover:bg-surface-card transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -160,14 +160,14 @@ export default function TemplatePickerModal({
           <button
             onClick={onClose}
             disabled={isCreating}
-            className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 rounded-lg hover:bg-surface-card transition-colors"
+            className="text-sm font-medium text-secondary hover:text-primary px-4 py-2 pointer-coarse:min-h-11 rounded-lg hover:bg-surface-card transition-colors"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleCreate}
             disabled={isCreating}
-            className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2 pointer-coarse:min-h-11 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #2563EB 0%, #2563EB 100%)' }}
           >
             {isCreating ? (

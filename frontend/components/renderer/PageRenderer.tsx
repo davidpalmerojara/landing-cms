@@ -11,6 +11,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { pageMessagesLocale } from '@/lib/page-language';
 import { ContactFormProvider } from '@/components/blocks/contact-form-context';
 import { LiveLinksProvider } from '@/components/blocks/live-links-context';
+import { EAGER_IMAGE_BLOCKS, ImagePriorityProvider } from '@/components/blocks/image-priority-context';
 
 interface PageRendererProps {
   blocks: Block[];
@@ -60,7 +61,7 @@ const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactS
   // A closing footer is the page's contentinfo landmark: inside <main> it would not be one (PUBLIC2-005)
   const closingFooterStart = closingFooterIndex(blocks);
 
-  const renderBlock = (block: Block) => (
+  const renderBlock = (block: Block, index: number) => (
     <div
       key={block.id}
       id={anchorIds.get(block.id)}
@@ -69,11 +70,14 @@ const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactS
       data-block-type={block.type}
       style={block.type !== 'navbar' ? { overflow: 'hidden' } : undefined}
     >
-      <BlockContent block={block} isPreviewMode={true} />
+      {/* Images of the first blocks load at once; the rest when they near the screen (PERF-002) */}
+      <ImagePriorityProvider eager={index < EAGER_IMAGE_BLOCKS}>
+        <BlockContent block={block} isPreviewMode={true} />
+      </ImagePriorityProvider>
     </div>
   );
-  const mainContent = blocks.slice(0, closingFooterStart).map(renderBlock);
-  const closingContent = blocks.slice(closingFooterStart).map(renderBlock);
+  const mainContent = blocks.slice(0, closingFooterStart).map((block, index) => renderBlock(block, index));
+  const closingContent = blocks.slice(closingFooterStart).map((block, index) => renderBlock(block, closingFooterStart + index));
   const withMessages = (content: ReactNode) => (messagesLocale ? (
     // Landmark names, "Popular", form labels: in the page's language, not the visitor's (QA-091)
     <NextIntlClientProvider locale={messagesLocale} messages={MESSAGES[messagesLocale]} timeZone="Europe/Madrid">

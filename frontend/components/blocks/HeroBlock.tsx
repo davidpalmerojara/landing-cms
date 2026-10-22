@@ -1,10 +1,12 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
+import { preload } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import type { BlockProps, HeroData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockButton from './BlockButton';
+import { useEagerImages } from './image-priority-context';
 
 /**
  * CSS `url()` for an image address. Quoted, so nothing in the value can close
@@ -17,6 +19,10 @@ export function cssUrl(src: string): string {
 export default function HeroBlock({ blockId, data, isPreviewMode }: BlockProps<HeroData>) {
   const t = useTranslations('blocks');
   const bgImage = data.backgroundImage;
+  // A hero at the top of the page: its background is usually the largest paint (PERF-002).
+  // CSS backgrounds are found late; a preload in <head> starts it with the HTML.
+  const eagerImages = useEagerImages();
+  if (bgImage && eagerImages) preload(bgImage, { as: 'image', fetchPriority: 'high' });
   const alignment = data.alignment;
   // Optional: an empty field hides the element (no placeholder text on real pages)
   const badgeText = data.badgeText.trim();

@@ -52,6 +52,8 @@ export default function TeamBlock({ blockId, data, isPreviewMode }: BlockProps<T
                   <BlockImage
                     src={member.image}
                     alt={member.name || t('teamMemberAlt')}
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full object-cover mb-4 border-2"
                     style={{ borderColor: 'var(--theme-border)' }}
                     fallback={initials}

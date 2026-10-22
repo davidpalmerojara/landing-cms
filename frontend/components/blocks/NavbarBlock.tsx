@@ -7,6 +7,7 @@ import type { BlockProps, NavbarData } from '@/types/blocks';
 import EditableText from './EditableText';
 import BlockLink from './BlockLink';
 import BlockButton from './BlockButton';
+import { imageLoadingProps, useEagerImages } from './image-priority-context';
 import { safeHref } from '@/lib/safe-link';
 
 const ctaStyle = { backgroundColor: 'var(--theme-primary)', color: 'var(--theme-text-on-primary)' };
@@ -18,6 +19,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
   const navRef = useRef<HTMLElement>(null);
   const menuId = useId();
   const logoImage = data.logoImage;
+  const eagerImages = useEagerImages();
   // Links without a label are not shown; `index` points into data.links for editing
   const navLinks = data.links
     .map((link, index) => ({
@@ -84,7 +86,7 @@ export default function NavbarBlock({ blockId, data, isPreviewMode }: BlockProps
         {/* min-w-0 + truncate: a long brand name never makes the page wider than the screen (QA-095) */}
         <div className="flex items-center gap-3 min-w-0">
           {logoImage ? (
-            <img src={logoImage} alt="" className="h-8 w-8 shrink-0 object-contain rounded" />
+            <img src={logoImage} alt="" width={32} height={32} {...imageLoadingProps(eagerImages)} className="h-8 w-8 shrink-0 object-contain rounded" />
           ) : (
             <div
               aria-hidden="true"

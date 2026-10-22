@@ -52,6 +52,9 @@ export default function GalleryBlock({ blockId, data, isPreviewMode }: BlockProp
                 <BlockImage
                   src={image.src}
                   alt={image.alt || t('galleryImageAlt', { index: i + 1 })}
+                  // The cell's 4:3: its space is kept before the picture arrives (MOBILE-004)
+                  width={800}
+                  height={600}
                   className="w-full h-full object-cover"
                   fallback={<ImageIcon aria-hidden="true" className="w-8 h-8" style={{ color: 'var(--theme-text-muted)', opacity: 0.4 }} />}
                 />

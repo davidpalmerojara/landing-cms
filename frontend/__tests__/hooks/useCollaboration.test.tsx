@@ -193,6 +193,28 @@ describe('useCollaboration', () => {
       expect(state().blockLocks[BLOCK_A]).toBeUndefined();
     });
 
+    it('DATA-005: a lock granted after the user moved on is given back, not kept and renewed', async () => {
+      let ws: FakeWebSocket;
+      ({ view, ws } = await connect());
+
+      // Two selections closer together than the round trip: the first release finds nothing held
+      act(() => { state().selectBlock(BLOCK_A); });
+      act(() => { state().selectBlock(BLOCK_B); });
+      expect(ws.sentOfType('lock_release')).toEqual([]);
+
+      // The answers arrive late, in order
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_A, ...me });
+      receive(ws, { type: 'lock_acquired', block_id: BLOCK_B, ...me });
+
+      expect(ws.sentOfType('lock_release')).toEqual([{ type: 'lock_release', block_id: BLOCK_A }]);
+      expect(state().blockLocks[BLOCK_A]).toBeUndefined();
+      expect(state().blockLocks[BLOCK_B]?.connectionId).toBe('conn-me');
+
+      // Only the block still selected is renewed
+      act(() => { vi.advanceTimersByTime(10_000); });
+      expect(ws.sentOfType('lock_renew')).toEqual([{ type: 'lock_renew', block_id: BLOCK_B }]);
+    });
+
     it('a rejected lock shows who is editing, and leaving the block does not release their lock', async () => {
       let ws: FakeWebSocket;
       ({ view, ws } = await connect());

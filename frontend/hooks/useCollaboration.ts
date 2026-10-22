@@ -227,6 +227,14 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         if (typeof blockId !== 'string' || !entry) break;
         store.setBlockLock(blockId, lockHolder(entry));
         if (entry.connectionId !== own) break;
+        // The user moved on before this answer arrived (two selections closer together than
+        // the round trip): the release sent then found nothing held. Give the lock back now,
+        // or it is renewed forever and locks the block for everyone else (DATA-005)
+        if (!probesRef.current.has(blockId) && useEditorStore.getState().selectedBlockId !== blockId) {
+          send({ type: 'lock_release', block_id: blockId });
+          store.setBlockLock(blockId, null);
+          break;
+        }
         // Track our own locks for renewal
         heldLocksRef.current.add(blockId);
         if (probesRef.current.delete(blockId)) {
@@ -310,7 +318,7 @@ export function useCollaboration(pageId: string, { onRemoteChange }: Collaborati
         }
         break;
     }
-  }, [acquireLock, releaseLock, named, lockHolder, displayName, tellLocked]);
+  }, [acquireLock, releaseLock, send, named, lockHolder, displayName, tellLocked]);
 
   // Auto-acquire/release locks when selectedBlockId changes
   useEffect(() => {

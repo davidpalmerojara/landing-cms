@@ -176,6 +176,23 @@ describe('usePageSync', () => {
       view.unmount();
     });
 
+    it('DATA-008: a page that is gone (404) or no longer theirs (403) does not reopen from its local copy', async () => {
+      for (const status of [404, 403]) {
+        localStorage.setItem(`paxl-page-backup:${PAGE_ID}`, JSON.stringify({
+          id: PAGE_ID, name: 'From backup', status: 'draft', slug: 'landing',
+          blocks: [{ id: 'blk_legacy_1', type: 'hero', name: 'Hero', data: {}, styles: {} }],
+        }));
+        getPage.mockRejectedValueOnce(new ApiError(status, '{"error":"x"}'));
+
+        const view = await mount();
+
+        expect(sync.errorStatus).toBe(status);
+        expect(localStorage.getItem(`paxl-page-backup:${PAGE_ID}`)).toBeNull();
+        expect(state().syncBase).toBeNull();
+        view.unmount();
+      }
+    });
+
     it('has no status when the failure was not an HTTP response', async () => {
       getPage.mockRejectedValue(new TypeError('Failed to fetch'));
 

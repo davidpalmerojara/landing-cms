@@ -25,7 +25,17 @@ export function logSyncError(message: string, error: unknown) {
   }
 }
 
-const backupKey = (pageId: string) => `paxl-page-backup:${pageId}`;
+const BACKUP_PREFIX = 'paxl-page-backup:';
+const backupKey = (pageId: string) => `${BACKUP_PREFIX}${pageId}`;
+
+/** Copies kept at most: a browser's storage is about 5 MB and every opened page leaves one (DATA-008). */
+export const MAX_BACKUPS = 10;
+
+/**
+ * Pages whose copy was thrown away because access ended: nothing writes it again.
+ * A save that fails after the access is gone would otherwise bring it back.
+ */
+const discardedPages = new Set<string>();
 
 /** The server copy the local edits are based on. */
 export interface BackupBase {
@@ -53,7 +63,7 @@ interface StoredBackup {
 
 /** Saves `page` and the base it is on; `unsaved` is worked out from both. */
 export function writeBackup(page: Page, base: BackupBase | null) {
-  if (!page.id || page.id.startsWith('page_')) return;
+  if (!page.id || page.id.startsWith('page_') || discardedPages.has(page.id)) return;
   const stored: StoredBackup = {
     format: 2,
     page,
@@ -62,18 +72,74 @@ export function writeBackup(page: Page, base: BackupBase | null) {
     savedAt: Date.now(),
   };
   try {
+    const isNewCopy = localStorage.getItem(backupKey(page.id)) === null;
     localStorage.setItem(backupKey(page.id), JSON.stringify(stored));
+    if (isNewCopy) pruneBackups(page.id);
   } catch (e) {
     logSyncError('Could not write local page backup:', e);
   }
 }
 
-/** Forget the copy (access to the page was removed). */
+/** Keys of every stored page copy. */
+function backupKeys(): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(BACKUP_PREFIX)) keys.push(key);
+  }
+  return keys;
+}
+
+/** When each copy was written (0 if unknown), read from the stored JSON. */
+function savedAtOf(key: string): number {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
+    return typeof parsed === 'object' && parsed !== null ? Number((parsed as { savedAt?: unknown }).savedAt) || 0 : 0;
+  } catch (e) {
+    logSyncError('Could not read the age of a local page backup:', e);
+    return 0;
+  }
+}
+
+/** Keeps the newest MAX_BACKUPS copies (the one just written always stays). */
+function pruneBackups(keepPageId: string) {
+  const keys = backupKeys();
+  if (keys.length <= MAX_BACKUPS) return;
+  const keep = backupKey(keepPageId);
+  const oldestFirst = keys
+    .filter((key) => key !== keep)
+    .map((key) => ({ key, savedAt: savedAtOf(key) }))
+    .sort((a, b) => a.savedAt - b.savedAt);
+  for (const { key } of oldestFirst.slice(0, keys.length - MAX_BACKUPS)) localStorage.removeItem(key);
+}
+
+/** Forget the copy of one page. */
 export function clearBackup(pageId: string) {
   try {
     localStorage.removeItem(backupKey(pageId));
   } catch (e) {
     logSyncError('Could not remove local page backup:', e);
+  }
+}
+
+/** Forget the copy of a page the person can no longer open (unshared, deleted), and never write it again. */
+export function discardBackup(pageId: string) {
+  discardedPages.add(pageId);
+  clearBackup(pageId);
+}
+
+/** The page opened again (it was shared with this person anew): its copy may be written. */
+export function allowBackup(pageId: string) {
+  discardedPages.delete(pageId);
+}
+
+/** The person leaves or deletes the account: no page copy stays on this browser (DATA-008). */
+export function clearAllBackups() {
+  discardedPages.clear();
+  try {
+    for (const key of backupKeys()) localStorage.removeItem(key);
+  } catch (e) {
+    logSyncError('Could not remove the local page backups:', e);
   }
 }
 

@@ -5,7 +5,7 @@ import { useEditorStore } from '@/store/editor-store';
 import { api, ApiError } from '@/lib/api';
 import { apiErrorKind } from '@/lib/api-errors';
 import type { ApiErrorKind } from '@/lib/api-errors';
-import { clearBackup, logSyncError, readBackup } from '@/lib/page-backup';
+import { allowBackup, discardBackup, logSyncError, readBackup } from '@/lib/page-backup';
 import { PageSyncController } from '@/lib/page-sync';
 import type { PageSyncCallbacks, RemotePageChange, SaveOptions } from '@/lib/page-sync';
 
@@ -57,7 +57,7 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
     (s) => s.collabStatus,
     (status) => {
       const id = pageId || useEditorStore.getState().page.id;
-      if (status === 'revoked' && id) clearBackup(id);
+      if (status === 'revoked' && id) discardBackup(id);
     },
   ), [pageId]);
 
@@ -71,6 +71,7 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
       try {
         if (pageId) {
           await controller.load(() => api.pages.get(pageId));
+          allowBackup(pageId);
         } else {
           // Load first available page, or keep the default page from the store
           const response = await api.pages.list();
@@ -83,7 +84,10 @@ export function usePageSync(pageId?: string, callbacks: PageSyncCallbacks = {}) 
         logSyncError('Failed to load page from API, using local backup if any:', e);
         setError(apiErrorKind(e));
         setErrorStatus(e instanceof ApiError ? e.status : null);
-        const backup = pageId ? readBackup(pageId) : null;
+        // The page is gone or no longer theirs: its copy must not reopen it
+        const goneForGood = e instanceof ApiError && (e.status === 404 || e.status === 403);
+        if (goneForGood && pageId) discardBackup(pageId);
+        const backup = pageId && !goneForGood ? readBackup(pageId) : null;
         // The copy's base, if it has one, is what the next save is checked against; without it the first save fetches it
         useEditorStore.getState().setSyncBase(backup?.base ?? null);
         if (backup) useEditorStore.getState().loadPage(backup.page);

@@ -1,3 +1,5 @@
+import { clearAllBackups } from '@/lib/page-backup';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
 // --- Session ---
@@ -507,6 +509,8 @@ export const api = {
 
     /** Revokes the refresh token and clears the session cookies on the server. */
     logout: async () => {
+      // Whoever uses this browser next must not find this person's pages in it (DATA-008)
+      clearAllBackups();
       const res = await fetch(`${API_BASE}/auth/logout/`, { method: 'POST', credentials: 'include' });
       if (!res.ok) throw new Error(`API ${res.status}: logout failed`);
     },
@@ -516,8 +520,10 @@ export const api = {
      * current password; one without a password types its username instead.
      * The server clears the session cookies.
      */
-    deleteAccount: (data: { password?: string; confirm_username?: string }) =>
-      request<void>('/auth/me/', { method: 'DELETE', body: JSON.stringify(data) }),
+    deleteAccount: async (data: { password?: string; confirm_username?: string }) => {
+      await request<void>('/auth/me/', { method: 'DELETE', body: JSON.stringify(data) });
+      clearAllBackups();
+    },
   },
 
   pages: {

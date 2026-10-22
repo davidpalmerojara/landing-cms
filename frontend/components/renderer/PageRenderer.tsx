@@ -25,6 +25,8 @@ interface PageRendererProps {
   contactSlug?: string;
   /** A guest's published page: the contact form explains it doesn't send */
   guestPage?: boolean;
+  /** Published by an account whose email is not verified yet: the form explains it doesn't send (ADR-052) */
+  unverifiedPage?: boolean;
   className?: string;
 }
 
@@ -53,7 +55,9 @@ function closingFooterIndex(blocks: Block[]): number {
  * is its own stacking context: nothing a block draws can cover what Paxl shows
  * around the page (the guest notice, the watermark).
  */
-const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactSlug, guestPage = false, className }: PageRendererProps) => {
+const PageRenderer = ({
+  blocks, themeVars, language, liveLinks = false, contactSlug, guestPage = false, unverifiedPage = false, className,
+}: PageRendererProps) => {
   const anchorIds = blockAnchorIds(blocks);
   const css = blockStylesCss(blocks);
   const messagesLocale = pageMessagesLocale(language);
@@ -87,7 +91,7 @@ const PageRenderer = ({ blocks, themeVars, language, liveLinks = false, contactS
 
   return (
     <LiveLinksProvider value={liveLinks}>
-      <ContactFormProvider value={{ slug: contactSlug ?? null, guestPage }}>
+      <ContactFormProvider value={{ slug: contactSlug ?? null, guestPage, unverifiedPage }}>
         <div
           lang={language}
           className={clsx('@container isolate min-h-screen', className)}

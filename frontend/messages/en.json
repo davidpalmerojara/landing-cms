@@ -757,6 +757,7 @@
       "fields": "Check the marked fields and send it again."
     },
     "contactGuestNote": "Test pages in the demo don't send messages.",
+    "contactUnverifiedNote": "This form doesn't send messages until whoever published the page verifies their email.",
     "customHtmlPreview": "Custom HTML content",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
@@ -947,6 +948,7 @@
     "empty": "This page has no content.",
     "madeWith": "Made with Paxl",
     "guestNotice": "Test page created by a guest in the Paxl demo. It is deleted within 24 hours. Don't enter personal data.",
+    "unverifiedNotice": "Page published in the Paxl demo by an account that hasn't verified its email yet. Don't enter personal data or passwords.",
     "noticeLabel": "Notice from Paxl"
   },
   "share": {

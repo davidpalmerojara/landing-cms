@@ -757,6 +757,7 @@
       "fields": "Revisa los campos marcados y vuelve a enviarlo."
     },
     "contactGuestNote": "Las páginas de prueba de la demo no envían mensajes.",
+    "contactUnverifiedNote": "Este formulario no envía mensajes hasta que quien publicó la página verifique su email.",
     "customHtmlPreview": "Contenido HTML personalizado",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
@@ -947,6 +948,7 @@
     "empty": "Esta página no tiene contenido.",
     "madeWith": "Hecho con Paxl",
     "guestNotice": "Página de prueba creada por un invitado en la demo de Paxl. Se borra en 24 horas. No introduzcas datos personales.",
+    "unverifiedNotice": "Página publicada en la demo de Paxl por una cuenta que aún no ha verificado su email. No introduzcas datos personales ni contraseñas.",
     "noticeLabel": "Aviso de Paxl"
   },
   "share": {

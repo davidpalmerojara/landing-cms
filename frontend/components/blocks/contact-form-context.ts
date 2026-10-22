@@ -5,6 +5,8 @@ export interface ContactFormContextValue {
   slug: string | null;
   /** A guest's published page: it exists, but doesn't collect visitors' messages */
   guestPage?: boolean;
+  /** Published by an account whose email is not verified yet: doesn't collect messages either (ADR-052) */
+  unverifiedPage?: boolean;
 }
 
 const ContactFormContext = createContext<ContactFormContextValue>({ slug: null });

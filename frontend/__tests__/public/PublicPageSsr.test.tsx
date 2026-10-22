@@ -83,3 +83,30 @@ describe('public page rendered on the server', () => {
     expect(english).toMatch(/<div lang="es"[^>]*>[^]*<main/);
   });
 });
+
+describe('C5 (ADR-052): a page of an account whose email is not verified yet', () => {
+  const html = renderOnServer({ ...page, is_guest_page: false, is_unverified_page: true });
+
+  it('tells visitors, with its own notice rather than the guest one', () => {
+    expect(html).toContain(MESSAGES.es.publicPage.unverifiedNotice);
+    expect(html).not.toContain(MESSAGES.es.publicPage.guestNotice);
+    expect(html).toMatch(/<p role="note"/);
+  });
+
+  it('shows the contact form but says it does not send', () => {
+    expect(html).toContain(MESSAGES.es.blocks.contactUnverifiedNote);
+    expect(html).toMatch(/<button type="submit" disabled=""/);
+  });
+
+  it('a verified account gets neither', () => {
+    const verified = renderOnServer({ ...page, is_unverified_page: false });
+    expect(verified).not.toContain(MESSAGES.es.publicPage.unverifiedNotice);
+    expect(verified).not.toContain(MESSAGES.es.blocks.contactUnverifiedNote);
+  });
+
+  it('a guest page keeps the guest notice', () => {
+    const guest = renderOnServer({ ...page, is_guest_page: true, is_unverified_page: false });
+    expect(guest).toContain(MESSAGES.es.publicPage.guestNotice);
+    expect(guest).toContain(MESSAGES.es.blocks.contactGuestNote);
+  });
+});

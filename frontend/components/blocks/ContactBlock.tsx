@@ -18,7 +18,7 @@ const SUBMIT_STYLE = { backgroundColor: 'var(--theme-primary)', color: 'var(--th
 /** The working form, shown on the page (preview mode). It only sends from a published page. */
 function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'blockId' | 'data'>) {
   const t = useTranslations('blocks');
-  const { slug, guestPage } = useContactFormContext();
+  const { slug, guestPage, unverifiedPage } = useContactFormContext();
   const { status, errorKind, invalidFields, isSending, submit } = useContactForm(slug, blockId);
   // Until React runs, the browser would send the form itself (a GET with the message in the URL, QA-050)
   const hydrated = useHydrated();
@@ -122,7 +122,7 @@ function LiveContactForm({ blockId, data }: Pick<BlockProps<ContactData>, 'block
 
       {!canSend && (
         <p className="text-center text-sm" style={{ color: 'var(--theme-text-muted)' }}>
-          {t(guestPage ? 'contactGuestNote' : 'contactPreviewNote')}
+          {t(unverifiedPage ? 'contactUnverifiedNote' : guestPage ? 'contactGuestNote' : 'contactPreviewNote')}
         </p>
       )}
       <div role="status" className="text-center text-sm">

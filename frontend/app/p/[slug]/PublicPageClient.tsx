@@ -26,6 +26,9 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
   // Blocks with nothing written in them would only be bands of padding (PUBLIC2-009)
   const blocks = apiBlocksToLocal(page.blocks).filter((block) => !isBlockEmpty(block));
   const themeVars = pageThemeVars(apiToTokens(page.design_tokens));
+  // Guest pages and pages of an unverified account get the same protections (ADR-052)
+  const unverifiedPage = !page.is_guest_page && Boolean(page.is_unverified_page);
+  const restricted = Boolean(page.is_guest_page) || unverifiedPage;
 
   if (blocks.length === 0) {
     // Paxl's screen, not the page's: fixed light colors whatever the visitor's system theme (QA-092)
@@ -38,10 +41,10 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
 
   return (
     <>
-      {page.is_guest_page && (
+      {restricted && (
         <aside lang={locale} aria-label={t('publicPage.noticeLabel')} className="relative z-10">
           <p role="note" className="m-0 px-4 py-2.5 text-center text-sm font-medium bg-amber-100 text-amber-900 border-b border-amber-300">
-            {t('publicPage.guestNotice')}
+            {t(unverifiedPage ? 'publicPage.unverifiedNotice' : 'publicPage.guestNotice')}
           </p>
         </aside>
       )}
@@ -50,8 +53,9 @@ export default function PublicPageClient({ page }: { page: ApiPublicPage }) {
         themeVars={themeVars}
         language={pageLanguage(page.language)}
         liveLinks
-        contactSlug={page.is_guest_page ? undefined : page.slug}
+        contactSlug={restricted ? undefined : page.slug}
         guestPage={page.is_guest_page}
+        unverifiedPage={unverifiedPage}
         // Room at the end so the watermark never covers the last lines on a phone (QA-124)
         className={page.show_watermark ? 'pb-16' : undefined}
       />

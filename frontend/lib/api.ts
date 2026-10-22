@@ -175,6 +175,8 @@ export interface ApiUser {
   is_guest: boolean;
   /** When a guest session is deleted (ISO date); null for normal accounts */
   expires_at: string | null;
+  /** Proved by a magic link or Google; until then published pages are limited like a guest's (ADR-052) */
+  email_verified?: boolean;
 }
 
 export interface AuthResponse {
@@ -206,6 +208,8 @@ export interface ApiPublicPage {
   show_watermark: boolean;
   /** Published by a temporary guest: shown with a notice, the form doesn't send */
   is_guest_page?: boolean;
+  /** Published by an account whose email is not verified yet: same protections as a guest page (ADR-052) */
+  is_unverified_page?: boolean;
 }
 
 /** GET /api/features/: what this deployment offers (custom domains need DNS and SSL, which not every host has). */
@@ -213,6 +217,10 @@ export interface ApiFeatures {
   custom_domains: boolean;
   /** Payments run only with a Stripe test key (ADR-036): without one the billing endpoints answer 503 */
   billing: boolean;
+  /** Every account has the Pro features because payments are off (ADR-051) */
+  demo_all_pro?: boolean;
+  /** The server sends email (magic links, share notices); off, a magic-link request answers 503 (ADR-050) */
+  email?: boolean;
 }
 
 export interface ApiBlock {

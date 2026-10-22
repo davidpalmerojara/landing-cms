@@ -7,7 +7,6 @@ const API_BASE = serverApiUrl();
 interface SitemapPage {
   slug: string;
   updated_at: string;
-  seo_canonical_url?: string;
   noindex?: boolean;
 }
 
@@ -38,8 +37,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const pages: SitemapPage[] = await res.json();
       const published = pages
         .filter((p) => !p.noindex)
+        // Only this site's own addresses: a canonical URL typed by the author belongs in that
+        // page's <link rel="canonical">, never in the product's sitemap (SEC-006)
         .map((p) => ({
-          url: p.seo_canonical_url || `${SITE_URL}/p/${p.slug}`,
+          url: `${SITE_URL}/p/${encodeURIComponent(p.slug)}`,
           lastModified: new Date(p.updated_at),
           changeFrequency: 'weekly' as const,
           priority: 0.8,

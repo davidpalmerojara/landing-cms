@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UserPlus, Trash2, Crown, Loader2, Users, Link2, Copy, Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api, ApiError } from '@/lib/api';
@@ -129,7 +130,9 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
   // Live editing is off on this plan: said here instead of a toast on every open (EDITOR2-007)
   const realtimeUnavailable = useEditorStore((s) => s.collabStatus === 'unavailable');
 
-  return (
+  // In the body: inside the top bar (backdrop-filter) `fixed` is relative to the 56 px
+  // header and the dialog was cut off above the screen (UX-001). Only mounted on a click.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -273,7 +276,8 @@ export default function ShareModal({ pageId, onClose }: ShareModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

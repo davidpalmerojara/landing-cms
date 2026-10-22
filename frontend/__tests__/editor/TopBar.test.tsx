@@ -141,7 +141,7 @@ describe('TopBar', () => {
       click(buttonNamed(view, 'Más opciones de publicación')!);
       click(buttonByText(view.container, 'Despublicar'));
       expect(onUnpublish).not.toHaveBeenCalled();
-      const dialog = view.container.querySelector('[role="dialog"]') as HTMLElement;
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
       expect(dialog.textContent).toContain('¿Despublicar la página?');
       await act(async () => { click(buttonByText(dialog, 'Despublicar')); });
 
@@ -213,7 +213,7 @@ describe('TopBar', () => {
       await act(async () => { click(view.container.querySelector('a[href="/dashboard"]') as HTMLAnchorElement); });
 
       expect(push).not.toHaveBeenCalled();
-      const dialog = view.container.querySelector('[role="dialog"]') as HTMLElement;
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
       expect(dialog.textContent).toContain('Hay cambios sin guardar');
       click(buttonByText(dialog, 'Salir igualmente'));
       expect(push).toHaveBeenCalledWith('/dashboard');

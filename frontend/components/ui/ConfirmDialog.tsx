@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useHydrated } from '@/hooks/useHydrated';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -28,6 +30,7 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const t = useTranslations('common');
+  const hydrated = useHydrated();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -67,9 +70,12 @@ export default function ConfirmDialog({
     return () => window.removeEventListener('keydown', handleKey);
   }, [open, onCancel]);
 
-  if (!open) return null;
+  if (!open || !hydrated) return null;
 
-  return (
+  // In the body, not where it is declared: a parent with backdrop-filter or transform
+  // becomes the containing block of `fixed`, and the dialog ended up clipped inside
+  // the 56 px top bar (UX-001)
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
       <div
@@ -115,6 +121,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

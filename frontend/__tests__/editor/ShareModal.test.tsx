@@ -26,8 +26,8 @@ async function open(asUser: typeof normalUser): Promise<RenderResult> {
   return view;
 }
 
-const text = (view: RenderResult) => view.container.textContent ?? '';
-const removeButtons = (view: RenderResult) => view.container.querySelectorAll('button[aria-label^="Eliminar colaborador"]');
+const text = (view: RenderResult) => document.body.textContent ?? '';
+const removeButtons = (view: RenderResult) => document.body.querySelectorAll('button[aria-label^="Eliminar colaborador"]');
 
 describe('ShareModal', () => {
   let view: RenderResult;
@@ -46,7 +46,7 @@ describe('ShareModal', () => {
     it('the owner can invite by email and by link, and remove collaborators', async () => {
       view = await open(normalUser);
 
-      expect(view.container.querySelector('input[type="email"]')).not.toBeNull();
+      expect(document.body.querySelector('input[type="email"]')).not.toBeNull();
       expect(text(view)).toContain('Invitar con un enlace');
       expect(removeButtons(view)).toHaveLength(1);
     });
@@ -65,7 +65,7 @@ describe('ShareModal', () => {
     it('a collaborator only sees who has access', async () => {
       view = await open({ ...normalUser, id: collaborator.id, username: collaborator.username });
 
-      expect(view.container.querySelector('input[type="email"]')).toBeNull();
+      expect(document.body.querySelector('input[type="email"]')).toBeNull();
       expect(text(view)).not.toContain('Invitar con un enlace');
       expect(removeButtons(view)).toHaveLength(0);
       expect(text(view)).toContain('Solo el propietario puede invitar o quitar colaboradores.');
@@ -78,7 +78,7 @@ describe('ShareModal', () => {
       });
       view = await open(guestUser);
 
-      expect(view.container.querySelector('input[type="email"]')).toBeNull();
+      expect(document.body.querySelector('input[type="email"]')).toBeNull();
       expect(text(view)).toContain('Invitar por email necesita una cuenta');
       expect(text(view)).toContain('Invitar con un enlace');
     });
@@ -110,15 +110,15 @@ describe('ShareModal', () => {
       vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
       view = await open(normalUser);
 
-      await act(async () => { buttonByText(view.container, 'Crear enlace de invitación').click(); });
+      await act(async () => { buttonByText(document.body, 'Crear enlace de invitación').click(); });
 
       expect(invite).toHaveBeenCalledWith(PAGE_ID);
-      const input = view.container.querySelector<HTMLInputElement>('#share-invite-link');
+      const input = document.body.querySelector<HTMLInputElement>('#share-invite-link');
       expect(input?.value).toBe(`${window.location.origin}/join/tok123`);
-      expect(view.container.querySelector('label[for="share-invite-link"]')?.textContent).toBe('Enlace de invitación');
+      expect(document.body.querySelector('label[for="share-invite-link"]')?.textContent).toBe('Enlace de invitación');
       expect(text(view)).toContain('Ábrelo en una ventana de incógnito para probar la edición en tiempo real.');
 
-      await act(async () => { buttonByText(view.container, 'Copiar enlace').click(); });
+      await act(async () => { buttonByText(document.body, 'Copiar enlace').click(); });
       expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/join/tok123`);
       expect(text(view)).toContain('Enlace copiado');
       vi.unstubAllGlobals();
@@ -129,10 +129,10 @@ describe('ShareModal', () => {
       vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
       view = await open(normalUser);
 
-      await act(async () => { buttonByText(view.container, 'Crear enlace de invitación').click(); });
-      await act(async () => { buttonByText(view.container, 'Copiar enlace').click(); });
+      await act(async () => { buttonByText(document.body, 'Crear enlace de invitación').click(); });
+      await act(async () => { buttonByText(document.body, 'Copiar enlace').click(); });
 
-      expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('No se pudo copiar');
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('No se pudo copiar');
       vi.unstubAllGlobals();
     });
 
@@ -140,10 +140,10 @@ describe('ShareModal', () => {
       vi.spyOn(api.pages, 'invite').mockRejectedValue(new Error('API 403'));
       view = await open(normalUser);
 
-      await act(async () => { buttonByText(view.container, 'Crear enlace de invitación').click(); });
+      await act(async () => { buttonByText(document.body, 'Crear enlace de invitación').click(); });
 
-      expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('No se pudo crear el enlace. Inténtalo de nuevo.');
-      expect(view.container.querySelector('#share-invite-link')).toBeNull();
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('No se pudo crear el enlace. Inténtalo de nuevo.');
+      expect(document.body.querySelector('#share-invite-link')).toBeNull();
     });
   });
 
@@ -156,7 +156,7 @@ describe('ShareModal', () => {
 
     expect(unshare).toHaveBeenCalledWith(PAGE_ID, collaborator.id);
     // The confirmation is the app's own words, not the server's
-    expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Esa persona ya no tiene acceso a la página.');
+    expect(document.body.querySelector('[role="status"]')?.textContent).toBe('Esa persona ya no tiene acceso a la página.');
   });
 
   describe('QA-062', () => {
@@ -185,7 +185,7 @@ describe('ShareModal', () => {
           </GuestSessionProvider>,
         );
       });
-      const dialog = view.container.querySelector('[role="dialog"]');
+      const dialog = document.body.querySelector('[role="dialog"]');
       act(() => { dialog?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
       expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -233,12 +233,12 @@ describe('ShareModal', () => {
     it('translates errors instead of showing the server text', async () => {
       vi.spyOn(api.pages, 'share').mockRejectedValue(new ApiError(400, JSON.stringify({ error: 'No puedes compartir contigo mismo.' })));
       view = await open(normalUser);
-      const input = view.container.querySelector<HTMLInputElement>('input[type="email"]');
+      const input = document.body.querySelector<HTMLInputElement>('input[type="email"]');
       if (!input) throw new Error('no email field');
       typeInto(input, 'ana@example.com');
-      await act(async () => { view.container.querySelector<HTMLFormElement>('form')?.requestSubmit(); });
+      await act(async () => { document.body.querySelector<HTMLFormElement>('form')?.requestSubmit(); });
 
-      const alert = view.container.querySelector('[role="alert"]')?.textContent ?? '';
+      const alert = document.body.querySelector('[role="alert"]')?.textContent ?? '';
       expect(alert).toBe('No puedes compartir la página contigo.');
       expect(alert).not.toContain('API');
     });

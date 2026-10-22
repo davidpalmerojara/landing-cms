@@ -94,8 +94,8 @@ describe('ConfirmDialog (QA-045)', () => {
       <ConfirmDialog open title="Delete block" message="Delete?" onConfirm={() => undefined} onCancel={() => undefined} />,
       'en',
     );
-    expect(buttonByText(view.container, 'Cancel')).toBeTruthy();
-    expect(buttonByText(view.container, 'Delete')).toBeTruthy();
+    expect(buttonByText(document.body, 'Cancel')).toBeTruthy();
+    expect(buttonByText(document.body, 'Delete')).toBeTruthy();
     view.unmount();
   });
 

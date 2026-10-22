@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Cache TTL for plan lookups (seconds)
 PLAN_CACHE_TTL = 300  # 5 minutes
+DEMO_PLAN_CACHE_KEY = 'demo_pro_plan'
 
 
 class PlanLimitExceeded(APIException):
@@ -53,16 +54,21 @@ def get_user_plan(user):
     Subscription via any of the user's workspaces.
 
     Returns the Plan object, or a default Free-like dict if none found.
+    While payments are off every account gets the Pro plan (billing/demo.py).
     """
     if not user or not user.is_authenticated:
         return _free_plan_fallback()
+
+    from billing.demo import demo_all_pro
+    from billing.models import Plan, Subscription
+
+    if demo_all_pro():
+        return _demo_pro_plan()
 
     cache_key = f'user_plan:{user.pk}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
-
-    from billing.models import Plan, Subscription
 
     # Try to find subscription via user's workspaces
     sub = (
@@ -104,6 +110,20 @@ def get_user_subscription(user):
     )
 
 
+def _demo_pro_plan():
+    """The Pro plan row, cached like a user's plan; a Pro-like stand-in if the plans were never seeded."""
+    from billing.models import Plan
+
+    plan = cache.get(DEMO_PLAN_CACHE_KEY)
+    if plan is None:
+        plan = Plan.objects.filter(name='pro', is_active=True).first()
+        if plan is None:
+            logger.error('No active Pro plan: run seed_plans. Demo accounts get the built-in Pro limits')
+            return _pro_plan_fallback()
+        cache.set(DEMO_PLAN_CACHE_KEY, plan, PLAN_CACHE_TTL)
+    return plan
+
+
 def invalidate_plan_cache(user):
     """Clear the cached plan for a user (call after subscription changes)."""
     cache.delete(f'user_plan:{user.pk}')
@@ -113,8 +133,11 @@ def _free_plan_fallback():
     """Return a fake plan object with Free limits when no Plan exists in DB."""
 
     class FreePlanFallback:
+        id = None
         name = 'free'
         display_name = 'Free'
+        price_monthly = 0
+        price_yearly = None
         max_pages = 3
         max_ai_generations_per_hour = 0
         has_analytics = False
@@ -127,6 +150,40 @@ def _free_plan_fallback():
     return FreePlanFallback()
 
 
+def _pro_plan_fallback():
+    """Pro features when the demo gives everyone Pro but no Plan row exists."""
+
+    class ProPlanFallback:
+        id = None
+        name = 'pro'
+        display_name = 'Pro'
+        price_monthly = 19
+        price_yearly = 190
+        max_pages = -1
+        max_ai_generations_per_hour = 10
+        has_analytics = True
+        has_collaboration = True
+        has_custom_domain = True
+        has_ab_testing = True
+        remove_watermark = True
+        max_version_history = -1
+
+    return ProPlanFallback()
+
+
+class AccountPageLimit(APIException):
+    """The hard page cap of every plan (MAX_PAGES_PER_ACCOUNT): not an upgrade prompt, there is nothing to upgrade to."""
+    status_code = http_status.HTTP_403_FORBIDDEN
+    default_code = 'PAGE_LIMIT'
+
+    def __init__(self, limit):
+        super().__init__(detail={
+            'error': f'Esta demo permite hasta {limit} páginas por cuenta. Elimina alguna para crear otra.',
+            'code': 'PAGE_LIMIT',
+            'limit': limit,
+        })
+
+
 def check_page_limit(user):
     """Check if the user can create another page. Raises PlanLimitExceeded if not."""
     if user.is_guest:
@@ -136,10 +193,13 @@ def check_page_limit(user):
         return
 
     plan = get_user_plan(user)
-    if plan.max_pages == -1:
-        return  # unlimited
-
     current_count = Page.objects.filter(owner=user).count()
+    if plan.max_pages == -1:
+        # "Unlimited" still has the storage cap of the free database (SEC-001)
+        if current_count >= settings.MAX_PAGES_PER_ACCOUNT:
+            raise AccountPageLimit(settings.MAX_PAGES_PER_ACCOUNT)
+        return
+
     if current_count >= plan.max_pages:
         raise PlanLimitExceeded(
             f'Tu plan {plan.display_name} permite un máximo de {plan.max_pages} páginas. '

@@ -81,8 +81,17 @@ class BillingEnabled(permissions.BasePermission):
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
 def features_view(request):
-    """GET /api/features/ — which optional features this deployment offers."""
+    """GET /api/features/ — which optional features this deployment offers.
+
+    demo_all_pro: every account has the Pro features because payments are off (ADR-050).
+    email: the server sends email (magic links, share notices); off, magic links answer 503 (ADR-049).
+    """
+    from accounts.mailing import email_enabled
+    from billing.demo import demo_all_pro
+
     return Response({
         'custom_domains': custom_domains_enabled(),
         'billing': billing_enabled(),
+        'demo_all_pro': demo_all_pro(),
+        'email': email_enabled(),
     })

@@ -29,7 +29,8 @@ from accounts.permissions import IsNotGuest
 from config.features import BillingEnabled
 from pages.models import Block, Page
 from .models import Plan, Subscription, PaymentHistory, WebhookLog
-from .permissions import get_user_subscription, invalidate_plan_cache
+from .demo import demo_all_pro
+from .permissions import get_user_plan, get_user_subscription, invalidate_plan_cache
 from .serializers import (
     PlanSerializer,
     SubscriptionSerializer,
@@ -107,6 +108,10 @@ class SubscriptionView(APIView):
         return Response({
             'subscription': SubscriptionSerializer(sub).data,
             'usage': _dashboard_usage(request.user),
+            # The plan whose features the account has now: Pro for everyone while
+            # payments are off (ADR-050), whatever the stored subscription says
+            'effective_plan': PlanSerializer(get_user_plan(request.user)).data,
+            'demo_all_pro': demo_all_pro(),
         })
 
 

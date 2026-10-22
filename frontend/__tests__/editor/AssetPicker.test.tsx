@@ -4,12 +4,13 @@ import ImageField from '@/components/inspector/ImageField';
 import AssetPickerModal from '@/components/inspector/AssetPickerModal';
 import { api } from '@/lib/api';
 import type { ApiAsset } from '@/lib/api';
+import { browserCodec } from '@/lib/image-downscale';
 import { render, click, keyDown, type RenderResult } from '../mobile-editor/test-utils';
 import { typeInto } from '../guest/test-helpers';
 
 const ASSETS: ApiAsset[] = [
-  { id: 'a1', name: 'portada.png', url: '/media/assets/2026/10/portada.png', mime_type: 'image/png', size: 2048, created_at: '2026-10-10T10:00:00Z' },
-  { id: 'a2', name: 'equipo.jpg', url: '/media/assets/2026/10/equipo.jpg', mime_type: 'image/jpeg', size: 4096, created_at: '2026-10-10T10:00:00Z' },
+  { id: 'a1', name: 'portada.png', url: '/media/assets/2026/10/portada.png', mime_type: 'image/png', size: 2048, width: 800, height: 600, created_at: '2026-10-10T10:00:00Z' },
+  { id: 'a2', name: 'equipo.jpg', url: '/media/assets/2026/10/equipo.jpg', mime_type: 'image/jpeg', size: 4096, width: null, height: null, created_at: '2026-10-10T10:00:00Z' },
 ];
 
 let view: RenderResult;
@@ -30,6 +31,8 @@ async function flush() {
 
 beforeEach(() => {
   vi.spyOn(api.assets, 'list').mockResolvedValue({ count: ASSETS.length, next: null, previous: null, results: ASSETS });
+  // jsdom never loads an <img>: the picture cannot be decoded here, so the original is sent
+  vi.spyOn(browserCodec, 'decode').mockRejectedValue(new Error('jsdom cannot decode images'));
 });
 
 afterEach(() => {
@@ -140,13 +143,56 @@ describe('media library dialog', () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     await act(async () => {
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      await Promise.resolve();
-      await Promise.resolve();
     });
+    await vi.waitFor(() => expect(document.body.querySelector('[role="alert"]')).not.toBeNull());
 
     const alert = document.body.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('El servidor no aceptó el archivo');
     expect(alert?.textContent).not.toContain('{');
+  });
+
+  async function chooseFile(file: File) {
+    const input = document.body.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
+
+  it('ADR-049: a full library is explained with the limits the server sent', async () => {
+    const { ApiError } = await import('@/lib/api');
+    vi.spyOn(api.assets, 'upload').mockRejectedValue(
+      new ApiError(403, JSON.stringify({ error: 'x', code: 'ASSET_QUOTA', max_files: 30, max_bytes: 15 * 1024 * 1024 })),
+    );
+    view = render(<AssetPickerModal onSelect={vi.fn()} onClose={vi.fn()} />);
+    await flush();
+
+    await chooseFile(new File(['x'], 'foto.jpg', { type: 'image/jpeg' }));
+    await vi.waitFor(() => expect(document.body.querySelector('[role="alert"]')).not.toBeNull());
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+      'Has llegado al límite de tu biblioteca (30 imágenes o 15 MB). Borra alguna para subir más.',
+    );
+  });
+
+  it('MOBILE-001: a file still over 5 MB after trying to make it smaller is refused before sending', async () => {
+    const upload = vi.spyOn(api.assets, 'upload');
+    view = render(<AssetPickerModal onSelect={vi.fn()} onClose={vi.fn()} />);
+    await flush();
+
+    // jsdom cannot decode images, so the original is what would be sent
+    await chooseFile(new File([new Uint8Array(6 * 1024 * 1024)], 'enorme.jpg', { type: 'image/jpeg' }));
+    await vi.waitFor(() => expect(document.body.querySelector('[role="alert"]')).not.toBeNull());
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toContain('"enorme.jpg" pesa demasiado (6 MB)');
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('PERF-002: library thumbnails load lazily', async () => {
+    view = render(<AssetPickerModal onSelect={vi.fn()} onClose={vi.fn()} />);
+    await flush();
+    const thumbnails = [...document.body.querySelectorAll<HTMLImageElement>('[data-asset-option] img')];
+    expect(thumbnails).toHaveLength(2);
+    expect(thumbnails.every((img) => img.getAttribute('loading') === 'lazy')).toBe(true);
+    expect(thumbnails[0].getAttribute('width')).toBe('800');
   });
 
   it('QA-079: an image can come from a pasted URL, checked before it is used', async () => {

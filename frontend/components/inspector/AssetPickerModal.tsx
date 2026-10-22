@@ -10,6 +10,8 @@ import {
 import { api } from '@/lib/api';
 import type { ApiAsset } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-errors';
+import { ALLOWED_IMAGE_TYPES } from '@/lib/image-downscale';
+import { imageUploadErrorMessage, uploadImage } from '@/lib/image-upload';
 import { isAllowedImageUrl } from '@/lib/image-url';
 import { useAssets } from '@/hooks/useAssets';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
@@ -28,10 +30,8 @@ interface AssetPickerModalProps {
   onSelectUrl?: (url: string) => void;
 }
 
-/** What the server accepts (pages/views.py AssetViewSet): no SVG (QA-074). */
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const ACCEPT = ALLOWED_TYPES.join(',');
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+/** What the server accepts (backend/pages/images.py): no SVG (QA-074). */
+const ACCEPT = ALLOWED_IMAGE_TYPES.join(',');
 
 type Source = 'library' | 'url';
 
@@ -91,24 +91,7 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
 
   const handleUpload = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-
-    // Validate files before uploading
-    const validFiles: File[] = [];
-    for (const file of Array.from(files)) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        setError(t('assets.invalidType', { name: file.name }));
-        return;
-      }
-      if (file.size > MAX_SIZE) {
-        const sizeMb = new Intl.NumberFormat(locale, {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        }).format(file.size / (1024 * 1024));
-        setError(t('assets.fileTooLarge', { name: file.name, size: sizeMb }));
-        return;
-      }
-      validFiles.push(file);
-    }
+    const validFiles = Array.from(files);
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -119,14 +102,15 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
     }, 200);
 
     try {
+      // Phone photos are made smaller in the browser first, so they pass the server's limit (MOBILE-001)
       for (const file of validFiles) {
-        const asset = await api.assets.upload(file);
+        const asset = await uploadImage(file);
         updateAssets((prev) => [asset, ...prev]);
       }
       setUploadProgress(100);
     } catch (e) {
       // The server's reason is in Spanish and in JSON: say it in the interface's words
-      setError(apiErrorMessage(e, t, 'assets.uploadRejected'));
+      setError(imageUploadErrorMessage(e, t, locale));
     } finally {
       clearInterval(progressInterval);
       setTimeout(() => {
@@ -406,10 +390,15 @@ export default function AssetPickerModal({ onSelect, onClose, onSelectUrl }: Ass
                                 : 'border border-subtle/80 hover:border-default hover:shadow-lg'
                             }`}
                           >
+                            {/* Lazy: a full library is many images on a phone connection (PERF-002) */}
                             {/* eslint-disable-next-line @next/next/no-img-element -- user uploads served by the backend */}
                             <img
                               src={asset.url}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
+                              width={asset.width ?? undefined}
+                              height={asset.height ?? undefined}
                               className="w-full h-full object-cover"
                             />
 

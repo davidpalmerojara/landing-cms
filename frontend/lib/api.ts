@@ -278,12 +278,18 @@ export interface ApiPageListItem extends ApiSeoFields {
   updated_at: string;
 }
 
+/** An uploaded image (ADR-049): stored re-encoded, served at `url` ("/media/assets/..."). */
 export interface ApiAsset {
   id: string;
   name: string;
   url: string;
+  /** Type the server detected and wrote (WebP for stills) */
   mime_type: string;
+  /** Bytes stored */
   size: number;
+  /** Pixels of the stored image; null for files uploaded before it was recorded */
+  width: number | null;
+  height: number | null;
   created_at: string;
 }
 
@@ -597,9 +603,10 @@ export const api = {
   assets: {
     list: () => request<PaginatedResponse<ApiAsset>>('/assets/'),
 
+    /** Sends the file as it is; `uploadImage` (lib/image-upload.ts) makes photos smaller first. */
     upload: (file: File) => {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', file, file.name);
       return uploadRequest<ApiAsset>('/assets/', formData);
     },
 

@@ -72,6 +72,8 @@ function unregister(sheet: OpenSheet) {
   window.addEventListener('beforeunload', cancelRelease);
   releaseTimer = setTimeout(() => {
     releaseTimer = null;
+    // The page (or a test environment) may be gone by the time this fires
+    if (typeof window === 'undefined') return;
     window.removeEventListener('beforeunload', cancelRelease);
     if (openSheets.length > 0 || !ownsHistoryEntry) return;
     ownsHistoryEntry = false;

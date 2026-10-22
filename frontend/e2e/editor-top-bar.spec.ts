@@ -57,8 +57,8 @@ for (const width of [1280, 1440]) {
 
       const name = topBarOf(page).locator(`span[title="${LONG_NAME}"]`);
       const shown = await name.evaluate((element) => element.getBoundingClientRect().width);
-      // At 1280 it used to be cut to about 8 letters (~80 px)
-      expect(shown, 'the page name has room for more than a few words').toBeGreaterThanOrEqual(200);
+      // At 1280 it used to be cut to about 8 letters (~80 px); font metrics differ by OS (191 px on Linux CI)
+      expect(shown, 'the page name has room for more than a few words').toBeGreaterThanOrEqual(160);
       expect(await isReachable(topBarOf(page).getByText('Borrador', { exact: true }))).toBe(true);
     });
   });

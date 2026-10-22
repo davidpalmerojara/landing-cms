@@ -733,6 +733,9 @@ export const api = {
     warmUp: async (): Promise<boolean> => {
       try {
         const res = await fetch(`${API_BASE}/healthz/`, { cache: 'no-store', credentials: 'omit' });
+        // Read the body to the end: a chunked answer nobody reads leaves the connection open,
+        // and the page never counts as idle
+        await res.text();
         return res.ok;
       } catch {
         // Offline or the server is still starting: this ping is only a courtesy

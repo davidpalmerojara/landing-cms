@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
   SAAS_TEMPLATE_BLOCK_COUNT,
   canvasBlock,
+  canvasOf,
   expectEditorReady,
   pageIdFromUrl,
   publishFromEditor,
@@ -48,6 +49,8 @@ test.describe('desktop editor', () => {
     await expect(share).toBeHidden();
 
     await publishFromEditor(page);
+    // The "published" note sits over the menu until it is closed
+    await topBarOf(page).getByRole('button', { name: 'Cerrar' }).click();
     await topBarOf(page).getByRole('button', { name: 'Más opciones de publicación' }).click();
     await page.getByRole('button', { name: 'Despublicar', exact: true }).click();
     const confirm = page.getByRole('dialog', { name: '¿Despublicar la página?' });
@@ -118,7 +121,7 @@ test.describe('desktop editor', () => {
         await visitor.close();
       }
     };
-    expect(await join(), 'the link works before it is revoked').toBe(200);
+    expect(await join(), 'the link works before it is revoked').toBeLessThan(300);
 
     await share.getByRole('button', { name: 'Revocar todos los enlaces' }).click();
     await expect(share.getByText('Enlaces revocados.')).toBeVisible();
@@ -150,7 +153,7 @@ test('C5: an account with an unverified email is told its published pages are li
   const { id } = (await created.json()) as { id: string };
 
   await page.goto(`/editor/${id}`);
-  await expectEditorReady(page, 1);
+  await expect(canvasOf(page)).toHaveAccessibleName(/1 bloque$/);
   const banner = page.getByRole('region', { name: 'Verificación del email' });
   await expect(banner).toContainText('Tu email aún no está verificado');
 

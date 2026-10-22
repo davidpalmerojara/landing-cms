@@ -187,7 +187,7 @@ export default function TopBar({
       </div>
 
       {/* Below xl (1280 px) the view and device switchers get their own row, so nothing overlaps (QA-083) */}
-      <div className="flex items-center gap-3 max-xl:order-last max-xl:w-full max-xl:justify-center">
+      <div className="flex items-center gap-3 xl:gap-2 max-xl:order-last max-xl:w-full max-xl:justify-center">
         {/* Editor view: plain toggle buttons, one pressed (QA-088) */}
         {onViewChange && (
           <div role="group" aria-label={t('editor.currentView')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
@@ -215,14 +215,14 @@ export default function TopBar({
 
         {/* Undo and redo for people who do not know the keyboard shortcut (UX-004) */}
         {activeView === 'design' && (
-          <div role="group" aria-label={t('editor.history')} className="flex items-center bg-surface-elevated/80 backdrop-blur-sm border border-default/10 p-1 rounded-full shadow-inner">
+          <div role="group" aria-label={t('editor.history')} className="flex items-center">
             <button
               type="button"
               onClick={undo}
               disabled={!canUndo}
               aria-label={undoLabel}
               title={undoLabel}
-              className={`p-1.5 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 disabled:pointer-events-none ${TOUCH_TARGET}`}
+              className={`p-1 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 ${TOUCH_TARGET}`}
             >
               <Undo2 className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -232,7 +232,7 @@ export default function TopBar({
               disabled={!canRedo}
               aria-label={redoLabel}
               title={redoLabel}
-              className={`p-1.5 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 disabled:pointer-events-none ${TOUCH_TARGET}`}
+              className={`p-1 rounded-full transition-all duration-200 flex items-center text-secondary hover:text-primary hover:bg-surface-card/50 disabled:opacity-40 ${TOUCH_TARGET}`}
             >
               <Redo2 className="w-4 h-4" aria-hidden="true" />
             </button>

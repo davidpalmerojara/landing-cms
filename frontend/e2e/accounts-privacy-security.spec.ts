@@ -173,7 +173,8 @@ test.describe('Payments are off without a Stripe test key (D2, QA-018)', () => {
     await page.goto('/settings');
     await page.getByRole('button', { name: /Facturación/ }).click();
     await expect(page).toHaveURL(/\/settings\/billing$/);
-    await expect(page.getByRole('note')).toContainText('Los pagos no están activos en esta demo');
+    // Every account has the Pro features while payments are off (ADR-051), and the page says so
+    await expect(page.getByRole('note')).toContainText('todas las cuentas tienen las funciones del plan Pro');
     await expect(page.getByRole('button', { name: 'Actualizar a Pro' })).toHaveCount(0);
     await expect(page.getByText('API 500')).toHaveCount(0);
 

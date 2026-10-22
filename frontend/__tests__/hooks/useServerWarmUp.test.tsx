@@ -25,6 +25,16 @@ describe('server warm-up (DEPLOY-005, PERF-001)', () => {
     expect(init.credentials).toBe('omit');
   });
 
+  it('reads the answer to the end, so the connection is not left open (the page never went idle)', async () => {
+    const response = new Response('{"status":"ok"}', { status: 200 });
+    const read = vi.spyOn(response, 'text');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+    expect(await api.health.warmUp()).toBe(true);
+
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
   it('a 404 from a server without the endpoint, or no network, breaks nothing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })));
     expect(await api.health.warmUp()).toBe(false);

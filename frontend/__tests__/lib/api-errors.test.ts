@@ -54,6 +54,31 @@ describe('error kinds (QA-004: "Sin conexión" only when the server could not be
   });
 });
 
+describe('codes with a message of their own (ADR-050, ADR-053)', () => {
+  const codes: [number, string, string][] = [
+    [503, 'EMAIL_UNAVAILABLE', 'emailUnavailable'],
+    [413, 'PAGE_TOO_LARGE', 'pageTooLarge'],
+    [403, 'STORAGE_LIMIT', 'storageLimit'],
+    [403, 'PAGE_LIMIT', 'pageLimit'],
+    [503, 'SERVICE_FULL', 'serviceFull'],
+  ];
+
+  it.each(codes)('%s %s is told apart from a generic error and never retried', (status, code, kind) => {
+    const error = apiError(status, { error: 'texto del servidor', code });
+    expect(apiErrorKind(error)).toBe(kind);
+    expect(isRetryableError(error)).toBe(false);
+  });
+
+  it.each(['es', 'en'] as const)('each has natural copy in %s and never shows the server text', (locale) => {
+    const t = translator(locale);
+    for (const [status, code] of codes) {
+      const message = apiErrorMessage(apiError(status, { error: 'texto del servidor', code }), t, 'editor.publishError');
+      expect(message).not.toBe(t('editor.publishError'));
+      expect(message).not.toContain('servidor');
+    }
+  });
+});
+
 describe('apiErrorMessage (QA-052: never the raw body)', () => {
   const t = translator('en');
 

@@ -19,6 +19,12 @@ const CODE_MESSAGE_KEYS: Record<string, string> = {
   THROTTLED: 'errors.throttled',
   UNAUTHORIZED: 'errors.unauthorized',
   INTERNAL_ERROR: 'errors.server',
+  // Same texts as the editor's (lib/api-errors.ts)
+  EMAIL_UNAVAILABLE: 'apiErrors.emailUnavailable',
+  PAGE_TOO_LARGE: 'apiErrors.pageTooLarge',
+  STORAGE_LIMIT: 'apiErrors.storageLimit',
+  PAGE_LIMIT: 'apiErrors.pageLimit',
+  SERVICE_FULL: 'apiErrors.serviceFull',
 };
 
 /** The message key for a failed request, or null when nothing specific is known. */

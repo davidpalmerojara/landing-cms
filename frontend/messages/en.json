@@ -1192,7 +1192,12 @@
     "conflict": "Someone changed the page at the same time.",
     "planLimit": "Your plan doesn't include this.",
     "throttled": "Too many requests in a row. Wait a moment.",
-    "server": "The server had a problem."
+    "server": "The server had a problem.",
+    "emailUnavailable": "We couldn't send the email right now. Please try again in a few minutes.",
+    "pageTooLarge": "This page is too large to save. Remove some content (for example custom HTML blocks or very long texts) and try again.",
+    "storageLimit": "Your account has reached its storage limit. Delete old pages or versions to keep saving.",
+    "pageLimit": "You've reached the maximum number of pages for your account. Delete one to create another.",
+    "serviceFull": "The demo is full right now and can't take new accounts. Please try again later."
   },
   "saveStatus": {
     "offlineShort": "Offline",

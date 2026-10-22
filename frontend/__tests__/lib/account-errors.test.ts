@@ -15,6 +15,10 @@ describe('accountErrorKey', () => {
     ['a guest page limit', new ApiError(403, '{"error":"x","code":"GUEST_PAGE_LIMIT"}'), 'guest.pageLimit'],
     ['a plan limit', new ApiError(403, '{"error":"plan_limit","message":"x"}'), 'dashboard.planLimit'],
     ['a network failure', new TypeError('Failed to fetch'), 'errors.network'],
+    ['the email could not be sent', new ApiError(503, '{"error":"x","code":"EMAIL_UNAVAILABLE"}'), 'apiErrors.emailUnavailable'],
+    ['the page limit', new ApiError(403, '{"error":"x","code":"PAGE_LIMIT"}'), 'apiErrors.pageLimit'],
+    ['the storage limit', new ApiError(403, '{"error":"x","code":"STORAGE_LIMIT"}'), 'apiErrors.storageLimit'],
+    ['a full demo', new ApiError(503, '{"error":"x","code":"SERVICE_FULL"}'), 'apiErrors.serviceFull'],
   ])('maps %s', (_label, error, key) => {
     expect(accountErrorKey(error)).toBe(key);
   });

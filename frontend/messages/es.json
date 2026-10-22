@@ -1192,7 +1192,12 @@
     "conflict": "Alguien ha cambiado la página al mismo tiempo.",
     "planLimit": "Tu plan no incluye esto.",
     "throttled": "Demasiadas peticiones seguidas. Espera un momento.",
-    "server": "El servidor ha tenido un problema."
+    "server": "El servidor ha tenido un problema.",
+    "emailUnavailable": "No hemos podido enviar el correo ahora mismo. Inténtalo de nuevo en unos minutos.",
+    "pageTooLarge": "Esta página es demasiado grande para guardarse. Quita contenido (por ejemplo bloques de HTML personalizado o textos muy largos) e inténtalo de nuevo.",
+    "storageLimit": "Tu cuenta ha llegado a su límite de espacio. Borra páginas o versiones antiguas para poder seguir guardando.",
+    "pageLimit": "Has llegado al máximo de páginas de tu cuenta. Borra alguna para crear otra.",
+    "serviceFull": "La demo está llena ahora mismo y no admite cuentas nuevas. Inténtalo de nuevo más tarde."
   },
   "saveStatus": {
     "offlineShort": "Sin conexión",

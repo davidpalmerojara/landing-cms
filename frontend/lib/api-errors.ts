@@ -26,8 +26,22 @@ export type ApiErrorKind =
   | 'conflict'
   | 'planLimit'
   | 'throttled'
+  | 'emailUnavailable'
+  | 'pageTooLarge'
+  | 'storageLimit'
+  | 'pageLimit'
+  | 'serviceFull'
   | 'server'
   | 'unknown';
+
+/** Backend codes (ADR-050, ADR-053) that have a message of their own, whatever the HTTP status. */
+const CODE_KINDS: Record<string, ApiErrorKind> = {
+  EMAIL_UNAVAILABLE: 'emailUnavailable',
+  PAGE_TOO_LARGE: 'pageTooLarge',
+  STORAGE_LIMIT: 'storageLimit',
+  PAGE_LIMIT: 'pageLimit',
+  SERVICE_FULL: 'serviceFull',
+};
 
 /** No answer from the server: the request failed before any HTTP status (offline, DNS, CORS, server down). */
 export function isNetworkError(error: unknown): boolean {
@@ -40,6 +54,7 @@ export function apiErrorKind(error: unknown): ApiErrorKind {
   if (isNetworkError(error)) return 'offline';
   if (!(error instanceof ApiError)) return 'unknown';
   if (error.code === 'NOT_OWNER') return 'notOwner';
+  if (error.code && CODE_KINDS[error.code]) return CODE_KINDS[error.code];
   if (error.code === 'VERSION_CONFLICT' || error.status === 409) return 'conflict';
   if (error.body?.error === 'plan_limit' || error.code === 'PLAN_LIMIT') return 'planLimit';
   if (error.status === 401) return 'session';
@@ -66,6 +81,11 @@ const KIND_MESSAGE_KEYS: Partial<Record<ApiErrorKind, string>> = {
   conflict: 'apiErrors.conflict',
   planLimit: 'apiErrors.planLimit',
   throttled: 'apiErrors.throttled',
+  emailUnavailable: 'apiErrors.emailUnavailable',
+  pageTooLarge: 'apiErrors.pageTooLarge',
+  storageLimit: 'apiErrors.storageLimit',
+  pageLimit: 'apiErrors.pageLimit',
+  serviceFull: 'apiErrors.serviceFull',
   server: 'apiErrors.server',
 };
 

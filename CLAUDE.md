@@ -47,7 +47,7 @@ Paxl es un editor visual de landing pages SaaS. El producto actual esta enfocado
 
 - **DB**: SQLite (dev), PostgreSQL (produccion via DATABASE_URL)
 - **Auth**: JWT solo en cookies httpOnly (access 1h / refresh 7d con rotacion y blacklist en logout), comprobacion de Origin contra CSRF (ADR-008), WebSocket autenticado con la misma cookie (ADR-010), Google OAuth (el script de Google solo se carga en `/login` y `/register`, ADR-039), Magic Links. Email y usuario son unicos sin distinguir mayusculas (ADR-037)
-- **Storage**: Media files via Django FileField (upload_to `assets/%Y/%m/`)
+- **Storage**: imagenes subidas en PostgreSQL (`AssetBlob`), recodificadas con Pillow (WebP, 1600 px, sin EXIF), con cuotas por cuenta y global, servidas por `pages.media` en `/media/assets/...` con cache inmutable y ETag; el navegador reduce las fotos antes de subirlas (ADR-049)
 - **Servidor**: un proceso Daphne (ASGI) para HTTP y WebSocket; whitenoise para estaticos; `/healthz` sin base de datos (ADR-015). Con `DJANGO_DEBUG=False`, `manage.py check` y el arranque de Daphne se niegan a continuar con `NUM_PROXIES=0` o una clave `sk_live_` de Stripe; el panel `/admin/` esta apagado salvo `ADMIN_ENABLED=True` (ADR-038)
 - **Realtime**: Django Channels. Sin `REDIS_URL`: capa de canales y bloqueos en memoria (un solo proceso); con `REDIS_URL`: Redis
 
@@ -189,7 +189,7 @@ Todas las queries de Django filtran por `owner=request.user`. Un usuario nunca a
 - **FormSubmission** (app `submissions`): page FK, block_id, name, email, message, created_at (sin IP)
 - **Block**: page FK, type, order, data (JSON), styles (JSON)
 - **PageVersion**: page FK, version_number, snapshot (JSON), page_metadata (JSON), trigger, label, size_bytes
-- **Asset**: owner FK, workspace FK, name, file (FileField), mime_type, size
+- **Asset**: owner FK, workspace FK, name, path (unico, lo que va tras `/media/`), mime_type (detectado), size, width, height, sha256; los bytes en **AssetBlob** (1:1, cascada, nunca se leen al listar ni al borrar)
 - **CustomDomain**: workspace FK, page FK, domain (unique), dns_status, ssl_status, is_active
 - **Plan**: name, max_pages, max_ai_generations_per_hour, feature flags
 - **Subscription**: workspace FK, plan FK, stripe_subscription_id, status, billing_cycle
@@ -309,7 +309,8 @@ Un colaborador que intenta una acción del propietario recibe `403 {"error", "co
 
 | Metodo | Endpoint | Auth | Descripcion |
 |---|---|---|---|
-| GET/POST | `/api/assets/` | Si | Listar/subir assets |
+| GET/POST | `/api/assets/` | Si (subir: no invitado) | Listar/subir imagenes; cuotas `403 ASSET_QUOTA`, `507 STORAGE_FULL`, 30 subidas/h (ADR-049) |
+| GET/HEAD | `/media/<path>` | No | Imagen subida, desde la base de datos (cache inmutable, ETag, CSP `sandbox`) |
 | GET/POST/DELETE | `/api/domains/` | Si (Pro) | CRUD dominios custom; solo con `CUSTOM_DOMAINS_ENABLED` (ADR-027) |
 | POST | `/api/domains/{id}/verify/` | Si | Verificar DNS |
 | GET | `/api/ai/options/?language=es` | Si | Modo de la IA (demo / live / unavailable) y prompts de ejemplo (ADR-023) |

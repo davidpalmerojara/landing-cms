@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Descripción
-Paxl es un editor visual de landing pages SaaS. Stack principal: Next.js App Router + React + TypeScript + Zustand en frontend, Django + DRF en backend. En `settings.py` el backend usa SQLite por defecto en local y PostgreSQL cuando existe `DATABASE_URL`. La autenticación combina JWT en cookies/httpOnly + fallback en localStorage, Google OAuth y Magic Links. La librería de media usa `Asset.file`; hoy persiste en storage Django local (`backend/media/`) y está preparada para evolucionar a S3 vía configuración de storage.
+Paxl es un editor visual de landing pages SaaS. Stack principal: Next.js App Router + React + TypeScript + Zustand en frontend, Django + DRF en backend. En `settings.py` el backend usa SQLite por defecto en local y PostgreSQL cuando existe `DATABASE_URL`. La autenticación combina JWT en cookies/httpOnly + fallback en localStorage, Google OAuth y Magic Links. Las imágenes subidas se guardan en la base de datos (`Asset` con los metadatos, `AssetBlob` con los bytes), recodificadas con Pillow, y `pages.media` las sirve en `/media/assets/...` (ADR-049); nada depende del disco del servidor.
 
 ## Estructura Del Repositorio
 ```text
@@ -168,7 +168,7 @@ Relaciones relevantes:
 - `User` (`accounts.User`) extiende `AbstractUser`, usa UUID y tiene `avatar` y `google_id`. Las claves de IA no se guardan. `email_verified` se marca al entrar con enlace mágico o Google; si había una contraseña sin confirmar, se desactiva y `sessions_revoked_at` invalida todas las sesiones previas (ADR-018).
 - `Page.collaborators` permite edición compartida.
 - `PageVersion` guarda snapshots completos de bloques y metadata de página.
-- `Asset` representa media subida por usuario/workspace.
+- `Asset` representa una imagen subida por usuario/workspace: `path` (lo que va tras `/media/`), tipo detectado, tamaño, `width`/`height`, `sha256` (ETag). Sus bytes están en `AssetBlob` (1:1, cascada), que el listado y el borrado nunca leen.
 - `CustomDomain` vincula dominios personalizados a una `Page`.
 - `Subscription` es `OneToOne` con `Workspace`; `Plan` gobierna límites/features.
 - `AnalyticsEvent` guarda eventos anónimos de páginas publicadas, sin cookies: el `visitor_id` es un hash diario calculado en servidor (`analytics/privacy.py`).
@@ -206,7 +206,7 @@ Autenticados:
 - Auth: `GET /api/auth/me/`
 - Pages: `GET|POST /api/pages/`, `GET|PUT|PATCH|DELETE /api/pages/{id}/`, `POST /api/pages/{id}/duplicate/`, `POST /api/pages/{id}/publish/`, `POST /api/pages/{id}/unpublish/`, `GET /api/pages/{id}/submissions/`, `DELETE /api/pages/{id}/submissions/{sid}/`, `POST /api/pages/{id}/share/`, `GET /api/pages/{id}/collaborators/`, `POST /api/pages/{id}/unshare/`. Son solo del propietario (un colaborador recibe `403 NOT_OWNER`, ADR-032): publicar, despublicar, duplicar, eliminar la página o una versión, `generate` (IA de página entera), compartir, `unshare` e `invite`; el detalle de página devuelve `is_owner`. Los campos de texto de los bloques son texto plano (ADR-029) y las URLs de imagen son estrictas (ADR-034).
 - Versions: `GET|POST /api/pages/{page_id}/versions/`, `GET|PATCH|DELETE /api/pages/{page_id}/versions/{id}/`, `POST /api/pages/{page_id}/versions/{id}/restore/`
-- Assets: `GET|POST /api/assets/`, `DELETE /api/assets/{id}/`
+- Assets: `GET|POST /api/assets/`, `DELETE /api/assets/{id}/`. La subida (no para invitados) recodifica la imagen (WebP, 1600 px, sin EXIF) y aplica cuotas: `400 INVALID_IMAGE`/`IMAGE_TOO_LARGE`, `413 FILE_TOO_LARGE`, `403 ASSET_QUOTA`, `507 STORAGE_FULL`, 429 pasadas 30 por hora. `GET /media/<path>` (sin autenticación) sirve la imagen con caché inmutable, `ETag` y CSP `sandbox` (ADR-049). Cualquier cuerpo de más de 6 MB recibe `413 REQUEST_TOO_LARGE` antes de leerse.
 - AI: `POST /api/pages/{page_id}/generate/`, `POST /api/pages/{page_id}/blocks/{block_id}/edit-ai/`
 - Analytics: `GET /api/pages/{page_id}/analytics/`
 - Billing: `GET /api/billing/subscription/`, `GET /api/billing/payments/`, `POST /api/billing/checkout/`, `POST /api/billing/portal/`

@@ -59,6 +59,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Uploaded images (/media/...) are answered here, before session, locale and CORS (ADR-049)
+    'pages.media.MediaMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -181,14 +183,21 @@ STORAGES = {
 }
 
 
-# Media files (uploads)
+# Uploaded images: stored in the database and served at /media/... by
+# pages.media (ADR-049), so nothing depends on the server's disk.
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-# Max upload size: 5MB
+# Max form/JSON body: 5 MB. Larger bodies of any kind are refused before
+# Django reads them (pages.upload_limits, MAX_REQUEST_BODY_BYTES).
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+MAX_REQUEST_BODY_BYTES = int(os.environ.get('MAX_REQUEST_BODY_BYTES', str(6 * 1024 * 1024)))
+
+# Image quotas: per account, and all images together (keep them well under the database's size)
+ASSET_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+ASSET_USER_MAX_FILES = int(os.environ.get('ASSET_USER_MAX_FILES', '30'))
+ASSET_USER_MAX_BYTES = int(os.environ.get('ASSET_USER_MAX_MB', '15')) * 1024 * 1024
+ASSET_STORAGE_MAX_BYTES = int(os.environ.get('ASSET_STORAGE_MAX_MB', '300')) * 1024 * 1024
+ASSET_UPLOAD_RATE = os.environ.get('ASSET_UPLOAD_RATE', '30/hour')
 
 
 # Default PK

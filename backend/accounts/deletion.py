@@ -4,9 +4,9 @@ Used for expired guests (accounts/guests.py) and for people who delete their
 own account (DELETE /api/auth/me/). The database cascades remove each user's
 workspaces, subscription and payment history, pages with their blocks, saved
 versions, invites, custom domains, form submissions and analytics events,
-assets, AI logs and the pages they were invited to edit. What the cascade
-does not reach is handled here: refresh tokens, files in storage, the cached
-copies of their published pages and the sitemap.
+assets with their image bytes (ADR-049), AI logs and the pages they were
+invited to edit. What the cascade does not reach is handled here: refresh
+tokens, the cached copies of their published pages and the sitemap.
 """
 import logging
 from dataclasses import dataclass
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 class Deletion:
     users: int
     rows: int
+    # Uploaded images deleted (their bytes are rows too, removed by the cascade)
     files: int
     published_pages: int
 
@@ -56,7 +57,7 @@ def delete_users_with_data(ids) -> Deletion:
     published_slugs = list(
         Page.objects.filter(owned, status=Page.Status.PUBLISHED).values_list('slug', flat=True)
     )
-    files = [name for name in Asset.objects.filter(owned).values_list('file', flat=True) if name]
+    files = Asset.objects.filter(owned).count()
 
     with transaction.atomic():
         # Their refresh tokens are no use any more (the blacklist rows cascade from them)
@@ -64,16 +65,10 @@ def delete_users_with_data(ids) -> Deletion:
         rows, _ = User.objects.filter(pk__in=ids).delete()
         revalidate_public_pages(*published_slugs)
 
-    storage = Asset._meta.get_field('file').storage
-    for name in files:
-        try:
-            storage.delete(name)
-        except OSError:
-            logger.warning('Could not delete a file of a deleted account', extra={'file': name}, exc_info=True)
     if published_slugs:
         cache.delete('sitemap_xml')
 
-    return Deletion(users=len(ids), rows=rows, files=len(files), published_pages=len(published_slugs))
+    return Deletion(users=len(ids), rows=rows, files=files, published_pages=len(published_slugs))
 
 
 def delete_account(user) -> Deletion:

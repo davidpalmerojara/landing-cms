@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import pytest
 from django.core.cache import cache
-from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.utils import timezone
 from rest_framework import status
@@ -17,7 +16,7 @@ from accounts.models import User
 from analytics.models import AnalyticsEvent
 from billing.models import Plan, Subscription
 from billing.permissions import get_user_plan
-from pages.models import Asset, Block, Page, PageVersion
+from pages.models import Asset, AssetBlob, Block, Page, PageVersion
 from submissions.models import FormSubmission
 from tests.factories import BlockFactory, PageFactory, UserFactory, WorkspaceFactory
 
@@ -39,11 +38,6 @@ def plans(db):
         remove_watermark=True, has_custom_domain=True, has_analytics=True, max_ai_generations_per_hour=10,
     )
     return free, pro
-
-
-@pytest.fixture(autouse=True)
-def media_in_tmp(settings, tmp_path):
-    settings.MEDIA_ROOT = tmp_path
 
 
 @pytest.fixture
@@ -75,11 +69,10 @@ def make_expired_guest_with_everything():
     page.publish(guest)
     FormSubmission.objects.create(page=page, name='Ana', email='ana@example.com', message='Hola')
     AnalyticsEvent.objects.create(page=page, visitor_id='v1', event_type='pageview')
-    asset = Asset.objects.create(owner=guest, name='logo.png', mime_type='image/png', size=10)
-    asset.file.save('logo.png', ContentFile(PNG))
-    stored_path = asset.file.path
+    asset = Asset.objects.create(owner=guest, name='logo.png', path='assets/logo.png', mime_type='image/png', size=10)
+    AssetBlob.objects.create(asset=asset, data=PNG)
     age(guest, 25)
-    return guest, page, stored_path
+    return guest, page, asset
 
 
 @pytest.mark.django_db
@@ -142,10 +135,9 @@ class TestGuestCreation:
 @pytest.mark.django_db
 class TestGuestCleanup:
     def test_removes_the_guest_and_everything_it_owns(self):
-        guest, page, stored_path = make_expired_guest_with_everything()
+        guest, page, _ = make_expired_guest_with_everything()
         guest_id, page_id = guest.pk, page.pk
-        import os
-        assert os.path.exists(stored_path)
+        assert AssetBlob.objects.count() == 1
 
         assert cleanup_expired_guests() == 1
 
@@ -157,7 +149,8 @@ class TestGuestCleanup:
         assert AnalyticsEvent.objects.count() == 0
         assert Asset.objects.count() == 0
         assert Subscription.objects.count() == 0
-        assert not os.path.exists(stored_path)
+        # The image bytes are rows too: gone with the asset (ADR-049)
+        assert AssetBlob.objects.count() == 0
 
     def test_keeps_fresh_guests_and_normal_accounts(self):
         _, fresh = start_guest()

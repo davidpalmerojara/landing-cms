@@ -18,19 +18,13 @@ PREVIEW_BLOCKS_ATTR = 'preview_blocks_cache'
 
 
 class AssetSerializer(serializers.ModelSerializer):
-    url = serializers.SerializerMethodField()
+    # Relative to the site ("/media/assets/..."): see Asset.url
+    url = serializers.CharField(read_only=True)
 
     class Meta:
         model = Asset
-        fields = ['id', 'name', 'file', 'url', 'mime_type', 'size', 'created_at']
-        read_only_fields = ['id', 'name', 'url', 'mime_type', 'size', 'created_at']
-        extra_kwargs = {'file': {'write_only': True}}
-
-    def get_url(self, obj):
-        # Relative to the site ("/media/assets/..."), not to the API host: the
-        # URL is stored in pages, which must not depend on where the API runs.
-        # The frontend forwards /media to the backend like it does /api.
-        return obj.file.url if obj.file else ''
+        fields = ['id', 'name', 'url', 'mime_type', 'size', 'width', 'height', 'created_at']
+        read_only_fields = fields
 
 
 class BlockSerializer(serializers.ModelSerializer):

@@ -4,7 +4,6 @@ import logging
 from unittest.mock import patch
 
 import pytest
-from django.core.files.base import ContentFile
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
@@ -15,7 +14,7 @@ from accounts.guests import create_guest
 from accounts.models import User
 from analytics.models import AnalyticsEvent
 from billing.models import PaymentHistory, Plan, Subscription
-from pages.models import Asset, Block, CustomDomain, Page, PageInvite, PageVersion, Workspace
+from pages.models import Asset, AssetBlob, Block, CustomDomain, Page, PageInvite, PageVersion, Workspace
 from submissions.models import FormSubmission
 from tests.factories import BlockFactory, PageFactory, UserFactory, WorkspaceFactory
 
@@ -28,11 +27,6 @@ URLOPEN = 'pages.revalidation.urllib.request.urlopen'
 @pytest.fixture(autouse=True)
 def free_plan(db):
     return Plan.objects.create(name='free', display_name='Free', max_pages=3, max_version_history=5)
-
-
-@pytest.fixture(autouse=True)
-def media_in_tmp(settings, tmp_path):
-    settings.MEDIA_ROOT = tmp_path
 
 
 @pytest.fixture
@@ -58,8 +52,10 @@ def make_account(**user_kwargs):
     AnalyticsEvent.objects.create(page=page, visitor_id='v1', event_type='pageview')
     PageInvite.objects.create(page=page, created_by=user)
     CustomDomain.objects.create(workspace=workspace, page=page, domain=f'{user.username}.example.com')
-    asset = Asset.objects.create(owner=user, workspace=workspace, name='logo.png', mime_type='image/png', size=10)
-    asset.file.save('logo.png', ContentFile(PNG))
+    asset = Asset.objects.create(
+        owner=user, workspace=workspace, name='logo.png', path=f'assets/{user.username}.png', mime_type='image/png', size=10,
+    )
+    AssetBlob.objects.create(asset=asset, data=PNG)
     RefreshToken.for_user(user)
     return user, page, asset
 
@@ -77,6 +73,7 @@ def count_everything_of(user, page):
         'invites': PageInvite.objects.filter(page=page).count(),
         'domains': CustomDomain.objects.filter(page=page).count(),
         'assets': Asset.objects.filter(owner=user).count(),
+        'image_bytes': AssetBlob.objects.filter(asset__owner=user).count(),
         'tokens': OutstandingToken.objects.filter(user=user).count(),
     }
 
@@ -85,7 +82,6 @@ def count_everything_of(user, page):
 class TestDeleteWithPassword:
     def test_deletes_the_account_and_everything_it_owns(self):
         user, page, asset = make_account()
-        stored_path = asset.file.path
         before = count_everything_of(user, page)
         assert all(count > 0 for count in before.values()), before
 
@@ -93,8 +89,6 @@ class TestDeleteWithPassword:
 
         assert resp.status_code == status.HTTP_204_NO_CONTENT
         assert count_everything_of(user, page) == {name: 0 for name in before}
-        import os
-        assert not os.path.exists(stored_path)
 
     def test_clears_the_session_cookies(self):
         user, *_ = make_account()

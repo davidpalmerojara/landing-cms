@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
@@ -29,6 +28,3 @@ if settings.ADMIN_ENABLED:
     # Rate limit the sign-in before the site builds its URLs (it reads `login` then)
     admin.site.login = limit_admin_login(admin.site.login)
     urlpatterns.append(path(settings.ADMIN_URL_PATH, admin.site.urls))
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -10,9 +10,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from accounts.permissions import IsNotGuest
 from config.features import CustomDomainsEnabled
 from config.pagination import SitePageNumberPagination
+from .assets import UploadRefused, store_upload
 from .block_validators import clean_block_data
 from .models import (
     Page, Block, Asset, PageVersion, PageInvite, CustomDomain,
@@ -874,43 +876,34 @@ class CustomDomainViewSet(viewsets.ModelViewSet):
             domain_obj.save()
 
 
-ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
-# SVG excluded from direct upload — contains executable code (XSS risk).
-# To support SVG in the future, sanitize with bleach or DOMPurify server-side.
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
-IMAGE_EXTENSIONS = {'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif'}
+class AssetUploadThrottle(UserRateThrottle):
+    """Uploads per account and hour: decoding an image is the most expensive
+    request there is on a small instance (ADR-049)."""
+    scope = 'asset_upload'
+
+    def get_rate(self):
+        return getattr(settings, 'ASSET_UPLOAD_RATE', '30/hour')
 
 
-def detect_image_type(uploaded_file) -> str | None:
-    """Image type from the file's first bytes (its signature), not from the
-    Content-Type the client declares, which anyone can set to image/png."""
-    head = uploaded_file.read(12)
-    uploaded_file.seek(0)
-    if head.startswith(b'\xff\xd8\xff'):
-        return 'image/jpeg'
-    if head.startswith(b'\x89PNG\r\n\x1a\n'):
-        return 'image/png'
-    if head[:6] in (b'GIF87a', b'GIF89a'):
-        return 'image/gif'
-    if head[:4] == b'RIFF' and head[8:12] == b'WEBP':
-        return 'image/webp'
-    return None
+class AssetPagination(SitePageNumberPagination):
+    # The whole library on one page: it never holds more than the per-account quota
+    page_size = 100
 
 
 class AssetViewSet(
     mixins.ListModelMixin,
-    mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
-    GET  /api/assets/       — list user's assets
-    POST /api/assets/       — upload a new asset (multipart)
-    DELETE /api/assets/{id}/ — delete an asset
+    GET  /api/assets/       — list user's assets (metadata only, never the bytes)
+    POST /api/assets/       — upload a new image (multipart, field `file`)
+    DELETE /api/assets/{id}/ — delete an image (its bytes go with it)
     """
     serializer_class = AssetSerializer
     lookup_field = 'id'
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    pagination_class = AssetPagination
 
     def get_permissions(self):
         # Guests cannot upload: checked before the file is read, so a refused upload costs nothing
@@ -918,39 +911,24 @@ class AssetViewSet(
             return [IsAuthenticated(), IsNotGuest()]
         return super().get_permissions()
 
+    def get_throttles(self):
+        throttles = super().get_throttles()
+        if self.action == 'create':
+            throttles.append(AssetUploadThrottle())
+        return throttles
+
     def get_queryset(self):
         return Asset.objects.filter(owner=self.request.user)
 
-    def perform_create(self, serializer):
-        uploaded_file = self.request.FILES.get('file')
+    def create(self, request, *args, **kwargs):
+        uploaded_file = request.FILES.get('file')
         if not uploaded_file:
-            raise ValidationError({'file': 'No se ha subido ningún archivo.'})
-
-        content_type = detect_image_type(uploaded_file)
-        if content_type not in ALLOWED_IMAGE_TYPES:
-            raise ValidationError({
-                'file': 'El archivo no es una imagen válida. Solo se aceptan JPG, PNG, WebP y GIF.'
-            })
-        original_name = uploaded_file.name
-        # Stored under a random name with the detected extension: a file named
-        # evil.html is never served back as HTML from our domain
-        uploaded_file.name = f'{uuid.uuid4().hex}.{IMAGE_EXTENSIONS[content_type]}'
-
-        if uploaded_file.size > MAX_FILE_SIZE:
-            size_mb = uploaded_file.size / (1024 * 1024)
-            raise ValidationError({
-                'file': f'El archivo es demasiado grande ({size_mb:.1f} MB). '
-                        f'El máximo permitido es 5 MB.'
-            })
-
-        serializer.save(
-            owner=self.request.user,
-            name=original_name[:255],
-            mime_type=content_type,
-            size=uploaded_file.size,
-        )
-
-    def perform_destroy(self, instance):
-        if instance.file:
-            instance.file.delete(save=False)
-        instance.delete()
+            return Response(
+                {'error': 'No se ha subido ningún archivo.', 'code': 'NO_FILE'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            asset = store_upload(request.user, uploaded_file)
+        except UploadRefused as refused:
+            return Response(refused.body(), status=refused.status)
+        return Response(self.get_serializer(asset).data, status=status.HTTP_201_CREATED)

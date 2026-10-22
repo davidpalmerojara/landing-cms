@@ -64,6 +64,7 @@ class AssetFactory(DjangoModelFactory):
 
     owner = factory.SubFactory(UserFactory)
     name = factory.Sequence(lambda n: f'asset-{n}.png')
+    path = factory.Sequence(lambda n: f'assets/asset-{n}.png')
     mime_type = 'image/png'
     size = 1024
 

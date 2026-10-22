@@ -390,8 +390,12 @@ def create_version_snapshot(page, user, trigger, label=''):
     return version
 
 
+MEDIA_URL_PREFIX = '/media/'
+
+
 class Asset(models.Model):
-    """Uploaded file/image for use in pages."""
+    """An uploaded image: its metadata. The bytes are in AssetBlob, its own
+    table, so listing assets or deleting an account never reads them (ADR-049)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -408,9 +412,17 @@ class Asset(models.Model):
         blank=True,
     )
     name = models.CharField(max_length=200)
-    file = models.FileField(upload_to='assets/%Y/%m/')
+    # Where it is served, after /media/: "assets/<random>.webp" for uploads,
+    # "assets/2026/10/<random>.png" for files that were on disk before (pages store the URL)
+    path = models.CharField(max_length=255, unique=True)
+    # Type detected and written by the server, never the one the client declared
     mime_type = models.CharField(max_length=100, blank=True, default='')
+    # Bytes stored (after re-encoding)
     size = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    # Of the stored bytes: the ETag of the served file
+    sha256 = models.CharField(max_length=64, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -418,6 +430,19 @@ class Asset(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def url(self) -> str:
+        """Relative to the site, not to the API host: the URL is stored in pages,
+        which must not depend on where the API runs (QA-079). The frontend
+        forwards /media to the backend like it does /api."""
+        return f'{MEDIA_URL_PREFIX}{self.path}'
+
+
+class AssetBlob(models.Model):
+    """The bytes of an Asset. Deleted with it (and with its owner's account)."""
+    asset = models.OneToOneField(Asset, on_delete=models.CASCADE, primary_key=True, related_name='blob')
+    data = models.BinaryField()
 
 
 class CustomDomain(models.Model):

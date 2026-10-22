@@ -17,6 +17,7 @@ from django.core.asgi import get_asgi_application  # noqa: E402
 
 from collaboration.middleware import JWTAuthMiddleware  # noqa: E402
 from collaboration.routing import websocket_urlpatterns  # noqa: E402
+from pages.upload_limits import RequestBodyLimit  # noqa: E402
 
 if not settings.DEBUG:
     # Daphne does not run `manage.py check`: do it here so a production server with
@@ -25,7 +26,8 @@ if not settings.DEBUG:
 
     call_command('check')
 
-django_asgi = get_asgi_application()
+# Bodies over MAX_REQUEST_BODY_BYTES get a 413 before Django reads them (ADR-049)
+django_asgi = RequestBodyLimit(get_asgi_application())
 
 application = ProtocolTypeRouter({
     'http': django_asgi,

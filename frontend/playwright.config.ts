@@ -22,8 +22,9 @@ export default defineConfig({
   workers: 1,
   retries: isCI ? 1 : 0,
   forbidOnly: isCI,
+  // `github` turns each failure into an annotation on the CI run, readable without the logs
   reporter: isCI
-    ? [['list'], ['html', { open: 'never' }]]
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
     : [['list']],
   use: {
     baseURL,

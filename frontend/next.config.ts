@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 import { contentSecurityPolicy } from "./lib/content-security-policy";
+import { productionEnvironmentProblems, rewriteBackend } from "./lib/deploy-environment";
+
+// A production build on Vercel with a missing or local variable would ship a broken site: stop it (DEPLOY-014)
+const environmentProblems = productionEnvironmentProblems(process.env);
+if (environmentProblems.length > 0) {
+  throw new Error(`Vercel production build is missing its configuration: ${environmentProblems.join('; ')}.`);
+}
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -36,9 +43,10 @@ const nextConfig: NextConfig = {
   },
   // With BACKEND_URL set, the browser calls '/api/...' on this origin and Next
   // forwards it to Django, so the session cookies are first-party even when
-  // the frontend and the API are hosted on different domains (ADR-008).
+  // the frontend and the API are hosted on different domains (ADR-008). Vercel previews
+  // get no forwarding, so they never write to the production backend (DEPLOY-013).
   async rewrites() {
-    const backend = process.env.BACKEND_URL?.replace(/\/$/, '');
+    const backend = rewriteBackend(process.env);
     if (!backend) return [];
     return [
       // ':path*' drops the trailing slash, which every Django API route needs

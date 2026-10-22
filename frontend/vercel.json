@@ -1,5 +1,20 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm ci"
+  "installCommand": "npm ci",
+  "routes": [
+    {
+      "src": "/(api|media)/(.*)",
+      "continue": true,
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "set",
+          "target": { "key": "x-paxl-origin-secret" },
+          "args": "$PAXL_ORIGIN_SECRET",
+          "env": ["PAXL_ORIGIN_SECRET"]
+        }
+      ]
+    }
+  ]
 }
